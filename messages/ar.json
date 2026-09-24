@@ -1,0 +1,59 @@
+{
+  "common": {
+    "loading": "جارٍ التحميل...",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "login": "تسجيل الدخول",
+    "signup": "إنشاء حساب",
+    "logout": "تسجيل الخروج",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "fullName": "الاسم الكامل"
+  },
+  "auth": {
+    "loginTitle": "تسجيل الدخول",
+    "signupTitle": "إنشاء حساب جديد",
+    "loginButton": "دخول",
+    "signupButton": "إنشاء الحساب",
+    "haveAccount": "لديك حساب بالفعل؟",
+    "noAccount": "ليس لديك حساب؟",
+    "checkEmail": "تحقق من بريدك",
+    "checkEmailDesc": "أرسلنا لك رابط تأكيد. اضغط عليه لتفعيل حسابك.",
+    "backToLogin": "العودة لتسجيل الدخول",
+    "passwordMin": "كلمة المرور (6 أحرف على الأقل)" , 
+    "organizationName": "اسم الشركة أو الوكالة",
+"organizationPlaceholder": "مثال: Advertema"
+  },
+  "dashboard": {
+    "overview": "نظرة عامة",
+    "conversations": "المحادثات",
+    "leads": "الليدز",
+    "clients": "العملاء",
+    "settings": "الإعدادات",
+    "welcomeBack": "مرحباً بعودتك — إليك ما يحدث في منصتك.",
+    "totalConversations": "إجمالي المحادثات",
+    "activeLeads": "ليدز نشطة",
+    "conversionRate": "معدل التحويل",
+    "fromLastMonth": "من الشهر الماضي",
+    "recentActivity": "النشاط الأخير",
+    "recentActivityDesc": "أحدث المحادثات والليدز عبر كل القنوات.",
+    "noActivity": "لا يوجد نشاط بعد. ابدأ بربط أول قناة."
+  },
+  "pages": {
+    "conversationsDesc": "كل المحادثات عبر قنواتك.",
+    "inbox": "صندوق الوارد",
+    "noConversations": "لا توجد محادثات بعد.",
+    "leadsDesc": "الليدز المؤهلة الجاهزة للمتابعة.",
+    "allLeads": "كل الليدز",
+    "noLeads": "لا توجد ليدز بعد.",
+    "clientsDesc": "إدارة عملاء الوكالة.",
+    "allClients": "كل العملاء",
+    "noClients": "لا يوجد عملاء بعد. أضف أول عميل للبدء.",
+    "settingsDesc": "إدارة حسابك وتفضيلاتك.",
+    "profile": "الملف الشخصي",
+    "role": "الدور",
+    "notSet": "غير محدد"
+  }
+}

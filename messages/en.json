@@ -1,0 +1,59 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "login": "Login",
+    "signup": "Sign up",
+    "logout": "Log out",
+    "email": "Email",
+    "password": "Password",
+    "fullName": "Full name"
+  },
+  "auth": {
+    "loginTitle": "Login",
+    "signupTitle": "Create account",
+    "loginButton": "Login",
+    "signupButton": "Sign up",
+    "haveAccount": "Already have an account?",
+    "noAccount": "Don't have an account?",
+    "checkEmail": "Check your email",
+    "checkEmailDesc": "We sent you a confirmation link. Click it to activate your account.",
+    "backToLogin": "Back to login",
+    "passwordMin": "Password (min 6 characters)" ,
+    "organizationName": "Company or agency name",
+"organizationPlaceholder": "e.g. Advertema"
+  },
+  "dashboard": {
+    "overview": "Overview",
+    "conversations": "Conversations",
+    "leads": "Leads",
+    "clients": "Clients",
+    "settings": "Settings",
+    "welcomeBack": "Welcome back — here's what's happening with your platform.",
+    "totalConversations": "Total Conversations",
+    "activeLeads": "Active Leads",
+    "conversionRate": "Conversion Rate",
+    "fromLastMonth": "from last month",
+    "recentActivity": "Recent Activity",
+    "recentActivityDesc": "Latest conversations and leads across your channels.",
+    "noActivity": "No activity yet. Start by connecting your first channel."
+  },
+  "pages": {
+    "conversationsDesc": "All conversations across your channels.",
+    "inbox": "Inbox",
+    "noConversations": "No conversations yet.",
+    "leadsDesc": "Qualified leads ready for follow-up.",
+    "allLeads": "All Leads",
+    "noLeads": "No leads yet.",
+    "clientsDesc": "Manage your agency clients.",
+    "allClients": "All Clients",
+    "noClients": "No clients yet. Add your first client to get started.",
+    "settingsDesc": "Manage your account and preferences.",
+    "profile": "Profile",
+    "role": "Role",
+    "notSet": "Not set"
+  }
+}
