@@ -6,14 +6,21 @@ import { RelativeTime } from '@/components/relative-time'
 import { getDashboardStats } from '@/lib/dashboard-stats'
 import { getSelectedClient } from '@/lib/auth/client-context'
 import { LeadStatusBadge } from './leads/_components/lead-status-badge'
+import { getJourneyStats, getUpcomingAppointments } from '@/lib/actions/appointments'
+import { AttendanceCard, JourneyFunnel, TodayAppointmentsCard } from './_components/journey-widgets'
 
 export default async function DashboardPage() {
   const t = await getTranslations('dashboard')
   const tConversations = await getTranslations('conversations')
   const format = await getFormatter()
   const selectedClient = await getSelectedClient()
-  const data = await getDashboardStats(selectedClient?.id ?? null)
-  if (!data) return null
+  const clientId = selectedClient?.id ?? null
+  const [data, todayAppointments, journey] = await Promise.all([
+    getDashboardStats(clientId),
+    getUpcomingAppointments({ range: 'today', clientId }),
+    getJourneyStats(clientId, '30d'),
+  ])
+  if (!data || !journey) return null
 
   const percentChange = (value: number, previous: number | null) => {
     if (!previous) return t('noComparison')
@@ -91,6 +98,12 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      <div className="mb-8 grid gap-4 lg:grid-cols-3">
+        <TodayAppointmentsCard appointments={todayAppointments} />
+        <AttendanceCard current={journey.current} previous={journey.previous} />
+        <JourneyFunnel conversations={data.conversations.value} stats={journey.current} />
       </div>
 
       <Card>

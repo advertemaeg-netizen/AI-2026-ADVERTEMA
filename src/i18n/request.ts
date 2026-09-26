@@ -10,6 +10,8 @@ export default getRequestConfig(async ({ requestLocale }) => {
 
   return {
     locale,
+    // All dates are shown in Cairo time, wherever the server or browser is
+    timeZone: 'Africa/Cairo',
     messages: (await import(`../../messages/${locale}.json`)).default,
   }
 })

@@ -13,6 +13,7 @@ import {
   LogOut,
   Sparkles,
   UsersRound,
+  CalendarDays,
   type LucideIcon,
 } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -65,6 +66,7 @@ export function DashboardShell({
         { name: t('overview'), href: '/dashboard', icon: LayoutDashboard, exact: true },
         { name: t('conversations'), href: '/dashboard/conversations', icon: MessagesSquare },
         { name: t('leads'), href: '/dashboard/leads', icon: Users },
+        { name: t('appointments'), href: '/dashboard/appointments', icon: CalendarDays },
         ...clientSections(selectedClient.id).map((section) => ({
           name: tClientNav(section.key),
           href: section.href,
@@ -77,6 +79,7 @@ export function DashboardShell({
         { name: t('overview'), href: '/dashboard', icon: LayoutDashboard, exact: true },
         { name: t('allConversations'), href: '/dashboard/conversations', icon: MessagesSquare },
         { name: t('allLeads'), href: '/dashboard/leads', icon: Users },
+        { name: t('appointments'), href: '/dashboard/appointments', icon: CalendarDays },
         ...(canSeeAll ? [{ name: t('clients'), href: '/dashboard/clients', icon: Building2 }] : []),
         ...(canManageTeam ? [teamItem] : []),
         settingsItem,

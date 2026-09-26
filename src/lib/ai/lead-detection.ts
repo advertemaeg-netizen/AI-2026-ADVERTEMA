@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { generateJson, type ChatTurn } from '@/lib/ai/gemini'
 import { normalizeEgyptianPhone } from '@/lib/phone'
+import { cairoWallTimeToIso, describeCairoNow } from '@/lib/cairo-time'
 import type { LeadExtractedData } from '@/lib/types/leads'
 
 // A light model for the per-message analysis: it runs on every visitor
@@ -29,7 +30,12 @@ Extract details ONLY from what the visitor wrote. Never take a name, phone numbe
 - branch: a branch or location they mention
 - preferred_time: a date/time they want (appointment, delivery)
 - summary: one short sentence in Arabic describing the request
-Use null for anything not stated.`
+Use null for anything not stated.
+
+Appointments (dates are in Cairo, Egypt):
+- appointment_date (YYYY-MM-DD) and appointment_time (HH:MM, 24h): only when the visitor asks for or agrees to a specific day. Resolve relative days against the current Cairo date given below: "النهارده" today, "بكرة" tomorrow, "بعد بكرة" in two days, a weekday name means its next occurrence (today if it's still ahead).
+- A bare hour like "الساعة 5" means 17:00 unless they say morning (الصبح). With only a part of the day, use morning 10:00, noon 13:00, afternoon (العصر) 16:00, evening (المغرب / بالليل) 19:00 and set appointment_time_approximate to true.
+- If there's no specific day ("next week", "soon", "any time"), return null for both — the team will schedule it.`
 
 // Gemini structured-output schema (OpenAPI subset)
 const RESPONSE_SCHEMA = {
@@ -44,11 +50,15 @@ const RESPONSE_SCHEMA = {
     branch: { type: 'STRING', nullable: true },
     preferred_time: { type: 'STRING', nullable: true },
     summary: { type: 'STRING', nullable: true },
+    appointment_date: { type: 'STRING', nullable: true },
+    appointment_time: { type: 'STRING', nullable: true },
+    appointment_time_approximate: { type: 'BOOLEAN', nullable: true },
   },
   required: ['is_lead', 'confidence'],
   propertyOrdering: [
     'is_lead', 'confidence', 'name', 'phone', 'service_requested',
     'budget', 'branch', 'preferred_time', 'summary',
+    'appointment_date', 'appointment_time', 'appointment_time_approximate',
   ],
 }
 
@@ -67,6 +77,15 @@ const analysisSchema = z.object({
   branch: nullableText,
   preferred_time: nullableText,
   summary: nullableText,
+  appointment_date: z
+    .string()
+    .nullish()
+    .transform((v) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null)),
+  appointment_time: z
+    .string()
+    .nullish()
+    .transform((v) => (v && /^([01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : null)),
+  appointment_time_approximate: z.boolean().nullish().transform((v) => v ?? false),
 })
 
 export type LeadAnalysis = z.infer<typeof analysisSchema>
@@ -77,11 +96,26 @@ export async function analyzeConversation(history: ChatTurn[]): Promise<LeadAnal
     .join('\n')
   const raw = await generateJson({
     systemPrompt: SYSTEM_PROMPT,
-    prompt: `Conversation:\n${transcript}`,
+    prompt: `Current date and time in Cairo: ${describeCairoNow()}\n\nConversation:\n${transcript}`,
     responseSchema: RESPONSE_SCHEMA,
     model: analysisModel(),
   })
   return analysisSchema.parse(raw)
+}
+
+// How far ahead an extracted appointment may be; anything else is a misread
+const MAX_APPOINTMENT_DAYS_AHEAD = 180
+
+/** The extracted Cairo date + time as an instant, or null if absent/implausible. */
+function resolveAppointment(analysis: LeadAnalysis, now = Date.now()): string | null {
+  if (!analysis.appointment_date || !analysis.appointment_time) return null
+  const [year, month, day] = analysis.appointment_date.split('-').map(Number)
+  const iso = cairoWallTimeToIso(year, month - 1, day, analysis.appointment_time)
+  const at = new Date(iso).getTime()
+  // An hour of slack for "today at 5" mentioned just after 5
+  if (Number.isNaN(at) || at < now - 60 * 60 * 1000) return null
+  if (at > now + MAX_APPOINTMENT_DAYS_AHEAD * 24 * 60 * 60 * 1000) return null
+  return iso
 }
 
 type LeadRow = {
@@ -92,9 +126,12 @@ type LeadRow = {
   budget: string | null
   branch: string | null
   confidence_score: number | null
+  status: string
+  appointment_at: string | null
 }
 
-const LEAD_COLUMNS = 'id, name, phone, service_requested, budget, branch, confidence_score'
+const LEAD_COLUMNS =
+  'id, name, phone, service_requested, budget, branch, confidence_score, status, appointment_at'
 
 /**
  * Analyzes a conversation and creates or enriches its lead. Runs after the
@@ -118,10 +155,12 @@ export async function detectLead({
   try {
     const analysis = await analyzeConversation(history)
     const phone = normalizeEgyptianPhone(analysis.phone)
+    const appointmentAt = resolveAppointment(analysis)
     const extracted: LeadExtractedData & { phone_raw: string | null } = {
       ...analysis,
       phone,
       phone_raw: analysis.phone,
+      appointment_at: appointmentAt,
     }
     const fields = {
       name: analysis.name,
@@ -152,7 +191,9 @@ export async function detectLead({
         conversation_id: conversationId,
         source_message_id: sourceMessageId,
         ...fields,
-        status: 'new',
+        // AI-set times are unconfirmed; the team confirms or adjusts them
+        appointment_at: appointmentAt,
+        status: appointmentAt ? 'appointment_booked' : 'new',
         confidence_score: analysis.confidence,
         ai_extracted_data: extracted,
       })
@@ -162,13 +203,18 @@ export async function detectLead({
       }
       // 23505: a concurrent analysis created it first — enrich that one
       if (error.code !== '23505') throw error
-      ;({ data: existing } = await findExisting())
+      existing = (await findExisting()).data
       if (!existing) return
     }
 
     const patch: Record<string, unknown> = {}
     for (const [key, value] of Object.entries(fields)) {
       if (value && !existing[key as keyof typeof fields]) patch[key] = value
+    }
+    // Only fill an empty appointment; one the team set or changed stays
+    if (appointmentAt && !existing.appointment_at) {
+      patch.appointment_at = appointmentAt
+      if (existing.status === 'new' || existing.status === 'contacted') patch.status = 'appointment_booked'
     }
     if (Object.keys(patch).length === 0 && (existing.confidence_score ?? 0) >= analysis.confidence) return
 

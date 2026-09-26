@@ -1,28 +1,23 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useFormatter, useLocale, useTranslations } from 'next-intl'
+import { useFormatter, useTranslations } from 'next-intl'
 import { toast } from 'sonner'
-import { ar, enUS } from 'react-day-picker/locale'
 import {
   ArrowLeft,
   Bot,
-  CalendarClock,
   MessageCircle,
   MessagesSquare,
   Phone,
   Trash2,
-  X,
 } from 'lucide-react'
 import { Link, useRouter } from '@/i18n/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   Select,
   SelectContent,
@@ -43,6 +38,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { ChannelIcon } from '@/components/channel-icon'
 import { RelativeTime } from '@/components/relative-time'
+import { CairoDateTimePicker } from '@/components/cairo-date-time-picker'
 import { telHref, whatsappHref } from '@/lib/phone'
 import { deleteLead, updateLead } from '@/lib/actions/leads'
 import type { TeamMember } from '@/lib/types/conversations'
@@ -54,6 +50,7 @@ import {
   type LeadUpdateInput,
 } from '@/lib/types/leads'
 import { LeadStatusBadge } from '../../_components/lead-status-badge'
+import { AppointmentCard } from './appointment-card'
 
 const DETAIL_FIELDS = ['name', 'phone', 'service_requested', 'budget', 'branch'] as const
 type DetailField = (typeof DETAIL_FIELDS)[number]
@@ -75,7 +72,6 @@ export function LeadView({
   const tCommon = useTranslations('common')
   const tChannels = useTranslations('channels')
   const format = useFormatter()
-  const locale = useLocale()
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
@@ -83,16 +79,6 @@ export function LeadView({
     Object.fromEntries(DETAIL_FIELDS.map((f) => [f, lead[f] ?? ''])) as Record<DetailField, string>
   )
   const [notes, setNotes] = useState(lead.notes ?? '')
-  const [followUpDay, setFollowUpDay] = useState<Date | undefined>(
-    lead.follow_up_date ? new Date(lead.follow_up_date) : undefined
-  )
-  const [followUpTime, setFollowUpTime] = useState(() => {
-    if (!lead.follow_up_date) return '10:00'
-    const d = new Date(lead.follow_up_date)
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-  })
-  const [followUpOpen, setFollowUpOpen] = useState(false)
-
   const detailsDirty = DETAIL_FIELDS.some((f) => details[f] !== (lead[f] ?? ''))
   const notesDirty = notes !== (lead.notes ?? '')
 
@@ -115,14 +101,6 @@ export function LeadView({
       last_contacted_at: new Date().toISOString(),
       ...(lead.status === 'new' ? { status: 'contacted' as const } : {}),
     })
-  }
-
-  function saveFollowUp() {
-    if (!followUpDay) return
-    const [hours, minutes] = followUpTime.split(':').map(Number)
-    const when = new Date(followUpDay)
-    when.setHours(hours || 0, minutes || 0, 0, 0)
-    save({ follow_up_date: when.toISOString() }, t('toast.followUpSet'), () => setFollowUpOpen(false))
   }
 
   function handleDelete(e: React.MouseEvent) {
@@ -230,6 +208,8 @@ export function LeadView({
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="grid gap-6">
+          <AppointmentCard lead={lead} />
+
           {/* Follow-up */}
           <Card>
             <CardHeader>
@@ -258,61 +238,13 @@ export function LeadView({
 
               <div className="grid gap-2">
                 <Label>{t('fields.followUp')}</Label>
-                <div className="flex gap-2">
-                  <Popover open={followUpOpen} onOpenChange={setFollowUpOpen}>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="flex-1 justify-start font-normal">
-                        <CalendarClock data-icon="inline-start" />
-                        {lead.follow_up_date
-                          ? format.dateTime(new Date(lead.follow_up_date), {
-                              dateStyle: 'medium',
-                              timeStyle: 'short',
-                            })
-                          : t('followUp.pick')}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-2" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={followUpDay}
-                        onSelect={setFollowUpDay}
-                        locale={locale === 'ar' ? ar : enUS}
-                        dir={locale === 'ar' ? 'rtl' : 'ltr'}
-                        disabled={{ before: new Date(new Date().setHours(0, 0, 0, 0)) }}
-                      />
-                      <div className="flex items-center gap-2 border-t p-2">
-                        <Label htmlFor="follow-up-time" className="shrink-0">
-                          {t('followUp.time')}
-                        </Label>
-                        <Input
-                          id="follow-up-time"
-                          type="time"
-                          dir="ltr"
-                          value={followUpTime}
-                          onChange={(e) => setFollowUpTime(e.target.value)}
-                          className="w-28"
-                        />
-                        <Button size="sm" className="ms-auto" onClick={saveFollowUp} disabled={!followUpDay || isPending}>
-                          {tCommon('save')}
-                        </Button>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                  {lead.follow_up_date && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={t('followUp.clear')}
-                      onClick={() => {
-                        setFollowUpDay(undefined)
-                        save({ follow_up_date: null }, t('toast.followUpCleared'))
-                      }}
-                      disabled={isPending}
-                    >
-                      <X />
-                    </Button>
-                  )}
-                </div>
+                <CairoDateTimePicker
+                  value={lead.follow_up_date}
+                  placeholder={t('followUp.pick')}
+                  disabled={isPending}
+                  onSave={(iso) => save({ follow_up_date: iso }, t('toast.followUpSet'))}
+                  onClear={() => save({ follow_up_date: null }, t('toast.followUpCleared'))}
+                />
               </div>
 
               <p className="text-xs text-muted-foreground sm:col-span-2">
@@ -463,6 +395,14 @@ function TimelineText({ event }: { event: LeadEvent }) {
   switch (event.event_type) {
     case 'created':
       return <>{t('timeline.created')}</>
+    case 'appointment_set':
+      return event.to_value ? (
+        <>{t('timeline.appointmentSet', { date: when(event.to_value) })}</>
+      ) : (
+        <>{t('timeline.appointmentCleared')}</>
+      )
+    case 'appointment_confirmed':
+      return <>{t('timeline.appointmentConfirmed')}</>
     case 'status_changed':
       return <>{t('timeline.statusChanged', { from: status(event.from_value), to: status(event.to_value) })}</>
     case 'follow_up_set':

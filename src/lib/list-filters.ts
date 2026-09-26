@@ -1,6 +1,7 @@
 import { UUID_PATTERN } from '@/lib/types/clients'
 import { CHANNEL_TYPES, type ChannelType } from '@/lib/types/channels'
 import { DATE_RANGES, type DateRange } from '@/lib/types/conversations'
+import { cairoDayStart } from '@/lib/cairo-time'
 
 /** URL-driven filters shared by list pages (inbox, leads). */
 export type ListFilters<S extends string> = {
@@ -39,12 +40,9 @@ export function parseListFilters<S extends string>(
 
 const RANGE_DAYS: Record<DateRange, number> = { today: 0, '7d': 7, '30d': 30 }
 
-/** ISO start of a date-range filter (midnight, server time). */
+/** ISO start of a date-range filter (Cairo midnight). */
 export function rangeStart(range: DateRange) {
-  const start = new Date()
-  start.setHours(0, 0, 0, 0)
-  start.setDate(start.getDate() - RANGE_DAYS[range])
-  return start.toISOString()
+  return cairoDayStart(-RANGE_DAYS[range]).toISOString()
 }
 
 // PostgREST `or()` filters are comma/paren delimited and ilike treats % and _

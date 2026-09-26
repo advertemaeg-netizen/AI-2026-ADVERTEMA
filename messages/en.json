@@ -10,7 +10,9 @@
     "logout": "Log out",
     "email": "Email",
     "password": "Password",
-    "fullName": "Full name"
+    "fullName": "Full name",
+    "time": "Time",
+    "clear": "Clear"
   },
   "auth": {
     "loginTitle": "Login",
@@ -54,7 +56,8 @@
     "allLeads": "All leads",
     "activeChannels": "Active channels",
     "activeChannelsHint": "This client’s channels that are currently on",
-    "scopedTo": "Here’s what’s happening with {client}."
+    "scopedTo": "Here’s what’s happening with {client}.",
+    "appointments": "Appointments"
   },
   "pages": {
     "conversationsDesc": "All conversations across your channels.",
@@ -564,9 +567,7 @@
       "timeline": "Change history"
     },
     "followUp": {
-      "pick": "Set follow-up",
-      "time": "Time",
-      "clear": "Clear follow-up"
+      "pick": "Set follow-up"
     },
     "ai": {
       "summary": "Summary",
@@ -584,7 +585,10 @@
       "followUpCleared": "cleared the follow-up",
       "contacted": "contacted the lead",
       "notesUpdated": "edited the notes",
-      "detailsUpdated": "updated {fields}"
+      "detailsUpdated": "updated {fields}",
+      "appointmentSet": "set an appointment for {date}",
+      "appointmentCleared": "removed the appointment",
+      "appointmentConfirmed": "marked the appointment as confirmed"
     },
     "toast": {
       "bulkUpdated": "{count, plural, one {# lead updated} other {# leads updated}}",
@@ -741,5 +745,96 @@
     "label": "Choose client",
     "allClients": "All clients",
     "error": "Could not switch client."
+  },
+  "appointments": {
+    "title": "Appointments",
+    "description": "Lead appointments in Cairo time — confirm arrivals or record no-shows.",
+    "unnamed": "Unnamed",
+    "count": "{count, plural, one {# appointment} other {# appointments}}",
+    "confirmedBadge": "Confirmed",
+    "ranges": {
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "week": "This week",
+      "all": "All"
+    },
+    "empty": {
+      "today": "No appointments today.",
+      "tomorrow": "No appointments tomorrow.",
+      "week": "No appointments in the next 7 days.",
+      "all": "No appointments yet. They show up here when the AI assistant or the team books one for a lead."
+    },
+    "states": {
+      "upcoming": "Upcoming",
+      "today": "Today",
+      "late": "Late",
+      "attended": "Showed up",
+      "noShow": "No-show"
+    },
+    "actions": {
+      "confirmArrival": "Confirm arrival",
+      "noShow": "No-show",
+      "call": "Call",
+      "whatsapp": "WhatsApp"
+    },
+    "noShowDialog": {
+      "title": "Record a no-show",
+      "description": "{name} will be recorded as not showing up for the appointment.",
+      "reason": "Reason (optional)",
+      "reasonPlaceholder": "e.g. didn’t answer, cancelled, postponed...",
+      "confirm": "Record no-show"
+    },
+    "section": {
+      "title": "Appointment",
+      "when": "Appointment time (Cairo)",
+      "pick": "Set appointment",
+      "approximate": "The AI assistant estimated this time from what the customer said — check it before confirming.",
+      "requested": "Customer asked for: {time}",
+      "confirmed": "Customer confirmed",
+      "confirmedHint": "Turn on after checking with the customer that they’ll come.",
+      "arrivedAt": "Arrived {time}",
+      "noShowReason": "No-show — reason: {reason}",
+      "noShowNoReason": "Didn’t show up."
+    },
+    "toast": {
+      "arrived": "Arrival confirmed",
+      "noShow": "No-show recorded",
+      "appointmentSet": "Appointment set",
+      "appointmentCleared": "Appointment removed",
+      "confirmed": "Appointment confirmed",
+      "unconfirmed": "Appointment unconfirmed"
+    },
+    "errors": {
+      "unauthorized": "Your session has expired. Please log in again.",
+      "notFound": "Appointment not found or you do not have access to it.",
+      "validation": "Invalid date.",
+      "unknown": "Something went wrong. Please try again."
+    }
+  },
+  "journey": {
+    "unnamed": "Unnamed",
+    "today": {
+      "title": "Today’s appointments",
+      "viewAll": "All appointments",
+      "empty": "No appointments today.",
+      "more": "{count, plural, one {and # more} other {and # more}}"
+    },
+    "attendance": {
+      "title": "Attendance rate (30 days)",
+      "detail": "{showed} showed up · {noShow} no-show",
+      "change": "{change} pts vs the previous 30 days",
+      "noComparison": "No data to compare yet"
+    },
+    "funnel": {
+      "title": "Customer journey (30 days)",
+      "description": "From first message to showing up, with the rate between each step.",
+      "rate": "{rate} of the previous step",
+      "steps": {
+        "conversations": "Conversations",
+        "leads": "Leads",
+        "appointments": "Appointments",
+        "attended": "Showed up"
+      }
+    }
   }
 }

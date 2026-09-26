@@ -47,9 +47,19 @@ export type LeadExtractedData = {
   branch?: string | null
   preferred_time?: string | null
   summary?: string | null
+  appointment_date?: string | null
+  appointment_time?: string | null
+  appointment_time_approximate?: boolean
+  /** The resolved instant the AI stored in appointment_at, if any */
+  appointment_at?: string | null
 }
 
 export type LeadDetail = LeadListItem & {
+  appointment_at: string | null
+  appointment_confirmed: boolean
+  showed_up: boolean | null
+  arrival_confirmed_at: string | null
+  no_show_reason: string | null
   budget: string | null
   branch: string | null
   notes: string | null
@@ -58,6 +68,8 @@ export type LeadDetail = LeadListItem & {
 }
 
 export type LeadEventType =
+  | 'appointment_set'
+  | 'appointment_confirmed'
   | 'created'
   | 'status_changed'
   | 'details_updated'
