@@ -22,9 +22,9 @@
     "checkEmail": "Check your email",
     "checkEmailDesc": "We sent you a confirmation link. Click it to activate your account.",
     "backToLogin": "Back to login",
-    "passwordMin": "Password (min 6 characters)" ,
+    "passwordMin": "Password (min 6 characters)",
     "organizationName": "Company or agency name",
-"organizationPlaceholder": "e.g. Advertema"
+    "organizationPlaceholder": "e.g. Advertema"
   },
   "dashboard": {
     "overview": "Overview",
@@ -55,5 +55,69 @@
     "profile": "Profile",
     "role": "Role",
     "notSet": "Not set"
+  },
+  "clients": {
+    "title": "Clients",
+    "description": "Manage your agency clients.",
+    "allClients": "All Clients",
+    "count": "{count, plural, =0 {No clients} one {# client} other {# clients}}",
+    "readOnly": "View only — contact your organization admin to make changes.",
+    "empty": "No clients yet. Add your first client to get started.",
+    "emptyReadOnly": "No clients have been assigned to you yet.",
+    "add": "Add client",
+    "addTitle": "Add a new client",
+    "addDescription": "Enter the client details. You can change them later.",
+    "editTitle": "Edit client",
+    "editDescription": "Update the client details and click save.",
+    "deleteTitle": "Delete client?",
+    "deleteDescription": "\"{name}\" will be permanently deleted along with all of its channels, conversations and leads. This cannot be undone.",
+    "actions": "Actions",
+    "fields": {
+      "name": "Client name",
+      "slug": "Slug",
+      "industry": "Industry",
+      "status": "Status",
+      "logoUrl": "Logo URL",
+      "description": "Description",
+      "createdAt": "Added on"
+    },
+    "placeholders": {
+      "name": "e.g. Al Noor Clinic",
+      "slug": "al-noor-clinic",
+      "industry": "e.g. Medical, Real estate, Restaurants",
+      "description": "Notes about the client and their services..."
+    },
+    "hints": {
+      "slug": "Generated from the name if left empty."
+    },
+    "status": {
+      "active": "Active",
+      "paused": "Paused",
+      "archived": "Archived"
+    },
+    "toast": {
+      "created": "Client added",
+      "updated": "Client updated",
+      "deleted": "Client deleted"
+    },
+    "errors": {
+      "unauthorized": "Your session has expired. Please log in again.",
+      "forbidden": "You do not have permission to do this.",
+      "validation": "Please check the highlighted fields.",
+      "slugTaken": "This slug is already used by another client.",
+      "notFound": "Client not found or you do not have access to it.",
+      "noOrganization": "Your account is not linked to an organization.",
+      "unknown": "Something went wrong. Please try again."
+    },
+    "fieldErrors": {
+      "nameRequired": "Client name is required.",
+      "nameTooLong": "Name is too long (max 100 characters).",
+      "slugInvalid": "Slug may only contain letters, numbers and hyphens.",
+      "slugTaken": "This slug is already taken.",
+      "industryTooLong": "Industry is too long (max 100 characters).",
+      "urlInvalid": "Enter a valid URL starting with http or https.",
+      "descriptionTooLong": "Description is too long (max 1000 characters).",
+      "statusInvalid": "Invalid status."
+    }
   }
 }
