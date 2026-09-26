@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { toast } from 'sonner'
-import { ArrowLeft, Bot, SendHorizontal } from 'lucide-react'
+import { ArrowLeft, Bot, SendHorizontal, UserRoundCheck } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -23,6 +24,7 @@ import { cn } from '@/lib/utils'
 import {
   assignConversation,
   sendAgentMessage,
+  setConversationAutoReply,
   updateConversationStatus,
 } from '@/lib/actions/conversations'
 import {
@@ -106,6 +108,7 @@ export function ConversationView({
             assigned_to: next.assigned_to !== undefined ? next.assigned_to : prev.assigned_to,
             contact_name: next.contact_name !== undefined ? next.contact_name : prev.contact_name,
             last_message_at: next.last_message_at ?? prev.last_message_at,
+            auto_reply_enabled: next.auto_reply_enabled ?? prev.auto_reply_enabled,
           }))
         }
       )
@@ -132,9 +135,12 @@ export function ConversationView({
       }
       setDraft('')
       setMessages((prev) => upsertMessage(prev, result.data))
-      if (conversation.status === 'new') {
-        setConversation((prev) => ({ ...prev, status: 'in_progress' }))
-      }
+      // The DB trigger hands the conversation off to humans on agent replies
+      setConversation((prev) => ({
+        ...prev,
+        auto_reply_enabled: false,
+        status: prev.status === 'new' ? 'in_progress' : prev.status,
+      }))
     })
   }
 
@@ -147,6 +153,20 @@ export function ConversationView({
         toast.success(t('toast.statusUpdated'))
       } else {
         setConversation((prev) => ({ ...prev, status: previous }))
+        toast.error(t(`errors.${result.error}`))
+      }
+    })
+  }
+
+  function toggleAutoReply(enabled: boolean) {
+    const previous = conversation.auto_reply_enabled
+    setConversation((prev) => ({ ...prev, auto_reply_enabled: enabled }))
+    startUpdating(async () => {
+      const result = await setConversationAutoReply(conversation.id, enabled)
+      if (result.ok) {
+        toast.success(enabled ? t('toast.aiEnabled') : t('toast.aiDisabled'))
+      } else {
+        setConversation((prev) => ({ ...prev, auto_reply_enabled: previous }))
         toast.error(t(`errors.${result.error}`))
       }
     })
@@ -323,6 +343,32 @@ export function ConversationView({
                   </span>
                 </Detail>
               </dl>
+            </CardContent>
+          </Card>
+
+          <Card size="sm">
+            <CardHeader>
+              <CardTitle>{t('panel.ai')}</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-2">
+              <label className="flex items-center justify-between gap-3 text-sm">
+                <span className="inline-flex items-center gap-1.5">
+                  {conversation.auto_reply_enabled ? (
+                    <Bot className="size-4" />
+                  ) : (
+                    <UserRoundCheck className="size-4" />
+                  )}
+                  {conversation.auto_reply_enabled ? t('ai.on') : t('ai.off')}
+                </span>
+                <Switch
+                  checked={conversation.auto_reply_enabled}
+                  onCheckedChange={toggleAutoReply}
+                  disabled={isUpdating}
+                />
+              </label>
+              <p className="text-xs text-muted-foreground">
+                {conversation.auto_reply_enabled ? t('ai.onHint') : t('ai.offHint')}
+              </p>
             </CardContent>
           </Card>
 

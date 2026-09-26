@@ -393,9 +393,12 @@
             state.conversationId = data.conversationId
             connectRealtime()
           }
-          if (data.ok && data.reply) {
-            addMessage('assistant', data.reply)
-            state.messages.push({ role: 'assistant', content: data.reply })
+          if (data.ok) {
+            // reply is null once a human agent has taken over the chat
+            if (data.reply) {
+              addMessage('assistant', data.reply)
+              state.messages.push({ role: 'assistant', content: data.reply })
+            }
           } else if (data.error === 'rate_limited') {
             addMessage('notice', TEXT.busy)
           } else if (data.error === 'limit_reached' || data.error === 'inactive' || data.error === 'ai_unavailable') {

@@ -232,7 +232,8 @@
     "panel": {
       "contact": "Contact details",
       "client": "Client & channel",
-      "assignment": "Assignment"
+      "assignment": "Assignment",
+      "ai": "AI assistant"
     },
     "fields": {
       "name": "Name",
@@ -248,7 +249,9 @@
     "toast": {
       "statusUpdated": "Status updated",
       "assigned": "Conversation assigned",
-      "unassigned": "Conversation unassigned"
+      "unassigned": "Conversation unassigned",
+      "aiEnabled": "AI auto-reply turned on",
+      "aiDisabled": "AI auto-reply turned off"
     },
     "errors": {
       "unauthorized": "Your session has expired. Please log in again.",
@@ -256,6 +259,12 @@
       "validation": "The submitted data is not valid.",
       "notFound": "Conversation not found or no longer assigned to you.",
       "unknown": "Something went wrong. Please try again."
+    },
+    "ai": {
+      "on": "Auto-reply on",
+      "off": "Team is handling this chat",
+      "onHint": "The AI assistant replies to the visitor automatically. It stops as soon as you reply manually.",
+      "offHint": "Auto-reply is off because an agent replied manually. Turn it on to let the AI continue."
     }
   }
 }

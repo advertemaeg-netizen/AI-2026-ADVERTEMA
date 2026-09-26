@@ -28,7 +28,7 @@ const LIST_COLUMNS = `
 
 const DETAIL_COLUMNS = `
   id, status, contact_name, contact_identifier, last_message_at,
-  last_message_preview, last_message_role, assigned_to, created_at,
+  last_message_preview, last_message_role, assigned_to, created_at, auto_reply_enabled,
   client:clients!inner(id, name, industry, status),
   channel:channels!inner(id, type, name)
 `
@@ -183,6 +183,29 @@ export async function updateConversationStatus(
   if (!data || data.length === 0) return { ok: false, error: 'notFound' }
 
   revalidatePath(INBOX_PATH, 'page')
+  return { ok: true }
+}
+
+export async function setConversationAutoReply(
+  id: string,
+  enabled: boolean
+): Promise<ConversationActionResult> {
+  const { supabase, profile } = await getSession()
+  if (!profile) return { ok: false, error: 'unauthorized' }
+  if (!UUID_PATTERN.test(id)) return { ok: false, error: 'notFound' }
+
+  const { data, error } = await supabase
+    .from('conversations')
+    .update({ auto_reply_enabled: enabled === true })
+    .eq('id', id)
+    .select('id')
+
+  if (error) {
+    console.error('[conversations] setConversationAutoReply', error)
+    return { ok: false, error: 'unknown' }
+  }
+  if (!data || data.length === 0) return { ok: false, error: 'notFound' }
+
   return { ok: true }
 }
 

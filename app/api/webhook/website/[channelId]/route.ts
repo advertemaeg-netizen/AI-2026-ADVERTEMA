@@ -211,31 +211,39 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
     if (!channel) return json({ ok: false, error: 'not_found' }, 404)
     if (!isLive(channel)) return json({ ok: false, error: 'inactive' }, 403)
 
-    const { data: subscription } = await supabase
-      .from('subscriptions')
-      .select('id, messages_limit, messages_used, status')
-      .eq('client_id', channel.client_id)
-      .maybeSingle<{ id: string; messages_limit: number; messages_used: number; status: string }>()
-
-    if (
-      subscription &&
-      (subscription.status !== 'active' || subscription.messages_used >= subscription.messages_limit)
-    ) {
-      return json({ ok: false, error: 'limit_reached' }, 429)
-    }
-
     // Resume the visitor's conversation only if it belongs to this channel and
     // visitor — otherwise a leaked id could be used to read someone else's chat
     let conversationId: string | null = null
+    let autoReply = true
     if (requestedConversationId) {
       const { data: existing } = await supabase
         .from('conversations')
-        .select('id')
+        .select('id, auto_reply_enabled')
         .eq('id', requestedConversationId)
         .eq('channel_id', channel.id)
         .eq('contact_identifier', visitorId)
-        .maybeSingle<{ id: string }>()
+        .maybeSingle<{ id: string; auto_reply_enabled: boolean }>()
       conversationId = existing?.id ?? null
+      autoReply = existing?.auto_reply_enabled ?? true
+    }
+
+    // Usage limits only apply to AI replies; handed-off chats keep flowing
+    let subscription: { id: string; messages_limit: number; messages_used: number; status: string } | null =
+      null
+    if (autoReply) {
+      const { data } = await supabase
+        .from('subscriptions')
+        .select('id, messages_limit, messages_used, status')
+        .eq('client_id', channel.client_id)
+        .maybeSingle<{ id: string; messages_limit: number; messages_used: number; status: string }>()
+      subscription = data
+
+      if (
+        subscription &&
+        (subscription.status !== 'active' || subscription.messages_used >= subscription.messages_limit)
+      ) {
+        return json({ ok: false, error: 'limit_reached' }, 429)
+      }
     }
 
     if (!conversationId) {
@@ -258,6 +266,10 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       .from('messages')
       .insert({ conversation_id: conversationId, role: 'user', content: message })
     if (userMessageError) throw userMessageError
+
+    // A human agent has taken over: store the message, skip the AI. The
+    // agent's reply reaches the widget over Realtime broadcast.
+    if (!autoReply) return json({ ok: true, conversationId, reply: null, handoff: true })
 
     const { data: recent, error: historyError } = await supabase
       .from('messages')

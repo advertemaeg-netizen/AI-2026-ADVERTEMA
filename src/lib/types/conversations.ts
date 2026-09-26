@@ -47,6 +47,7 @@ export type TeamMember = {
 
 export type ConversationDetail = ConversationListItem & {
   created_at: string
+  auto_reply_enabled: boolean
   client: { id: string; name: string; industry: string | null; status: string }
 }
 
