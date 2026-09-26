@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
-import { Building2, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { Building2, MoreHorizontal, Pencil, Radio, Trash2 } from 'lucide-react'
+import { Link } from '@/i18n/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -65,7 +66,12 @@ export function ClientsTable({ clients, canManage }: { clients: Client[]; canMan
           {clients.map((client) => (
             <TableRow key={client.id}>
               <TableCell>
-                <div className="font-medium">{client.name}</div>
+                <Link
+                  href={`/dashboard/clients/${client.id}/channels`}
+                  className="font-medium hover:underline"
+                >
+                  {client.name}
+                </Link>
                 <div className="text-xs text-muted-foreground" dir="ltr">
                   {client.slug}
                 </div>
@@ -86,6 +92,12 @@ export function ClientsTable({ clients, canManage }: { clients: Client[]; canMan
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem asChild>
+                        <Link href={`/dashboard/clients/${client.id}/channels`}>
+                          <Radio />
+                          {t('channels')}
+                        </Link>
+                      </DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => setEditing(client)}>
                         <Pencil />
                         {tCommon('edit')}

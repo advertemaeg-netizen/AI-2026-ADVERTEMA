@@ -1,45 +1,19 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient as createSupabaseClient } from '@/lib/supabase/server'
+import { canManage, getSession } from '@/lib/auth/session'
 import {
-  CLIENT_MANAGER_ROLES,
   CLIENT_STATUSES,
   type Client,
   type ClientActionResult,
   type ClientField,
   type ClientFieldError,
   type ClientStatus,
+  UUID_PATTERN,
 } from '@/lib/types/clients'
 
 const CLIENTS_PATH = '/[locale]/dashboard/clients'
 const SLUG_PATTERN = /^[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*$/u
-
-type Profile = {
-  id: string
-  role: string
-  organization_id: string | null
-}
-
-async function getSession() {
-  const supabase = await createSupabaseClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { supabase, profile: null }
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, role, organization_id')
-    .eq('id', user.id)
-    .single<Profile>()
-
-  return { supabase, profile }
-}
-
-function canManage(profile: Profile) {
-  return (CLIENT_MANAGER_ROLES as readonly string[]).includes(profile.role)
-}
 
 function slugify(value: string) {
   return value
@@ -125,6 +99,7 @@ export async function getClients(): Promise<Client[]> {
 }
 
 export async function getClient(id: string): Promise<Client | null> {
+  if (!UUID_PATTERN.test(id)) return null
   const { supabase, profile } = await getSession()
   if (!profile) return null
 

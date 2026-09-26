@@ -118,6 +118,71 @@
       "urlInvalid": "Enter a valid URL starting with http or https.",
       "descriptionTooLong": "Description is too long (max 1000 characters).",
       "statusInvalid": "Invalid status."
+    },
+    "channels": "Channels"
+  },
+  "channels": {
+    "title": "{client} channels",
+    "description": "Connect this client's messaging channels so the AI assistant can reply automatically.",
+    "readOnly": "View only — contact an admin to add or change channels.",
+    "backToClients": "Back to clients",
+    "empty": "No channels yet. Add a website channel to get started.",
+    "emptyReadOnly": "This client has no channels yet.",
+    "add": "Add channel",
+    "addTitle": "Add a new channel",
+    "addDescription": "Choose the channel type and give it a recognizable name.",
+    "create": "Create channel",
+    "fields": {
+      "type": "Channel type",
+      "name": "Channel name"
+    },
+    "placeholders": {
+      "name": "e.g. Main website"
+    },
+    "hints": {
+      "website": "A unique webhook URL is generated automatically, and you get a snippet to add to your site."
+    },
+    "types": {
+      "website": "Website",
+      "facebook": "Facebook Messenger",
+      "instagram": "Instagram",
+      "whatsapp": "WhatsApp"
+    },
+    "comingSoonBadge": "Soon",
+    "comingSoonTitle": "Coming soon",
+    "comingSoonDescription": "{type} integration is in development and will be available soon. For now you can add a website channel.",
+    "status": {
+      "active": "Active",
+      "inactive": "Paused"
+    },
+    "toggleLabel": "Channel enabled",
+    "embed": {
+      "title": "Embed code",
+      "copy": "Copy",
+      "copied": "Copied",
+      "hint": "Paste this snippet on your website just before the closing body tag to show the chat button."
+    },
+    "deleteTitle": "Delete channel?",
+    "deleteDescription": "\"{name}\" will be permanently deleted along with all of its conversations and messages, and the chat button on the website will stop working. This cannot be undone.",
+    "toast": {
+      "created": "Channel added",
+      "activated": "Channel enabled",
+      "deactivated": "Channel paused",
+      "deleted": "Channel deleted",
+      "copied": "Snippet copied"
+    },
+    "errors": {
+      "unauthorized": "Your session has expired. Please log in again.",
+      "forbidden": "You do not have permission to do this.",
+      "validation": "Please check the entered details.",
+      "comingSoon": "This channel type is not available yet.",
+      "notFound": "Channel not found or you do not have access to it.",
+      "unknown": "Something went wrong. Please try again.",
+      "copyFailed": "Could not copy. Please copy the snippet manually."
+    },
+    "fieldErrors": {
+      "nameRequired": "Channel name is required.",
+      "nameTooLong": "Name is too long (max 100 characters)."
     }
   }
 }

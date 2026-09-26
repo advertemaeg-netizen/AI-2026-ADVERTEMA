@@ -1,8 +1,6 @@
 export const CLIENT_STATUSES = ['active', 'paused', 'archived'] as const
 export type ClientStatus = (typeof CLIENT_STATUSES)[number]
 
-export const CLIENT_MANAGER_ROLES = ['super_admin', 'org_admin', 'client_admin'] as const
-
 export type Client = {
   id: string
   organization_id: string
@@ -44,3 +42,5 @@ export type ClientActionResult =
       error: ClientActionError
       fieldErrors?: Partial<Record<ClientField, ClientFieldError>>
     }
+
+export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
