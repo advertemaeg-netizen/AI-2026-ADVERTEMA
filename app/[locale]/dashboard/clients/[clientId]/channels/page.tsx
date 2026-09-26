@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
-import { ArrowLeft, Radio } from 'lucide-react'
+import { ArrowLeft, BookOpen, Radio } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { getClient, getClientPermissions } from '@/lib/actions/clients'
 import { getChannels } from '@/lib/actions/channels'
@@ -40,7 +41,15 @@ export default async function ChannelsPage({
             {canManage ? t('description') : t('readOnly')}
           </p>
         </div>
-        {canManage && <AddChannelDialog clientId={clientId} />}
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" asChild>
+            <Link href={`/dashboard/clients/${clientId}/knowledge`}>
+              <BookOpen data-icon="inline-start" />
+              {t('knowledgeLink')}
+            </Link>
+          </Button>
+          {canManage && <AddChannelDialog clientId={clientId} />}
+        </div>
       </div>
 
       {channels.length === 0 ? (

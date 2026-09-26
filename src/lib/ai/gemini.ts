@@ -20,8 +20,7 @@ export async function generateReply({
   systemPrompt: string
   history: ChatTurn[]
 }): Promise<string> {
-  const apiKey = process.env.GOOGLE_GEMINI_API_KEY
-  if (!apiKey) throw new Error('GOOGLE_GEMINI_API_KEY is not set')
+  const apiKey = apiKeyOrThrow()
 
   // Gemini requires the conversation to start with a user turn
   const firstUser = history.findIndex((turn) => turn.role === 'user')
@@ -53,4 +52,64 @@ export async function generateReply({
 
   if (!text) throw new Error('Gemini returned an empty response')
   return text
+}
+
+// text-embedding-004 has been retired by Google (404); gemini-embedding-001
+// supports the same 768 dimensions through outputDimensionality
+const DEFAULT_EMBEDDING_MODEL = 'gemini-embedding-001'
+export const EMBEDDING_DIMENSIONS = 768
+const EMBED_BATCH_SIZE = 100 // API limit per batchEmbedContents call
+
+type EmbeddingTask = 'RETRIEVAL_DOCUMENT' | 'RETRIEVAL_QUERY'
+
+function embeddingModel() {
+  return process.env.GOOGLE_GEMINI_EMBEDDING_MODEL || DEFAULT_EMBEDDING_MODEL
+}
+
+function apiKeyOrThrow() {
+  const apiKey = process.env.GOOGLE_GEMINI_API_KEY
+  if (!apiKey) throw new Error('GOOGLE_GEMINI_API_KEY is not set')
+  return apiKey
+}
+
+/** Embeds many texts, batching requests; output order matches input order. */
+export async function embedTexts(texts: string[], taskType: EmbeddingTask): Promise<number[][]> {
+  const apiKey = apiKeyOrThrow()
+  const model = embeddingModel()
+  const vectors: number[][] = []
+
+  for (let i = 0; i < texts.length; i += EMBED_BATCH_SIZE) {
+    const batch = texts.slice(i, i + EMBED_BATCH_SIZE)
+    const res = await fetch(`${API_BASE}/${model}:batchEmbedContents`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({
+        requests: batch.map((text) => ({
+          model: `models/${model}`,
+          content: { parts: [{ text }] },
+          taskType,
+          outputDimensionality: EMBEDDING_DIMENSIONS,
+        })),
+      }),
+      signal: AbortSignal.timeout(60_000),
+    })
+
+    if (!res.ok) {
+      throw new Error(`Gemini embedding failed (${res.status}): ${await res.text()}`)
+    }
+
+    const data = (await res.json()) as { embeddings?: { values?: number[] }[] }
+    const values = data.embeddings?.map((e) => e.values ?? [])
+    if (!values || values.length !== batch.length || values.some((v) => v.length !== EMBEDDING_DIMENSIONS)) {
+      throw new Error('Gemini returned an unexpected embedding response')
+    }
+    vectors.push(...values)
+  }
+
+  return vectors
+}
+
+export async function embedQuery(text: string): Promise<number[]> {
+  const [vector] = await embedTexts([text], 'RETRIEVAL_QUERY')
+  return vector
 }

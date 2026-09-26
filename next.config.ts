@@ -4,7 +4,8 @@ import createNextIntlPlugin from 'next-intl/plugin'
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // pdf-parse loads pdf.js's worker file at runtime, which breaks once bundled
+  serverExternalPackages: ['pdf-parse'],
 }
 
 export default withNextIntl(nextConfig)

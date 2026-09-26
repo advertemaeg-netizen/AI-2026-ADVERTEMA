@@ -119,7 +119,8 @@
       "descriptionTooLong": "Description is too long (max 1000 characters).",
       "statusInvalid": "Invalid status."
     },
-    "channels": "Channels"
+    "channels": "Channels",
+    "knowledge": "Knowledge base"
   },
   "channels": {
     "title": "{client} channels",
@@ -183,7 +184,8 @@
     "fieldErrors": {
       "nameRequired": "Channel name is required.",
       "nameTooLong": "Name is too long (max 100 characters)."
-    }
+    },
+    "knowledgeLink": "Knowledge base"
   },
   "conversations": {
     "title": "Conversations",
@@ -265,6 +267,59 @@
       "off": "Team is handling this chat",
       "onHint": "The AI assistant replies to the visitor automatically. It stops as soon as you reply manually.",
       "offHint": "Auto-reply is off because an agent replied manually. Turn it on to let the AI continue."
+    }
+  },
+  "knowledge": {
+    "title": "{client} knowledge base",
+    "description": "Upload the client’s files (price lists, services, FAQs...) so the AI assistant can use them when answering visitors.",
+    "readOnly": "View only — contact an admin to upload or delete files.",
+    "backToClients": "Back to clients",
+    "upload": {
+      "title": "Upload a file",
+      "description": "Text is extracted, split and indexed automatically for the AI assistant.",
+      "dropHere": "Drag and drop a file here",
+      "limits": "PDF, DOCX or TXT — up to 10 MB, at most 5 files per hour",
+      "choose": "Choose file",
+      "uploading": "Uploading file",
+      "progress": "Uploading... {percent}%",
+      "finishing": "Saving..."
+    },
+    "list": {
+      "title": "Uploaded files",
+      "summary": "{documents, plural, =0 {No files} one {# file} other {# files}} · {chunks, plural, =0 {no chunks} one {# chunk} other {# chunks}}",
+      "chunks": "{count, plural, =0 {no chunks} one {# chunk} other {# chunks}}",
+      "empty": "No files yet. Upload the first one for the assistant to start using it.",
+      "emptyReadOnly": "This client has no knowledge base files yet."
+    },
+    "status": {
+      "processing": "Processing",
+      "ready": "Ready",
+      "failed": "Failed"
+    },
+    "processingErrors": {
+      "empty": "No text was found in the file (it may be a scanned PDF).",
+      "tooLarge": "The file contains more text than allowed.",
+      "extractFailed": "The file could not be read. Make sure it is not corrupted or password protected.",
+      "embeddingFailed": "The text could not be indexed. Delete the file and try again.",
+      "saveFailed": "The file could not be saved. Delete it and try again."
+    },
+    "deleteTitle": "Delete file?",
+    "deleteDescription": "\"{name}\" and all of its chunks will be removed from the knowledge base and no longer used by the assistant.",
+    "toast": {
+      "uploaded": "File uploaded and processing",
+      "deleted": "File deleted"
+    },
+    "errors": {
+      "unauthorized": "Your session has expired. Please log in again.",
+      "forbidden": "You do not have permission to do this.",
+      "notFound": "Client or file not found.",
+      "rateLimited": "Upload limit reached (5 files per hour). Please try again later.",
+      "noFile": "No file was selected.",
+      "emptyFile": "The file is empty.",
+      "fileTooLarge": "The file is larger than 10 MB.",
+      "unsupportedType": "Unsupported file type. Use PDF, DOCX or TXT.",
+      "uploadFailed": "The file could not be uploaded. Please try again.",
+      "unknown": "Something went wrong. Please try again."
     }
   }
 }
