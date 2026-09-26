@@ -1,7 +1,6 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
-
-export const MANAGER_ROLES = ['super_admin', 'org_admin', 'client_admin'] as const
+import { canManageClient } from '@/lib/auth/permissions'
 
 export type Profile = {
   id: string
@@ -25,6 +24,7 @@ export async function getSession() {
   return { supabase, profile }
 }
 
+/** Shorthand for canManageClient(profile.role) */
 export function canManage(profile: Profile) {
-  return (MANAGER_ROLES as readonly string[]).includes(profile.role)
+  return canManageClient(profile.role)
 }

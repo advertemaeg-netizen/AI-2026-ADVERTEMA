@@ -25,7 +25,8 @@ function dbError(error: { code?: string; message: string }): ChannelActionResult
 export async function getChannels(clientId: string): Promise<Channel[]> {
   if (!UUID_PATTERN.test(clientId)) return []
   const { supabase, profile } = await getSession()
-  if (!profile) return []
+  // Channels are managed by client admins and up; team members don't see them
+  if (!profile || !canManage(profile)) return []
 
   // RLS limits rows to channels of clients the current user has access to
   const { data, error } = await supabase

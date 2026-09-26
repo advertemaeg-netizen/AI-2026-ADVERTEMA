@@ -356,7 +356,8 @@
       "notFound": "Client not found or you do not have access to it.",
       "validation": "The conversation is too long or invalid. Start a new one.",
       "rateLimited": "Too many messages in a minute. Wait a moment and try again.",
-      "aiUnavailable": "Could not get a reply from the AI. Please try again."
+      "aiUnavailable": "Could not get a reply from the AI. Please try again.",
+      "forbidden": "Only client and organization admins can test the bot."
     },
     "debug": {
       "title": "Debug info",
@@ -606,7 +607,8 @@
       "validation": "Some of the data is invalid.",
       "invalidPhone": "Invalid phone number. Use an Egyptian mobile number (010 / 011 / 012 / 015).",
       "unknown": "Something went wrong. Please try again."
-    }
+    },
+    "phonePlaceholder": "No number yet — e.g. 010 1234 5678"
   },
   "team": {
     "title": "Team",
@@ -739,7 +741,8 @@
         "ok": "",
         "accountExists": "An account with this email already exists. Log in, then open the invite link again."
       }
-    }
+    },
+    "descriptionForClient": "An invite link to join the {client} team will be created, valid for 7 days — copy it and send it to them."
   },
   "clientSwitcher": {
     "label": "Choose client",

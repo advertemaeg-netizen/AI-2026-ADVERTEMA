@@ -3,12 +3,11 @@
 import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
 import { getSession } from '@/lib/auth/session'
+import { canManageClient, isOrgAdmin } from '@/lib/auth/permissions'
 import { SELECTED_CLIENT_COOKIE, SELECTED_CLIENT_COOKIE_OPTIONS } from '@/lib/auth/client-context'
 import { appOrigin } from '@/lib/app-url'
 import { UUID_PATTERN } from '@/lib/types/clients'
 import {
-  ORG_ADMIN_ROLES,
-  TEAM_MANAGER_ROLES,
   inviteSchema,
   type AcceptInviteStatus,
   type InviteInput,
@@ -43,7 +42,7 @@ async function inviteLink(code: string) {
  */
 export async function getTeamMembers(): Promise<TeamMember[]> {
   const { supabase, profile } = await getSession()
-  if (!profile || !TEAM_MANAGER_ROLES.includes(profile.role)) return []
+  if (!profile || !canManageClient(profile.role)) return []
 
   const { data, error } = await supabase.rpc('team_members')
   if (error) throw new Error(`Failed to load team: ${error.message}`)
@@ -69,7 +68,7 @@ export async function getTeamMembers(): Promise<TeamMember[]> {
 
 export async function getPendingInvites(): Promise<PendingInvite[]> {
   const { supabase, profile } = await getSession()
-  if (!profile || !TEAM_MANAGER_ROLES.includes(profile.role)) return []
+  if (!profile || !canManageClient(profile.role)) return []
 
   // RLS: org admins see their organization's invites, client admins their clients'
   const { data, error } = await supabase
@@ -95,7 +94,7 @@ export async function createInvite(
 ): Promise<{ ok: true; link: string } | { ok: false; error: TeamActionError; field?: string }> {
   const { supabase, profile } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
-  if (!TEAM_MANAGER_ROLES.includes(profile.role) || !profile.organization_id) {
+  if (!canManageClient(profile.role) || !profile.organization_id) {
     return { ok: false, error: 'forbidden' }
   }
 
@@ -149,6 +148,7 @@ export async function createInvite(
 export async function cancelInvite(inviteId: string): Promise<{ ok: true } | { ok: false; error: TeamActionError }> {
   const { supabase, profile } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
+  if (!canManageClient(profile.role)) return { ok: false, error: 'forbidden' }
   if (!UUID_PATTERN.test(inviteId)) return { ok: false, error: 'notFound' }
 
   const { data, error } = await supabase
@@ -171,7 +171,7 @@ export async function cancelInvite(inviteId: string): Promise<{ ok: true } | { o
 export async function removeTeamMember(userId: string): Promise<{ ok: true } | { ok: false; error: TeamActionError }> {
   const { supabase, profile } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
-  if (!ORG_ADMIN_ROLES.includes(profile.role)) return { ok: false, error: 'forbidden' }
+  if (!isOrgAdmin(profile.role)) return { ok: false, error: 'forbidden' }
   if (!UUID_PATTERN.test(userId)) return { ok: false, error: 'notFound' }
 
   const { data, error } = await supabase.rpc('remove_org_member', { member_id: userId })

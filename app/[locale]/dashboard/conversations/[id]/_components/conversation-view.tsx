@@ -323,12 +323,16 @@ export function ConversationView({
             <CardContent>
               <dl className="grid gap-3 text-sm">
                 <Detail label={t('fields.clientName')}>
-                  <Link
-                    href={`/dashboard/clients/${conversation.client.id}/channels`}
-                    className="hover:underline"
-                  >
-                    {conversation.client.name}
-                  </Link>
+                  {canManage ? (
+                    <Link
+                      href={`/dashboard/clients/${conversation.client.id}/channels`}
+                      className="hover:underline"
+                    >
+                      {conversation.client.name}
+                    </Link>
+                  ) : (
+                    conversation.client.name
+                  )}
                 </Detail>
                 {conversation.client.industry && (
                   <Detail label={t('fields.industry')}>{conversation.client.industry}</Detail>

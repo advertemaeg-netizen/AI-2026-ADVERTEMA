@@ -22,9 +22,12 @@ const SYSTEM_PROMPT = `You analyze chat conversations between a website visitor 
 
 Decide whether the VISITOR shows clear buying intent (wants to order, book, buy, get a quote, or be contacted about a service) and how confident you are, from 0 to 1. Greetings, general questions and small talk alone are not buying intent.
 
-Extract details ONLY from what the visitor wrote. Never take a name, phone number or other detail from the assistant's messages — those often contain the business's own phone number or address.
+Extract details ONLY from what the visitor wrote. Never take a name, phone number or other detail that only appears in the assistant's messages — those often contain the business's own phone number or address. (If the assistant repeats something the visitor wrote, that's fine: the visitor still wrote it.)
+
+The LATEST statement always wins. Visitors change their minds mid-conversation: "8 PM" then "make it 11:30", one name then a correction, one number then another. For every field, read the whole conversation in order and return the most recent value the visitor gave; a later change cancels everything before it on that field. Never return an earlier value that the visitor has since changed.
+
 - name: the visitor's name
-- phone: the visitor's phone number exactly as written
+- phone: the visitor's phone number, with every digit, exactly as written. Numbers are often glued to words ("رقم التليفون01098273812") or written in Arabic digits (٠١٠…); copy all the digits. Never shorten, mask or replace digits with X.
 - service_requested: what they want (product, service, order items)
 - budget: any budget or price range they mention
 - branch: a branch or location they mention
@@ -33,8 +36,9 @@ Extract details ONLY from what the visitor wrote. Never take a name, phone numbe
 Use null for anything not stated.
 
 Appointments (dates are in Cairo, Egypt):
-- appointment_date (YYYY-MM-DD) and appointment_time (HH:MM, 24h): only when the visitor asks for or agrees to a specific day. Resolve relative days against the current Cairo date given below: "النهارده" today, "بكرة" tomorrow, "بعد بكرة" in two days, a weekday name means its next occurrence (today if it's still ahead).
+- appointment_date (YYYY-MM-DD) and appointment_time (HH:MM, 24h): only when the visitor asks for or agrees to a specific day. If the visitor changes the day or time later ("عايز أغير المعاد", "خليها الساعة 11 ونص"), use ONLY the latest one — the earlier appointment is cancelled. Resolve relative days against the current Cairo date given below: "النهارده" today, "بكرة" tomorrow, "بعد بكرة" in two days, a weekday name means its next occurrence (today if it's still ahead).
 - A bare hour like "الساعة 5" means 17:00 unless they say morning (الصبح). With only a part of the day, use morning 10:00, noon 13:00, afternoon (العصر) 16:00, evening (المغرب / بالليل) 19:00 and set appointment_time_approximate to true.
+- A time change without a day keeps the day from the earlier request (e.g. "النهاردة الساعة 8" then "خليها 11 ونص" → today 23:30).
 - If there's no specific day ("next week", "soon", "any time"), return null for both — the team will schedule it.`
 
 // Gemini structured-output schema (OpenAPI subset)
@@ -128,15 +132,24 @@ type LeadRow = {
   confidence_score: number | null
   status: string
   appointment_at: string | null
+  appointment_confirmed: boolean
+  showed_up: boolean | null
+  ai_extracted_data: LeadExtractedData | null
 }
 
-const LEAD_COLUMNS =
-  'id, name, phone, service_requested, budget, branch, confidence_score, status, appointment_at'
+const LEAD_COLUMNS = `id, name, phone, service_requested, budget, branch, confidence_score, status,
+  appointment_at, appointment_confirmed, showed_up, ai_extracted_data`
+
+/** Same instant? (Postgres and JS format timestamps differently) */
+function sameInstant(a: string | null | undefined, b: string | null | undefined) {
+  return !!a && !!b && new Date(a).getTime() === new Date(b).getTime()
+}
 
 /**
- * Analyzes a conversation and creates or enriches its lead. Runs after the
+ * Analyzes a conversation and creates or updates its lead. Runs after the
  * reply has been sent (webhook `after()`), with the secret-key client.
- * AI never overwrites a field that already has a value, so human edits stick.
+ * The AI may replace a value only while it's still the one the AI itself set
+ * last time (the visitor changed their mind); anything the team edited stays.
  * Never throws.
  */
 export async function detectLead({
@@ -207,12 +220,23 @@ export async function detectLead({
       if (!existing) return
     }
 
+    const previous = existing.ai_extracted_data ?? {}
     const patch: Record<string, unknown> = {}
     for (const [key, value] of Object.entries(fields)) {
-      if (value && !existing[key as keyof typeof fields]) patch[key] = value
+      const current = existing[key as keyof typeof fields]
+      // Empty, or still the AI's own earlier value (not edited by the team)
+      const aiOwned = !current || current === previous[key as keyof typeof fields]
+      if (value && value !== current && aiOwned) patch[key] = value
     }
-    // Only fill an empty appointment; one the team set or changed stays
-    if (appointmentAt && !existing.appointment_at) {
+
+    // Appointment: fill or move it while it's the AI's own, unconfirmed and
+    // not yet attended/missed. A time the team set or confirmed stays.
+    const appointmentAiOwned =
+      !existing.appointment_at ||
+      (sameInstant(existing.appointment_at, previous.appointment_at) &&
+        !existing.appointment_confirmed &&
+        existing.showed_up === null)
+    if (appointmentAt && appointmentAiOwned && !sameInstant(appointmentAt, existing.appointment_at)) {
       patch.appointment_at = appointmentAt
       if (existing.status === 'new' || existing.status === 'contacted') patch.status = 'appointment_booked'
     }

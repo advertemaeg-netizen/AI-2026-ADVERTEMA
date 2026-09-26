@@ -51,12 +51,17 @@ export function CopyLinkButton({ link, label }: { link: string; label: string })
   )
 }
 
+/**
+ * With a client in focus (client admins always, org admins after picking one
+ * in the switcher) the invite goes to it and there's no client to choose.
+ * Org admins on "all clients" pick the client here.
+ */
 export function InviteDialog({
   clients,
-  defaultClientId,
+  lockedClient,
 }: {
   clients: ClientOption[]
-  defaultClientId: string | null
+  lockedClient: ClientOption | null
 }) {
   const t = useTranslations('invites')
   const tCommon = useTranslations('common')
@@ -64,7 +69,8 @@ export function InviteDialog({
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [role, setRole] = useState<InvitableRole>('team_member')
-  const [clientId, setClientId] = useState(defaultClientId ?? (clients.length === 1 ? clients[0].id : ''))
+  const initialClientId = lockedClient?.id ?? (clients.length === 1 ? clients[0].id : '')
+  const [clientId, setClientId] = useState(initialClientId)
   const [link, setLink] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -72,7 +78,7 @@ export function InviteDialog({
     setEmail('')
     setName('')
     setRole('team_member')
-    setClientId(defaultClientId ?? (clients.length === 1 ? clients[0].id : ''))
+    setClientId(initialClientId)
     setLink(null)
   }
 
@@ -127,7 +133,9 @@ export function InviteDialog({
           <form onSubmit={submit} className="grid gap-4">
             <DialogHeader>
               <DialogTitle>{t('title')}</DialogTitle>
-              <DialogDescription>{t('description')}</DialogDescription>
+              <DialogDescription>
+                {lockedClient ? t('descriptionForClient', { client: lockedClient.name }) : t('description')}
+              </DialogDescription>
             </DialogHeader>
 
             <div className="grid gap-2">
@@ -146,7 +154,7 @@ export function InviteDialog({
               <Label htmlFor="invite-name">{t('fields.name')}</Label>
               <Input id="invite-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className={lockedClient ? 'grid gap-4' : 'grid gap-4 sm:grid-cols-2'}>
               <div className="grid gap-2">
                 <Label htmlFor="invite-role">{t('fields.role')}</Label>
                 <Select value={role} onValueChange={(v) => setRole(v as InvitableRole)}>
@@ -162,21 +170,23 @@ export function InviteDialog({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="invite-client">{t('fields.client')} *</Label>
-                <Select value={clientId} onValueChange={setClientId}>
-                  <SelectTrigger id="invite-client" className="w-full">
-                    <SelectValue placeholder={t('pickClient')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clients.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {!lockedClient && (
+                <div className="grid gap-2">
+                  <Label htmlFor="invite-client">{t('fields.client')} *</Label>
+                  <Select value={clientId} onValueChange={setClientId}>
+                    <SelectTrigger id="invite-client" className="w-full">
+                      <SelectValue placeholder={t('pickClient')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.map((client) => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
             <p className="text-xs text-muted-foreground">{t(`roleHints.${role}`)}</p>
 

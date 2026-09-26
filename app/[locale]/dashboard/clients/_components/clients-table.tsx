@@ -66,12 +66,17 @@ export function ClientsTable({ clients, canManage }: { clients: Client[]; canMan
           {clients.map((client) => (
             <TableRow key={client.id}>
               <TableCell>
-                <Link
-                  href={`/dashboard/clients/${client.id}/channels`}
-                  className="font-medium hover:underline"
-                >
-                  {client.name}
-                </Link>
+                {/* A client's pages are for managers; team members just see the name */}
+                {canManage ? (
+                  <Link
+                    href={`/dashboard/clients/${client.id}/channels`}
+                    className="font-medium hover:underline"
+                  >
+                    {client.name}
+                  </Link>
+                ) : (
+                  <span className="font-medium">{client.name}</span>
+                )}
                 <div className="text-xs text-muted-foreground" dir="ltr">
                   {client.slug}
                 </div>

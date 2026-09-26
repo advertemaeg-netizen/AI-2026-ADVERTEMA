@@ -22,7 +22,8 @@ async function clientVisible(supabase: Awaited<ReturnType<typeof getSession>>['s
 export async function getBotSettings(clientId: string): Promise<BotSettingsInput | null> {
   if (!UUID_PATTERN.test(clientId)) return null
   const { supabase, profile } = await getSession()
-  if (!profile) return null
+  // Bot settings are for client admins and up (RLS agrees)
+  if (!profile || !canManage(profile)) return null
   // get_bot_settings falls back to defaults, so check access explicitly
   if (!(await clientVisible(supabase, clientId))) return null
   return loadBotSettings(supabase, clientId)

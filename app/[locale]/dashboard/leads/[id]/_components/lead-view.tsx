@@ -275,7 +275,7 @@ export function LeadView({
                       value={details[field]}
                       dir={field === 'phone' ? 'ltr' : undefined}
                       inputMode={field === 'phone' ? 'tel' : undefined}
-                      placeholder={field === 'phone' ? '01XXXXXXXXX' : undefined}
+                      placeholder={field === 'phone' ? t('phonePlaceholder') : undefined}
                       onChange={(e) => setDetails((prev) => ({ ...prev, [field]: e.target.value }))}
                     />
                   </div>

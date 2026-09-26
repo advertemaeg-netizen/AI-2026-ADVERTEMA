@@ -2,7 +2,13 @@ import type { BotDebug } from '@/lib/ai/bot'
 
 export type PlaygroundMessage = { role: 'user' | 'assistant'; content: string }
 
-export type PlaygroundError = 'unauthorized' | 'notFound' | 'validation' | 'rateLimited' | 'aiUnavailable'
+export type PlaygroundError =
+  | 'unauthorized'
+  | 'forbidden'
+  | 'notFound'
+  | 'validation'
+  | 'rateLimited'
+  | 'aiUnavailable'
 
 export type PlaygroundResult =
   | { ok: true; reply: string; debug?: BotDebug }

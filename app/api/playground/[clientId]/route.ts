@@ -4,6 +4,7 @@ import type { PlaygroundError } from '@/lib/types/playground'
 
 const STATUS: Record<PlaygroundError, number> = {
   unauthorized: 401,
+  forbidden: 403,
   notFound: 404,
   validation: 400,
   rateLimited: 429,
@@ -13,7 +14,8 @@ const STATUS: Record<PlaygroundError, number> = {
 /**
  * POST { messages: [{ role: 'user' | 'assistant', content }], debug?: boolean }
  * Same assistant as the website widget; nothing is persisted. Requires a
- * signed-in dashboard user with access to the client.
+ * signed-in client admin (or org/super admin) with access to the client;
+ * team members get 403.
  */
 export async function POST(request: NextRequest, ctx: RouteContext<'/api/playground/[clientId]'>) {
   const { clientId } = await ctx.params

@@ -14,7 +14,8 @@ const KNOWLEDGE_PATH = '/[locale]/dashboard/clients/[clientId]/knowledge'
 export async function getKnowledgeDocuments(clientId: string): Promise<KnowledgeDocument[]> {
   if (!UUID_PATTERN.test(clientId)) return []
   const { supabase, profile } = await getSession()
-  if (!profile) return []
+  // The knowledge base is managed by client admins and up (RLS agrees)
+  if (!profile || !canManage(profile)) return []
 
   // Source documents only — chunk rows (with embeddings) stay server-side
   const { data, error } = await supabase

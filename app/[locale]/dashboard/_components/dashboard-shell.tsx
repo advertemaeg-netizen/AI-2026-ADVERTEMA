@@ -29,11 +29,10 @@ import {
 import { cn } from '@/lib/utils'
 import { clientSections } from '@/components/client-sections'
 import { ClientSwitcher } from '@/components/client-switcher'
+import { canManageClient } from '@/lib/auth/permissions'
 import type { ClientOption } from '@/lib/auth/client-context'
 
 type NavItem = { name: string; href: string; icon: LucideIcon; exact?: boolean }
-
-const TEAM_ROLES = ['super_admin', 'org_admin', 'client_admin']
 
 export function DashboardShell({
   children,
@@ -56,7 +55,8 @@ export function DashboardShell({
   const tCommon = useTranslations('common')
   const tClientNav = useTranslations('clientNav')
 
-  const canManageTeam = TEAM_ROLES.includes(user.role ?? '')
+  // Team members only work conversations, leads, appointments and the overview
+  const canManage = canManageClient(user.role)
   const teamItem: NavItem = { name: t('team'), href: '/dashboard/team', icon: UsersRound }
   const settingsItem: NavItem = { name: t('settings'), href: '/dashboard/settings', icon: Settings }
 
@@ -67,12 +67,14 @@ export function DashboardShell({
         { name: t('conversations'), href: '/dashboard/conversations', icon: MessagesSquare },
         { name: t('leads'), href: '/dashboard/leads', icon: Users },
         { name: t('appointments'), href: '/dashboard/appointments', icon: CalendarDays },
-        ...clientSections(selectedClient.id).map((section) => ({
-          name: tClientNav(section.key),
-          href: section.href,
-          icon: section.icon,
-        })),
-        ...(canManageTeam ? [teamItem] : []),
+        ...(canManage
+          ? clientSections(selectedClient.id).map((section) => ({
+              name: tClientNav(section.key),
+              href: section.href,
+              icon: section.icon,
+            }))
+          : []),
+        ...(canManage ? [teamItem] : []),
         settingsItem,
       ]
     : [
@@ -81,7 +83,7 @@ export function DashboardShell({
         { name: t('allLeads'), href: '/dashboard/leads', icon: Users },
         { name: t('appointments'), href: '/dashboard/appointments', icon: CalendarDays },
         ...(canSeeAll ? [{ name: t('clients'), href: '/dashboard/clients', icon: Building2 }] : []),
-        ...(canManageTeam ? [teamItem] : []),
+        ...(canManage ? [teamItem] : []),
         settingsItem,
       ]
 

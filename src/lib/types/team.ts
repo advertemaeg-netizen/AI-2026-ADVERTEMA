@@ -4,11 +4,6 @@ import { UUID_PATTERN } from './clients'
 export const INVITABLE_ROLES = ['client_admin', 'team_member'] as const
 export type InvitableRole = (typeof INVITABLE_ROLES)[number]
 
-/** Roles that can open the team page and invite people */
-export const TEAM_MANAGER_ROLES = ['super_admin', 'org_admin', 'client_admin']
-/** Roles that can remove people from the organization */
-export const ORG_ADMIN_ROLES = ['super_admin', 'org_admin']
-
 export type UserRole = 'super_admin' | 'org_admin' | 'client_admin' | 'team_member'
 
 export type TeamMember = {

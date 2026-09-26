@@ -59,6 +59,8 @@ export async function testBot(
 ): Promise<PlaygroundResult> {
   const { supabase, profile } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
+  // Testing the bot is part of configuring it: client admins and up
+  if (!canManage(profile)) return { ok: false, error: 'forbidden' }
   if (!UUID_PATTERN.test(clientId)) return { ok: false, error: 'notFound' }
   if (!isValidHistory(messages)) return { ok: false, error: 'validation' }
   if (rateLimited(profile.id)) return { ok: false, error: 'rateLimited' }
@@ -73,7 +75,6 @@ export async function testBot(
 
   let override: BotSettingsInput | undefined
   if (settingsOverride !== undefined) {
-    if (!canManage(profile)) return { ok: false, error: 'validation' }
     const parsed = botSettingsSchema.safeParse(settingsOverride)
     if (!parsed.success) return { ok: false, error: 'validation' }
     override = parsed.data
