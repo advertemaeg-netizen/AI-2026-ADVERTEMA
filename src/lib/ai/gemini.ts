@@ -28,9 +28,11 @@ export function toGeminiContents(history: ChatTurn[]): GeminiContent[] {
 export async function generateReply({
   systemPrompt,
   history,
+  temperature = 0.7,
 }: {
   systemPrompt: string
   history: ChatTurn[]
+  temperature?: number
 }): Promise<string> {
   const apiKey = apiKeyOrThrow()
   const contents = toGeminiContents(history)
@@ -41,7 +43,9 @@ export async function generateReply({
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: systemPrompt }] },
       contents,
-      generationConfig: { temperature: 0.7 },
+      // No maxOutputTokens: on thinking models it also caps the hidden
+      // reasoning, which cuts replies off. Length is steered in the prompt.
+      generationConfig: { temperature },
     }),
     signal: AbortSignal.timeout(30_000),
   })

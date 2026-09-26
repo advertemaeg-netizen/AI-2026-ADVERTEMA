@@ -1,7 +1,8 @@
 'use server'
 
-import { getSession } from '@/lib/auth/session'
-import { runBot, type BotClient } from '@/lib/ai/bot'
+import { loadBotSettings, runBot, type BotClient } from '@/lib/ai/bot'
+import { canManage, getSession } from '@/lib/auth/session'
+import { botSettingsSchema, type BotSettingsInput } from '@/lib/types/bot-settings'
 import { UUID_PATTERN } from '@/lib/types/clients'
 import {
   PLAYGROUND_MAX_MESSAGE_LENGTH,
@@ -45,13 +46,16 @@ function isValidHistory(messages: unknown): messages is PlaygroundMessage[] {
 }
 
 /**
- * Runs the client's real assistant (knowledge base + system prompt) on an
+ * Runs the client's real assistant (knowledge base + bot settings) on an
  * in-memory conversation. Nothing is stored and usage isn't metered.
+ * `settingsOverride` previews unsaved bot settings; only admins, who could
+ * save those settings anyway, may pass it.
  */
 export async function testBot(
   clientId: string,
   messages: PlaygroundMessage[],
-  includeDebug = false
+  includeDebug = false,
+  settingsOverride?: BotSettingsInput
 ): Promise<PlaygroundResult> {
   const { supabase, profile } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
@@ -67,11 +71,21 @@ export async function testBot(
     .maybeSingle<BotClient>()
   if (!client) return { ok: false, error: 'notFound' }
 
+  let override: BotSettingsInput | undefined
+  if (settingsOverride !== undefined) {
+    if (!canManage(profile)) return { ok: false, error: 'validation' }
+    const parsed = botSettingsSchema.safeParse(settingsOverride)
+    if (!parsed.success) return { ok: false, error: 'validation' }
+    override = parsed.data
+  }
+
   try {
+    const settings = override ?? (await loadBotSettings(supabase, clientId))
     const { reply, debug } = await runBot({
       supabase,
       clientId,
       client,
+      settings,
       history: messages.map((m) => ({ role: m.role, content: m.content })),
     })
     return includeDebug ? { ok: true, reply, debug } : { ok: true, reply }

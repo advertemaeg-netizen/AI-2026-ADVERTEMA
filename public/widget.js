@@ -216,7 +216,8 @@
       }
     }
 
-    addMessage('assistant', TEXT.greeting)
+    // The client's configured welcome message, if the server sent one
+    addMessage('assistant', info.welcomeMessage || TEXT.greeting)
     for (var i = 0; i < state.messages.length; i++) {
       addMessage(state.messages[i].role, state.messages[i].content)
     }

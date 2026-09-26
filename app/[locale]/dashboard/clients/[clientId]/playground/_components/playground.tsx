@@ -14,6 +14,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { cn } from '@/lib/utils'
 import { testBot } from '@/lib/actions/playground'
 import type { BotDebug } from '@/lib/ai/bot'
+import type { BotSettingsInput } from '@/lib/types/bot-settings'
 import { PLAYGROUND_MAX_MESSAGE_LENGTH, type PlaygroundError } from '@/lib/types/playground'
 
 type ChatItem =
@@ -21,7 +22,21 @@ type ChatItem =
   | { id: string; role: 'assistant'; content: string; debug?: BotDebug }
   | { id: string; role: 'error'; error: PlaygroundError }
 
-export function Playground({ clientId, clientName }: { clientId: string; clientName: string }) {
+export function Playground({
+  clientId,
+  clientName,
+  welcomeMessage,
+  getSettingsOverride,
+  compact = false,
+}: {
+  clientId: string
+  clientName: string
+  welcomeMessage: string
+  /** Bot settings preview: called on each send to use unsaved form values */
+  getSettingsOverride?: () => BotSettingsInput
+  /** Narrow column (settings preview): debug panel goes under the chat */
+  compact?: boolean
+}) {
   const t = useTranslations('playground')
   const [items, setItems] = useState<ChatItem[]>([])
   const [draft, setDraft] = useState('')
@@ -55,7 +70,7 @@ export function Playground({ clientId, clientName }: { clientId: string; clientN
 
     startTransition(async () => {
       // Debug is always requested so the panel works for earlier replies too
-      const result = await testBot(clientId, history, true)
+      const result = await testBot(clientId, history, true, getSettingsOverride?.())
       const id = crypto.randomUUID()
       if (result.ok) {
         setItems((prev) => [...prev, { id, role: 'assistant', content: result.reply, debug: result.debug }])
@@ -75,8 +90,13 @@ export function Playground({ clientId, clientName }: { clientId: string; clientN
   }
 
   return (
-    <div className={cn('grid gap-4', showDebug && 'xl:grid-cols-[minmax(0,1fr)_420px]')}>
-      <Card className="flex h-[calc(100vh-18rem)] min-h-[480px] flex-col gap-0 overflow-hidden py-0">
+    <div className={cn('grid gap-4', showDebug && !compact && 'xl:grid-cols-[minmax(0,1fr)_420px]')}>
+      <Card
+        className={cn(
+          'flex min-h-[480px] flex-col gap-0 overflow-hidden py-0',
+          compact ? 'h-[calc(100vh-10rem)]' : 'h-[calc(100vh-18rem)]'
+        )}
+      >
         <div className="flex items-center justify-between gap-3 bg-gradient-to-br from-purple-500 to-orange-500 px-4 py-3 text-white">
           <div className="flex min-w-0 items-center gap-2">
             <Sparkles className="size-4 shrink-0" />
@@ -88,8 +108,8 @@ export function Playground({ clientId, clientName }: { clientId: string; clientN
           <div className="flex items-center gap-3">
             <label className="flex items-center gap-2 text-xs">
               <Switch checked={showDebug} onCheckedChange={setShowDebug} />
-              <span className="hidden sm:inline">{t('showDebug')}</span>
-              <Bug className="size-4 sm:hidden" aria-label={t('showDebug')} />
+              <span className={cn('hidden', !compact && 'sm:inline')}>{t('showDebug')}</span>
+              <Bug className={cn('size-4', !compact && 'sm:hidden')} aria-label={t('showDebug')} />
             </label>
             <Button
               size="sm"
@@ -98,14 +118,14 @@ export function Playground({ clientId, clientName }: { clientId: string; clientN
               disabled={items.length === 0 || isPending}
             >
               <RotateCcw data-icon="inline-start" />
-              {t('newConversation')}
+              <span className={cn(compact && 'sr-only')}>{t('newConversation')}</span>
             </Button>
           </div>
         </div>
 
         <ScrollArea className="min-h-0 flex-1 bg-muted/30">
           <div className="flex flex-col gap-2 p-4" role="log" aria-live="polite">
-            <Bubble role="assistant">{t('greeting')}</Bubble>
+            <Bubble role="assistant">{welcomeMessage}</Bubble>
 
             {items.map((item) => {
               if (item.role === 'error') {
@@ -214,7 +234,7 @@ function DebugPanel({ debug }: { debug?: BotDebug }) {
   const format = useFormatter()
 
   return (
-    <Card size="sm" className="h-fit xl:sticky xl:top-8">
+    <Card size="sm" className="h-fit">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Bug className="size-4" />

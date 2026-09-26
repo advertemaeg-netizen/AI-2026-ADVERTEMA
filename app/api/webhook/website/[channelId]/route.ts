@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { geminiModel, type ChatTurn } from '@/lib/ai/gemini'
-import { BOT_HISTORY_LIMIT, runBot } from '@/lib/ai/bot'
+import { BOT_HISTORY_LIMIT, loadBotSettings, runBot } from '@/lib/ai/bot'
 import { UUID_PATTERN } from '@/lib/types/clients'
 
 // The widget is embedded on client websites, so any origin may call this route
@@ -97,10 +97,19 @@ export async function GET(request: NextRequest, ctx: RouteContext<'/api/webhook/
     return agentReplies(supabase, channel.id, conversationId, visitorId, params.get('after'))
   }
 
+  // The widget opens with the client's configured welcome message
+  let welcomeMessage: string | null = null
+  try {
+    welcomeMessage = (await loadBotSettings(supabase, channel.client_id)).welcome_message
+  } catch (error) {
+    console.error('[webhook/website] loading bot settings failed', error)
+  }
+
   return json({
     ok: true,
     channel: { id: channel.id, name: channel.name },
     client: { name: channel.clients!.name },
+    welcomeMessage,
     // The publishable key is already public; broadcast topics are scoped by
     // the visitor's random id, which only their browser knows
     realtime: {
@@ -270,10 +279,12 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
 
     let reply: string
     try {
+      const settings = await loadBotSettings(supabase, channel.client_id)
       const result = await runBot({
         supabase,
         clientId: channel.client_id,
         client: channel.clients!,
+        settings,
         history,
       })
       reply = result.reply

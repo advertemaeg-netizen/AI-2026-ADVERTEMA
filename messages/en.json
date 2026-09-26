@@ -121,7 +121,8 @@
     },
     "channels": "Channels",
     "knowledge": "Knowledge base",
-    "playground": "Try the bot"
+    "playground": "Try the bot",
+    "botSettings": "Bot settings"
   },
   "channels": {
     "title": "{client} channels",
@@ -327,7 +328,6 @@
     "description": "Test the AI assistant with the same knowledge base and instructions it uses with website visitors. Nothing here is saved.",
     "backToClients": "Back to clients",
     "localOnly": "Test chat — not saved",
-    "greeting": "Hi there! How can I help you today?",
     "placeholder": "Type a message as a visitor would...",
     "send": "Send",
     "typing": "Assistant is typing...",
@@ -371,6 +371,106 @@
     "label": "Client pages",
     "channels": "Channels",
     "knowledge": "Knowledge base",
-    "playground": "Try the bot"
+    "playground": "Try the bot",
+    "botSettings": "Bot settings"
+  },
+  "botSettings": {
+    "title": "{client} bot settings",
+    "description": "Control the AI assistant’s personality, tone, messages and behaviour with website visitors.",
+    "readOnly": "View only — contact an admin to change the bot settings.",
+    "backToClients": "Back to clients",
+    "presets": {
+      "title": "Templates",
+      "description": "Pick a template to fill in the personality, messages and behaviour, then adjust and save.",
+      "applied": "Applied the \"{preset}\" template — review the fields, then save.",
+      "names": {
+        "clinic": "Medical clinic",
+        "restaurant": "Restaurant",
+        "ecommerce": "Online store",
+        "customerService": "Customer service"
+      }
+    },
+    "sections": {
+      "personality": "Personality & tone",
+      "personalityDesc": "The core instructions the assistant follows in every conversation.",
+      "messages": "Messages",
+      "messagesDesc": "The first message visitors see, and the reply when an answer isn’t available.",
+      "behavior": "Behaviour",
+      "behaviorDesc": "Reply language, creativity, reply length and lead collection.",
+      "hours": "Business hours",
+      "hoursDesc": "Optional — lets the assistant tell visitors when the business is closed and when it opens."
+    },
+    "fields": {
+      "systemPrompt": "System prompt (personality)",
+      "tone": "Tone",
+      "welcome_message": "Welcome message",
+      "fallback_message": "Fallback message",
+      "leadQualification": "Collect lead details",
+      "language": "Reply language",
+      "temperature": "Creativity (temperature)",
+      "maxLength": "Maximum reply length",
+      "hoursEnabled": "Enable business hours",
+      "timezone": "Time zone"
+    },
+    "hints": {
+      "systemPrompt": "Describe who the assistant is, what it does, and what it must not do.",
+      "welcome_message": "Shown as the first message in the website chat window.",
+      "fallback_message": "Used when a visitor asks about something that isn’t in the business info or knowledge base.",
+      "leadQualification": "The assistant asks which service is needed and requests a name and phone number.",
+      "maxLength": "An approximate character limit the assistant keeps to in each reply.",
+      "hoursEnabled": "The schedule and current time are added to the assistant’s instructions.",
+      "overnight": "A closing time earlier than the opening time (e.g. 12:00 to 02:00) means it closes after midnight."
+    },
+    "tones": {
+      "friendly": "Friendly",
+      "professional": "Professional",
+      "formal": "Formal",
+      "casual": "Casual"
+    },
+    "languages": {
+      "ar": "Always Arabic",
+      "en": "Always English",
+      "both": "Same as the visitor (Arabic or English)"
+    },
+    "temperature": {
+      "conservative": "Conservative",
+      "balanced": "Balanced",
+      "creative": "Creative"
+    },
+    "maxLengthValue": "{count} characters",
+    "days": {
+      "sat": "Saturday",
+      "sun": "Sunday",
+      "mon": "Monday",
+      "tue": "Tuesday",
+      "wed": "Wednesday",
+      "thu": "Thursday",
+      "fri": "Friday"
+    },
+    "hours": {
+      "from": "From",
+      "to": "To"
+    },
+    "closed": "Closed",
+    "unsaved": "You have unsaved changes",
+    "preview": "Preview",
+    "hidePreview": "Hide preview",
+    "previewHint": "The preview uses the current form values, even before saving.",
+    "previewHintReadOnly": "The preview uses the saved settings.",
+    "save": "Save changes",
+    "saving": "Saving...",
+    "toast": {
+      "saved": "Bot settings saved"
+    },
+    "errors": {
+      "required": "This field is required.",
+      "tooLong": "The text is longer than allowed.",
+      "invalidTime": "Invalid time.",
+      "unauthorized": "Your session has expired. Please log in again.",
+      "forbidden": "You do not have permission to change this bot’s settings.",
+      "notFound": "Client not found or you do not have access to it.",
+      "validation": "Some values are invalid. Please check the fields.",
+      "unknown": "Something went wrong. Please try again."
+    }
   }
 }
