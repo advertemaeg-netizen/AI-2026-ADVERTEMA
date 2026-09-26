@@ -5,6 +5,7 @@ import { Link } from '@/i18n/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { getClient, getClientPermissions } from '@/lib/actions/clients'
 import { getChannels } from '@/lib/actions/channels'
+import { appOrigin } from '@/lib/app-url'
 import { ClientSubnav } from '../_components/client-subnav'
 import { AddChannelDialog } from './_components/add-channel-dialog'
 import { ChannelCard } from './_components/channel-card'
@@ -17,9 +18,10 @@ export default async function ChannelsPage({
   if (!client) notFound()
 
   const t = await getTranslations('channels')
-  const [channels, { canManage }] = await Promise.all([
+  const [channels, { canManage }, origin] = await Promise.all([
     getChannels(clientId),
     getClientPermissions(),
+    appOrigin(),
   ])
 
   return (
@@ -56,7 +58,7 @@ export default async function ChannelsPage({
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {channels.map((channel) => (
-            <ChannelCard key={channel.id} channel={channel} canManage={canManage} />
+            <ChannelCard key={channel.id} channel={channel} canManage={canManage} appOrigin={origin} />
           ))}
         </div>
       )}

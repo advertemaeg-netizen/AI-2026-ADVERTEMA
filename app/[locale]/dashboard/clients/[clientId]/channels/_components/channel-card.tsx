@@ -31,7 +31,15 @@ import type { Channel } from '@/lib/types/channels'
 import { CHANNEL_ICONS } from '@/components/channel-icon'
 import { embedCode } from './channel-meta'
 
-export function ChannelCard({ channel, canManage }: { channel: Channel; canManage: boolean }) {
+export function ChannelCard({
+  channel,
+  canManage,
+  appOrigin,
+}: {
+  channel: Channel
+  canManage: boolean
+  appOrigin: string
+}) {
   const t = useTranslations('channels')
   const tCommon = useTranslations('common')
   const format = useFormatter()
@@ -42,7 +50,7 @@ export function ChannelCard({ channel, canManage }: { channel: Channel; canManag
 
   const Icon = CHANNEL_ICONS[channel.type]
   const snippet =
-    channel.type === 'website' && channel.webhook_url ? embedCode(channel.webhook_url) : null
+    channel.type === 'website' ? embedCode(appOrigin, channel.id) : null
 
   function handleToggle(checked: boolean) {
     startToggle(async () => {

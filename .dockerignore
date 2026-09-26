@@ -1,0 +1,29 @@
+# Keep the build context small and secret-free
+
+# dependencies & build output (rebuilt inside the image)
+node_modules
+.next
+out
+
+# VCS / tooling
+.git
+.gitignore
+.vscode
+.idea
+.claude
+*.log
+npm-debug.log*
+
+# secrets — env comes from build args + deploy/.env.production at runtime
+.env*
+
+# not needed to build the app
+supabase
+deploy
+Dockerfile
+.dockerignore
+*.md
+coverage
+
+# local TypeScript incremental cache
+*.tsbuildinfo

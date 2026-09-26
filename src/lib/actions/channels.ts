@@ -64,6 +64,7 @@ export async function createChannelAction(
   }
 
   const id = crypto.randomUUID()
+  // Stored for reference; embed codes are always built from the current origin
   const webhookUrl = `${await appOrigin()}/api/webhook/website/${id}`
 
   const { error } = await supabase.from('channels').insert({

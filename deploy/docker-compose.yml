@@ -1,0 +1,38 @@
+# Advertema AI behind the existing Traefik (Docker provider,
+# exposedbydefault=false, Let's Encrypt). Run from this folder with the env
+# file, so it's used both for build args and variable substitution:
+#
+#   docker compose --env-file .env.production up -d --build
+#
+# Networking works like n8n's: the service stays on this project's default
+# network (advertema_default). Traefik runs with host networking and finds the
+# container through the Docker socket, reaching it on that network directly.
+#
+# See DEPLOYMENT.md.
+
+# Fixed project name → network "advertema_default" (not "deploy_default")
+name: advertema
+
+services:
+  advertema:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      # NEXT_PUBLIC_* are compiled into the app at build time (see Dockerfile)
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?set NEXT_PUBLIC_SUPABASE_URL in .env.production}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:?set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in .env.production}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?set NEXT_PUBLIC_APP_URL in .env.production}
+    # Tagged so a previous build can be rolled back to (deploy/update.sh)
+    image: advertema:latest
+    container_name: advertema
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      - TZ=Africa/Cairo
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.advertema.rule=Host(`app.srv1995277.hstgr.cloud`)
+      - traefik.http.routers.advertema.entrypoints=websecure
+      - traefik.http.routers.advertema.tls.certresolver=letsencrypt
+      - traefik.http.services.advertema.loadbalancer.server.port=3000
