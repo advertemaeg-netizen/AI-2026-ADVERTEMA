@@ -28,7 +28,8 @@ import {
 } from '@/components/ui/alert-dialog'
 import { deleteChannelAction, toggleChannelActive } from '@/lib/actions/channels'
 import type { Channel } from '@/lib/types/channels'
-import { CHANNEL_ICONS, embedCode } from './channel-meta'
+import { CHANNEL_ICONS } from '@/components/channel-icon'
+import { embedCode } from './channel-meta'
 
 export function ChannelCard({ channel, canManage }: { channel: Channel; canManage: boolean }) {
   const t = useTranslations('channels')

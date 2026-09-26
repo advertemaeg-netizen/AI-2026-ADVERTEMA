@@ -88,8 +88,11 @@ export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS_HEADERS })
 }
 
-// GET: lets the widget check the channel exists and is live before rendering
-export async function GET(_request: NextRequest, ctx: RouteContext<'/api/webhook/website/[channelId]'>) {
+// GET: lets the widget check the channel exists and is live before rendering,
+// and tells it where to subscribe for live agent replies (Realtime broadcast).
+// With ?conversationId=&visitorId=[&after=] it returns agent replies the widget
+// missed while disconnected.
+export async function GET(request: NextRequest, ctx: RouteContext<'/api/webhook/website/[channelId]'>) {
   const { channelId } = await ctx.params
   const supabase = createAdminClient()
 
@@ -104,11 +107,72 @@ export async function GET(_request: NextRequest, ctx: RouteContext<'/api/webhook
   if (!channel) return json({ ok: false, error: 'not_found' }, 404)
   if (!isLive(channel)) return json({ ok: false, error: 'inactive' }, 403)
 
+  const params = request.nextUrl.searchParams
+  const conversationId = params.get('conversationId')
+  const visitorId = params.get('visitorId')
+  if (conversationId || visitorId) {
+    return agentReplies(supabase, channel.id, conversationId, visitorId, params.get('after'))
+  }
+
   return json({
     ok: true,
     channel: { id: channel.id, name: channel.name },
     client: { name: channel.clients!.name },
+    // The publishable key is already public; broadcast topics are scoped by
+    // the visitor's random id, which only their browser knows
+    realtime: {
+      url: `${process.env.NEXT_PUBLIC_SUPABASE_URL!.replace(/^http/, 'ws')}/realtime/v1/websocket`,
+      apiKey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    },
   })
+}
+
+async function agentReplies(
+  supabase: ReturnType<typeof createAdminClient>,
+  channelId: string,
+  conversationId: string | null,
+  visitorId: string | null,
+  after: string | null
+) {
+  if (
+    !conversationId ||
+    !UUID_PATTERN.test(conversationId) ||
+    !visitorId ||
+    !VISITOR_ID_PATTERN.test(visitorId) ||
+    (after !== null && Number.isNaN(Date.parse(after)))
+  ) {
+    return json({ ok: false, error: 'invalid_request' }, 400)
+  }
+
+  try {
+    // Same ownership check as POST: channel + visitor must both match
+    const { data: conversation } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('id', conversationId)
+      .eq('channel_id', channelId)
+      .eq('contact_identifier', visitorId)
+      .maybeSingle<{ id: string }>()
+    if (!conversation) return json({ ok: false, error: 'not_found' }, 404)
+
+    let query = supabase
+      .from('messages')
+      .select('id, content, created_at')
+      .eq('conversation_id', conversation.id)
+      .eq('role', 'agent')
+      .order('created_at', { ascending: true })
+      .limit(50)
+    // `after` is passed back verbatim from a previous response so the
+    // microsecond precision of created_at is preserved
+    if (after) query = query.gt('created_at', after)
+
+    const { data, error } = await query
+    if (error) throw error
+    return json({ ok: true, messages: data })
+  } catch (error) {
+    console.error('[webhook/website] GET replies', error)
+    return json({ ok: false, error: 'server_error' }, 500)
+  }
 }
 
 // POST: receives a visitor message, stores it, and returns the AI reply
@@ -214,10 +278,6 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       reply = await generateReply({ systemPrompt: buildSystemPrompt(channel.clients!), history })
     } catch (error) {
       console.error('[webhook/website] AI reply failed', error)
-      await supabase
-        .from('conversations')
-        .update({ last_message_at: new Date().toISOString() })
-        .eq('id', conversationId)
       return json({ ok: false, error: 'ai_unavailable', conversationId }, 502)
     }
 
@@ -229,10 +289,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
     })
     if (replyError) throw replyError
 
-    await supabase
-      .from('conversations')
-      .update({ last_message_at: new Date().toISOString() })
-      .eq('id', conversationId)
+    // conversations.last_message_* is kept current by a trigger on messages
 
     if (subscription) {
       // Not atomic under concurrent requests; good enough for usage metering

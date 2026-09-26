@@ -98,6 +98,8 @@
     '.root{position:fixed;bottom:20px;' + side + ':20px;z-index:2147483000;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;font-size:14px;line-height:1.5;color:#111827}' +
     '.bubble{width:56px;height:56px;border-radius:50%;border:0;cursor:pointer;background:' + color + ';color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,.2);transition:transform .15s}' +
     '.bubble:hover{transform:scale(1.06)}' +
+    '.bubble{position:relative}' +
+    '.bubble.unread::after{content:"";position:absolute;top:2px;inset-inline-end:2px;width:12px;height:12px;border-radius:50%;background:#ef4444;border:2px solid #fff}' +
     '.bubble:focus-visible,.icon-btn:focus-visible,.send:focus-visible{outline:2px solid ' + color + ';outline-offset:2px}' +
     '.bubble svg{width:26px;height:26px}' +
     '.panel{position:absolute;bottom:72px;' + side + ':0;width:370px;max-width:calc(100vw - 40px);height:540px;max-height:calc(100vh - 110px);background:#fff;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.18);display:flex;flex-direction:column;overflow:hidden}' +
@@ -110,7 +112,7 @@
     '.messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px;background:#f9fafb}' +
     '.msg{max-width:82%;padding:9px 12px;border-radius:14px;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere}' +
     '.msg.user{align-self:flex-end;background:' + color + ';color:#fff;border-end-end-radius:4px}' +
-    '.msg.assistant{align-self:flex-start;background:#fff;border:1px solid #e5e7eb;border-end-start-radius:4px}' +
+    '.msg.assistant,.msg.agent{align-self:flex-start;background:#fff;border:1px solid #e5e7eb;border-end-start-radius:4px}' +
     '.msg.notice{align-self:center;background:#fef2f2;color:#991b1b;font-size:13px;text-align:center}' +
     '.typing{align-self:flex-start;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:12px 14px;display:flex;gap:4px}' +
     '.typing span{width:6px;height:6px;border-radius:50%;background:#9ca3af;animation:blink 1.2s infinite}' +
@@ -219,8 +221,110 @@
       addMessage(state.messages[i].role, state.messages[i].content)
     }
 
+    // Human agents reply from the dashboard asynchronously. A DB trigger
+    // broadcasts each agent message over Supabase Realtime to a topic only this
+    // visitor knows (conversation id + their random visitor id).
+    function showAgentMessage(m) {
+      if (!m || !m.id) return
+      state.seenAgent = state.seenAgent || []
+      if (m.created_at && (!state.agentCursor || m.created_at > state.agentCursor)) {
+        state.agentCursor = m.created_at
+      }
+      if (state.seenAgent.indexOf(m.id) !== -1) return
+      state.seenAgent.push(m.id)
+      state.seenAgent = state.seenAgent.slice(-100)
+      addMessage('agent', m.content)
+      state.messages.push({ role: 'agent', content: m.content })
+      if (panel.hidden) bubble.classList.add('unread')
+      saveState()
+    }
+
+    // One-off catch-up for replies sent while this visitor was disconnected
+    function syncMissedReplies() {
+      if (!state.conversationId) return
+      var url =
+        webhook +
+        (webhook.indexOf('?') === -1 ? '?' : '&') +
+        'conversationId=' + encodeURIComponent(state.conversationId) +
+        '&visitorId=' + encodeURIComponent(state.visitorId) +
+        (state.agentCursor ? '&after=' + encodeURIComponent(state.agentCursor) : '')
+      fetch(url)
+        .then(function (res) {
+          return res.json()
+        })
+        .then(function (data) {
+          if (!data || !data.ok || !data.messages) return
+          for (var j = 0; j < data.messages.length; j++) showAgentMessage(data.messages[j])
+        })
+        .catch(function () {})
+    }
+
+    // Minimal Phoenix-protocol client for Supabase Realtime broadcast, so the
+    // widget doesn't have to ship supabase-js
+    var socket = null
+    var socketTopic = null
+    var heartbeat = null
+    var reconnectDelay = 1000
+    var ref = 0
+
+    function send(ws, message) {
+      ref += 1
+      message.ref = String(ref)
+      ws.send(JSON.stringify(message))
+    }
+
+    function connectRealtime() {
+      var rt = info.realtime
+      if (!rt || !rt.url || !rt.apiKey || !state.conversationId || !window.WebSocket) return
+      var topic = 'realtime:widget:' + state.conversationId + ':' + state.visitorId
+      if (socket && socketTopic === topic) return
+      if (socket) socket.close()
+
+      var ws = new WebSocket(rt.url + '?apikey=' + encodeURIComponent(rt.apiKey) + '&vsn=1.0.0')
+      socket = ws
+      socketTopic = topic
+
+      ws.onopen = function () {
+        reconnectDelay = 1000
+        send(ws, {
+          topic: topic,
+          event: 'phx_join',
+          payload: { config: { broadcast: { self: false }, presence: { key: '' }, private: false } },
+        })
+        clearInterval(heartbeat)
+        heartbeat = setInterval(function () {
+          if (ws.readyState === 1) send(ws, { topic: 'phoenix', event: 'heartbeat', payload: {} })
+        }, 25000)
+        syncMissedReplies()
+      }
+
+      ws.onmessage = function (e) {
+        var msg
+        try {
+          msg = JSON.parse(e.data)
+        } catch {
+          return
+        }
+        if (msg.topic === topic && msg.event === 'broadcast' && msg.payload && msg.payload.event === 'agent_message') {
+          showAgentMessage(msg.payload.payload)
+        }
+      }
+
+      ws.onclose = function () {
+        clearInterval(heartbeat)
+        if (socket !== ws) return // replaced by a newer connection
+        socket = null
+        socketTopic = null
+        setTimeout(connectRealtime, reconnectDelay)
+        reconnectDelay = Math.min(reconnectDelay * 2, 30000)
+      }
+    }
+
+    connectRealtime()
+
     function setOpen(open) {
       panel.hidden = !open
+      if (open) bubble.classList.remove('unread')
       bubble.setAttribute('aria-expanded', String(open))
       bubble.innerHTML = open ? ICON_CLOSE : ICON_CHAT
       bubble.setAttribute('aria-label', open ? TEXT.close : TEXT.open)
@@ -285,7 +389,10 @@
           })
         })
         .then(function (data) {
-          if (data.conversationId) state.conversationId = data.conversationId
+          if (data.conversationId && data.conversationId !== state.conversationId) {
+            state.conversationId = data.conversationId
+            connectRealtime()
+          }
           if (data.ok && data.reply) {
             addMessage('assistant', data.reply)
             state.messages.push({ role: 'assistant', content: data.reply })

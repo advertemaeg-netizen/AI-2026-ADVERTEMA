@@ -184,5 +184,78 @@
       "nameRequired": "Channel name is required.",
       "nameTooLong": "Name is too long (max 100 characters)."
     }
+  },
+  "conversations": {
+    "title": "Conversations",
+    "description": "A unified inbox for every client conversation across all channels.",
+    "empty": "No conversations yet. They will show up here as soon as a visitor writes in.",
+    "emptyFiltered": "No conversations match the current filters.",
+    "limitNotice": "Showing the 100 most recent conversations. Use filters or search to narrow down.",
+    "searchPlaceholder": "Search by name, number or message text...",
+    "visitor": "Visitor {id}",
+    "noMessages": "No messages yet.",
+    "you": "You",
+    "agent": "Agent",
+    "assistant": "AI assistant",
+    "unassigned": "Unassigned",
+    "noTeam": "No team members are linked to this client yet.",
+    "backToInbox": "Back to conversations",
+    "messages": "Messages",
+    "replyPlaceholder": "Type your reply... (Enter to send, Shift+Enter for a new line)",
+    "send": "Send",
+    "sending": "Sending...",
+    "changeStatus": "Change status",
+    "prefix": {
+      "assistant": "AI",
+      "agent": "Team"
+    },
+    "status": {
+      "all": "All",
+      "new": "New",
+      "in_progress": "In progress",
+      "converted": "Converted",
+      "closed": "Closed"
+    },
+    "filters": {
+      "client": "Client",
+      "allClients": "All clients",
+      "channel": "Channel",
+      "allChannels": "All channels",
+      "date": "Date",
+      "anyTime": "Any time",
+      "ranges": {
+        "today": "Today",
+        "7d": "Last 7 days",
+        "30d": "Last 30 days"
+      }
+    },
+    "panel": {
+      "contact": "Contact details",
+      "client": "Client & channel",
+      "assignment": "Assignment"
+    },
+    "fields": {
+      "name": "Name",
+      "identifier": "Identifier",
+      "startedAt": "Started",
+      "lastActivity": "Last activity",
+      "status": "Status",
+      "clientName": "Client",
+      "industry": "Industry",
+      "channel": "Channel",
+      "assignedTo": "Assigned to"
+    },
+    "toast": {
+      "statusUpdated": "Status updated",
+      "assigned": "Conversation assigned",
+      "unassigned": "Conversation unassigned"
+    },
+    "errors": {
+      "unauthorized": "Your session has expired. Please log in again.",
+      "forbidden": "You do not have permission to do this.",
+      "validation": "The submitted data is not valid.",
+      "notFound": "Conversation not found or no longer assigned to you.",
+      "unknown": "Something went wrong. Please try again."
+    }
   }
 }

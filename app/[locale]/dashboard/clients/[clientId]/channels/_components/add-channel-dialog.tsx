@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/select'
 import { createChannelAction } from '@/lib/actions/channels'
 import { AVAILABLE_CHANNEL_TYPES, CHANNEL_TYPES, type ChannelType } from '@/lib/types/channels'
-import { CHANNEL_ICONS } from './channel-meta'
+import { CHANNEL_ICONS } from '@/components/channel-icon'
 
 export function AddChannelDialog({ clientId }: { clientId: string }) {
   const t = useTranslations('channels')
