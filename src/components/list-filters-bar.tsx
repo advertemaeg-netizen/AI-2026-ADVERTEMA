@@ -15,16 +15,15 @@ import {
 } from '@/components/ui/select'
 import { ChannelIcon } from '@/components/channel-icon'
 import { CHANNEL_TYPES } from '@/lib/types/channels'
-import {
-  CONVERSATION_STATUSES,
-  DATE_RANGES,
-  type ConversationFilters,
-} from '@/lib/types/conversations'
+import { DATE_RANGES } from '@/lib/types/conversations'
+import type { ListFilters } from '@/lib/list-filters'
 
 const ALL = 'all'
 
-// URL param names for each filter
-const PARAM: Record<keyof ConversationFilters, string> = {
+type Filters = ListFilters<string>
+
+// URL param names for each filter (read back by parseListFilters)
+const PARAM: Record<keyof Filters, string> = {
   clientId: 'client',
   status: 'status',
   channelType: 'channel',
@@ -32,25 +31,33 @@ const PARAM: Record<keyof ConversationFilters, string> = {
   q: 'q',
 }
 
-export function InboxFilters({
+/**
+ * Status tabs + search + client / channel / date filters, kept in the URL.
+ * `namespace` must provide status.*, searchPlaceholder and filters.* keys.
+ */
+export function ListFiltersBar({
   filters,
   clients,
+  statuses,
+  namespace,
 }: {
-  filters: ConversationFilters
+  filters: Filters
   clients: { id: string; name: string }[]
+  statuses: readonly string[]
+  namespace: 'conversations' | 'leads'
 }) {
-  const t = useTranslations('conversations')
+  const t = useTranslations(namespace)
   const tChannels = useTranslations('channels')
   const router = useRouter()
   const pathname = usePathname()
   const [isPending, startTransition] = useTransition()
   const [search, setSearch] = useState(filters.q ?? '')
 
-  function update(key: keyof ConversationFilters, value: string | undefined) {
+  function update(key: keyof Filters, value: string | undefined) {
     const params = new URLSearchParams()
     const next = { ...filters, [key]: value }
     for (const [k, v] of Object.entries(next)) {
-      if (v) params.set(PARAM[k as keyof ConversationFilters], v)
+      if (v) params.set(PARAM[k as keyof Filters], v)
     }
     const query = params.toString()
     startTransition(() => router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false }))
@@ -73,7 +80,7 @@ export function InboxFilters({
       >
         <TabsList className="max-w-full overflow-x-auto">
           <TabsTrigger value={ALL}>{t('status.all')}</TabsTrigger>
-          {CONVERSATION_STATUSES.map((status) => (
+          {statuses.map((status) => (
             <TabsTrigger key={status} value={status}>
               {t(`status.${status}`)}
             </TabsTrigger>

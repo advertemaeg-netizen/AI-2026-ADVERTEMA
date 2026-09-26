@@ -3,9 +3,9 @@
 import { revalidatePath } from 'next/cache'
 import { canManage, getSession } from '@/lib/auth/session'
 import { UUID_PATTERN } from '@/lib/types/clients'
+import { rangeStart, searchTerm } from '@/lib/list-filters'
 import {
   CONVERSATION_STATUSES,
-  DATE_RANGES,
   type ConversationActionResult,
   type ConversationDetail,
   type ConversationFilters,
@@ -34,21 +34,6 @@ const DETAIL_COLUMNS = `
 `
 
 const MESSAGE_COLUMNS = 'id, conversation_id, role, content, sender_id, created_at'
-
-const RANGE_DAYS: Record<(typeof DATE_RANGES)[number], number> = { today: 0, '7d': 7, '30d': 30 }
-
-function rangeStart(range: (typeof DATE_RANGES)[number]) {
-  const start = new Date()
-  start.setHours(0, 0, 0, 0)
-  start.setDate(start.getDate() - RANGE_DAYS[range])
-  return start.toISOString()
-}
-
-// PostgREST `or()` filters are comma/paren delimited and ilike treats % and _
-// as wildcards, so strip anything that could change the filter's meaning
-function searchTerm(q: string) {
-  return q.replace(/[,()%_\\*:"']/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 100)
-}
 
 export async function getConversations(
   filters: ConversationFilters = {}

@@ -3,15 +3,16 @@ import { MessagesSquare } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { getConversations } from '@/lib/actions/conversations'
 import { getClients } from '@/lib/actions/clients'
-import { parseConversationFilters } from '@/lib/conversation-filters'
-import { InboxFilters } from './_components/inbox-filters'
+import { parseListFilters } from '@/lib/list-filters'
+import { CONVERSATION_STATUSES } from '@/lib/types/conversations'
+import { ListFiltersBar } from '@/components/list-filters-bar'
 import { InboxRealtime } from './_components/inbox-realtime'
 import { ConversationRow } from './_components/conversation-row'
 
 export default async function ConversationsPage({
   searchParams,
 }: PageProps<'/[locale]/dashboard/conversations'>) {
-  const filters = parseConversationFilters(await searchParams)
+  const filters = parseListFilters(await searchParams, CONVERSATION_STATUSES)
   const t = await getTranslations('conversations')
   const [conversations, clients] = await Promise.all([getConversations(filters), getClients()])
 
@@ -26,7 +27,9 @@ export default async function ConversationsPage({
         <p className="text-muted-foreground mt-1">{t('description')}</p>
       </div>
 
-      <InboxFilters
+      <ListFiltersBar
+        namespace="conversations"
+        statuses={CONVERSATION_STATUSES}
         filters={filters}
         clients={clients.map((client) => ({ id: client.id, name: client.name }))}
       />

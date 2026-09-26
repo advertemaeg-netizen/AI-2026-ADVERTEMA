@@ -1,15 +1,61 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { MessagesSquare, Users, Building2, TrendingUp } from 'lucide-react'
-import { getTranslations } from 'next-intl/server'
+import { getFormatter, getTranslations } from 'next-intl/server'
+import { Link } from '@/i18n/navigation'
+import { RelativeTime } from '@/components/relative-time'
+import { getDashboardStats } from '@/lib/dashboard-stats'
+import { LeadStatusBadge } from './leads/_components/lead-status-badge'
 
 export default async function DashboardPage() {
   const t = await getTranslations('dashboard')
+  const tConversations = await getTranslations('conversations')
+  const format = await getFormatter()
+  const data = await getDashboardStats()
+  if (!data) return null
+
+  const percentChange = (value: number, previous: number | null) => {
+    if (!previous) return t('noComparison')
+    const change = (value - previous) / previous
+    return t('vsPrevious', {
+      change: `${change >= 0 ? '+' : ''}${format.number(change, { style: 'percent', maximumFractionDigits: 0 })}`,
+    })
+  }
+
+  const conversionPoints =
+    data.conversionRate.previous === null
+      ? t('noComparison')
+      : t('pointsChange', {
+          change: `${data.conversionRate.value >= data.conversionRate.previous ? '+' : ''}${format.number(
+            (data.conversionRate.value - data.conversionRate.previous) * 100,
+            { maximumFractionDigits: 1 }
+          )}`,
+        })
 
   const stats = [
-    { name: t('totalConversations'), value: '0', icon: MessagesSquare, change: '+0%' },
-    { name: t('activeLeads'), value: '0', icon: Users, change: '+0%' },
-    { name: t('clients'), value: '0', icon: Building2, change: '+0%' },
-    { name: t('conversionRate'), value: '0%', icon: TrendingUp, change: '+0%' },
+    {
+      name: t('totalConversations'),
+      value: format.number(data.conversations.value),
+      icon: MessagesSquare,
+      hint: percentChange(data.conversations.value, data.conversations.previous),
+    },
+    {
+      name: t('activeLeads'),
+      value: format.number(data.activeLeads.value),
+      icon: Users,
+      hint: t('newLeads', { count: data.activeLeads.newThisPeriod }),
+    },
+    {
+      name: t('clients'),
+      value: format.number(data.clients),
+      icon: Building2,
+      hint: t('clientsHint'),
+    },
+    {
+      name: t('conversionRate'),
+      value: format.number(data.conversionRate.value, { style: 'percent', maximumFractionDigits: 1 }),
+      icon: TrendingUp,
+      hint: conversionPoints,
+    },
   ]
 
   return (
@@ -30,9 +76,7 @@ export default async function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {stat.change} {t('fromLastMonth')}
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">{stat.hint}</p>
             </CardContent>
           </Card>
         ))}
@@ -44,9 +88,40 @@ export default async function DashboardPage() {
           <CardDescription>{t('recentActivityDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-12 text-muted-foreground text-sm">
-            {t('noActivity')}
-          </div>
+          {data.recent.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground text-sm">{t('noActivity')}</div>
+          ) : (
+            <ul className="divide-y">
+              {data.recent.map((item) => (
+                <li key={`${item.kind}:${item.id}`}>
+                  <Link
+                    href={item.kind === 'lead' ? `/dashboard/leads/${item.id}` : `/dashboard/conversations/${item.id}`}
+                    className="flex items-center gap-3 py-3 hover:bg-muted/50 -mx-2 px-2 rounded-md"
+                  >
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
+                      {item.kind === 'lead' ? <Users className="size-4" /> : <MessagesSquare className="size-4" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">
+                        {item.kind === 'lead'
+                          ? t('recent.lead', { name: item.title || t('recent.unnamed') })
+                          : t('recent.conversation', {
+                              name:
+                                item.title ||
+                                tConversations('visitor', {
+                                  id: (item.identifier ?? '').slice(0, 6).toUpperCase() || '—',
+                                }),
+                            })}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">{item.client}</p>
+                    </div>
+                    {item.kind === 'lead' && <LeadStatusBadge status={item.status} />}
+                    <RelativeTime date={item.at} className="shrink-0 text-xs text-muted-foreground" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </CardContent>
       </Card>
     </div>

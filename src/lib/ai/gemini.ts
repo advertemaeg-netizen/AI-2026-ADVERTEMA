@@ -1,7 +1,8 @@
 import 'server-only'
 
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
-const DEFAULT_MODEL = 'gemini-2.5-flash'
+// gemini-2.5-flash is no longer offered to new API users
+const DEFAULT_MODEL = 'gemini-3.8-flash'
 
 export type ChatTurn = { role: 'user' | 'assistant'; content: string }
 
@@ -62,6 +63,45 @@ export async function generateReply({
 
   if (!text) throw new Error('Gemini returned an empty response')
   return text
+}
+
+/**
+ * Structured output (JSON mode): the reply must match `responseSchema`
+ * (Gemini's OpenAPI-subset schema). Returns the parsed, unvalidated JSON.
+ */
+export async function generateJson({
+  systemPrompt,
+  prompt,
+  responseSchema,
+  temperature = 0,
+  model = geminiModel(),
+}: {
+  systemPrompt: string
+  prompt: string
+  responseSchema: Record<string, unknown>
+  temperature?: number
+  model?: string
+}): Promise<unknown> {
+  const apiKey = apiKeyOrThrow()
+  const res = await fetch(`${API_BASE}/${model}:generateContent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: { temperature, responseMimeType: 'application/json', responseSchema },
+    }),
+    signal: AbortSignal.timeout(30_000),
+  })
+
+  if (!res.ok) {
+    throw new Error(`Gemini JSON request failed (${res.status}): ${await res.text()}`)
+  }
+
+  const data = (await res.json()) as GenerateContentResponse
+  const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text ?? '').join('')
+  if (!text) throw new Error('Gemini returned an empty JSON response')
+  return JSON.parse(text)
 }
 
 // text-embedding-004 has been retired by Google (404); gemini-embedding-001

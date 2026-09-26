@@ -33,13 +33,22 @@
     "clients": "Clients",
     "settings": "Settings",
     "welcomeBack": "Welcome back — here's what's happening with your platform.",
-    "totalConversations": "Total Conversations",
+    "totalConversations": "Conversations (30 days)",
     "activeLeads": "Active Leads",
-    "conversionRate": "Conversion Rate",
-    "fromLastMonth": "from last month",
+    "conversionRate": "Conversion rate (30 days)",
     "recentActivity": "Recent Activity",
-    "recentActivityDesc": "Latest conversations and leads across your channels.",
-    "noActivity": "No activity yet. Start by connecting your first channel."
+    "recentActivityDesc": "Latest leads and conversations across your channels.",
+    "noActivity": "No activity yet. Start by connecting your first channel.",
+    "noComparison": "No data to compare yet",
+    "vsPrevious": "{change} vs the previous 30 days",
+    "pointsChange": "{change} pts vs the previous 30 days",
+    "newLeads": "{count, plural, =0 {No new leads in 30 days} one {# new lead in 30 days} other {# new leads in 30 days}}",
+    "clientsHint": "Clients you have access to",
+    "recent": {
+      "lead": "New lead: {name}",
+      "conversation": "Conversation with {name}",
+      "unnamed": "Unnamed"
+    }
   },
   "pages": {
     "conversationsDesc": "All conversations across your channels.",
@@ -407,7 +416,7 @@
       "fallback_message": "Fallback message",
       "leadQualification": "Collect lead details",
       "language": "Reply language",
-      "temperature": "Creativity (temperature)",
+      "temperature": "Creativity",
       "maxLength": "Maximum reply length",
       "hoursEnabled": "Enable business hours",
       "timezone": "Time zone"
@@ -470,6 +479,122 @@
       "forbidden": "You do not have permission to change this bot’s settings.",
       "notFound": "Client not found or you do not have access to it.",
       "validation": "Some values are invalid. Please check the fields.",
+      "unknown": "Something went wrong. Please try again."
+    }
+  },
+  "leads": {
+    "title": "Leads",
+    "description": "Potential customers from every channel — detected automatically by the AI assistant.",
+    "count": "{count, plural, =0 {No leads} one {# lead} other {# leads}}",
+    "empty": "No leads yet. The AI assistant adds them automatically when a visitor shares their details.",
+    "emptyFiltered": "No leads match the current filters.",
+    "limitNotice": "Showing the 200 most recent leads. Use filters or export to see all.",
+    "searchPlaceholder": "Search by name, phone or service...",
+    "unnamed": "Unnamed",
+    "export": "Export CSV / Excel",
+    "backToLeads": "Back to leads",
+    "createdRelative": "Added",
+    "never": "Not contacted yet",
+    "notesPlaceholder": "Write notes about this lead...",
+    "saveNotes": "Save notes",
+    "aiDescription": "What the AI assistant extracted from the conversation.",
+    "deleteTitle": "Delete lead?",
+    "deleteDescription": "This lead and its change history will be permanently deleted. The original conversation is kept.",
+    "status": {
+      "all": "All",
+      "new": "New",
+      "contacted": "Contacted",
+      "appointment_booked": "Appointment booked",
+      "showed_up": "Showed up",
+      "no_show": "No show",
+      "lost": "Lost"
+    },
+    "filters": {
+      "client": "Client",
+      "allClients": "All clients",
+      "channel": "Channel",
+      "allChannels": "All channels",
+      "date": "Date",
+      "anyTime": "Any time",
+      "ranges": {
+        "today": "Today",
+        "7d": "Last 7 days",
+        "30d": "Last 30 days"
+      }
+    },
+    "fields": {
+      "name": "Name",
+      "phone": "Phone",
+      "service": "Service requested",
+      "budget": "Budget",
+      "branch": "Branch",
+      "client": "Client",
+      "channel": "Channel",
+      "status": "Status",
+      "createdAt": "Created",
+      "lastContacted": "Last contacted",
+      "followUp": "Follow-up",
+      "confidence": "Confidence",
+      "notes": "Notes"
+    },
+    "bulk": {
+      "selected": "{count, plural, one {# lead selected} other {# leads selected}}",
+      "changeStatus": "Change status to...",
+      "apply": "Apply",
+      "clear": "Clear selection",
+      "selectAll": "Select all",
+      "select": "Select {name}"
+    },
+    "actions": {
+      "call": "Call",
+      "whatsapp": "WhatsApp",
+      "openConversation": "Open original conversation"
+    },
+    "sections": {
+      "followUp": "Follow-up",
+      "details": "Lead details",
+      "notes": "Notes",
+      "ai": "AI analysis",
+      "timeline": "Change history"
+    },
+    "followUp": {
+      "pick": "Set follow-up",
+      "time": "Time",
+      "clear": "Clear follow-up"
+    },
+    "ai": {
+      "summary": "Summary",
+      "preferredTime": "Preferred time",
+      "phoneRaw": "Phone as the visitor wrote it"
+    },
+    "timeline": {
+      "ai": "AI assistant",
+      "you": "You",
+      "someone": "A team member",
+      "empty": "No changes yet.",
+      "created": "created the lead",
+      "statusChanged": "changed the status from \"{from}\" to \"{to}\"",
+      "followUpSet": "set a follow-up for {date}",
+      "followUpCleared": "cleared the follow-up",
+      "contacted": "contacted the lead",
+      "notesUpdated": "edited the notes",
+      "detailsUpdated": "updated {fields}"
+    },
+    "toast": {
+      "bulkUpdated": "{count, plural, one {# lead updated} other {# leads updated}}",
+      "deleted": "Lead deleted",
+      "followUpSet": "Follow-up set",
+      "followUpCleared": "Follow-up cleared",
+      "statusUpdated": "Status updated",
+      "saved": "Details saved",
+      "notesSaved": "Notes saved"
+    },
+    "errors": {
+      "unauthorized": "Your session has expired. Please log in again.",
+      "forbidden": "You do not have permission to do this.",
+      "notFound": "Lead not found or you do not have access to it.",
+      "validation": "Some of the data is invalid.",
+      "invalidPhone": "Invalid phone number. Use an Egyptian mobile number (010 / 011 / 012 / 015).",
       "unknown": "Something went wrong. Please try again."
     }
   }

@@ -1,7 +1,9 @@
-import { NextResponse, type NextRequest } from 'next/server'
+import { after, NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { geminiModel, type ChatTurn } from '@/lib/ai/gemini'
 import { BOT_HISTORY_LIMIT, loadBotSettings, runBot } from '@/lib/ai/bot'
+import { detectLead } from '@/lib/ai/lead-detection'
+import type { BotSettingsInput } from '@/lib/types/bot-settings'
 import { UUID_PATTERN } from '@/lib/types/clients'
 
 // The widget is embedded on client websites, so any origin may call this route
@@ -254,14 +256,12 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       conversationId = created.id
     }
 
-    const { error: userMessageError } = await supabase
+    const { data: userMessage, error: userMessageError } = await supabase
       .from('messages')
       .insert({ conversation_id: conversationId, role: 'user', content: message })
+      .select('id')
+      .single<{ id: string }>()
     if (userMessageError) throw userMessageError
-
-    // A human agent has taken over: store the message, skip the AI. The
-    // agent's reply reaches the widget over Realtime broadcast.
-    if (!autoReply) return json({ ok: true, conversationId, reply: null, handoff: true })
 
     const { data: recent, error: historyError } = await supabase
       .from('messages')
@@ -277,9 +277,40 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       .reverse()
       .map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }))
 
+    let settings: BotSettingsInput | null = null
+    try {
+      settings = await loadBotSettings(supabase, channel.client_id)
+    } catch (error) {
+      console.error('[webhook/website] loading bot settings failed', error)
+    }
+
+    // Lead detection runs after the response is sent, so it never slows the reply
+    const convId = conversationId
+    const scheduleLeadDetection = (turns: ChatTurn[]) => {
+      if (!settings?.lead_qualification_enabled) return
+      after(() =>
+        detectLead({
+          supabase,
+          clientId: channel.client_id,
+          conversationId: convId,
+          sourceMessageId: userMessage.id,
+          history: turns,
+        })
+      )
+    }
+
+    // A human agent has taken over: store the message, skip the AI. The
+    // agent's reply reaches the widget over Realtime broadcast. Visitors often
+    // share their details at this point, so still look for a lead.
+    if (!autoReply) {
+      scheduleLeadDetection(history)
+      return json({ ok: true, conversationId, reply: null, handoff: true })
+    }
+
+    if (!settings) return json({ ok: false, error: 'ai_unavailable', conversationId }, 502)
+
     let reply: string
     try {
-      const settings = await loadBotSettings(supabase, channel.client_id)
       const result = await runBot({
         supabase,
         clientId: channel.client_id,
@@ -310,6 +341,8 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
         .update({ messages_used: subscription.messages_used + 1 })
         .eq('id', subscription.id)
     }
+
+    scheduleLeadDetection([...history, { role: 'assistant', content: reply }])
 
     return json({ ok: true, conversationId, reply })
   } catch (error) {
