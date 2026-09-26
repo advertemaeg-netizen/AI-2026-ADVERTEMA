@@ -14,6 +14,7 @@ import {
   Sparkles,
   UsersRound,
   CalendarDays,
+  BarChart3,
   type LucideIcon,
 } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -64,6 +65,7 @@ export function DashboardShell({
   const navigation: NavItem[] = selectedClient
     ? [
         { name: t('overview'), href: '/dashboard', icon: LayoutDashboard, exact: true },
+        { name: t('analytics'), href: '/dashboard/analytics', icon: BarChart3 },
         { name: t('conversations'), href: '/dashboard/conversations', icon: MessagesSquare },
         { name: t('leads'), href: '/dashboard/leads', icon: Users },
         { name: t('appointments'), href: '/dashboard/appointments', icon: CalendarDays },
@@ -79,6 +81,7 @@ export function DashboardShell({
       ]
     : [
         { name: t('overview'), href: '/dashboard', icon: LayoutDashboard, exact: true },
+        { name: t('analytics'), href: '/dashboard/analytics', icon: BarChart3 },
         { name: t('allConversations'), href: '/dashboard/conversations', icon: MessagesSquare },
         { name: t('allLeads'), href: '/dashboard/leads', icon: Users },
         { name: t('appointments'), href: '/dashboard/appointments', icon: CalendarDays },
@@ -101,8 +104,8 @@ export function DashboardShell({
   }
 
   return (
-    <div className="flex h-screen bg-background">
-      <aside className="w-64 border-r bg-card flex flex-col">
+    <div className="flex h-screen bg-background print:block print:h-auto">
+      <aside className="w-64 border-r bg-card flex flex-col print:hidden">
                <div className="p-6 border-b flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-orange-500 flex items-center justify-center">
@@ -186,7 +189,7 @@ export function DashboardShell({
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto print:overflow-visible">
         {children}
       </main>
     </div>

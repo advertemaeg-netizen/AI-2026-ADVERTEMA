@@ -57,7 +57,8 @@
     "activeChannels": "القنوات النشطة",
     "activeChannelsHint": "قنوات هذا العميل المفعّلة حالياً",
     "scopedTo": "إليك ما يحدث مع {client}.",
-    "appointments": "المواعيد"
+    "appointments": "المواعيد",
+    "analytics": "التحليلات"
   },
   "pages": {
     "conversationsDesc": "كل المحادثات عبر قنواتك.",
@@ -838,6 +839,114 @@
         "appointments": "المواعيد",
         "attended": "الحضور"
       }
+    }
+  },
+  "analytics": {
+    "title": "التحليلات",
+    "description": "أداء المحادثات والليدز والمواعيد، مقارنةً بالفترة السابقة. كل الأوقات بتوقيت القاهرة.",
+    "allClients": "كل العملاء",
+    "noData": "لا توجد بيانات في هذه الفترة.",
+    "viewTable": "عرض كجدول",
+    "viewChart": "عرض كرسم",
+    "loading": "جارٍ التحميل",
+    "apply": "تطبيق",
+    "exportCsv": "تصدير البيانات CSV",
+    "exportPdf": "تصدير PDF",
+    "comparedTo": "مقارنةً بـ {period}",
+    "agentResponse": "رد الفريق يدوياً في {count, plural, one {محادثة واحدة} two {محادثتين} few {# محادثات} many {# محادثة} other {# محادثة}} بمتوسط {time} من أول رسالة.",
+    "ranges": {
+      "today": "اليوم",
+      "7d": "آخر 7 أيام",
+      "30d": "آخر 30 يوماً",
+      "month": "هذا الشهر",
+      "custom": "مخصص"
+    },
+    "kpis": {
+      "conversations": "إجمالي المحادثات",
+      "leads": "الليدز الجديدة",
+      "conversionRate": "معدل التحويل",
+      "responseTime": "متوسط وقت الرد",
+      "booked": "المواعيد المحجوزة",
+      "attendanceRate": "معدل الحضور"
+    },
+    "delta": {
+      "points": "{value} نقطة",
+      "up": "زيادة {value} عن الفترة السابقة",
+      "down": "انخفاض {value} عن الفترة السابقة",
+      "same": "بدون تغيير عن الفترة السابقة",
+      "none": "لا توجد بيانات للمقارنة"
+    },
+    "duration": {
+      "seconds": "{value} ث",
+      "minutes": "{value} د",
+      "hours": "{value} س"
+    },
+    "series": {
+      "conversations": "المحادثات",
+      "leads": "الليدز",
+      "messages": "رسائل الزوار",
+      "channel": "القناة",
+      "share": "النسبة",
+      "count": "العدد",
+      "status": "الحالة"
+    },
+    "charts": {
+      "overTime": {
+        "title": "المحادثات والليدز عبر الوقت",
+        "daily": "يومياً",
+        "weekly": "أسبوعياً (الأسبوع يبدأ السبت)"
+      },
+      "channels": {
+        "title": "توزيع القنوات",
+        "description": "المحادثات الجديدة حسب القناة.",
+        "single": "كل المحادثات ({count}) جاءت من {channel}."
+      },
+      "peakHours": {
+        "title": "ساعات الذروة",
+        "description": "رسائل الزوار حسب الساعة بتوقيت القاهرة.",
+        "busiest": "أكثر ساعة نشاطاً: {hour} (بتوقيت القاهرة)."
+      },
+      "funnel": {
+        "title": "رحلة العميل",
+        "description": "الليدز التي بدأت في هذه الفترة وكم منها وصل لكل مرحلة.",
+        "stage": "المرحلة",
+        "fromPrevious": "من المرحلة السابقة",
+        "rateTo": "إلى {stage}",
+        "steps": {
+          "conversations": "المحادثات",
+          "leads": "الليدز",
+          "appointments": "المواعيد",
+          "attended": "الحضور"
+        }
+      },
+      "leadStatus": {
+        "title": "حالات الليدز",
+        "description": "الحالة الحالية لليدز التي أُضيفت في هذه الفترة."
+      }
+    },
+    "topClients": {
+      "title": "أفضل 5 عملاء أداءً",
+      "description": "مرتبين حسب عدد الليدز ثم الحضور.",
+      "client": "العميل"
+    },
+    "export": {
+      "period": "الفترة",
+      "kpis": "المؤشرات",
+      "current": "الفترة الحالية",
+      "previous": "الفترة السابقة",
+      "date": "التاريخ",
+      "hour": "الساعة",
+      "allClients": "كل العملاء"
+    },
+    "errors": {
+      "export": "تعذّر تصدير البيانات. حاول مرة أخرى.",
+      "load": "تعذّر تحميل التحليلات لهذه الفترة."
+    },
+    "trend": {
+      "title": "المحادثات آخر 7 أيام",
+      "total": "{count, plural, =0 {لا توجد محادثات} one {محادثة واحدة} two {محادثتان} few {# محادثات} many {# محادثة} other {# محادثة}}",
+      "viewAll": "عرض التحليلات الكاملة",
+      "empty": "لا توجد محادثات خلال آخر 7 أيام."
     }
   }
 }

@@ -57,7 +57,8 @@
     "activeChannels": "Active channels",
     "activeChannelsHint": "This client’s channels that are currently on",
     "scopedTo": "Here’s what’s happening with {client}.",
-    "appointments": "Appointments"
+    "appointments": "Appointments",
+    "analytics": "Analytics"
   },
   "pages": {
     "conversationsDesc": "All conversations across your channels.",
@@ -838,6 +839,114 @@
         "appointments": "Appointments",
         "attended": "Showed up"
       }
+    }
+  },
+  "analytics": {
+    "title": "Analytics",
+    "description": "Conversations, leads and appointments compared with the previous period. All times in Cairo.",
+    "allClients": "All clients",
+    "noData": "No data in this period.",
+    "viewTable": "View as table",
+    "viewChart": "View as chart",
+    "loading": "Loading",
+    "apply": "Apply",
+    "exportCsv": "Export CSV",
+    "exportPdf": "Export PDF",
+    "comparedTo": "compared with {period}",
+    "agentResponse": "The team replied manually in {count, plural, one {# conversation} other {# conversations}}, on average {time} after the first message.",
+    "ranges": {
+      "today": "Today",
+      "7d": "Last 7 days",
+      "30d": "Last 30 days",
+      "month": "This month",
+      "custom": "Custom"
+    },
+    "kpis": {
+      "conversations": "Total conversations",
+      "leads": "New leads",
+      "conversionRate": "Conversion rate",
+      "responseTime": "Avg. response time",
+      "booked": "Appointments booked",
+      "attendanceRate": "Attendance rate"
+    },
+    "delta": {
+      "points": "{value} pts",
+      "up": "Up {value} vs previous period",
+      "down": "Down {value} vs previous period",
+      "same": "No change vs previous period",
+      "none": "No data to compare"
+    },
+    "duration": {
+      "seconds": "{value}s",
+      "minutes": "{value} min",
+      "hours": "{value} h"
+    },
+    "series": {
+      "conversations": "Conversations",
+      "leads": "Leads",
+      "messages": "Visitor messages",
+      "channel": "Channel",
+      "share": "Share",
+      "count": "Count",
+      "status": "Status"
+    },
+    "charts": {
+      "overTime": {
+        "title": "Conversations and leads over time",
+        "daily": "Daily",
+        "weekly": "Weekly (weeks start Saturday)"
+      },
+      "channels": {
+        "title": "Channel distribution",
+        "description": "New conversations by channel.",
+        "single": "All conversations ({count}) came from {channel}."
+      },
+      "peakHours": {
+        "title": "Peak hours",
+        "description": "Visitor messages by hour, Cairo time.",
+        "busiest": "Busiest hour: {hour} (Cairo time)."
+      },
+      "funnel": {
+        "title": "Customer journey",
+        "description": "Leads that started in this period and how many reached each stage.",
+        "stage": "Stage",
+        "fromPrevious": "From previous stage",
+        "rateTo": "to {stage}",
+        "steps": {
+          "conversations": "Conversations",
+          "leads": "Leads",
+          "appointments": "Appointments",
+          "attended": "Showed up"
+        }
+      },
+      "leadStatus": {
+        "title": "Lead statuses",
+        "description": "Current status of leads added in this period."
+      }
+    },
+    "topClients": {
+      "title": "Top 5 clients",
+      "description": "Ranked by leads, then attendance.",
+      "client": "Client"
+    },
+    "export": {
+      "period": "Period",
+      "kpis": "KPIs",
+      "current": "This period",
+      "previous": "Previous period",
+      "date": "Date",
+      "hour": "Hour",
+      "allClients": "All clients"
+    },
+    "errors": {
+      "export": "Could not export the data. Please try again.",
+      "load": "Could not load analytics for this period."
+    },
+    "trend": {
+      "title": "Conversations, last 7 days",
+      "total": "{count, plural, =0 {No conversations} one {# conversation} other {# conversations}}",
+      "viewAll": "View full analytics",
+      "empty": "No conversations in the last 7 days."
     }
   }
 }

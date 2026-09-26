@@ -8,6 +8,8 @@ import { getSelectedClient } from '@/lib/auth/client-context'
 import { LeadStatusBadge } from './leads/_components/lead-status-badge'
 import { getJourneyStats, getUpcomingAppointments } from '@/lib/actions/appointments'
 import { AttendanceCard, JourneyFunnel, TodayAppointmentsCard } from './_components/journey-widgets'
+import { ConversationTrendCard } from './_components/conversation-trend-card'
+import { getConversationTrend } from '@/lib/actions/analytics'
 
 export default async function DashboardPage() {
   const t = await getTranslations('dashboard')
@@ -15,10 +17,11 @@ export default async function DashboardPage() {
   const format = await getFormatter()
   const selectedClient = await getSelectedClient()
   const clientId = selectedClient?.id ?? null
-  const [data, todayAppointments, journey] = await Promise.all([
+  const [data, todayAppointments, journey, trend] = await Promise.all([
     getDashboardStats(clientId),
     getUpcomingAppointments({ range: 'today', clientId }),
     getJourneyStats(clientId, '30d'),
+    getConversationTrend(clientId, 7),
   ])
   if (!data || !journey) return null
 
@@ -98,6 +101,10 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      <div className="mb-8">
+        <ConversationTrendCard data={trend} />
       </div>
 
       <div className="mb-8 grid gap-4 lg:grid-cols-3">
