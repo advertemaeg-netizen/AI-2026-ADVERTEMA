@@ -12,10 +12,10 @@ export type RecentItem =
   | { kind: 'conversation'; id: string; title: string | null; identifier: string | null; client: string; at: string }
 
 /**
- * Overview numbers for the signed-in user (RLS scopes everything):
- * last 30 days compared with the 30 days before.
+ * Overview numbers for the signed-in user (RLS scopes everything), optionally
+ * for one client: last 30 days compared with the 30 days before.
  */
-export async function getDashboardStats() {
+export async function getDashboardStats(clientId: string | null = null) {
   const { supabase, profile } = await getSession()
   if (!profile) return null
 
@@ -26,9 +26,27 @@ export async function getDashboardStats() {
   const count = async (table: 'conversations' | 'leads', from: string, to?: string) => {
     let query = supabase.from(table).select('id', { count: 'exact', head: true }).gte('created_at', from)
     if (to) query = query.lt('created_at', to)
+    if (clientId) query = query.eq('client_id', clientId)
     const { count: n, error } = await query
     if (error) throw new Error(`Failed to count ${table}: ${error.message}`)
     return n ?? 0
+  }
+
+  // Narrowed to the selected client when there is one
+  let activeLeadsQuery = supabase
+    .from('leads')
+    .select('id', { count: 'exact', head: true })
+    .in('status', ACTIVE_LEAD_STATUSES)
+  let recentLeadsQuery = supabase
+    .from('leads')
+    .select('id, name, status, created_at, client:clients!inner(name)')
+  let recentConversationsQuery = supabase
+    .from('conversations')
+    .select('id, contact_name, contact_identifier, last_message_at, client:clients!inner(name)')
+  if (clientId) {
+    activeLeadsQuery = activeLeadsQuery.eq('client_id', clientId)
+    recentLeadsQuery = recentLeadsQuery.eq('client_id', clientId)
+    recentConversationsQuery = recentConversationsQuery.eq('client_id', clientId)
   }
 
   const [
@@ -37,7 +55,7 @@ export async function getDashboardStats() {
     leads,
     previousLeads,
     activeLeads,
-    clients,
+    scopeCount,
     recentLeads,
     recentConversations,
   ] = await Promise.all([
@@ -45,24 +63,21 @@ export async function getDashboardStats() {
     count('conversations', previousStart, periodStart),
     count('leads', periodStart),
     count('leads', previousStart, periodStart),
-    supabase
-      .from('leads')
-      .select('id', { count: 'exact', head: true })
-      .in('status', ACTIVE_LEAD_STATUSES)
-      .then(({ count: n }) => n ?? 0),
-    supabase
-      .from('clients')
-      .select('id', { count: 'exact', head: true })
-      .then(({ count: n }) => n ?? 0),
-    supabase
-      .from('leads')
-      .select('id, name, status, created_at, client:clients!inner(name)')
+    activeLeadsQuery.then(({ count: n }) => n ?? 0),
+    // One client: its active channels. All clients: how many clients.
+    (clientId
+      ? supabase
+          .from('channels')
+          .select('id', { count: 'exact', head: true })
+          .eq('client_id', clientId)
+          .eq('is_active', true)
+      : supabase.from('clients').select('id', { count: 'exact', head: true })
+    ).then(({ count: n }) => n ?? 0),
+    recentLeadsQuery
       .order('created_at', { ascending: false })
       .limit(5)
       .returns<{ id: string; name: string | null; status: LeadStatus; created_at: string; client: { name: string } }[]>(),
-    supabase
-      .from('conversations')
-      .select('id, contact_name, contact_identifier, last_message_at, client:clients!inner(name)')
+    recentConversationsQuery
       .order('last_message_at', { ascending: false })
       .limit(5)
       .returns<{ id: string; contact_name: string | null; contact_identifier: string | null; last_message_at: string; client: { name: string } }[]>(),
@@ -96,7 +111,7 @@ export async function getDashboardStats() {
     conversations: { value: conversations, previous: previousConversations } satisfies StatValue,
     // Active = still being worked; change compares new leads per period
     activeLeads: { value: activeLeads, newThisPeriod: leads, newPrevious: previousLeads },
-    clients,
+    scope: { kind: clientId ? ('channels' as const) : ('clients' as const), value: scopeCount },
     conversionRate: {
       value: rate(leads, conversations),
       previous: previousConversations > 0 ? rate(previousLeads, previousConversations) : null,

@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { getConversations } from '@/lib/actions/conversations'
 import { getClients } from '@/lib/actions/clients'
 import { parseListFilters } from '@/lib/list-filters'
+import { getSelectedClient } from '@/lib/auth/client-context'
 import { CONVERSATION_STATUSES } from '@/lib/types/conversations'
 import { ListFiltersBar } from '@/components/list-filters-bar'
 import { InboxRealtime } from './_components/inbox-realtime'
@@ -13,10 +14,13 @@ export default async function ConversationsPage({
   searchParams,
 }: PageProps<'/[locale]/dashboard/conversations'>) {
   const filters = parseListFilters(await searchParams, CONVERSATION_STATUSES)
+  // Scoped to the client picked in the sidebar switcher, if any
+  const selectedClient = await getSelectedClient()
+  if (selectedClient) filters.clientId = selectedClient.id
   const t = await getTranslations('conversations')
   const [conversations, clients] = await Promise.all([getConversations(filters), getClients()])
 
-  const hasFilters = Object.values(filters).some(Boolean)
+  const hasFilters = Object.entries(filters).some(([key, value]) => value && !(key === 'clientId' && selectedClient))
 
   return (
     <div className="p-8">
@@ -32,6 +36,7 @@ export default async function ConversationsPage({
         statuses={CONVERSATION_STATUSES}
         filters={filters}
         clients={clients.map((client) => ({ id: client.id, name: client.name }))}
+        clientLocked={!!selectedClient}
       />
 
       <Card className="mt-4 py-0">

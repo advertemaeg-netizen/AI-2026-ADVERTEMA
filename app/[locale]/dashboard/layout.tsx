@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { getClientContext } from '@/lib/auth/client-context'
 import { DashboardShell } from './_components/dashboard-shell'
 
 export default async function DashboardLayout({
@@ -18,8 +19,13 @@ export default async function DashboardLayout({
     .eq('id', user.id)
     .single()
 
+  const context = await getClientContext()
+
   return (
     <DashboardShell
+      clients={context?.clients ?? []}
+      selectedClient={context?.selected ?? null}
+      canSeeAll={context?.canSeeAll ?? false}
       user={{
         email: user.email!,
         fullName: profile?.full_name,

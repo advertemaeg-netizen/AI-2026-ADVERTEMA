@@ -1,16 +1,18 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { MessagesSquare, Users, Building2, TrendingUp } from 'lucide-react'
+import { MessagesSquare, Users, Building2, TrendingUp, Radio } from 'lucide-react'
 import { getFormatter, getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { RelativeTime } from '@/components/relative-time'
 import { getDashboardStats } from '@/lib/dashboard-stats'
+import { getSelectedClient } from '@/lib/auth/client-context'
 import { LeadStatusBadge } from './leads/_components/lead-status-badge'
 
 export default async function DashboardPage() {
   const t = await getTranslations('dashboard')
   const tConversations = await getTranslations('conversations')
   const format = await getFormatter()
-  const data = await getDashboardStats()
+  const selectedClient = await getSelectedClient()
+  const data = await getDashboardStats(selectedClient?.id ?? null)
   if (!data) return null
 
   const percentChange = (value: number, previous: number | null) => {
@@ -44,12 +46,19 @@ export default async function DashboardPage() {
       icon: Users,
       hint: t('newLeads', { count: data.activeLeads.newThisPeriod }),
     },
-    {
-      name: t('clients'),
-      value: format.number(data.clients),
-      icon: Building2,
-      hint: t('clientsHint'),
-    },
+    data.scope.kind === 'channels'
+      ? {
+          name: t('activeChannels'),
+          value: format.number(data.scope.value),
+          icon: Radio,
+          hint: t('activeChannelsHint'),
+        }
+      : {
+          name: t('clients'),
+          value: format.number(data.scope.value),
+          icon: Building2,
+          hint: t('clientsHint'),
+        },
     {
       name: t('conversionRate'),
       value: format.number(data.conversionRate.value, { style: 'percent', maximumFractionDigits: 1 }),
@@ -62,7 +71,9 @@ export default async function DashboardPage() {
     <div className="p-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">{t('overview')}</h1>
-        <p className="text-muted-foreground mt-1">{t('welcomeBack')}</p>
+        <p className="text-muted-foreground mt-1">
+          {selectedClient ? t('scopedTo', { client: selectedClient.name }) : t('welcomeBack')}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

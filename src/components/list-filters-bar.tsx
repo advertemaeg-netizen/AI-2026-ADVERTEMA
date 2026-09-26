@@ -40,11 +40,14 @@ export function ListFiltersBar({
   clients,
   statuses,
   namespace,
+  clientLocked = false,
 }: {
   filters: Filters
   clients: { id: string; name: string }[]
   statuses: readonly string[]
   namespace: 'conversations' | 'leads'
+  /** The dashboard is scoped to one client, so there's nothing to pick */
+  clientLocked?: boolean
 }) {
   const t = useTranslations(namespace)
   const tChannels = useTranslations('channels')
@@ -56,6 +59,8 @@ export function ListFiltersBar({
   function update(key: keyof Filters, value: string | undefined) {
     const params = new URLSearchParams()
     const next = { ...filters, [key]: value }
+    // A locked client comes from the client switcher, not the URL
+    if (clientLocked) delete next.clientId
     for (const [k, v] of Object.entries(next)) {
       if (v) params.set(PARAM[k as keyof Filters], v)
     }
@@ -101,22 +106,24 @@ export function ListFiltersBar({
           />
         </div>
 
-        <Select
-          value={filters.clientId ?? ALL}
-          onValueChange={(value) => update('clientId', value === ALL ? undefined : value)}
-        >
-          <SelectTrigger className="w-44" aria-label={t('filters.client')}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>{t('filters.allClients')}</SelectItem>
-            {clients.map((client) => (
-              <SelectItem key={client.id} value={client.id}>
-                {client.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {!clientLocked && (
+          <Select
+            value={filters.clientId ?? ALL}
+            onValueChange={(value) => update('clientId', value === ALL ? undefined : value)}
+          >
+            <SelectTrigger className="w-44" aria-label={t('filters.client')}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>{t('filters.allClients')}</SelectItem>
+              {clients.map((client) => (
+                <SelectItem key={client.id} value={client.id}>
+                  {client.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
         <Select
           value={filters.channelType ?? ALL}

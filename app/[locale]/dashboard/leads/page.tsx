@@ -2,12 +2,16 @@ import { getTranslations } from 'next-intl/server'
 import { getLeads } from '@/lib/actions/leads'
 import { getClients } from '@/lib/actions/clients'
 import { parseListFilters } from '@/lib/list-filters'
+import { getSelectedClient } from '@/lib/auth/client-context'
 import { LEAD_STATUSES } from '@/lib/types/leads'
 import { ListFiltersBar } from '@/components/list-filters-bar'
 import { LeadsTable } from './_components/leads-table'
 
 export default async function LeadsPage({ searchParams }: PageProps<'/[locale]/dashboard/leads'>) {
   const filters = parseListFilters(await searchParams, LEAD_STATUSES)
+  // Scoped to the client picked in the sidebar switcher, if any
+  const selectedClient = await getSelectedClient()
+  if (selectedClient) filters.clientId = selectedClient.id
   const t = await getTranslations('leads')
   const [leads, clients] = await Promise.all([getLeads(filters), getClients()])
 
@@ -23,6 +27,7 @@ export default async function LeadsPage({ searchParams }: PageProps<'/[locale]/d
         statuses={LEAD_STATUSES}
         filters={filters}
         clients={clients.map((client) => ({ id: client.id, name: client.name }))}
+        clientLocked={!!selectedClient}
       />
 
       <LeadsTable
@@ -30,7 +35,7 @@ export default async function LeadsPage({ searchParams }: PageProps<'/[locale]/d
         key={JSON.stringify(filters)}
         leads={leads}
         filters={filters}
-        hasFilters={Object.values(filters).some(Boolean)}
+        hasFilters={Object.entries(filters).some(([key, value]) => value && !(key === 'clientId' && selectedClient))}
       />
     </div>
   )

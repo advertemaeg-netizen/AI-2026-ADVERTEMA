@@ -34,7 +34,11 @@ export default function LoginPage() {
       return
     }
 
-    router.push('/dashboard')
+    // ?next= lets flows like invite links return after login. Internal paths
+    // only: "//evil.com" or "https://…" would be an open redirect.
+    const next = new URLSearchParams(window.location.search).get('next')
+    const safeNext = next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/\\') ? next : null
+    router.push(safeNext ?? '/dashboard')
     router.refresh()
   }
 

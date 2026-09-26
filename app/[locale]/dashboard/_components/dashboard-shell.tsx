@@ -12,6 +12,8 @@ import {
   Settings,
   LogOut,
   Sparkles,
+  UsersRound,
+  type LucideIcon,
 } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -24,14 +26,27 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
-import { clientIdFromPath, clientSections } from '@/components/client-sections'
+import { clientSections } from '@/components/client-sections'
+import { ClientSwitcher } from '@/components/client-switcher'
+import type { ClientOption } from '@/lib/auth/client-context'
+
+type NavItem = { name: string; href: string; icon: LucideIcon; exact?: boolean }
+
+const TEAM_ROLES = ['super_admin', 'org_admin', 'client_admin']
 
 export function DashboardShell({
   children,
   user,
+  clients,
+  selectedClient,
+  canSeeAll,
 }: {
   children: React.ReactNode
   user: { email: string; fullName?: string | null; role?: string | null }
+  clients: ClientOption[]
+  selectedClient: ClientOption | null
+  /** super/org admins: may pick "all clients" */
+  canSeeAll: boolean
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -39,15 +54,33 @@ export function DashboardShell({
   const t = useTranslations('dashboard')
   const tCommon = useTranslations('common')
   const tClientNav = useTranslations('clientNav')
-  const currentClientId = clientIdFromPath(pathname)
 
-  const navigation = [
-    { name: t('overview'), href: '/dashboard', icon: LayoutDashboard },
-    { name: t('conversations'), href: '/dashboard/conversations', icon: MessagesSquare },
-    { name: t('leads'), href: '/dashboard/leads', icon: Users },
-    { name: t('clients'), href: '/dashboard/clients', icon: Building2 },
-    { name: t('settings'), href: '/dashboard/settings', icon: Settings },
-  ]
+  const canManageTeam = TEAM_ROLES.includes(user.role ?? '')
+  const teamItem: NavItem = { name: t('team'), href: '/dashboard/team', icon: UsersRound }
+  const settingsItem: NavItem = { name: t('settings'), href: '/dashboard/settings', icon: Settings }
+
+  // One client in focus: its own pages. All clients (org admins): org-wide pages.
+  const navigation: NavItem[] = selectedClient
+    ? [
+        { name: t('overview'), href: '/dashboard', icon: LayoutDashboard, exact: true },
+        { name: t('conversations'), href: '/dashboard/conversations', icon: MessagesSquare },
+        { name: t('leads'), href: '/dashboard/leads', icon: Users },
+        ...clientSections(selectedClient.id).map((section) => ({
+          name: tClientNav(section.key),
+          href: section.href,
+          icon: section.icon,
+        })),
+        ...(canManageTeam ? [teamItem] : []),
+        settingsItem,
+      ]
+    : [
+        { name: t('overview'), href: '/dashboard', icon: LayoutDashboard, exact: true },
+        { name: t('allConversations'), href: '/dashboard/conversations', icon: MessagesSquare },
+        { name: t('allLeads'), href: '/dashboard/leads', icon: Users },
+        ...(canSeeAll ? [{ name: t('clients'), href: '/dashboard/clients', icon: Building2 }] : []),
+        ...(canManageTeam ? [teamItem] : []),
+        settingsItem,
+      ]
 
   const initials = (user.fullName || user.email)
     .split(' ')
@@ -75,49 +108,39 @@ export function DashboardShell({
           <LanguageSwitcher />
         </div>
 
-        <nav className="flex-1 p-4 space-y-1">
+        {/* Everyone who can see more than one client can switch; org admins also get "all" */}
+        {(canSeeAll || clients.length > 1) && (
+          <div className="border-b p-4">
+            <ClientSwitcher clients={clients} selectedId={selectedClient?.id ?? null} allowAll={canSeeAll} />
+          </div>
+        )}
+        {!canSeeAll && clients.length === 1 && selectedClient && (
+          <div className="flex items-center gap-2 border-b px-6 py-3 text-sm font-medium">
+            <Building2 className="size-4 text-muted-foreground" />
+            <span className="truncate">{selectedClient.name}</span>
+          </div>
+        )}
+
+        <nav className="flex-1 space-y-1 overflow-y-auto p-4">
           {navigation.map((item) => {
-            const isActive =
-              item.href === '/dashboard'
-                ? pathname === item.href
-                : pathname === item.href || pathname.startsWith(`${item.href}/`)
-            const showClientSections = item.href === '/dashboard/clients' && currentClientId
+            const isActive = item.exact
+              ? pathname === item.href
+              : pathname === item.href || pathname.startsWith(`${item.href}/`)
             return (
-              <div key={item.href}>
-                <Link
-                  href={item.href}
-                  className={cn(
-                    'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
-                    isActive
-                      ? 'bg-accent text-accent-foreground font-medium'
-                      : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-                  )}
-                >
-                  <item.icon className="w-4 h-4" />
-                  {item.name}
-                </Link>
-                {/* The open client's pages, nested under Clients */}
-                {showClientSections && (
-                  <div className="ms-5 mt-1 space-y-1 border-s ps-2">
-                    {clientSections(currentClientId).map((section) => (
-                      <Link
-                        key={section.key}
-                        href={section.href}
-                        aria-current={pathname === section.href ? 'page' : undefined}
-                        className={cn(
-                          'flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors',
-                          pathname === section.href
-                            ? 'text-foreground font-medium'
-                            : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-                        )}
-                      >
-                        <section.icon className="size-3.5" />
-                        {tClientNav(section.key)}
-                      </Link>
-                    ))}
-                  </div>
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={isActive ? 'page' : undefined}
+                className={cn(
+                  'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
+                  isActive
+                    ? 'bg-accent text-accent-foreground font-medium'
+                    : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
                 )}
-              </div>
+              >
+                <item.icon className="w-4 h-4" />
+                {item.name}
+              </Link>
             )
           })}
         </nav>

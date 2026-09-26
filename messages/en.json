@@ -48,7 +48,13 @@
       "lead": "New lead: {name}",
       "conversation": "Conversation with {name}",
       "unnamed": "Unnamed"
-    }
+    },
+    "team": "Team",
+    "allConversations": "All conversations",
+    "allLeads": "All leads",
+    "activeChannels": "Active channels",
+    "activeChannelsHint": "This client’s channels that are currently on",
+    "scopedTo": "Here’s what’s happening with {client}."
   },
   "pages": {
     "conversationsDesc": "All conversations across your channels.",
@@ -597,5 +603,143 @@
       "invalidPhone": "Invalid phone number. Use an Egyptian mobile number (010 / 011 / 012 / 015).",
       "unknown": "Something went wrong. Please try again."
     }
+  },
+  "team": {
+    "title": "Team",
+    "description": "Your organization’s team members and pending invites.",
+    "descriptionScoped": "{client} team members and pending invites.",
+    "members": "Members",
+    "membersCount": "{count, plural, =0 {No members} one {# member} other {# members}}",
+    "empty": "No members yet. Invite your first teammate.",
+    "you": "you",
+    "allClients": "All clients",
+    "actions": "Actions",
+    "remove": "Remove {name}",
+    "removeTitle": "Remove from the organization?",
+    "removeDescription": "{name} will lose access to every client of the organization and their assigned conversations will be unassigned. Their account itself is not deleted.",
+    "removeConfirm": "Remove",
+    "fields": {
+      "name": "Name",
+      "email": "Email",
+      "role": "Role",
+      "clients": "Client",
+      "joinedAt": "Joined"
+    },
+    "roles": {
+      "super_admin": "Super admin",
+      "org_admin": "Organization admin",
+      "client_admin": "Client admin",
+      "team_member": "Team member"
+    },
+    "toast": {
+      "removed": "Member removed"
+    },
+    "errors": {
+      "unauthorized": "Your session has expired. Please log in again.",
+      "forbidden": "You do not have permission to do this.",
+      "notFound": "Member not found.",
+      "self": "You can’t remove yourself.",
+      "validation": "Invalid data.",
+      "alreadyInvited": "There is already a valid invite for this email on this client.",
+      "alreadyMember": "This person is already on this client’s team.",
+      "unknown": "Something went wrong. Please try again."
+    }
+  },
+  "invites": {
+    "invite": "Invite member",
+    "title": "Invite a team member",
+    "description": "An invite link valid for 7 days will be created — copy it and send it to them.",
+    "create": "Create invite",
+    "createdTitle": "Invite created",
+    "createdDescription": "Copy the link and send it to {email}. No email is sent automatically.",
+    "inviteAnother": "Invite someone else",
+    "link": "Invite link",
+    "copyLink": "Copy invite link",
+    "copied": "Copied",
+    "pickClient": "Choose a client",
+    "fields": {
+      "email": "Email",
+      "name": "Name (optional)",
+      "role": "Role",
+      "client": "Client"
+    },
+    "roles": {
+      "client_admin": "Client admin",
+      "team_member": "Team member"
+    },
+    "roleHints": {
+      "client_admin": "Manages the client’s settings, knowledge base and channels, and can invite people to the same client.",
+      "team_member": "Answers conversations assigned to them and follows up on leads."
+    },
+    "pendingTitle": "Pending invites",
+    "pendingDescription": "Invites that haven’t been accepted yet.",
+    "noPending": "No pending invites.",
+    "expires": "Expires",
+    "expired": "Expired",
+    "expiredBadge": "Expired",
+    "cancel": "Cancel",
+    "toast": {
+      "created": "Invite created",
+      "cancelled": "Invite cancelled",
+      "copied": "Invite link copied"
+    },
+    "errors": {
+      "unauthorized": "Your session has expired. Please log in again.",
+      "forbidden": "You do not have permission to invite people to this client.",
+      "validation": "Invalid data.",
+      "invalidEmail": "Invalid email address.",
+      "clientRequired": "Choose a client.",
+      "notFound": "Invite not found.",
+      "alreadyInvited": "There is already a valid invite for this email on this client.",
+      "alreadyMember": "This person is already on this client’s team.",
+      "self": "You can’t remove yourself.",
+      "unknown": "Something went wrong. Please try again.",
+      "copyFailed": "Could not copy. Please copy the link manually."
+    },
+    "accept": {
+      "title": "You’re invited",
+      "invitedToClient": "You’ve been invited to join {organization} as {role} on {client}.",
+      "invitedToOrg": "You’ve been invited to join {organization} as {role}.",
+      "expiresOn": "Valid until {date, date, medium}",
+      "acceptButton": "Accept invite",
+      "signupButton": "Create account & accept",
+      "password": "Password (at least 6 characters)",
+      "haveAccount": "Already have an account with this email?",
+      "wrongAccount": "You’re signed in as {current}, but this invite was sent to {invited}.",
+      "switchAccount": "Sign out and use another account",
+      "checkEmailTitle": "Check your email",
+      "checkEmailDescription": "We sent a confirmation link to {email}. Once confirmed you’ll be on the team.",
+      "goToDashboard": "Go to dashboard",
+      "goToLogin": "Log in",
+      "problems": {
+        "notFound": {
+          "title": "Invite not found",
+          "description": "The link is wrong or the invite was cancelled."
+        },
+        "expired": {
+          "title": "This invite has expired",
+          "description": "Ask your admin to send a new one."
+        },
+        "accepted": {
+          "title": "Invite already accepted",
+          "description": "This invite has already been used."
+        }
+      },
+      "errors": {
+        "not_found": "The invite doesn’t exist or was cancelled.",
+        "expired": "This invite has expired.",
+        "already_accepted": "This invite was already accepted.",
+        "email_mismatch": "This invite was sent to a different email.",
+        "other_organization": "Your account belongs to another organization; you can’t join more than one.",
+        "unauthorized": "Please log in first.",
+        "ok": "",
+        "accountExists": "An account with this email already exists. Log in, then open the invite link again."
+      }
+    }
+  },
+  "clientSwitcher": {
+    "label": "Choose client",
+    "allClients": "All clients",
+    "error": "Could not switch client."
   }
 }

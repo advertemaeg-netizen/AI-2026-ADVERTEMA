@@ -1,8 +1,8 @@
 'use server'
 
-import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { canManage, getSession } from '@/lib/auth/session'
+import { appOrigin } from '@/lib/app-url'
 import { UUID_PATTERN } from '@/lib/types/clients'
 import {
   AVAILABLE_CHANNEL_TYPES,
@@ -14,18 +14,6 @@ import {
 
 const CHANNELS_PATH = '/[locale]/dashboard/clients/[clientId]/channels'
 const CHANNEL_COLUMNS = 'id, client_id, type, name, webhook_url, is_active, created_at'
-
-// Public origin used to build webhook URLs. NEXT_PUBLIC_APP_URL wins so URLs
-// stay correct behind proxies; otherwise fall back to the request host.
-async function appOrigin() {
-  const configured = process.env.NEXT_PUBLIC_APP_URL
-  if (configured) return configured.replace(/\/+$/, '')
-
-  const h = await headers()
-  const host = h.get('x-forwarded-host') ?? h.get('host')
-  const proto = h.get('x-forwarded-proto') ?? (host?.startsWith('localhost') ? 'http' : 'https')
-  return `${proto}://${host}`
-}
 
 function dbError(error: { code?: string; message: string }): ChannelActionResult {
   // 42501 = insufficient_privilege (RLS rejected the write)
