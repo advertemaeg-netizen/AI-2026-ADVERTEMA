@@ -2,24 +2,18 @@ import { notFound } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { ArrowLeft } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
-import { getClient, getClientPermissions } from '@/lib/actions/clients'
-import { getKnowledgeDocuments } from '@/lib/actions/knowledge'
+import { getClient } from '@/lib/actions/clients'
 import { ClientSubnav } from '../_components/client-subnav'
-import { UploadCard } from './_components/upload-card'
-import { DocumentsList } from './_components/documents-list'
+import { Playground } from './_components/playground'
 
-export default async function KnowledgePage({
+export default async function PlaygroundPage({
   params,
-}: PageProps<'/[locale]/dashboard/clients/[clientId]/knowledge'>) {
+}: PageProps<'/[locale]/dashboard/clients/[clientId]/playground'>) {
   const { clientId } = await params
   const client = await getClient(clientId)
   if (!client) notFound()
 
-  const t = await getTranslations('knowledge')
-  const [documents, { canManage }] = await Promise.all([
-    getKnowledgeDocuments(clientId),
-    getClientPermissions(),
-  ])
+  const t = await getTranslations('playground')
 
   return (
     <div className="p-8">
@@ -33,15 +27,12 @@ export default async function KnowledgePage({
 
       <div className="mb-6">
         <h1 className="text-3xl font-bold tracking-tight">{t('title', { client: client.name })}</h1>
-        <p className="text-muted-foreground mt-1">{canManage ? t('description') : t('readOnly')}</p>
+        <p className="text-muted-foreground mt-1">{t('description')}</p>
       </div>
 
       <ClientSubnav clientId={clientId} />
 
-      <div className="grid gap-6">
-        {canManage && <UploadCard clientId={clientId} />}
-        <DocumentsList documents={documents} canManage={canManage} />
-      </div>
+      <Playground clientId={clientId} clientName={client.name} />
     </div>
   )
 }

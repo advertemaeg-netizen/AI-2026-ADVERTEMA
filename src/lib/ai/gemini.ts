@@ -13,6 +13,18 @@ export function geminiModel() {
   return process.env.GOOGLE_GEMINI_MODEL || DEFAULT_MODEL
 }
 
+export type GeminiContent = { role: 'user' | 'model'; parts: { text: string }[] }
+
+/** The exact `contents` payload sent to Gemini for a chat history. */
+export function toGeminiContents(history: ChatTurn[]): GeminiContent[] {
+  // Gemini requires the conversation to start with a user turn
+  const firstUser = history.findIndex((turn) => turn.role === 'user')
+  return history.slice(Math.max(firstUser, 0)).map((turn) => ({
+    role: turn.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: turn.content }],
+  }))
+}
+
 export async function generateReply({
   systemPrompt,
   history,
@@ -21,13 +33,7 @@ export async function generateReply({
   history: ChatTurn[]
 }): Promise<string> {
   const apiKey = apiKeyOrThrow()
-
-  // Gemini requires the conversation to start with a user turn
-  const firstUser = history.findIndex((turn) => turn.role === 'user')
-  const contents = history.slice(Math.max(firstUser, 0)).map((turn) => ({
-    role: turn.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: turn.content }],
-  }))
+  const contents = toGeminiContents(history)
 
   const res = await fetch(`${API_BASE}/${geminiModel()}:generateContent`, {
     method: 'POST',

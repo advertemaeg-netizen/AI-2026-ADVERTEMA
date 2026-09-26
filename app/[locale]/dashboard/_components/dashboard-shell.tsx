@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { clientIdFromPath, clientSections } from '@/components/client-sections'
 
 export function DashboardShell({
   children,
@@ -37,6 +38,8 @@ export function DashboardShell({
   const supabase = createClient()
   const t = useTranslations('dashboard')
   const tCommon = useTranslations('common')
+  const tClientNav = useTranslations('clientNav')
+  const currentClientId = clientIdFromPath(pathname)
 
   const navigation = [
     { name: t('overview'), href: '/dashboard', icon: LayoutDashboard },
@@ -78,20 +81,43 @@ export function DashboardShell({
               item.href === '/dashboard'
                 ? pathname === item.href
                 : pathname === item.href || pathname.startsWith(`${item.href}/`)
+            const showClientSections = item.href === '/dashboard/clients' && currentClientId
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
-                  isActive
-                    ? 'bg-accent text-accent-foreground font-medium'
-                    : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+              <div key={item.href}>
+                <Link
+                  href={item.href}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
+                    isActive
+                      ? 'bg-accent text-accent-foreground font-medium'
+                      : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+                  )}
+                >
+                  <item.icon className="w-4 h-4" />
+                  {item.name}
+                </Link>
+                {/* The open client's pages, nested under Clients */}
+                {showClientSections && (
+                  <div className="ms-5 mt-1 space-y-1 border-s ps-2">
+                    {clientSections(currentClientId).map((section) => (
+                      <Link
+                        key={section.key}
+                        href={section.href}
+                        aria-current={pathname === section.href ? 'page' : undefined}
+                        className={cn(
+                          'flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors',
+                          pathname === section.href
+                            ? 'text-foreground font-medium'
+                            : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+                        )}
+                      >
+                        <section.icon className="size-3.5" />
+                        {tClientNav(section.key)}
+                      </Link>
+                    ))}
+                  </div>
                 )}
-              >
-                <item.icon className="w-4 h-4" />
-                {item.name}
-              </Link>
+              </div>
             )
           })}
         </nav>

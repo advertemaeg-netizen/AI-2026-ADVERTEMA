@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
-import { BookOpen, Building2, MoreHorizontal, Pencil, Radio, Trash2 } from 'lucide-react'
+import { BookOpen, Building2, FlaskConical, MoreHorizontal, Pencil, Radio, Trash2 } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -102,6 +102,12 @@ export function ClientsTable({ clients, canManage }: { clients: Client[]; canMan
                         <Link href={`/dashboard/clients/${client.id}/knowledge`}>
                           <BookOpen />
                           {t('knowledge')}
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href={`/dashboard/clients/${client.id}/playground`}>
+                          <FlaskConical />
+                          {t('playground')}
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => setEditing(client)}>
