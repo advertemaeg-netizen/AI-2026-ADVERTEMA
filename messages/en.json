@@ -387,7 +387,10 @@
       "validation": "The conversation is too long or invalid. Start a new one.",
       "rateLimited": "Too many messages in a minute. Wait a moment and try again.",
       "aiUnavailable": "Could not get a reply from the AI. Please try again.",
-      "forbidden": "Only client and organization admins can test the bot."
+      "forbidden": "Only client and organization admins can test the bot.",
+      "limitReached": "This client has used this month’s messages, and tests here count against the same quota. Upgrade the client’s plan to continue.",
+      "subscriptionInactive": "The client’s (or agency’s) subscription is inactive, so the bot is paused here and on the website. Activate it to continue.",
+      "unknown": "Something went wrong. Please try again."
     },
     "debug": {
       "title": "Debug info",

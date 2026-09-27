@@ -2,6 +2,8 @@
 
 import { loadBotSettings, runBot, type BotClient } from '@/lib/ai/bot'
 import { canManage, getSession } from '@/lib/auth/session'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { checkClientLimit, guardLimit } from '@/lib/subscription-limits'
 import { botSettingsSchema, type BotSettingsInput } from '@/lib/types/bot-settings'
 import { UUID_PATTERN } from '@/lib/types/clients'
 import {
@@ -47,7 +49,9 @@ function isValidHistory(messages: unknown): messages is PlaygroundMessage[] {
 
 /**
  * Runs the client's real assistant (knowledge base + bot settings) on an
- * in-memory conversation. Nothing is stored and usage isn't metered.
+ * in-memory conversation. Nothing is stored, but each reply is a real AI
+ * call, so it's metered like the widget: refused without an active
+ * subscription or past the monthly messages, and counted when it succeeds.
  * `settingsOverride` previews unsaved bot settings; only admins, who could
  * save those settings anyway, may pass it.
  */
@@ -73,6 +77,10 @@ export async function testBot(
     .maybeSingle<BotClient>()
   if (!client) return { ok: false, error: 'notFound' }
 
+  // Same gate as the widget, before any AI call
+  const blocked = await guardLimit(checkClientLimit(supabase, clientId, 'messages'))
+  if (blocked) return { ok: false, error: blocked }
+
   let override: BotSettingsInput | undefined
   if (settingsOverride !== undefined) {
     const parsed = botSettingsSchema.safeParse(settingsOverride)
@@ -89,6 +97,10 @@ export async function testBot(
       settings,
       history: messages.map((m) => ({ role: m.role, content: m.content })),
     })
+    // Counted like a widget reply. consume_client_message is service-role
+    // only; access to this client was checked above.
+    const { error: usageError } = await createAdminClient().rpc('consume_client_message', { p_client_id: clientId })
+    if (usageError) console.error('[playground] counting the message failed', usageError)
     return includeDebug ? { ok: true, reply, debug } : { ok: true, reply }
   } catch (error) {
     console.error('[playground] bot failed', error)

@@ -9,6 +9,9 @@ export type PlaygroundError =
   | 'validation'
   | 'rateLimited'
   | 'aiUnavailable'
+  | 'limitReached'
+  | 'subscriptionInactive'
+  | 'unknown'
 
 export type PlaygroundResult =
   | { ok: true; reply: string; debug?: BotDebug }

@@ -2,7 +2,7 @@
 
 **التاريخ:** 2026-09-27
 **النطاق:** قاعدة البيانات (19 migration)، الصلاحيات، حدود الاشتراكات، الأمان، الأخطاء، الترجمات، الأداء.
-**الحالة:** كل المشاكل الحرجة والمهمة اتصلّحت، ومعاها التحسينين I2 و I8 بعد المراجعة. باقي التحسينات متسابة في آخر التقرير.
+**الحالة:** كل المشاكل الحرجة والمهمة اتصلّحت، ومعاها التحسينات I2 و I3 و I4 و I8 بعد المراجعة. باقي التحسينات متسابة في آخر التقرير.
 
 ## الملخص
 
@@ -10,7 +10,7 @@
 |---|---|---|
 | حرجة | 1 | اتصلّحت |
 | مهمة | 7 | اتصلّحت |
-| تحسين | 15 | 3 اتصلّحوا (I2 و I8 بعد المراجعة، و I15 لأنه كان سطرين)، والباقي في التقرير |
+| تحسين | 15 | 5 اتصلّحوا (I2 و I3 و I4 و I8 بعد المراجعة، و I15 لأنه كان سطرين)، والباقي في التقرير |
 
 **التحقق:**
 - الـ 19 migration، ومعاهم الـ migration الجديدة، اتشغّلوا بالترتيب على PGlite ومرّوا كلهم.
@@ -18,6 +18,8 @@
 - `npm run build` نجح، و`eslint .` و`tsc --noEmit` على المشروع كله نضاف.
 - I2 عليه 5 اختبارات (`node --test`) بتشغّل `detectLead` الحقيقية بـ Supabase مزيّف وبتراقب `fetch`. الاختبارات بتفشل لو الفحص اتشال، وبتنجح وهو موجود. ومعاها اختبار على PGlite بيأكد إن `check_client_limit` بترجع `inactive` في كل حالات الاشتراك غير النشط لما تتنادى بالـ service role.
 - I8 اتجرب على السيرفر الفعلي: route handlers و server actions و server components اللي بتنادي `getSession` كلها اشتغلت صح (401 JSON للي مش مسجل دخول، و200 للصفحات العامة).
+- I3 عليه 8 اختبارات (`node --test`) بتشغّل `testBot` الحقيقية مع stubs للـ session والـ bot والـ admin client، وبتفشل 6 منهم لو الإصلاح اتشال. ومعاها اختبار على PGlite بيأكد إن `check_client_limit` بترجع حالة لجلسة الـ client_admin، وإن `consume_client_message` مقفولة على `authenticated` وبتزوّد العداد مع الـ service role.
+- I4 عليه 13 اختبار على PGlite، وبيفشل 6 منهم من غير الـ migration: الإضافة المباشرة، النقل لعميل ممتلئ، الـ client_admin، العدادات بعد النقل، تغيير الدور في `accept_invite` عند الحد، إنشاء عميل، والاشتراك غير النشط.
 - صفحة 404 اتجربت على السيرفر الفعلي بالعربي والإنجليزي.
 
 ---
@@ -158,8 +160,8 @@
 |---|---|---|---|
 | I1 | `app/api/webhook/website/[channelId]/route.ts:21-36, 183` | الـ rate limiter في الذاكرة ولكل instance بس. بيعتمد إن Traefik يشيل `X-Forwarded-For` اللي جاي من العميل (ده الـ default). لو الـ map وصلت لـ 10 آلاف مفتاح بيتعمل `clear()` فالعدادات كلها بتتصفّر. والـ GET (استرجاع رسايل الـ agent) مفيهوش rate limit | الأفضل Redis أو جدول في Supabase. أو على الأقل تمسح المفاتيح المنتهية بس بدل `clear()`، وتحط limit أخف على الـ GET |
 | I2 | نفس الملف :294 و :313 | كشف الـ leads (مكالمة Gemini) كان بيشتغل حتى لو اشتراك العميل أو الوكالة مش نشط، يعني فيه تكلفة AI على عملاء مش بيدفعوا | **اتصلّح:** `detectLead` في `src/lib/ai/lead-detection.ts` بقت بتنادي `clientSubscriptionActive()` قبل أي مكالمة لـ Gemini، فكل مسار بيشغّل تحليل الـ leads (الرد العادي، الـ fallback، الـ handoff) بقى متغطّي. الفحص fail closed: لو مفيش اشتراك أو الفحص نفسه فشل، مفيش مكالمة AI. العميل اللي اشتراكه نشط بس عدّى حد الرسايل لسه بيتحلّل، لأن المطلوب كان الاشتراكات غير النشطة بس |
-| I3 | `src/lib/actions/playground.ts:16` | الـ playground مش بيتحسب من حد الرسايل، ومش بيتقفل لو الاشتراك مش نشط. عليه rate limit بس (30 في الدقيقة لكل مستخدم) | فحص `checkClientLimit(..., 'messages')` مع السماح بعدد تجارب مجانية |
-| I4 | `supabase/migrations/20261001100000_team_invites.sql:59` | الـ client_admin يقدر يعمل insert مباشر في `client_members` لعضو موجود في المؤسسة، ويعدّي حد مقاعد العميل. التطبيق مش بيستخدم المسار ده خالص | trigger على `client_members` بيستخدم `client_limit_status`، أو قصر الـ INSERT على `accept_invite` |
+| I3 | `src/lib/actions/playground.ts` | الـ playground مكانش بيتحسب من حد الرسايل، وكان بيشتغل حتى لو الاشتراك مش نشط | **اتصلّح:** `testBot` بقت بتعمل نفس فحص الويدجت (`check_client_limit('messages')`) قبل أي مكالمة AI، وبترجع `limitReached` أو `subscriptionInactive` برسالة مترجمة، أو `unknown` لو الفحص نفسه فشل (fail closed). وبعد كل رد ناجح بتنادي `consume_client_message`، فكل رد بيتحسب من نفس رصيد الويدجت، ومعاينة الإعدادات اللي لسه ما اتحفظتش بتتحسب برضه. الفرق الوحيد عن الويدجت إن الأدمن بيشوف رسالة خطأ واضحة بدل رسالة الـ fallback |
+| I4 | `supabase/migrations/20261001100000_team_invites.sql:59` | الـ client_admin (وأي أدمن) كان يقدر يضيف أو ينقل عضو لعميل من الـ API مباشرة ويعدّي حد مقاعد العميل | **اتصلّح:** `supabase/migrations/20261009100000_client_seat_limit.sql` فيها trigger على `client_members` (insert أو update لـ client_id) بيرفض أي مقعد جديد لو الحد اتوصل له. نفس قاعدة `accept_invite`: الاشتراك غير النشط مش بيرفض، والعضو الموجود أصلاً مش بيتحسب مقعد جديد، فتغيير الدور شغال. واتضاف trigger بيعيد حساب العدادات للعميلين لما عضو يتنقل من عميل لعميل، لأن ده مكانش بيحصل. و`acceptInvite` بقت بترجع `limit_reached` لو قبولين حصلوا في نفس اللحظة على آخر مقعد |
 | I5 | `supabase/migrations/20260924090333_rls_policies.sql:147` | الـ team_member يقدر يعمل insert لمحادثات من الـ API. مفيش ضرر حقيقي منه | قصر الـ INSERT على الـ managers |
 | I6 | `app/[locale]/dashboard/layout.tsx:38`، `clients.ts:97,112`، `subscription.ts:47`، `client-subscription.ts:72`، `agency-billing.ts:118`، `admin-subscriptions.ts:129,283`، `admin-plans.ts:53` | `select('*')`. الجداول صغيرة، لكن الـ layout بيجيب صف المستخدم كامل مع إنه محتاج `full_name` و`role` بس | تحديد الأعمدة |
 | I7 | `src/lib/actions/admin-plans.ts:127` | `reorderPlans` بيعمل update لكل باقة لوحدها بالتوازي (أقصى حاجة 100). الشاشة دي للـ super admin بس | RPC واحدة |
@@ -187,6 +189,8 @@
 **متعدّلة:**
 - `src/lib/subscription-limits.ts`، `src/lib/actions/channels.ts`، `src/lib/actions/clients.ts`، `src/lib/actions/team.ts`، `src/lib/actions/appointments.ts`
 - `src/lib/ai/lead-detection.ts` (I2)، `src/lib/auth/session.ts` (I8)
+- `src/lib/actions/playground.ts`، `src/lib/types/playground.ts`، `app/api/playground/[clientId]/route.ts` (I3)
+- `supabase/migrations/20261009100000_client_seat_limit.sql` جديدة (I4)
 - `app/[locale]/admin/_components/subscription-actions.tsx`: شيلت imports ومتغير مش مستخدمين عشان eslint يبقى نضيف
 - `src/lib/types/team.ts`
 - `app/api/knowledge/upload/[clientId]/route.ts`

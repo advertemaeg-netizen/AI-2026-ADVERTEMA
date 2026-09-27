@@ -9,6 +9,9 @@ const STATUS: Record<PlaygroundError, number> = {
   validation: 400,
   rateLimited: 429,
   aiUnavailable: 502,
+  limitReached: 403,
+  subscriptionInactive: 403,
+  unknown: 500,
 }
 
 /**

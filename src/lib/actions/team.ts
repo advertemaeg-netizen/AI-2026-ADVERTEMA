@@ -7,7 +7,7 @@ import { canManageClient, isOrgAdmin } from '@/lib/auth/permissions'
 import { SELECTED_CLIENT_COOKIE, SELECTED_CLIENT_COOKIE_OPTIONS } from '@/lib/auth/client-context'
 import { appOrigin } from '@/lib/app-url'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { checkClientLimit, checkOrgLimit, limitError } from '@/lib/subscription-limits'
+import { checkClientLimit, checkOrgLimit, limitError, limitErrorFromDb } from '@/lib/subscription-limits'
 import { UUID_PATTERN } from '@/lib/types/clients'
 import type { LimitCheck } from '@/lib/types/subscription'
 import {
@@ -234,6 +234,8 @@ export async function acceptInvite(code: string): Promise<{ status: AcceptInvite
   const { data: invite } = await supabase.rpc('get_invite', { code }).maybeSingle<{ client_id: string | null }>()
   const { data, error } = await supabase.rpc('accept_invite', { code })
   if (error) {
+    // The seat trigger, when a concurrent accept took the last seat
+    if (limitErrorFromDb(error)) return { status: 'limit_reached' }
     console.error('[team] acceptInvite', error)
     return { status: 'not_found' }
   }
