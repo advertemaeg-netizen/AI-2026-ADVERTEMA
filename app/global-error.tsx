@@ -11,7 +11,7 @@ export default function GlobalError({ error, retry }: { error: Error & { digest?
   return (
     <html lang="ar" dir="rtl">
       <body className="flex min-h-screen items-center justify-center bg-background p-8 font-sans text-foreground antialiased">
-        <title>Advertema AI</title>
+        <title>Connecta AI</title>
         <div role="alert" className="grid max-w-md gap-4 text-center">
           <h1 className="text-2xl font-bold">حدث خطأ غير متوقع</h1>
           <p className="text-muted-foreground">حاول مرة أخرى، ولو استمرت المشكلة تواصل مع الدعم.</p>

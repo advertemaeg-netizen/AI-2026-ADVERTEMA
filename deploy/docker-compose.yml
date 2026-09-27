@@ -1,4 +1,4 @@
-# Advertema AI behind the existing Traefik (Docker provider,
+# Connecta AI behind the existing Traefik (Docker provider,
 # exposedbydefault=false, Let's Encrypt). Run from this folder with the env
 # file, so it's used both for build args and variable substitution:
 #

@@ -63,7 +63,7 @@ export default function LoginPage({ searchParams }: PageProps<'/[locale]/login'>
             </div>
           </div>
           <CardTitle className="text-2xl">{t('loginTitle')}</CardTitle>
-          <CardDescription>Advertema AI</CardDescription>
+          <CardDescription>Connecta AI</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">

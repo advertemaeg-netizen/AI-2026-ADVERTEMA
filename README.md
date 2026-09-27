@@ -1,3 +1,7 @@
+# Connecta AI
+
+AI chat assistants for businesses and marketing agencies. Deployment: see [DEPLOYMENT.md](DEPLOYMENT.md).
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

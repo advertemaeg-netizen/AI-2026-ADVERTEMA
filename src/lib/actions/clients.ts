@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { canManage, getSession } from '@/lib/auth/session'
 import { checkOrgLimit, guardLimit, limitErrorFromDb } from '@/lib/subscription-limits'
+import { getClientContext } from '@/lib/auth/client-context'
 import {
   CLIENT_STATUSES,
   type Client,
@@ -99,6 +100,8 @@ function parseClientForm(formData: FormData) {
 }
 
 function dbError(error: { code?: string; message: string; hint?: string | null }): ClientActionResult {
+  // A direct business has exactly one client (database trigger)
+  if (error.message?.includes('direct_single_client')) return { ok: false, error: 'directSingleClient' }
   // The subscription limit trigger (a race past the check below)
   const limit = limitErrorFromDb(error)
   if (limit) return { ok: false, error: limit }
@@ -152,6 +155,9 @@ export async function createClientAction(formData: FormData): Promise<ClientActi
   if (!profile) return { ok: false, error: 'unauthorized' }
   if (!canManage(profile)) return { ok: false, error: 'forbidden' }
   if (!profile.organization_id) return { ok: false, error: 'noOrganization' }
+
+  // A direct business is one business: its client was created at sign-up
+  if ((await getClientContext())?.orgType === 'direct') return { ok: false, error: 'directSingleClient' }
 
   const parsed = parseClientForm(formData)
   if (!parsed.ok) return { ok: false, error: 'validation', fieldErrors: parsed.fieldErrors }

@@ -25,8 +25,6 @@
     "checkEmailDesc": "We sent you a confirmation link. Click it to activate your account.",
     "backToLogin": "Back to login",
     "passwordMin": "Password (min 6 characters)",
-    "organizationName": "Company or agency name",
-    "organizationPlaceholder": "e.g. Advertema",
     "forgotPassword": "Forgot your password?",
     "forgotPasswordTitle": "Reset your password",
     "forgotPasswordDesc": "Enter your email and we’ll send you a link to reset your password",
@@ -47,7 +45,16 @@
     "weakPassword": "This password is too weak — try a longer one with numbers or symbols",
     "tooManyRequests": "You just requested a link — wait a minute and try again",
     "genericError": "Connection problem, please try again",
-    "orgDisabled": "Your organization’s account is disabled. Contact Advertema support to restore access."
+    "orgDisabled": "Your organization’s account is disabled. Contact Connecta support to restore access.",
+    "accountType": "Account type",
+    "agencyOption": "Marketing agency",
+    "agencyOptionDesc": "I manage multiple client accounts",
+    "directOption": "Business",
+    "directOptionDesc": "Clinic, restaurant, shop, or any business",
+    "agencyName": "Agency name",
+    "businessName": "Business name",
+    "agencyPlaceholder": "e.g. Success Marketing Agency",
+    "businessPlaceholder": "e.g. Al Noor Clinic"
   },
   "dashboard": {
     "overview": "Overview",
@@ -151,7 +158,8 @@
       "noOrganization": "Your account is not linked to an organization.",
       "unknown": "Something went wrong. Please try again.",
       "limitReached": "You’ve reached your plan’s client limit. Upgrade your plan to add more clients.",
-      "subscriptionInactive": "Your subscription is inactive. Contact us to activate it."
+      "subscriptionInactive": "Your subscription is inactive. Contact us to activate it.",
+      "directSingleClient": "A business account has a single business, so clients can’t be added."
     },
     "fieldErrors": {
       "nameRequired": "Client name is required.",
@@ -1004,7 +1012,7 @@
     },
     "overview": {
       "title": "Platform overview",
-      "description": "Every organization on Advertema AI at a glance."
+      "description": "Every organization on Connecta AI at a glance."
     },
     "kpis": {
       "organizations": "Organizations",
@@ -1034,6 +1042,7 @@
       },
       "columns": {
         "name": "Name",
+        "type": "Type",
         "clients": "Clients",
         "users": "Users",
         "conversations": "Conversations",
@@ -1043,7 +1052,13 @@
       },
       "noActivity": "No activity yet",
       "empty": "No organizations yet.",
-      "noMatches": "No organizations match your search."
+      "noMatches": "No organizations match your search.",
+      "typeFilter": "Type",
+      "type": {
+        "all": "All types",
+        "agency": "Agency",
+        "direct": "Business"
+      }
     },
     "details": {
       "back": "All organizations",
@@ -1194,7 +1209,7 @@
       "whatsapp": "Message us on WhatsApp",
       "email": "Email us",
       "emailSubject": "Switch to the {plan} plan",
-      "noContact": "Contact your Advertema account manager to change your plan."
+      "noContact": "Contact your Connecta account manager to change your plan."
     },
     "invoices": {
       "title": "Invoices",
@@ -1319,7 +1334,8 @@
         "usage": "Usage",
         "invoices": "Invoices",
         "invoicesCount": "{count, plural, =0 {No invoices} one {# invoice} other {# invoices}}",
-        "none": "This organization has no subscription."
+        "none": "This organization has no subscription.",
+        "directNote": "Direct business: no organization subscription; it pays for its business plan."
       },
       "tabs": {
         "label": "Subscription level",
@@ -1342,6 +1358,11 @@
       "title": "Your clients’ subscriptions",
       "description": "Each client has its own business plan (messages, channels, knowledge files) that it pays you for.",
       "open": "Open billing"
+    },
+    "direct": {
+      "description": "Your business’s plan on the platform: messages, channels, knowledge files and team members, and your invoices.",
+      "usage": "Your business plan’s limits.",
+      "invoices": "Platform invoices for your business."
     }
   },
   "plans": {

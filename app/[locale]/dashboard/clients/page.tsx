@@ -1,10 +1,13 @@
 import { getTranslations } from 'next-intl/server'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { getClientPermissions, getClients } from '@/lib/actions/clients'
+import { redirectDirectBusiness } from '@/lib/auth/guards'
 import { ClientsTable } from './_components/clients-table'
 import { ClientFormDialog } from './_components/client-form-dialog'
 
-export default async function ClientsPage() {
+export default async function ClientsPage({ params }: PageProps<'/[locale]/dashboard/clients'>) {
+  // A direct business is its one client: no clients list
+  await redirectDirectBusiness((await params).locale)
   const t = await getTranslations('clients')
   const [clients, { canManage }] = await Promise.all([getClients(), getClientPermissions()])
 

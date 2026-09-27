@@ -5,6 +5,7 @@ import { CreateInvoiceDialog } from '@/components/billing/create-invoice-dialog'
 import { InvoicesTable } from '@/components/billing/invoices-table'
 import { getSession } from '@/lib/auth/session'
 import { isOrgAdmin } from '@/lib/auth/permissions'
+import { redirectDirectBusiness } from '@/lib/auth/guards'
 import { getAgencyClientInvoices, getAgencyClientsBilling, getMonthlyRevenue } from '@/lib/actions/agency-billing'
 import { AgencyBillingTable } from './_components/agency-billing-table'
 
@@ -16,6 +17,8 @@ import { AgencyBillingTable } from './_components/agency-billing-table'
  */
 export default async function AgencyBillingPage({ params }: PageProps<'/[locale]/dashboard/billing'>) {
   const { locale } = await params
+  // Billing clients is an agency's business; a direct business has its subscription page
+  await redirectDirectBusiness(locale, '/dashboard/subscription')
   const { profile } = await getSession()
   if (!profile) redirect(`/${locale}/login`)
   if (!isOrgAdmin(profile.role)) redirect(`/${locale}/dashboard`)

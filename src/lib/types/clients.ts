@@ -35,6 +35,7 @@ export type ClientActionError =
   | 'noOrganization'
   | 'limitReached'
   | 'subscriptionInactive'
+  | 'directSingleClient'
   | 'unknown'
 
 export type ClientActionResult =

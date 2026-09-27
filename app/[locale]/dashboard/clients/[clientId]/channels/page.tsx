@@ -1,13 +1,12 @@
 import { notFound } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
-import { ArrowLeft, Radio } from 'lucide-react'
-import { Link } from '@/i18n/navigation'
+import { Radio } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { getClient, getClientPermissions } from '@/lib/actions/clients'
 import { getChannels } from '@/lib/actions/channels'
 import { appOrigin } from '@/lib/app-url'
 import { requireClientManager } from '@/lib/auth/guards'
-import { ClientSubnav } from '../_components/client-subnav'
+import { BackToClients, ClientTabs } from '../_components/client-page-nav'
 import { AddChannelDialog } from './_components/add-channel-dialog'
 import { ChannelCard } from './_components/channel-card'
 
@@ -29,13 +28,7 @@ export default async function ChannelsPage({
 
   return (
     <div className="p-8">
-      <Link
-        href="/dashboard/clients"
-        className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4 rtl:rotate-180" />
-        {t('backToClients')}
-      </Link>
+      <BackToClients label={t('backToClients')} />
 
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -49,7 +42,7 @@ export default async function ChannelsPage({
         {canManage && <AddChannelDialog clientId={clientId} />}
       </div>
 
-      <ClientSubnav clientId={clientId} />
+      <ClientTabs clientId={clientId} />
 
       {channels.length === 0 ? (
         <Card>

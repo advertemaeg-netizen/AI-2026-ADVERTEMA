@@ -8,6 +8,7 @@ import {
   DEFAULT_ORG_SORT,
   ORG_SORT_KEYS,
   type Growth,
+  type OrgType,
   type OrganizationDetails,
   type OrganizationOverview,
   type OrgSort,
@@ -71,8 +72,13 @@ export async function getOrganizations(
   const supabase = await superAdminSession()
   if (!supabase) return []
 
-  const { data, error } = await supabase.rpc('get_organizations_overview')
+  const [{ data, error }, types] = await Promise.all([
+    supabase.rpc('get_organizations_overview'),
+    supabase.from('organizations').select('id, org_type').returns<{ id: string; org_type: OrgType }[]>(),
+  ])
   if (error) throw new Error(`Failed to load organizations: ${error.message}`)
+  if (types.error) throw new Error(`Failed to load organization types: ${types.error.message}`)
+  const typeOf = new Map((types.data ?? []).map((row) => [row.id, row.org_type]))
 
   const term = search?.trim().toLowerCase()
   const rows = ((data as OverviewRow[] | null) ?? [])
@@ -81,6 +87,7 @@ export async function getOrganizations(
         id: row.id,
         name: row.name,
         slug: row.slug,
+        orgType: typeOf.get(row.id) ?? 'agency',
         isActive: row.is_active,
         createdAt: row.created_at,
         clients: int(row.clients),
@@ -111,11 +118,15 @@ export async function getOrganizationDetails(orgId: string): Promise<Organizatio
   const supabase = await superAdminSession()
   if (!supabase) return null
 
-  const { data, error } = await supabase.rpc('get_organization_details', { p_org_id: orgId })
+  const [{ data, error }, type] = await Promise.all([
+    supabase.rpc('get_organization_details', { p_org_id: orgId }),
+    supabase.rpc('get_org_type', { p_org_id: orgId }),
+  ])
   if (error) throw new Error(`Failed to load organization: ${error.message}`)
   if (!data) return null
 
-  const details = data as OrganizationDetails
+  const raw = data as OrganizationDetails
+  const details = { ...raw, organization: { ...raw.organization, org_type: (type.data as OrgType | null) ?? 'agency' } }
   const stats = Object.fromEntries(
     Object.entries(details.stats).map(([k, v]) => [k, k === 'last_activity_at' ? v : int(v)])
   ) as OrganizationDetails['stats']

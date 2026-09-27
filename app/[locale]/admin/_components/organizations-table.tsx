@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 import type { OrgListParams } from '@/lib/admin-list'
-import { ORG_STATUS_FILTERS, type OrganizationOverview, type OrgSortKey } from '@/lib/types/admin'
+import { ORG_STATUS_FILTERS, ORG_TYPES, type OrganizationOverview, type OrgSortKey } from '@/lib/types/admin'
 
 const ALL = 'all'
 
@@ -40,7 +40,7 @@ const COLUMNS: { key: OrgSortKey; numeric?: boolean }[] = [
   { key: 'lastActivityAt' },
 ]
 
-/** Organizations with search, sortable columns and (optionally) a status filter, all kept in the URL. */
+/** Organizations with search, sortable columns and (optionally) status and type filters, all kept in the URL. */
 export function OrganizationsTable({
   organizations,
   params,
@@ -58,12 +58,13 @@ export function OrganizationsTable({
   const [isPending, startTransition] = useTransition()
   const [search, setSearch] = useState(params.q ?? '')
 
-  function update(next: Partial<Record<'q' | 'sort' | 'dir' | 'status', string | undefined>>) {
+  function update(next: Partial<Record<'q' | 'sort' | 'dir' | 'status' | 'type', string | undefined>>) {
     const merged = {
       q: params.q,
       sort: params.sort.key,
       dir: params.sort.dir,
       status: params.status,
+      type: params.type,
       ...next,
     }
     const query = new URLSearchParams()
@@ -120,22 +121,40 @@ export function OrganizationsTable({
             </SelectContent>
           </Select>
         )}
+        {showStatusFilter && (
+          <Select
+            value={params.type ?? ALL}
+            onValueChange={(value) => update({ type: value === ALL ? undefined : value })}
+          >
+            <SelectTrigger className="w-40" aria-label={t('typeFilter')}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>{t('type.all')}</SelectItem>
+              {ORG_TYPES.map((type) => (
+                <SelectItem key={type} value={type}>
+                  {t(`type.${type}`)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         {isPending && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
       </div>
 
       {organizations.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-12 text-center text-sm text-muted-foreground">
           <Building2 className="size-8" />
-          {params.q || params.status ? t('noMatches') : t('empty')}
+          {params.q || params.status || params.type ? t('noMatches') : t('empty')}
         </div>
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
-              {COLUMNS.map(({ key, numeric }) => {
+              {COLUMNS.map(({ key, numeric }, index) => {
                 const active = params.sort.key === key
                 const Icon = active ? (params.sort.dir === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown
-                return (
+                const head = (
                   <TableHead
                     key={key}
                     className={cn(numeric && 'text-end')}
@@ -154,6 +173,8 @@ export function OrganizationsTable({
                     </button>
                   </TableHead>
                 )
+                // The type column (not sortable) sits right after the name
+                return index === 0 ? [head, <TableHead key="type">{t('columns.type')}</TableHead>] : head
               })}
             </TableRow>
           </TableHeader>
@@ -178,6 +199,9 @@ export function OrganizationsTable({
                   <div className="text-xs text-muted-foreground" dir="ltr">
                     {org.slug}
                   </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={org.orgType === 'direct' ? 'secondary' : 'outline'}>{t(`type.${org.orgType}`)}</Badge>
                 </TableCell>
                 <TableCell className="text-end tabular-nums">{format.number(org.clients)}</TableCell>
                 <TableCell className="text-end tabular-nums">{format.number(org.users)}</TableCell>

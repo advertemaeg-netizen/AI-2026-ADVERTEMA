@@ -12,7 +12,7 @@ const cairo = Cairo({
 })
 
 export const metadata: Metadata = {
-  title: 'Advertema AI',
+  title: 'Connecta AI',
   description: 'AI-powered multi-channel conversation management',
 }
 

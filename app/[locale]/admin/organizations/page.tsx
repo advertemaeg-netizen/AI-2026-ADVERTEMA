@@ -12,7 +12,10 @@ export default async function AdminOrganizationsPage({ params, searchParams }: P
   const t = await getTranslations('admin.organizations')
   const list = parseOrgListParams(await searchParams)
   const all = await getOrganizations(list.q, list.sort)
-  const organizations = list.status ? all.filter((org) => org.isActive === (list.status === 'active')) : all
+  const organizations = all.filter(
+    (org) =>
+      (!list.status || org.isActive === (list.status === 'active')) && (!list.type || org.orgType === list.type)
+  )
 
   return (
     <div className="p-8">

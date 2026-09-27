@@ -8,15 +8,22 @@ import { UsageBanner } from './_components/usage-banner'
 
 const DAY = 24 * 60 * 60 * 1000
 
-/** Limit alerts and subscription state for the banner (org admins only). */
-async function billingBanner(supabase: Awaited<ReturnType<typeof createClient>>, organizationId: string) {
+/**
+ * Limit alerts and subscription state for the banner (org admins only). A
+ * direct business has no organization subscription: its one client's plan
+ * is the one it pays for.
+ */
+async function billingBanner(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  organizationId: string,
+  directClientId: string | null
+) {
+  const subscription = directClientId
+    ? supabase.from('client_subscriptions').select('status, trial_ends_at').eq('client_id', directClientId)
+    : supabase.from('subscriptions').select('status, trial_ends_at').eq('organization_id', organizationId)
   const [alerts, { data: sub }] = await Promise.all([
     getUsageAlerts(),
-    supabase
-      .from('subscriptions')
-      .select('status, trial_ends_at')
-      .eq('organization_id', organizationId)
-      .maybeSingle<{ status: string; trial_ends_at: string | null }>(),
+    subscription.maybeSingle<{ status: string; trial_ends_at: string | null }>(),
   ])
   const trialEnd = sub?.status === 'trialing' && sub.trial_ends_at ? Date.parse(sub.trial_ends_at) : null
   const inactive = !!sub && (sub.status === 'cancelled' || (trialEnd !== null && trialEnd <= Date.now()))
@@ -42,16 +49,19 @@ export default async function DashboardLayout({
   // Members of a disabled organization are signed out (RLS already hides everything)
   if (orgDisabled) redirect('/auth/org-disabled')
 
-  const [context, banner] = await Promise.all([
-    getClientContext(),
-    isOrgAdmin(profile?.role) && profile?.organization_id ? billingBanner(supabase, profile.organization_id) : null,
-  ])
+  const context = await getClientContext()
+  const directClientId = context?.orgType === 'direct' ? (context.selected?.id ?? null) : null
+  const banner =
+    isOrgAdmin(profile?.role) && profile?.organization_id
+      ? await billingBanner(supabase, profile.organization_id, directClientId)
+      : null
 
   return (
     <DashboardShell
       clients={context?.clients ?? []}
       selectedClient={context?.selected ?? null}
       canSeeAll={context?.canSeeAll ?? false}
+      orgType={context?.orgType ?? 'agency'}
       user={{
         email: user.email!,
         fullName: profile?.full_name,

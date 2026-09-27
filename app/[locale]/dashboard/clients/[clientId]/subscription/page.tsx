@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
-import { AlertTriangle, ArrowLeft } from 'lucide-react'
-import { Link } from '@/i18n/navigation'
+import { AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CurrentPlanCard } from '@/components/billing/current-plan-card'
 import { CreateInvoiceDialog } from '@/components/billing/create-invoice-dialog'
@@ -11,10 +10,10 @@ import { getSession } from '@/lib/auth/session'
 import { isOrgAdmin } from '@/lib/auth/permissions'
 import { getClient } from '@/lib/actions/clients'
 import { getClientAvailablePlans, getClientInvoices, getClientSubscription } from '@/lib/actions/client-subscription'
-import { requireClientManager } from '@/lib/auth/guards'
-import { ClientSubnav } from '../_components/client-subnav'
-import { ClientPlanPicker } from './_components/client-plan-picker'
-import { ClientPricingActions } from './_components/client-pricing-actions'
+import { redirectDirectBusiness, requireClientManager } from '@/lib/auth/guards'
+import { BackToClients, ClientTabs } from '../_components/client-page-nav'
+import { ClientPlanPicker } from '@/components/billing/client-plan-picker'
+import { ClientPricingActions } from '@/components/billing/client-pricing-actions'
 
 /**
  * One client's business plan, paid to the agency. Agency admins change the
@@ -25,6 +24,8 @@ export default async function ClientSubscriptionPage({
   params,
 }: PageProps<'/[locale]/dashboard/clients/[clientId]/subscription'>) {
   const { locale, clientId } = await params
+  // A direct business pays the platform: its plan is on /dashboard/subscription
+  await redirectDirectBusiness(locale, '/dashboard/subscription')
   // Also in the layout, but layouts don't re-run on client-side navigation
   await requireClientManager(locale)
   const [client, { profile }] = await Promise.all([getClient(clientId), getSession()])
@@ -36,18 +37,12 @@ export default async function ClientSubscriptionPage({
 
   const header = (
     <>
-      <Link
-        href="/dashboard/clients"
-        className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4 rtl:rotate-180" />
-        {t('backToClients')}
-      </Link>
+      <BackToClients label={t('backToClients')} />
       <div className="mb-6">
         <h1 className="text-3xl font-bold tracking-tight">{t('title', { client: client.name })}</h1>
         <p className="text-muted-foreground mt-1">{t(canManageBilling ? 'description' : 'descriptionReadOnly')}</p>
       </div>
-      <ClientSubnav clientId={clientId} />
+      <ClientTabs clientId={clientId} />
     </>
   )
 

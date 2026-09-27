@@ -34,7 +34,7 @@ import { cn } from '@/lib/utils'
 import { clientSections } from '@/components/client-sections'
 import { ClientSwitcher } from '@/components/client-switcher'
 import { canManageClient, isOrgAdmin, isSuperAdmin } from '@/lib/auth/permissions'
-import type { ClientOption } from '@/lib/auth/client-context'
+import type { ClientOption, OrgType } from '@/lib/auth/client-context'
 
 type NavItem = { name: string; href: string; icon: LucideIcon; exact?: boolean }
 
@@ -44,6 +44,7 @@ export function DashboardShell({
   clients,
   selectedClient,
   canSeeAll,
+  orgType,
 }: {
   children: React.ReactNode
   user: { email: string; fullName?: string | null; role?: string | null }
@@ -51,6 +52,8 @@ export function DashboardShell({
   selectedClient: ClientOption | null
   /** super/org admins: may pick "all clients" */
   canSeeAll: boolean
+  /** direct: a single business — its pages directly, no clients or billing */
+  orgType: OrgType
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -75,7 +78,30 @@ export function DashboardShell({
     : []
 
   // One client in focus: its own pages. All clients (org admins): org-wide pages.
-  const navigation: NavItem[] = selectedClient
+  // A direct business is one client: the client's own pages sit at the top
+  // level, and its subscription is the business's (no clients, no billing)
+  const directNavigation: NavItem[] | null =
+    orgType === 'direct' && selectedClient
+      ? [
+          { name: t('overview'), href: '/dashboard', icon: LayoutDashboard, exact: true },
+          { name: t('analytics'), href: '/dashboard/analytics', icon: BarChart3 },
+          { name: t('conversations'), href: '/dashboard/conversations', icon: MessagesSquare },
+          { name: t('leads'), href: '/dashboard/leads', icon: Users },
+          { name: t('appointments'), href: '/dashboard/appointments', icon: CalendarDays },
+          ...(canManage
+            ? clientSections(selectedClient.id)
+                .filter((section) => section.key !== 'subscription')
+                .map((section) => ({ name: tClientNav(section.key), href: section.href, icon: section.icon }))
+            : []),
+          ...(canManage ? [teamItem] : []),
+          ...(isOrgAdmin(user.role)
+            ? [{ name: t('subscription'), href: '/dashboard/subscription', icon: CreditCard }]
+            : []),
+          settingsItem,
+        ]
+      : null
+
+  const navigation: NavItem[] = directNavigation ?? (selectedClient
     ? [
         { name: t('overview'), href: '/dashboard', icon: LayoutDashboard, exact: true },
         { name: t('analytics'), href: '/dashboard/analytics', icon: BarChart3 },
@@ -103,7 +129,7 @@ export function DashboardShell({
         ...(canManage ? [teamItem] : []),
         ...billingItems,
         settingsItem,
-      ]
+      ])
 
   const initials = (user.fullName || user.email)
     .split(' ')
@@ -126,7 +152,7 @@ export function DashboardShell({
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-orange-500 flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
-            <span className="font-semibold text-lg">Advertema AI</span>
+            <span className="font-semibold text-lg">Connecta AI</span>
           </Link>
           <LanguageSwitcher />
         </div>

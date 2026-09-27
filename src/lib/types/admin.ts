@@ -12,10 +12,14 @@ export type PlatformStats = {
   leads: Growth
 }
 
+export const ORG_TYPES = ['agency', 'direct'] as const
+export type OrgType = (typeof ORG_TYPES)[number]
+
 export type OrganizationOverview = {
   id: string
   name: string
   slug: string
+  orgType: OrgType
   isActive: boolean
   createdAt: string
   clients: number
@@ -43,6 +47,7 @@ export type AdminOrganization = {
   is_active: boolean
   created_at: string
   updated_at: string
+  org_type: OrgType
 }
 
 export type AdminOrgStats = {

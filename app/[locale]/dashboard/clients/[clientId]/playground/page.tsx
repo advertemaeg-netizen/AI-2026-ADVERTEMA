@@ -1,11 +1,9 @@
 import { notFound } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
-import { ArrowLeft } from 'lucide-react'
-import { Link } from '@/i18n/navigation'
 import { getClient } from '@/lib/actions/clients'
 import { getBotSettings } from '@/lib/actions/bot-settings'
 import { requireClientManager } from '@/lib/auth/guards'
-import { ClientSubnav } from '../_components/client-subnav'
+import { BackToClients, ClientTabs } from '../_components/client-page-nav'
 import { Playground } from './_components/playground'
 
 export default async function PlaygroundPage({
@@ -21,20 +19,14 @@ export default async function PlaygroundPage({
 
   return (
     <div className="p-8">
-      <Link
-        href="/dashboard/clients"
-        className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4 rtl:rotate-180" />
-        {t('backToClients')}
-      </Link>
+      <BackToClients label={t('backToClients')} />
 
       <div className="mb-6">
         <h1 className="text-3xl font-bold tracking-tight">{t('title', { client: client.name })}</h1>
         <p className="text-muted-foreground mt-1">{t('description')}</p>
       </div>
 
-      <ClientSubnav clientId={clientId} />
+      <ClientTabs clientId={clientId} />
 
       <Playground clientId={clientId} clientName={client.name} welcomeMessage={settings.welcome_message} />
     </div>
