@@ -25,6 +25,29 @@ function slugify(value: string) {
     .slice(0, 60)
 }
 
+/** A taken auto-generated slug gets a short random suffix, like "عيادة-النور-3f9a" */
+function withRandomSuffix(slug: string) {
+  return `${slug.slice(0, 55)}-${crypto.randomUUID().slice(0, 4)}`
+}
+
+/**
+ * Runs a clients write; when the slug was generated from the name (the user
+ * left it empty) and another client of the organization already has it,
+ * retries with a suffixed slug instead of reporting it as taken. A slug the
+ * user typed is still reported, since they chose it.
+ */
+async function writeWithFreeSlug<T extends { error: { code?: string } | null }>(
+  values: { slug: string },
+  slugIsAuto: boolean,
+  write: (slug: string) => PromiseLike<T>
+): Promise<T> {
+  let result = await write(values.slug)
+  for (let attempt = 0; slugIsAuto && result.error?.code === '23505' && attempt < 3; attempt++) {
+    result = await write(withRandomSuffix(values.slug))
+  }
+  return result
+}
+
 function parseClientForm(formData: FormData) {
   const str = (key: string) => String(formData.get(key) ?? '').trim()
   const name = str('name')
@@ -32,6 +55,7 @@ function parseClientForm(formData: FormData) {
   const logoUrl = str('logo_url')
   const description = str('description')
   const status = str('status') || 'active'
+  const slugIsAuto = !str('slug')
   const slug = slugify(str('slug') || name) || `client-${crypto.randomUUID().slice(0, 8)}`
 
   const fieldErrors: Partial<Record<ClientField, ClientFieldError>> = {}
@@ -62,6 +86,7 @@ function parseClientForm(formData: FormData) {
 
   return {
     ok: true as const,
+    slugIsAuto,
     values: {
       name,
       slug,
@@ -138,11 +163,15 @@ export async function createClientAction(formData: FormData): Promise<ClientActi
   // No .select() here: a client_admin only gains read access through the
   // client_members row added by an AFTER INSERT trigger, so RETURNING would
   // be rejected by RLS.
-  const { error } = await supabase.from('clients').insert({
-    id: crypto.randomUUID(),
-    organization_id: profile.organization_id,
-    ...parsed.values,
-  })
+  const organizationId = profile.organization_id
+  const { error } = await writeWithFreeSlug(parsed.values, parsed.slugIsAuto, (slug) =>
+    supabase.from('clients').insert({
+      id: crypto.randomUUID(),
+      organization_id: organizationId,
+      ...parsed.values,
+      slug,
+    })
+  )
 
   if (error) return dbError(error)
 
@@ -161,11 +190,13 @@ export async function updateClientAction(
   const parsed = parseClientForm(formData)
   if (!parsed.ok) return { ok: false, error: 'validation', fieldErrors: parsed.fieldErrors }
 
-  const { data, error } = await supabase
-    .from('clients')
-    .update(parsed.values)
-    .eq('id', id)
-    .select('id')
+  const { data, error } = await writeWithFreeSlug(parsed.values, parsed.slugIsAuto, (slug) =>
+    supabase
+      .from('clients')
+      .update({ ...parsed.values, slug })
+      .eq('id', id)
+      .select('id')
+  )
 
   if (error) return dbError(error)
   // RLS filters out rows the user can't touch, which shows up as zero rows
