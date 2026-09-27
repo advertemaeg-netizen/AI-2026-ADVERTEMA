@@ -83,8 +83,10 @@ async function updateLeadRow(leadId: string, patch: Record<string, unknown>): Pr
 /** Sets (or clears, with null) the appointment time. New leads move to "appointment booked". */
 export async function setAppointment(leadId: string, datetime: string | null): Promise<AppointmentActionResult> {
   if (datetime !== null && Number.isNaN(Date.parse(datetime))) return { ok: false, error: 'validation' }
+  if (!UUID_PATTERN.test(leadId)) return { ok: false, error: 'notFound' }
 
-  const { supabase } = await getSession()
+  const { supabase, profile } = await getSession()
+  if (!profile) return { ok: false, error: 'unauthorized' }
   const { data: lead } = await supabase.from('leads').select('status').eq('id', leadId).maybeSingle<{ status: string }>()
   if (!lead) return { ok: false, error: 'notFound' }
 

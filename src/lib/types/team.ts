@@ -60,3 +60,4 @@ export type AcceptInviteStatus =
   | 'already_accepted'
   | 'email_mismatch'
   | 'other_organization'
+  | 'limit_reached'

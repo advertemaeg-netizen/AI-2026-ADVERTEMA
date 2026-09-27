@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -236,7 +235,6 @@ function DialogShell({
 
 function ChangePlanDialog({ target, plans, onClose }: { target: SubscriptionTarget; plans: Plan[]; onClose: () => void }) {
   const t = useTranslations('subscription.admin')
-  const tTypes = useTranslations('plans.types')
   const tStatus = useTranslations('subscription.status')
   const tCycles = useTranslations('subscription.upgrade.cycles')
   const locale = useLocale()

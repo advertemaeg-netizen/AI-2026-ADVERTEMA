@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { canManage, getSession } from '@/lib/auth/session'
 import { appOrigin } from '@/lib/app-url'
-import { checkClientLimit, limitError, limitErrorFromDb } from '@/lib/subscription-limits'
+import { checkClientLimit, guardLimit, limitErrorFromDb } from '@/lib/subscription-limits'
 import { UUID_PATTERN } from '@/lib/types/clients'
 import {
   AVAILABLE_CHANNEL_TYPES,
@@ -76,7 +76,7 @@ export async function createChannelAction(
   if (!client) return { ok: false, error: 'notFound' }
 
   // Channels count against the client's own plan
-  const blocked = limitError(await checkClientLimit(supabase, clientId, 'channels'))
+  const blocked = await guardLimit(checkClientLimit(supabase, clientId, 'channels'))
   if (blocked) return { ok: false, error: blocked }
 
   const id = crypto.randomUUID()

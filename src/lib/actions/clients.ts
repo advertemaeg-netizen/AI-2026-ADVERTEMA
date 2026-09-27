@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { canManage, getSession } from '@/lib/auth/session'
-import { checkOrgLimit, limitError, limitErrorFromDb } from '@/lib/subscription-limits'
+import { checkOrgLimit, guardLimit, limitErrorFromDb } from '@/lib/subscription-limits'
 import {
   CLIENT_STATUSES,
   type Client,
@@ -132,7 +132,7 @@ export async function createClientAction(formData: FormData): Promise<ClientActi
   if (!parsed.ok) return { ok: false, error: 'validation', fieldErrors: parsed.fieldErrors }
 
   // The number of clients is the agency plan's limit
-  const blocked = limitError(await checkOrgLimit(supabase, profile.organization_id, 'clients'))
+  const blocked = await guardLimit(checkOrgLimit(supabase, profile.organization_id, 'clients'))
   if (blocked) return { ok: false, error: blocked }
 
   // No .select() here: a client_admin only gains read access through the

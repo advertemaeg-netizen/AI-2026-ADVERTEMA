@@ -4,13 +4,16 @@ import { ArrowLeft } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
 import { getClient } from '@/lib/actions/clients'
 import { getBotSettings } from '@/lib/actions/bot-settings'
+import { requireClientManager } from '@/lib/auth/guards'
 import { ClientSubnav } from '../_components/client-subnav'
 import { Playground } from './_components/playground'
 
 export default async function PlaygroundPage({
   params,
 }: PageProps<'/[locale]/dashboard/clients/[clientId]/playground'>) {
-  const { clientId } = await params
+  const { locale, clientId } = await params
+  // Also in the layout, but layouts don't re-run on client-side navigation
+  await requireClientManager(locale)
   const [client, settings] = await Promise.all([getClient(clientId), getBotSettings(clientId)])
   if (!client || !settings) notFound()
 

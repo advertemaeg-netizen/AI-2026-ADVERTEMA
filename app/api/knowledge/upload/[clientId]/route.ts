@@ -3,7 +3,7 @@ import { canManage, getSession } from '@/lib/auth/session'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { looksLikeFileType, processKnowledgeDocument } from '@/lib/knowledge/process'
 import { UUID_PATTERN } from '@/lib/types/clients'
-import { checkClientLimit, limitError, limitErrorFromDb } from '@/lib/subscription-limits'
+import { checkClientLimit, guardLimit, limitErrorFromDb } from '@/lib/subscription-limits'
 import {
   KNOWLEDGE_BUCKET,
   KNOWLEDGE_FILE_TYPES,
@@ -37,7 +37,8 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/knowled
   if (!client) return fail('notFound', 404)
 
   // Knowledge files count against the client's own plan
-  const blocked = limitError(await checkClientLimit(supabase, clientId, 'knowledge_docs'))
+  const blocked = await guardLimit(checkClientLimit(supabase, clientId, 'knowledge_docs'))
+  if (blocked === 'unknown') return fail('uploadFailed', 500)
   if (blocked) return fail(blocked, 403)
 
   // Reject oversized bodies before buffering them (multipart adds a little overhead)

@@ -9,6 +9,7 @@ import { appOrigin } from '@/lib/app-url'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checkClientLimit, checkOrgLimit, limitError } from '@/lib/subscription-limits'
 import { UUID_PATTERN } from '@/lib/types/clients'
+import type { LimitCheck } from '@/lib/types/subscription'
 import {
   inviteSchema,
   type AcceptInviteStatus,
@@ -126,10 +127,17 @@ export async function createInvite(
   // business plan limits that client's team. Pending invites hold a seat too,
   // so accepting them can't pass either limit. Client admins only see their
   // own clients' invites, hence the admin client.
-  const [orgSeats, clientSeats] = await Promise.all([
-    checkOrgLimit(supabase, profile.organization_id, 'team_members'),
-    checkClientLimit(supabase, clientId, 'team_members'),
-  ])
+  let orgSeats: LimitCheck | null
+  let clientSeats: LimitCheck | null
+  try {
+    ;[orgSeats, clientSeats] = await Promise.all([
+      checkOrgLimit(supabase, profile.organization_id, 'team_members'),
+      checkClientLimit(supabase, clientId, 'team_members'),
+    ])
+  } catch (error) {
+    console.error('[team] seat check', error)
+    return { ok: false, error: 'unknown' }
+  }
   const blocked = limitError(orgSeats) ?? limitError(clientSeats)
   if (blocked) return { ok: false, error: blocked }
 

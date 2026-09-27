@@ -1,4 +1,5 @@
 import 'server-only'
+import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { canManageClient } from '@/lib/auth/permissions'
 
@@ -8,7 +9,11 @@ export type Profile = {
   organization_id: string | null
 }
 
-export async function getSession() {
+/**
+ * The signed-in user and their profile. Cached per request, so the layout,
+ * the page and every loader share one auth check and one profile query.
+ */
+export const getSession = cache(async () => {
   const supabase = await createClient()
   const {
     data: { user },
@@ -22,7 +27,7 @@ export async function getSession() {
     .single<Profile>()
 
   return { supabase, profile }
-}
+})
 
 /** Shorthand for canManageClient(profile.role) */
 export function canManage(profile: Profile) {

@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
 import { getClient, getClientPermissions } from '@/lib/actions/clients'
 import { getKnowledgeDocuments } from '@/lib/actions/knowledge'
+import { requireClientManager } from '@/lib/auth/guards'
 import { ClientSubnav } from '../_components/client-subnav'
 import { UploadCard } from './_components/upload-card'
 import { DocumentsList } from './_components/documents-list'
@@ -11,7 +12,9 @@ import { DocumentsList } from './_components/documents-list'
 export default async function KnowledgePage({
   params,
 }: PageProps<'/[locale]/dashboard/clients/[clientId]/knowledge'>) {
-  const { clientId } = await params
+  const { locale, clientId } = await params
+  // Also in the layout, but layouts don't re-run on client-side navigation
+  await requireClientManager(locale)
   const client = await getClient(clientId)
   if (!client) notFound()
 

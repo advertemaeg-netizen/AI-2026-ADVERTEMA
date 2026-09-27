@@ -734,7 +734,10 @@
       "alreadyMember": "This person is already on this client’s team.",
       "self": "You can’t remove yourself.",
       "unknown": "Something went wrong. Please try again.",
-      "copyFailed": "Could not copy. Please copy the link manually."
+      "copyFailed": "Could not copy. Please copy the link manually.",
+      "limitReached": "Your plan’s team seats are full (pending invites count too). Upgrade your plan to invite more people.",
+      "clientLimitReached": "This client’s plan has no free team seats (pending invites count too). Upgrade the client’s plan to invite more people.",
+      "subscriptionInactive": "Your subscription is inactive. Contact us to activate it."
     },
     "accept": {
       "title": "You’re invited",
@@ -773,7 +776,8 @@
         "other_organization": "Your account belongs to another organization; you can’t join more than one.",
         "unauthorized": "Please log in first.",
         "ok": "",
-        "accountExists": "An account with this email already exists. Log in, then open the invite link again."
+        "accountExists": "An account with this email already exists. Log in, then open the invite link again.",
+        "limit_reached": "There are no free team seats right now. Ask whoever invited you to upgrade the plan, then open the link again."
       }
     },
     "descriptionForClient": "An invite link to join the {client} team will be created, valid for 7 days — copy it and send it to them."
@@ -1607,6 +1611,17 @@
     "invoices": {
       "title": "Client invoices",
       "description": "Invoices your agency issued to its clients. Mark them paid when the money arrives."
+    }
+  },
+  "errorPage": {
+    "title": "Something went wrong",
+    "description": "We couldn’t load this page. Please try again, and contact support if it keeps happening.",
+    "retry": "Try again",
+    "reference": "Error code: {digest}",
+    "backToDashboard": "Back to dashboard",
+    "notFound": {
+      "title": "Page not found",
+      "description": "The link is wrong, what you’re looking for was deleted, or you don’t have access to it."
     }
   }
 }

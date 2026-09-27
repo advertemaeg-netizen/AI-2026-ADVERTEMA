@@ -4,13 +4,16 @@ import { ArrowLeft } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
 import { getClient, getClientPermissions } from '@/lib/actions/clients'
 import { getBotSettings } from '@/lib/actions/bot-settings'
+import { requireClientManager } from '@/lib/auth/guards'
 import { ClientSubnav } from '../_components/client-subnav'
 import { BotSettingsForm } from './_components/bot-settings-form'
 
 export default async function BotSettingsPage({
   params,
 }: PageProps<'/[locale]/dashboard/clients/[clientId]/bot-settings'>) {
-  const { clientId } = await params
+  const { locale, clientId } = await params
+  // Also in the layout, but layouts don't re-run on client-side navigation
+  await requireClientManager(locale)
   const [client, settings, { canManage }] = await Promise.all([
     getClient(clientId),
     getBotSettings(clientId),

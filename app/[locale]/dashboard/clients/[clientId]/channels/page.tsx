@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { getClient, getClientPermissions } from '@/lib/actions/clients'
 import { getChannels } from '@/lib/actions/channels'
 import { appOrigin } from '@/lib/app-url'
+import { requireClientManager } from '@/lib/auth/guards'
 import { ClientSubnav } from '../_components/client-subnav'
 import { AddChannelDialog } from './_components/add-channel-dialog'
 import { ChannelCard } from './_components/channel-card'
@@ -13,7 +14,9 @@ import { ChannelCard } from './_components/channel-card'
 export default async function ChannelsPage({
   params,
 }: PageProps<'/[locale]/dashboard/clients/[clientId]/channels'>) {
-  const { clientId } = await params
+  const { locale, clientId } = await params
+  // Also in the layout, but layouts don't re-run on client-side navigation
+  await requireClientManager(locale)
   const client = await getClient(clientId)
   if (!client) notFound()
 

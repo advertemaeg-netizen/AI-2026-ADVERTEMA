@@ -26,10 +26,38 @@ export function checkClientLimit(supabase: SupabaseClient, clientId: string, lim
   return rpcLimit(supabase, 'check_client_limit', { p_client_id: clientId, p_limit_type: limitType })
 }
 
+/**
+ * Whether the client's subscription (and its agency's) can be used at all,
+ * whatever its quotas. Fails closed: no subscription, or a failed check,
+ * counts as inactive.
+ */
+export async function clientSubscriptionActive(supabase: SupabaseClient, clientId: string): Promise<boolean> {
+  try {
+    const check = await checkClientLimit(supabase, clientId, 'messages')
+    return check !== null && check.reason !== 'inactive'
+  } catch (error) {
+    console.error('[subscription-limits] subscription check', error)
+    return false
+  }
+}
+
 /** The action error for a refused check, or null when allowed. */
 export function limitError(check: LimitCheck | null): LimitError | null {
   if (!check || check.allowed) return null
   return check.reason === 'inactive' ? 'subscriptionInactive' : 'limitReached'
+}
+
+/**
+ * limitError for a check that may itself fail: 'unknown' (logged) instead of
+ * throwing, so actions refuse cleanly rather than crash the page.
+ */
+export async function guardLimit(check: Promise<LimitCheck | null>): Promise<LimitError | 'unknown' | null> {
+  try {
+    return limitError(await check)
+  } catch (error) {
+    console.error('[subscription-limits]', error)
+    return 'unknown'
+  }
 }
 
 /** Maps the database backstop ("subscription_limit:<type>", hint = reason). */

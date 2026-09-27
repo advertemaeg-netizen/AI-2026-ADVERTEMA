@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { generateJson, type ChatTurn } from '@/lib/ai/gemini'
 import { normalizeEgyptianPhone } from '@/lib/phone'
 import { cairoWallTimeToIso, describeCairoNow } from '@/lib/cairo-time'
+import { clientSubscriptionActive } from '@/lib/subscription-limits'
 import type { LeadExtractedData } from '@/lib/types/leads'
 
 // A light model for the per-message analysis: it runs on every visitor
@@ -166,6 +167,9 @@ export async function detectLead({
   history: ChatTurn[]
 }) {
   try {
+    // No AI cost for clients whose subscription (or agency's) isn't active
+    if (!(await clientSubscriptionActive(supabase, clientId))) return
+
     const analysis = await analyzeConversation(history)
     const phone = normalizeEgyptianPhone(analysis.phone)
     const appointmentAt = resolveAppointment(analysis)

@@ -11,6 +11,7 @@ import { getSession } from '@/lib/auth/session'
 import { isOrgAdmin } from '@/lib/auth/permissions'
 import { getClient } from '@/lib/actions/clients'
 import { getClientAvailablePlans, getClientInvoices, getClientSubscription } from '@/lib/actions/client-subscription'
+import { requireClientManager } from '@/lib/auth/guards'
 import { ClientSubnav } from '../_components/client-subnav'
 import { ClientPlanPicker } from './_components/client-plan-picker'
 import { ClientPricingActions } from './_components/client-pricing-actions'
@@ -23,7 +24,9 @@ import { ClientPricingActions } from './_components/client-pricing-actions'
 export default async function ClientSubscriptionPage({
   params,
 }: PageProps<'/[locale]/dashboard/clients/[clientId]/subscription'>) {
-  const { clientId } = await params
+  const { locale, clientId } = await params
+  // Also in the layout, but layouts don't re-run on client-side navigation
+  await requireClientManager(locale)
   const [client, { profile }] = await Promise.all([getClient(clientId), getSession()])
   if (!client || !profile) notFound()
 
