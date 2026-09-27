@@ -2,7 +2,7 @@ import { getTranslations } from 'next-intl/server'
 import { Card, CardContent } from '@/components/ui/card'
 import { requireSuperAdmin } from '@/lib/auth/guards'
 import { getPlans } from '@/lib/actions/admin-plans'
-import { getAllSubscriptions } from '@/lib/actions/admin-subscriptions'
+import { getAllClientSubscriptions, getAllSubscriptions } from '@/lib/actions/admin-subscriptions'
 import { PlansManager } from './_components/plans-manager'
 
 export default async function AdminPlansPage({ params }: PageProps<'/[locale]/admin/plans'>) {
@@ -10,9 +10,16 @@ export default async function AdminPlansPage({ params }: PageProps<'/[locale]/ad
   await requireSuperAdmin(locale)
 
   const t = await getTranslations('plans')
-  const [plans, subscriptions] = await Promise.all([getPlans(), getAllSubscriptions()])
+  // Agency plans: organizations; business plans: clients
+  const [plans, subscriptions, clientSubscriptions] = await Promise.all([
+    getPlans(),
+    getAllSubscriptions(),
+    getAllClientSubscriptions(),
+  ])
   const subscribers: Record<string, number> = {}
-  for (const sub of subscriptions) subscribers[sub.plan_id] = (subscribers[sub.plan_id] ?? 0) + 1
+  for (const sub of [...subscriptions, ...clientSubscriptions]) {
+    subscribers[sub.plan_id] = (subscribers[sub.plan_id] ?? 0) + 1
+  }
 
   return (
     <div className="p-8 grid gap-6">

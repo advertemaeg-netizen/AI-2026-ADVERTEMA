@@ -14,7 +14,7 @@ import { InvoicesTable } from '@/components/billing/invoices-table'
 import { UsageBars } from '@/components/billing/usage-bars'
 import { CurrentPlanCard } from '@/components/billing/current-plan-card'
 import { SubscriptionActions } from '../../_components/subscription-actions'
-import { CreateInvoiceDialog } from '../../_components/create-invoice-dialog'
+import { CreateInvoiceDialog } from '@/components/billing/create-invoice-dialog'
 import type { ClientStatus } from '@/lib/types/clients'
 import type { UserRole } from '@/lib/types/team'
 import { ToggleOrgButton } from './_components/toggle-org-button'
@@ -156,10 +156,10 @@ export default async function AdminOrganizationPage({ params }: PageProps<'/[loc
                 <CardTitle>{tBilling('invoices')}</CardTitle>
                 <CardDescription>{tBilling('invoicesCount', { count: billing.invoices.length })}</CardDescription>
               </div>
-              <CreateInvoiceDialog organizations={[]} organizationId={org.id} />
+              <CreateInvoiceDialog parties={[]} partyId={org.id} />
             </CardHeader>
             <CardContent>
-              <InvoicesTable invoices={billing.invoices} admin showOrganization={false} />
+              <InvoicesTable invoices={billing.invoices} actions="platform" />
             </CardContent>
           </Card>
         </section>

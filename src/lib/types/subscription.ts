@@ -7,6 +7,25 @@ export type LimitType = (typeof LIMIT_TYPES)[number]
 export const PLAN_TYPES = ['agency', 'business'] as const
 export type PlanType = (typeof PLAN_TYPES)[number]
 
+/**
+ * Two billing levels: the organization (agency plan, paid to the platform)
+ * and each client (business plan, paid to the agency).
+ */
+export const ORG_LIMIT_TYPES = ['clients', 'team_members'] as const satisfies readonly LimitType[]
+export const CLIENT_LIMIT_TYPES = ['messages', 'channels', 'knowledge_docs', 'team_members'] as const satisfies readonly LimitType[]
+export type OrgLimitType = (typeof ORG_LIMIT_TYPES)[number]
+export type ClientLimitType = (typeof CLIENT_LIMIT_TYPES)[number]
+
+/** The limits each plan type sets (the others don't apply to it) */
+export const PLAN_LIMIT_TYPES: Record<PlanType, readonly LimitType[]> = {
+  agency: ORG_LIMIT_TYPES,
+  business: CLIENT_LIMIT_TYPES,
+}
+
+/** platform: from the platform to an agency; agency: from an agency to its client */
+export const BILLED_TO = ['platform', 'agency'] as const
+export type BilledTo = (typeof BILLED_TO)[number]
+
 export const BILLING_CYCLES = ['monthly', 'yearly'] as const
 export type BillingCycle = (typeof BILLING_CYCLES)[number]
 
@@ -82,7 +101,8 @@ export type SubscriptionDetails = {
     current_period_start: string
     current_period_end: string
     trial_ends_at: string | null
-    messages_period_start: string
+    /** Client subscriptions only (organizations have no message allowance) */
+    messages_period_start: string | null
     notes: string | null
   }
   plan: Plan
@@ -91,10 +111,24 @@ export type SubscriptionDetails = {
   usage: UsageItem[]
 }
 
+/** One client's subscription (get_client_subscription_details) */
+export type ClientSubscriptionDetails = Omit<SubscriptionDetails, 'subscription'> & {
+  subscription: SubscriptionDetails['subscription'] & {
+    client_id: string
+    /** The agency's own subscription is usable (clients stop with it) */
+    agency_usable: boolean
+  }
+  client: { id: string; name: string }
+}
+
 export type Invoice = {
   id: string
   organization_id: string
   organization_name?: string
+  /** Set on invoices from an agency to its client */
+  client_id: string | null
+  client_name?: string
+  billed_to: BilledTo
   subscription_id: string | null
   invoice_number: string
   amount: number
@@ -117,7 +151,15 @@ export type LimitCheck = {
   reason: 'ok' | 'limit_reached' | 'inactive'
 }
 
-export type UsageAlert = { limit_type: LimitType; threshold: number; used: number; limit: number }
+/** client_id null: an organization limit */
+export type UsageAlert = {
+  limit_type: LimitType
+  threshold: number
+  used: number
+  limit: number
+  client_id: string | null
+  client_name: string | null
+}
 
 /** One row of the admin subscriptions table */
 export type SubscriptionRow = {
@@ -141,6 +183,59 @@ export type SubscriptionRow = {
   trial_ends_at: string | null
   usage: UsageItem[]
 }
+
+/** One client of the agency (dashboard billing page) */
+export type ClientBillingRow = {
+  client_id: string
+  client_name: string
+  client_status: string
+  subscription_id: string
+  status: SubscriptionStatus
+  usable: boolean
+  billing_cycle: BillingCycle
+  plan_id: string
+  plan_slug: string
+  plan_name: string
+  plan_name_ar: string
+  base_price: number
+  effective_price: number
+  /** Effective price per month (yearly / 12) */
+  monthly_value: number
+  has_custom_pricing: boolean
+  current_period_start: string
+  current_period_end: string
+  trial_ends_at: string | null
+  usage: UsageItem[]
+  open_invoices: number
+  open_amount: number
+}
+
+/** One row of the admin "client subscriptions" tab */
+export type ClientSubscriptionRow = {
+  client_id: string
+  client_name: string
+  organization_id: string
+  organization_name: string
+  organization_active: boolean
+  subscription_id: string
+  status: SubscriptionStatus
+  usable: boolean
+  billing_cycle: BillingCycle
+  plan_id: string
+  plan_slug: string
+  plan_name: string
+  plan_name_ar: string
+  base_price: number
+  effective_price: number
+  has_custom_pricing: boolean
+  custom_pricing_reason: string | null
+  current_period_end: string
+  trial_ends_at: string | null
+  usage: UsageItem[]
+}
+
+export type BillingActionError = 'forbidden' | 'validation' | 'notFound' | 'invalidStatus' | 'unknown'
+export type BillingActionResult = { ok: true } | { ok: false; error: BillingActionError; field?: string }
 
 /** Errors the limited actions (clients, channels, files, invites) can add */
 export type LimitError = 'limitReached' | 'subscriptionInactive'
@@ -219,6 +314,18 @@ export const invoiceSchema = z.object({
 })
 
 export type InvoiceInput = z.infer<typeof invoiceSchema>
+
+/** An agency's invoice to one of its clients */
+export const clientInvoiceSchema = invoiceSchema.omit({ organization_id: true }).extend({ client_id: uuid })
+
+export type ClientInvoiceInput = z.infer<typeof clientInvoiceSchema>
+
+export const changeClientPlanSchema = z.object({
+  plan_id: uuid,
+  billing_cycle: z.enum(BILLING_CYCLES),
+})
+
+export type ChangeClientPlanInput = z.infer<typeof changeClientPlanSchema>
 
 export const markPaidSchema = z.object({
   payment_method: z.enum(PAYMENT_METHODS),

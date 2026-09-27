@@ -23,12 +23,21 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { markInvoicePaid, setInvoiceStatus } from '@/lib/actions/admin-subscriptions'
+import { markClientInvoicePaid, setClientInvoiceStatus } from '@/lib/actions/agency-billing'
 import { PAYMENT_METHODS, type Invoice, type InvoiceStatus, type PaymentMethod } from '@/lib/types/subscription'
 import { dateKeyToIso, toDateKey } from './date-key'
 import { useMoney } from './use-money'
 
-/** Super admin actions on one invoice: mark paid, mark sent / overdue, cancel. */
-export function InvoiceRowActions({ invoice }: { invoice: Invoice }) {
+/** platform: super admins (any invoice); agency: an agency on its invoices to its clients */
+export type InvoiceScope = 'platform' | 'agency'
+
+const ACTIONS = {
+  platform: { markPaid: markInvoicePaid, setStatus: setInvoiceStatus },
+  agency: { markPaid: markClientInvoicePaid, setStatus: setClientInvoiceStatus },
+} as const
+
+/** Actions on one invoice: mark paid, mark sent / overdue, cancel. */
+export function InvoiceRowActions({ invoice, scope = 'platform' }: { invoice: Invoice; scope?: InvoiceScope }) {
   const t = useTranslations('invoices')
   const [paying, setPaying] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -37,7 +46,7 @@ export function InvoiceRowActions({ invoice }: { invoice: Invoice }) {
 
   function changeStatus(status: Exclude<InvoiceStatus, 'paid'>) {
     startTransition(async () => {
-      const result = await setInvoiceStatus(invoice.id, status)
+      const result = await ACTIONS[scope].setStatus(invoice.id, status)
       if (result.ok) toast.success(t('toast.statusChanged'))
       else toast.error(t(`errors.${result.error}`))
     })
@@ -74,12 +83,12 @@ export function InvoiceRowActions({ invoice }: { invoice: Invoice }) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      {paying && <MarkPaidDialog invoice={invoice} onClose={() => setPaying(false)} />}
+      {paying && <MarkPaidDialog invoice={invoice} scope={scope} onClose={() => setPaying(false)} />}
     </>
   )
 }
 
-function MarkPaidDialog({ invoice, onClose }: { invoice: Invoice; onClose: () => void }) {
+function MarkPaidDialog({ invoice, scope, onClose }: { invoice: Invoice; scope: InvoiceScope; onClose: () => void }) {
   const t = useTranslations('invoices')
   const tCommon = useTranslations('common')
   const money = useMoney()
@@ -91,7 +100,7 @@ function MarkPaidDialog({ invoice, onClose }: { invoice: Invoice; onClose: () =>
   function submit(e: React.FormEvent) {
     e.preventDefault()
     startTransition(async () => {
-      const result = await markInvoicePaid(invoice.id, {
+      const result = await ACTIONS[scope].markPaid(invoice.id, {
         payment_method: method,
         payment_reference: reference.trim() || null,
         paid_at: dateKeyToIso(paidOn, '12:00'),
@@ -148,7 +157,7 @@ function MarkPaidDialog({ invoice, onClose }: { invoice: Invoice; onClose: () =>
             <Input id="paid-on" type="date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} required />
           </div>
 
-          <p className="text-xs text-muted-foreground">{t('markPaid.hint')}</p>
+          <p className="text-xs text-muted-foreground">{t(invoice.client_id ? 'markPaid.hintClient' : 'markPaid.hint')}</p>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>

@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useMoney } from '@/components/billing/use-money'
 import { reorderPlans, togglePlanActive } from '@/lib/actions/admin-plans'
-import { LIMIT_COLUMNS, LIMIT_TYPES, PLAN_TYPES, type Plan, type PlanType } from '@/lib/types/subscription'
+import { LIMIT_COLUMNS, PLAN_LIMIT_TYPES, PLAN_TYPES, type Plan, type PlanType } from '@/lib/types/subscription'
 import { PlanFormDialog } from './plan-form-dialog'
 
 export function PlansManager({ plans, subscribers }: { plans: Plan[]; subscribers: Record<string, number> }) {
@@ -81,7 +81,7 @@ export function PlansManager({ plans, subscribers }: { plans: Plan[]; subscriber
                         <TableHead>{t('columns.plan')}</TableHead>
                         <TableHead className="text-end">{t('columns.monthly')}</TableHead>
                         <TableHead className="text-end">{t('columns.yearly')}</TableHead>
-                        {LIMIT_TYPES.map((limitType) => (
+                        {PLAN_LIMIT_TYPES[type].map((limitType) => (
                           <TableHead key={limitType} className="text-end">
                             {tUsage(limitType)}
                           </TableHead>
@@ -122,7 +122,7 @@ export function PlansManager({ plans, subscribers }: { plans: Plan[]; subscriber
                           </TableCell>
                           <TableCell className="text-end tabular-nums">{money.withCurrency(plan.price_monthly)}</TableCell>
                           <TableCell className="text-end tabular-nums">{money.withCurrency(plan.price_yearly)}</TableCell>
-                          {LIMIT_TYPES.map((limitType) => (
+                          {PLAN_LIMIT_TYPES[type].map((limitType) => (
                             <TableCell key={limitType} className="text-end tabular-nums">
                               {limit(plan[LIMIT_COLUMNS[limitType]])}
                             </TableCell>

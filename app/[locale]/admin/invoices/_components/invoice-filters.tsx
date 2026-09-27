@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Loader2 } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { INVOICE_STATUSES, type InvoiceStatus } from '@/lib/types/subscription'
+import { BILLED_TO, INVOICE_STATUSES, type BilledTo, type InvoiceStatus } from '@/lib/types/subscription'
 
 const ALL = 'all'
 
@@ -14,15 +14,20 @@ export function InvoiceFilters({
   filters,
 }: {
   organizations: { id: string; name: string }[]
-  filters: { status?: InvoiceStatus; organizationId?: string }
+  filters: { status?: InvoiceStatus; organizationId?: string; billedTo?: BilledTo }
 }) {
   const t = useTranslations('invoices')
   const router = useRouter()
   const pathname = usePathname()
   const [isPending, startTransition] = useTransition()
 
-  function update(key: 'status' | 'org', value: string) {
-    const next = { status: filters.status, org: filters.organizationId, [key]: value === ALL ? undefined : value }
+  function update(key: 'status' | 'org' | 'billed', value: string) {
+    const next = {
+      billed: filters.billedTo,
+      status: filters.status,
+      org: filters.organizationId,
+      [key]: value === ALL ? undefined : value,
+    }
     const params = new URLSearchParams()
     for (const [k, v] of Object.entries(next)) if (v) params.set(k, v)
     const qs = params.toString()
@@ -31,6 +36,19 @@ export function InvoiceFilters({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      <Select value={filters.billedTo ?? ALL} onValueChange={(v) => update('billed', v)}>
+        <SelectTrigger className="w-56" aria-label={t('filters.billedTo')}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL}>{t('filters.allInvoices')}</SelectItem>
+          {BILLED_TO.map((billedTo) => (
+            <SelectItem key={billedTo} value={billedTo}>
+              {t(`filters.billed.${billedTo}`)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       <Select value={filters.status ?? ALL} onValueChange={(v) => update('status', v)}>
         <SelectTrigger className="w-44" aria-label={t('filters.status')}>
           <SelectValue />

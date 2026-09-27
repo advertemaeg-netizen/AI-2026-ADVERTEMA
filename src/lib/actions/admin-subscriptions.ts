@@ -3,18 +3,23 @@
 import { revalidatePath } from 'next/cache'
 import { getSession } from '@/lib/auth/session'
 import { isSuperAdmin } from '@/lib/auth/permissions'
-import { fetchSubscriptionDetails, normalizeInvoice, num, numOrNull } from '@/lib/subscription-data'
+import { fetchSubscriptionDetails, nextPeriod, normalizeInvoice, normalizeUsage, num } from '@/lib/subscription-data'
 import { UUID_PATTERN } from '@/lib/types/clients'
 import {
+  BILLED_TO,
   changePlanSchema,
+  CLIENT_LIMIT_TYPES,
   customPricingSchema,
   INVOICE_STATUSES,
   invoiceSchema,
-  LIMIT_TYPES,
   markPaidSchema,
+  ORG_LIMIT_TYPES,
   PLAN_TYPES,
   SUBSCRIPTION_STATUSES,
+  type BilledTo,
+  type BillingActionResult,
   type ChangePlanInput,
+  type ClientSubscriptionRow,
   type CustomPricingInput,
   type Invoice,
   type InvoiceInput,
@@ -27,8 +32,7 @@ import {
   type UsageItem,
 } from '@/lib/types/subscription'
 
-export type BillingActionError = 'forbidden' | 'validation' | 'notFound' | 'invalidStatus' | 'unknown'
-export type BillingActionResult = { ok: true } | { ok: false; error: BillingActionError; field?: string }
+export type { BillingActionError, BillingActionResult } from '@/lib/types/subscription'
 
 const DAY = 24 * 60 * 60 * 1000
 const MAX_EXTEND_DAYS = 366
@@ -80,21 +84,37 @@ export async function getAllSubscriptions(filters: {
       ...row,
       base_price: num(row.base_price),
       effective_price: num(row.effective_price),
-      usage: LIMIT_TYPES.map((type): UsageItem => {
-        const item = row.usage?.find((u) => u.limit_type === type)
-        const used = num(item?.used)
-        const limit = numOrNull(item?.limit)
-        return {
-          limit_type: type,
-          used,
-          limit,
-          percentage: limit === null ? null : limit === 0 ? 100 : Math.round((used * 1000) / limit) / 10,
-        }
-      }),
+      usage: normalizeUsage(row.usage, ORG_LIMIT_TYPES),
     }))
 }
 
-/** Subscription details and invoices of one organization (org details page). */
+type ClientSubscriptionRowRaw = Omit<ClientSubscriptionRow, 'usage'> & { usage: UsageItem[] | null }
+
+/** Every client subscription in every organization, optionally filtered by status / organization. */
+export async function getAllClientSubscriptions(filters: {
+  status?: SubscriptionStatus
+  organizationId?: string
+} = {}): Promise<ClientSubscriptionRow[]> {
+  const session = await superAdminSession()
+  if (!session) return []
+
+  const { data, error } = await session.supabase.rpc('get_all_client_subscriptions')
+  if (error) throw new Error(`Failed to load client subscriptions: ${error.message}`)
+
+  const status = (SUBSCRIPTION_STATUSES as readonly string[]).includes(filters.status ?? '') ? filters.status : undefined
+  const organizationId = UUID_PATTERN.test(filters.organizationId ?? '') ? filters.organizationId : undefined
+
+  return ((data as ClientSubscriptionRowRaw[] | null) ?? [])
+    .filter((row) => (!status || row.status === status) && (!organizationId || row.organization_id === organizationId))
+    .map((row) => ({
+      ...row,
+      base_price: num(row.base_price),
+      effective_price: num(row.effective_price),
+      usage: normalizeUsage(row.usage, CLIENT_LIMIT_TYPES),
+    }))
+}
+
+/** The organization's own subscription and the platform's invoices to it (org details page). */
 export async function getOrganizationBilling(
   organizationId: string
 ): Promise<{ details: SubscriptionDetails | null; invoices: Invoice[] } | null> {
@@ -108,6 +128,7 @@ export async function getOrganizationBilling(
       .from('invoices')
       .select('*')
       .eq('organization_id', organizationId)
+      .eq('billed_to', 'platform')
       .order('created_at', { ascending: false })
       .returns<Invoice[]>(),
   ])
@@ -226,7 +247,7 @@ export async function extendPeriod(organizationId: string, days: number): Promis
   return { ok: true }
 }
 
-/** Starts the monthly message count over and recounts clients, members, channels and files. */
+/** Recounts the organization's clients and team members and clears its usage alerts. */
 export async function resetUsage(organizationId: string): Promise<BillingActionResult> {
   if (!UUID_PATTERN.test(organizationId)) return { ok: false, error: 'notFound' }
   const session = await superAdminSession()
@@ -244,26 +265,38 @@ export async function resetUsage(organizationId: string): Promise<BillingActionR
 // Invoices
 // ---------------------------------------------------------------------------
 
-/** Every invoice with its organization's name, filtered by status / organization. */
-export async function getAllInvoices(filters: { status?: InvoiceStatus; organizationId?: string } = {}): Promise<Invoice[]> {
+/**
+ * Every invoice with its organization's (and client's) name, filtered by
+ * status / organization / who issued it (platform → agencies, or agencies →
+ * their clients).
+ */
+export async function getAllInvoices(filters: {
+  status?: InvoiceStatus
+  organizationId?: string
+  billedTo?: BilledTo
+} = {}): Promise<Invoice[]> {
   const session = await superAdminSession()
   if (!session) return []
 
   let query = session.supabase
     .from('invoices')
-    .select('*, organization:organizations(name)')
+    .select('*, organization:organizations(name), client:clients(name)')
     .order('created_at', { ascending: false })
     .limit(500)
   if ((INVOICE_STATUSES as readonly string[]).includes(filters.status ?? '')) query = query.eq('status', filters.status!)
   if (filters.organizationId && UUID_PATTERN.test(filters.organizationId)) {
     query = query.eq('organization_id', filters.organizationId)
   }
+  if ((BILLED_TO as readonly string[]).includes(filters.billedTo ?? '')) query = query.eq('billed_to', filters.billedTo!)
 
-  const { data, error } = await query.returns<(Invoice & { organization: { name: string } | null })[]>()
+  const { data, error } = await query.returns<
+    (Invoice & { organization: { name: string } | null; client: { name: string } | null })[]
+  >()
   if (error) throw new Error(`Failed to load invoices: ${error.message}`)
-  return (data ?? []).map(({ organization, ...row }) => ({
+  return (data ?? []).map(({ organization, client, ...row }) => ({
     ...normalizeInvoice(row),
     organization_name: organization?.name ?? '',
+    client_name: client?.name ?? undefined,
   }))
 }
 
@@ -297,15 +330,9 @@ export async function getInvoiceDefaults(organizationId: string): Promise<{
   const details = await fetchSubscriptionDetails(session.supabase, organizationId)
   if (!details) return null
 
-  const start = new Date(details.subscription.current_period_end)
-  const end = new Date(start)
-  if (details.subscription.billing_cycle === 'yearly') end.setUTCFullYear(end.getUTCFullYear() + 1)
-  else end.setUTCMonth(end.getUTCMonth() + 1)
-
   return {
     amount: details.price.current,
-    periodStart: start.toISOString(),
-    periodEnd: end.toISOString(),
+    ...nextPeriod(details.subscription.current_period_end, details.subscription.billing_cycle),
     billingCycle: details.subscription.billing_cycle,
   }
 }
@@ -328,9 +355,11 @@ export async function createInvoice(input: InvoiceInput): Promise<BillingActionR
     .maybeSingle<{ id: string }>()
   if (!subscription) return { ok: false, error: 'notFound' }
 
-  // invoice_number is assigned by the database (INV-<year>-0001)
+  // invoice_number is assigned by the database (INV-<year>-0001, one
+  // sequence for platform and agency invoices)
   const { error } = await session.supabase.from('invoices').insert({
     organization_id: values.organization_id,
+    billed_to: 'platform',
     subscription_id: subscription.id,
     amount: values.amount,
     period_start: values.period_start,

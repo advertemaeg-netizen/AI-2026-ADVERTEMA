@@ -49,6 +49,7 @@ export type TeamActionError =
   | 'alreadyMember'
   | 'self'
   | 'limitReached'
+  | 'clientLimitReached'
   | 'subscriptionInactive'
   | 'unknown'
 

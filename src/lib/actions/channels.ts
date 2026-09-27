@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { canManage, getSession } from '@/lib/auth/session'
 import { appOrigin } from '@/lib/app-url'
-import { checkLimit, limitError, limitErrorFromDb } from '@/lib/subscription-limits'
+import { checkClientLimit, limitError, limitErrorFromDb } from '@/lib/subscription-limits'
 import { UUID_PATTERN } from '@/lib/types/clients'
 import {
   AVAILABLE_CHANNEL_TYPES,
@@ -70,12 +70,13 @@ export async function createChannelAction(
   // RLS: only clients this user can see
   const { data: client } = await supabase
     .from('clients')
-    .select('organization_id')
+    .select('id')
     .eq('id', clientId)
-    .maybeSingle<{ organization_id: string }>()
+    .maybeSingle<{ id: string }>()
   if (!client) return { ok: false, error: 'notFound' }
 
-  const blocked = limitError(await checkLimit(supabase, client.organization_id, 'channels'))
+  // Channels count against the client's own plan
+  const blocked = limitError(await checkClientLimit(supabase, clientId, 'channels'))
   if (blocked) return { ok: false, error: blocked }
 
   const id = crypto.randomUUID()

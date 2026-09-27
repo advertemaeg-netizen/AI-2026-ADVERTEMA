@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getSession } from '@/lib/auth/session'
 import { isOrgAdmin } from '@/lib/auth/permissions'
-import { fetchSubscriptionDetails, normalizeInvoice, num } from '@/lib/subscription-data'
+import { fetchSubscriptionDetails, normalizeAvailablePlans, normalizeInvoice, num } from '@/lib/subscription-data'
 import {
   PLAN_TYPES,
   type AvailablePlan,
@@ -21,19 +21,23 @@ async function billingSession() {
   return { supabase, organizationId: profile.organization_id }
 }
 
-/** The caller's organization's subscription: plan, effective price, custom pricing, usage. */
+/**
+ * The caller's organization's own subscription (the agency plan paid to the
+ * platform): plan, effective price, custom pricing, clients / team usage.
+ * Clients' subscriptions are in client-subscription.ts and agency-billing.ts.
+ */
 export async function getSubscription(): Promise<SubscriptionDetails | null> {
   const session = await billingSession()
   if (!session) return null
   return fetchSubscriptionDetails(session.supabase, session.organizationId)
 }
 
-/** Usage per limit for the caller's organization. */
+/** Organization-level usage (clients, team members). */
 export async function getUsage(): Promise<UsageItem[]> {
   return (await getSubscription())?.usage ?? []
 }
 
-/** The caller's organization's invoices, newest first (RLS: org admins). */
+/** The platform's invoices to the caller's organization, newest first (RLS: org admins). */
 export async function getInvoices(): Promise<Invoice[]> {
   const session = await billingSession()
   if (!session) return []
@@ -42,6 +46,7 @@ export async function getInvoices(): Promise<Invoice[]> {
     .from('invoices')
     .select('*')
     .eq('organization_id', session.organizationId)
+    .eq('billed_to', 'platform')
     .order('created_at', { ascending: false })
     .returns<Invoice[]>()
   if (error) throw new Error(`Failed to load invoices: ${error.message}`)
@@ -56,16 +61,10 @@ export async function getAvailablePlans(planType: PlanType): Promise<AvailablePl
 
   const { data, error } = await session.supabase.rpc('get_available_plans', { p_plan_type: planType })
   if (error) throw new Error(`Failed to load plans: ${error.message}`)
-  return ((data as AvailablePlan[] | null) ?? []).map((plan) => ({
-    ...plan,
-    price_monthly: num(plan.price_monthly),
-    price_yearly: num(plan.price_yearly),
-    effective_monthly: num(plan.effective_monthly),
-    effective_yearly: num(plan.effective_yearly),
-  }))
+  return normalizeAvailablePlans(data as AvailablePlan[] | null)
 }
 
-/** Limits at 80 / 90 / 100 % that the org admin hasn't dismissed yet. */
+/** Limits at 80 / 90 / 100 % that the org admin hasn't dismissed yet: the organization's and its clients'. */
 export async function getUsageAlerts(): Promise<UsageAlert[]> {
   const session = await billingSession()
   if (!session) return []
@@ -75,8 +74,16 @@ export async function getUsageAlerts(): Promise<UsageAlert[]> {
     console.error('[subscription] usage alerts', error)
     return []
   }
-  return ((data as { limit_type: UsageAlert['limit_type']; threshold: number; used: number; limit_value: number }[] | null) ?? [])
-    .map((row) => ({ limit_type: row.limit_type, threshold: num(row.threshold), used: num(row.used), limit: num(row.limit_value) }))
+  type Row = Omit<UsageAlert, 'limit'> & { limit_value: number }
+  return ((data as Row[] | null) ?? [])
+    .map((row) => ({
+      limit_type: row.limit_type,
+      threshold: num(row.threshold),
+      used: num(row.used),
+      limit: num(row.limit_value),
+      client_id: row.client_id ?? null,
+      client_name: row.client_name ?? null,
+    }))
     .sort((a, b) => b.threshold - a.threshold)
 }
 

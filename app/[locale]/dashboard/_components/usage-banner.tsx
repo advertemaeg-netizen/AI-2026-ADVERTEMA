@@ -10,8 +10,9 @@ import { dismissUsageAlerts } from '@/lib/actions/subscription'
 import type { UsageAlert } from '@/lib/types/subscription'
 
 /**
- * Org admins: limits past 80 / 90 / 100 % (from usage_alerts, still true),
- * and a subscription that can't be used (trial over, cancelled).
+ * Org admins: limits past 80 / 90 / 100 % (from usage_alerts, still true) —
+ * the agency's own (clients, team) and each client's (messages, channels…) —
+ * and an agency subscription that can't be used (trial over, cancelled).
  */
 export function UsageBanner({
   alerts,
@@ -44,19 +45,30 @@ export function UsageBanner({
       <div className="flex-1 grid gap-0.5">
         {inactive && <p className="font-medium">{t('inactive')}</p>}
         {showTrial && <p className="font-medium">{t('trialEnding', { days: trialDaysLeft })}</p>}
-        {alerts.map((alert) => (
-          <p key={alert.limit_type}>
-            {t(alert.threshold >= 100 ? 'full' : 'near', {
-              limit: tTypes(alert.limit_type),
-              percentage: format.number(alert.threshold),
-              used: format.number(alert.used),
-              max: format.number(alert.limit),
-            })}
-          </p>
-        ))}
-        <Link href="/dashboard/subscription" className="w-fit font-medium underline underline-offset-4">
-          {t('manage')}
-        </Link>
+        {alerts.map((alert) => {
+          const values = {
+            limit: tTypes(alert.limit_type),
+            percentage: format.number(alert.threshold),
+            used: format.number(alert.used),
+            max: format.number(alert.limit),
+          }
+          return alert.client_id ? (
+            <p key={`${alert.client_id}-${alert.limit_type}`}>
+              <Link href={`/dashboard/clients/${alert.client_id}/subscription`} className="font-medium underline underline-offset-4">
+                {alert.client_name}
+              </Link>
+              {': '}
+              {t(alert.threshold >= 100 ? 'full' : 'near', values)}
+            </p>
+          ) : (
+            <p key={alert.limit_type}>{t(alert.threshold >= 100 ? 'full' : 'near', values)}</p>
+          )
+        })}
+        {(inactive || showTrial || alerts.some((a) => !a.client_id)) && (
+          <Link href="/dashboard/subscription" className="w-fit font-medium underline underline-offset-4">
+            {t('manage')}
+          </Link>
+        )}
       </div>
       {alerts.length > 0 && (
         <Button

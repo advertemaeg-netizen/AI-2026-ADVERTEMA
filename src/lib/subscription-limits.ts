@@ -1,22 +1,29 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { LimitCheck, LimitError, LimitType } from '@/lib/types/subscription'
+import type { ClientLimitType, LimitCheck, LimitError, OrgLimitType } from '@/lib/types/subscription'
+
+async function rpcLimit(supabase: SupabaseClient, fn: string, args: Record<string, string>): Promise<LimitCheck | null> {
+  const { data, error } = await supabase.rpc(fn, args)
+  if (error) throw new Error(`${fn} failed: ${error.message}`)
+  return (data as LimitCheck | null) ?? null
+}
 
 /**
- * check_subscription_limit for one organization. null when the org has no
- * subscription (nothing to enforce) or the caller can't see it.
+ * Organization limits (clients, team members), from the agency plan. null
+ * when the org has no subscription (nothing to enforce) or the caller can't
+ * see it.
  */
-export async function checkLimit(
-  supabase: SupabaseClient,
-  organizationId: string,
-  limitType: LimitType
-): Promise<LimitCheck | null> {
-  const { data, error } = await supabase.rpc('check_subscription_limit', {
-    p_org_id: organizationId,
-    p_limit_type: limitType,
-  })
-  if (error) throw new Error(`check_subscription_limit failed: ${error.message}`)
-  return (data as LimitCheck | null) ?? null
+export function checkOrgLimit(supabase: SupabaseClient, organizationId: string, limitType: OrgLimitType) {
+  return rpcLimit(supabase, 'check_org_limit', { p_org_id: organizationId, p_limit_type: limitType })
+}
+
+/**
+ * Client limits (messages, channels, knowledge files, team members), from
+ * the client's business plan. Refused as inactive when either the client's
+ * or its agency's subscription can't be used.
+ */
+export function checkClientLimit(supabase: SupabaseClient, clientId: string, limitType: ClientLimitType) {
+  return rpcLimit(supabase, 'check_client_limit', { p_client_id: clientId, p_limit_type: limitType })
 }
 
 /** The action error for a refused check, or null when allowed. */

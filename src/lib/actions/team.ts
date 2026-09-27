@@ -7,7 +7,7 @@ import { canManageClient, isOrgAdmin } from '@/lib/auth/permissions'
 import { SELECTED_CLIENT_COOKIE, SELECTED_CLIENT_COOKIE_OPTIONS } from '@/lib/auth/client-context'
 import { appOrigin } from '@/lib/app-url'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { checkLimit, limitError } from '@/lib/subscription-limits'
+import { checkClientLimit, checkOrgLimit, limitError } from '@/lib/subscription-limits'
 import { UUID_PATTERN } from '@/lib/types/clients'
 import {
   inviteSchema,
@@ -122,19 +122,31 @@ export async function createInvite(
     .limit(1)
   if (pending && pending.length > 0) return { ok: false, error: 'alreadyInvited' }
 
-  // Pending invites hold a seat too, so accepting them can't pass the limit.
-  // Client admins only see their own clients' invites, hence the admin client.
-  const seats = await checkLimit(supabase, profile.organization_id, 'team_members')
-  const blocked = limitError(seats)
+  // Seats: the agency plan limits the whole organization's team, the client's
+  // business plan limits that client's team. Pending invites hold a seat too,
+  // so accepting them can't pass either limit. Client admins only see their
+  // own clients' invites, hence the admin client.
+  const [orgSeats, clientSeats] = await Promise.all([
+    checkOrgLimit(supabase, profile.organization_id, 'team_members'),
+    checkClientLimit(supabase, clientId, 'team_members'),
+  ])
+  const blocked = limitError(orgSeats) ?? limitError(clientSeats)
   if (blocked) return { ok: false, error: blocked }
-  if (seats?.limit !== null && seats?.limit !== undefined) {
+
+  const pendingInvites = async (column: 'organization_id' | 'client_id', value: string) => {
     const { count } = await createAdminClient()
       .from('organization_invites')
       .select('id', { count: 'exact', head: true })
-      .eq('organization_id', profile.organization_id)
+      .eq(column, value)
       .is('accepted_at', null)
       .gt('expires_at', new Date().toISOString())
-    if (seats.used + (count ?? 0) >= seats.limit) return { ok: false, error: 'limitReached' }
+    return count ?? 0
+  }
+  if (orgSeats?.limit != null && orgSeats.used + (await pendingInvites('organization_id', profile.organization_id)) >= orgSeats.limit) {
+    return { ok: false, error: 'limitReached' }
+  }
+  if (clientSeats?.limit != null && clientSeats.used + (await pendingInvites('client_id', clientId)) >= clientSeats.limit) {
+    return { ok: false, error: 'clientLimitReached' }
   }
 
   // RLS: org admins may invite to any client of their org, client admins only

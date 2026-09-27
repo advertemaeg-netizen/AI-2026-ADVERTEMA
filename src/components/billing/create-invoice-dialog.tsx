@@ -18,25 +18,49 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { dateKeyToIso, toDateKey } from '@/components/billing/date-key'
 import { createInvoice, getInvoiceDefaults } from '@/lib/actions/admin-subscriptions'
+import { createClientInvoice, getClientInvoiceDefaults } from '@/lib/actions/agency-billing'
+import type { BilledTo, InvoiceInput } from '@/lib/types/subscription'
+import { dateKeyToIso, toDateKey } from './date-key'
+
+type Values = Omit<InvoiceInput, 'organization_id'>
+
+// platform: a super admin bills an organization; agency: an agency bills one of its clients
+const PARTIES = {
+  platform: {
+    defaults: getInvoiceDefaults,
+    create: (id: string, values: Values) => createInvoice({ organization_id: id, ...values }),
+  },
+  agency: {
+    defaults: getClientInvoiceDefaults,
+    create: (id: string, values: Values) => createClientInvoice({ client_id: id, ...values }),
+  },
+} as const
 
 /**
- * Manual invoice. Picking an organization fills in its effective price
- * (custom pricing applied) and the period after its current one.
+ * Manual invoice. Picking who it's for fills in their effective price
+ * (custom pricing applied) and the period after their current one.
  */
 export function CreateInvoiceDialog({
-  organizations,
-  organizationId: fixedOrganizationId,
+  billedTo = 'platform',
+  parties,
+  partyId: fixedPartyId,
+  trigger,
 }: {
-  organizations: { id: string; name: string }[]
-  /** Set on an organization's page: no picker */
-  organizationId?: string
+  billedTo?: BilledTo
+  /** Organizations (platform) or the agency's clients (agency) to pick from */
+  parties: { id: string; name: string }[]
+  /** Set on one organization's / client's page: no picker */
+  partyId?: string
+  /** Replaces the default "New invoice" button */
+  trigger?: React.ReactNode
 }) {
   const t = useTranslations('invoices')
   const tCommon = useTranslations('common')
+  const actions = PARTIES[billedTo]
+  const agency = billedTo === 'agency'
   const [open, setOpen] = useState(false)
-  const [organizationId, setOrganizationId] = useState(fixedOrganizationId ?? '')
+  const [partyId, setPartyId] = useState(fixedPartyId ?? '')
   const [amount, setAmount] = useState('')
   const [periodStart, setPeriodStart] = useState('')
   const [periodEnd, setPeriodEnd] = useState('')
@@ -45,10 +69,11 @@ export function CreateInvoiceDialog({
   const [loadingDefaults, setLoadingDefaults] = useState(false)
   const [isPending, startTransition] = useTransition()
 
-  // Prefill from the organization's subscription (on open / when picked)
+  // Prefill from the subscription (on open / when picked)
   function loadDefaults(id: string) {
     setLoadingDefaults(true)
-    getInvoiceDefaults(id)
+    actions
+      .defaults(id)
       .then((defaults) => {
         if (!defaults) return
         setAmount(String(defaults.amount))
@@ -58,13 +83,13 @@ export function CreateInvoiceDialog({
       .finally(() => setLoadingDefaults(false))
   }
 
-  function pickOrganization(id: string) {
-    setOrganizationId(id)
+  function pickParty(id: string) {
+    setPartyId(id)
     loadDefaults(id)
   }
 
   function clearForm() {
-    setOrganizationId(fixedOrganizationId ?? '')
+    setPartyId(fixedPartyId ?? '')
     setAmount('')
     setPeriodStart('')
     setPeriodEnd('')
@@ -76,14 +101,13 @@ export function CreateInvoiceDialog({
     if (isPending) return
     setOpen(next)
     if (!next) clearForm()
-    else if (fixedOrganizationId) loadDefaults(fixedOrganizationId)
+    else if (fixedPartyId) loadDefaults(fixedPartyId)
   }
 
   function submit(e: React.FormEvent) {
     e.preventDefault()
     startTransition(async () => {
-      const result = await createInvoice({
-        organization_id: organizationId,
+      const result = await actions.create(partyId, {
         amount: Number(amount),
         period_start: dateKeyToIso(periodStart),
         period_end: dateKeyToIso(periodEnd),
@@ -103,29 +127,31 @@ export function CreateInvoiceDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus />
-          {t('create')}
-        </Button>
+        {trigger ?? (
+          <Button>
+            <Plus />
+            {t('create')}
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <form onSubmit={submit} className="grid gap-4">
           <DialogHeader>
-            <DialogTitle>{t('createTitle')}</DialogTitle>
-            <DialogDescription>{t('createDescription')}</DialogDescription>
+            <DialogTitle>{t(agency ? 'createTitleClient' : 'createTitle')}</DialogTitle>
+            <DialogDescription>{t(agency ? 'createDescriptionClient' : 'createDescription')}</DialogDescription>
           </DialogHeader>
 
-          {!fixedOrganizationId && (
+          {!fixedPartyId && (
             <div className="grid gap-2">
-              <Label htmlFor="invoice-org">{t('fields.organization')}</Label>
-              <Select value={organizationId} onValueChange={pickOrganization}>
-                <SelectTrigger id="invoice-org" className="w-full">
-                  <SelectValue placeholder={t('placeholders.organization')} />
+              <Label htmlFor="invoice-party">{t(agency ? 'fields.client' : 'fields.organization')}</Label>
+              <Select value={partyId} onValueChange={pickParty}>
+                <SelectTrigger id="invoice-party" className="w-full">
+                  <SelectValue placeholder={t(agency ? 'placeholders.client' : 'placeholders.organization')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {organizations.map((org) => (
-                    <SelectItem key={org.id} value={org.id}>
-                      {org.name}
+                  {parties.map((party) => (
+                    <SelectItem key={party.id} value={party.id}>
+                      {party.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -148,7 +174,7 @@ export function CreateInvoiceDialog({
               onChange={(e) => setAmount(e.target.value)}
               required
             />
-            <p className="text-xs text-muted-foreground">{t('hints.amount')}</p>
+            <p className="text-xs text-muted-foreground">{t(agency ? 'hints.amountClient' : 'hints.amount')}</p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -184,7 +210,7 @@ export function CreateInvoiceDialog({
             <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={isPending}>
               {tCommon('cancel')}
             </Button>
-            <Button type="submit" disabled={isPending || !organizationId || !amount || !periodStart || !periodEnd}>
+            <Button type="submit" disabled={isPending || !partyId || !amount || !periodStart || !periodEnd}>
               {isPending ? tCommon('loading') : t('create')}
             </Button>
           </DialogFooter>

@@ -22,6 +22,7 @@ import { createPlan, updatePlan } from '@/lib/actions/admin-plans'
 import {
   LIMIT_COLUMNS,
   LIMIT_TYPES,
+  PLAN_LIMIT_TYPES,
   PLAN_TYPES,
   type BillingCycle,
   type Plan,
@@ -55,16 +56,21 @@ function toForm(plan: Plan | null, planType: PlanType): FormState {
 }
 
 function toInput(form: FormState): PlanInput {
-  const limit = (value: string) => (value.trim() === '' ? null : Number(value))
+  // Limits that don't apply to the plan's level are stored as null
+  const applies = PLAN_LIMIT_TYPES[form.plan_type]
+  const limit = (type: (typeof LIMIT_TYPES)[number]) => {
+    const value = form[LIMIT_COLUMNS[type]]
+    return !applies.includes(type) || value.trim() === '' ? null : Number(value)
+  }
   return {
     ...form,
     price_monthly: Number(form.price_monthly),
     price_yearly: Number(form.price_yearly),
-    messages_limit: limit(form.messages_limit),
-    clients_limit: limit(form.clients_limit),
-    team_members_limit: limit(form.team_members_limit),
-    channels_limit: limit(form.channels_limit),
-    knowledge_docs_limit: limit(form.knowledge_docs_limit),
+    messages_limit: limit('messages'),
+    clients_limit: limit('clients'),
+    team_members_limit: limit('team_members'),
+    channels_limit: limit('channels'),
+    knowledge_docs_limit: limit('knowledge_docs'),
     features: form.features.map((f) => ({ ar: f.ar.trim(), en: f.en.trim() })),
   }
 }
@@ -177,9 +183,11 @@ export function PlanFormDialog({
 
               <fieldset className="grid gap-3">
                 <legend className="mb-1 text-sm font-medium">{t('form.limits')}</legend>
-                <p className="-mt-1 text-xs text-muted-foreground">{t('form.hints.unlimited')}</p>
+                <p className="-mt-1 text-xs text-muted-foreground">
+                  {t('form.hints.unlimited')} {t(`form.hints.limits.${form.plan_type}`)}
+                </p>
                 <div className="grid gap-4 sm:grid-cols-3">
-                  {LIMIT_TYPES.map((type) => {
+                  {PLAN_LIMIT_TYPES[form.plan_type].map((type) => {
                     const column = LIMIT_COLUMNS[type]
                     return (
                       <div key={type} className="grid gap-2">

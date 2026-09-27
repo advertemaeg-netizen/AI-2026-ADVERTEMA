@@ -6,14 +6,19 @@ import { Link } from '@/i18n/navigation'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { Invoice } from '@/lib/types/subscription'
 import { InvoiceStatusBadge } from './status-badges'
-import { InvoiceRowActions } from './invoice-row-actions'
+import { InvoiceRowActions, type InvoiceScope } from './invoice-row-actions'
 import { useMoney } from './use-money'
 
-/** Invoices list. `admin` adds the organization column and row actions. */
-export function InvoicesTable({ invoices, admin = false, showOrganization = admin }: {
+/**
+ * Invoices list. `actions` adds row actions (platform: super admins,
+ * agency: an agency on its client invoices). `showOrganization` /
+ * `showClient` add who the invoice is for.
+ */
+export function InvoicesTable({ invoices, actions, showOrganization = false, showClient = false }: {
   invoices: Invoice[]
-  admin?: boolean
+  actions?: InvoiceScope
   showOrganization?: boolean
+  showClient?: boolean
 }) {
   const t = useTranslations('invoices')
   const format = useFormatter()
@@ -35,11 +40,12 @@ export function InvoicesTable({ invoices, admin = false, showOrganization = admi
         <TableRow>
           <TableHead>{t('fields.number')}</TableHead>
           {showOrganization && <TableHead>{t('fields.organization')}</TableHead>}
+          {showClient && <TableHead>{t('fields.client')}</TableHead>}
           <TableHead>{t('fields.period')}</TableHead>
           <TableHead className="text-end">{t('fields.amount')}</TableHead>
           <TableHead>{t('fields.status')}</TableHead>
           <TableHead>{t('fields.payment')}</TableHead>
-          {admin && (
+          {actions && (
             <TableHead className="w-12">
               <span className="sr-only">{t('actions.label')}</span>
             </TableHead>
@@ -57,6 +63,20 @@ export function InvoicesTable({ invoices, admin = false, showOrganization = admi
                 <Link href={`/admin/organizations/${invoice.organization_id}`} className="hover:underline">
                   {invoice.organization_name}
                 </Link>
+                {invoice.billed_to === 'agency' && invoice.client_name && !showClient && (
+                  <span className="block text-xs text-muted-foreground">{t('toClient', { client: invoice.client_name })}</span>
+                )}
+              </TableCell>
+            )}
+            {showClient && (
+              <TableCell>
+                {invoice.client_id ? (
+                  <Link href={`/dashboard/clients/${invoice.client_id}/subscription`} className="hover:underline">
+                    {invoice.client_name}
+                  </Link>
+                ) : (
+                  '—'
+                )}
               </TableCell>
             )}
             <TableCell className="text-muted-foreground">
@@ -83,9 +103,9 @@ export function InvoicesTable({ invoices, admin = false, showOrganization = admi
                 '—'
               )}
             </TableCell>
-            {admin && (
+            {actions && (
               <TableCell>
-                <InvoiceRowActions invoice={invoice} />
+                <InvoiceRowActions invoice={invoice} scope={actions} />
               </TableCell>
             )}
           </TableRow>

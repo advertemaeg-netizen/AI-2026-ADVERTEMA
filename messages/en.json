@@ -80,7 +80,8 @@
     "scopedTo": "Here’s what’s happening with {client}.",
     "appointments": "Appointments",
     "analytics": "Analytics",
-    "subscription": "Subscription"
+    "subscription": "Agency subscription",
+    "billing": "Billing"
   },
   "pages": {
     "conversationsDesc": "All conversations across your channels.",
@@ -420,7 +421,8 @@
     "channels": "Channels",
     "knowledge": "Knowledge base",
     "playground": "Try the bot",
-    "botSettings": "Bot settings"
+    "botSettings": "Bot settings",
+    "subscription": "Subscription"
   },
   "botSettings": {
     "title": "{client} bot settings",
@@ -679,7 +681,8 @@
       "alreadyMember": "This person is already on this client’s team.",
       "unknown": "Something went wrong. Please try again.",
       "limitReached": "Your plan’s team seats are full (pending invites count too). Upgrade your plan to invite more people.",
-      "subscriptionInactive": "Your subscription is inactive. Contact us to activate it."
+      "subscriptionInactive": "Your subscription is inactive. Contact us to activate it.",
+      "clientLimitReached": "This client’s plan has no free team seats (pending invites count too). Upgrade the client’s plan to invite more people."
     }
   },
   "invites": {
@@ -1118,7 +1121,7 @@
   },
   "subscription": {
     "title": "Subscription",
-    "description": "Your plan, usage and invoices.",
+    "description": "Your agency’s plan with the platform: how many clients and team members you can have, and the platform’s invoices.",
     "none": "Your organization has no subscription yet. Contact us to get started.",
     "currency": "EGP",
     "card": {
@@ -1145,7 +1148,7 @@
     },
     "usage": {
       "title": "Usage",
-      "description": "How much of your plan you’re using.",
+      "description": "Your agency plan’s organization-wide limits.",
       "types": {
         "messages": "Messages / month",
         "clients": "Clients",
@@ -1188,7 +1191,7 @@
     },
     "invoices": {
       "title": "Invoices",
-      "description": "Invoices issued to your organization."
+      "description": "Invoices from the platform to your agency."
     },
     "banner": {
       "inactive": "Your subscription is inactive — bots are replying with the fallback message.",
@@ -1200,8 +1203,8 @@
     },
     "admin": {
       "title": "Subscriptions",
-      "description": "Plans, prices and usage of every organization.",
-      "all": "All subscriptions",
+      "description": "Agencies’ plans with the platform, and every client’s plan with its agency.",
+      "all": "Agency subscriptions",
       "count": "{count, plural, =0 {No subscriptions} one {# subscription} other {# subscriptions}}",
       "empty": "No subscriptions match these filters.",
       "actionsLabel": "Actions",
@@ -1263,7 +1266,11 @@
         "reasonHint": "Shown to the organization’s admins.",
         "validUntil": "Valid until",
         "validUntilHint": "Leave empty for no end date.",
-        "replaces": "This organization already has a custom price; saving replaces it."
+        "replaces": "This organization already has a custom price; saving replaces it.",
+        "descriptionClient": "A discount or a fixed price for this client. Plan prices stay as the platform sets them; this replaces any previous custom price.",
+        "percentageHintClient": "Applies to whichever plan the client is on.",
+        "reasonHintClient": "Shown to the client’s admins.",
+        "replacesClient": "This client already has a custom price; saving replaces it."
       },
       "extend": {
         "title": "Extend period for {name}",
@@ -1275,7 +1282,7 @@
       },
       "reset": {
         "title": "Reset usage for {name}?",
-        "description": "The monthly message count starts over from today and the other counters are recounted from the actual data. Unread usage alerts are cleared.",
+        "description": "The organization’s clients and team members are recounted from the actual data, and its unread usage alerts are cleared. Clients’ message counters aren’t touched.",
         "confirm": "Reset"
       },
       "removePricing": {
@@ -1291,7 +1298,7 @@
         "reset": "Usage reset"
       },
       "errors": {
-        "forbidden": "Only super admins can do this",
+        "forbidden": "You don’t have permission to do this",
         "validation": "Please check the entered values",
         "notFound": "Subscription not found",
         "invalidStatus": "This isn’t possible in the current status",
@@ -1306,7 +1313,28 @@
         "invoices": "Invoices",
         "invoicesCount": "{count, plural, =0 {No invoices} one {# invoice} other {# invoices}}",
         "none": "This organization has no subscription."
+      },
+      "tabs": {
+        "label": "Subscription level",
+        "agencies": "Agency subscriptions",
+        "clients": "Client subscriptions"
+      },
+      "clientsTab": {
+        "title": "Client subscriptions",
+        "count": "{count, plural, =0 {No clients} one {# client} other {# clients}}",
+        "empty": "No client subscriptions match these filters.",
+        "filterOrganization": "Agency",
+        "allOrganizations": "All agencies",
+        "columns": {
+          "client": "Client",
+          "agency": "Agency"
+        }
       }
+    },
+    "clientsBilling": {
+      "title": "Your clients’ subscriptions",
+      "description": "Each client has its own business plan (messages, channels, knowledge files) that it pays you for.",
+      "open": "Open billing"
     }
   },
   "plans": {
@@ -1353,7 +1381,8 @@
       "slugTaken": "Another plan already uses this slug",
       "notFound": "Plan not found",
       "unknown": "Something went wrong, please try again",
-      "invalidField": "Please check: {field}"
+      "invalidField": "Please check: {field}",
+      "typeInUse": "Organizations or clients are on this plan, so its type can’t change. Create a new plan instead."
     },
     "form": {
       "addTitle": "New plan",
@@ -1390,7 +1419,11 @@
       "hints": {
         "slug": "Lowercase letters, numbers, _ or -. Used internally.",
         "unlimited": "Leave a limit empty for unlimited.",
-        "preview": "Switch language and cycle to check both versions."
+        "preview": "Switch language and cycle to check both versions.",
+        "limits": {
+          "agency": "Agency plans limit the organization: clients and team members.",
+          "business": "Business plans limit each client: messages, channels, knowledge files and its team."
+        }
       }
     }
   },
@@ -1417,14 +1450,17 @@
       "amountEgp": "Amount (EGP)",
       "periodStart": "Period start",
       "periodEnd": "Period end",
-      "notes": "Notes"
+      "notes": "Notes",
+      "client": "Client"
     },
     "placeholders": {
       "paymentReference": "Transfer number, receipt…",
-      "organization": "Choose an organization"
+      "organization": "Choose an organization",
+      "client": "Choose a client"
     },
     "hints": {
-      "amount": "Effective price for the organization’s billing cycle."
+      "amount": "Effective price for the organization’s billing cycle.",
+      "amountClient": "The client’s effective price for its billing cycle."
     },
     "status": {
       "draft": "Draft",
@@ -1452,13 +1488,20 @@
     "markPaid": {
       "title": "Mark {number} as paid",
       "description": "Record the payment of {amount}.",
-      "hint": "The subscription becomes active and moves on to this invoice’s period."
+      "hint": "The subscription becomes active and moves on to this invoice’s period.",
+      "hintClient": "The client’s subscription becomes active and moves on to this invoice’s period."
     },
     "filters": {
       "status": "Status",
       "allStatuses": "All statuses",
       "organization": "Organization",
-      "allOrganizations": "All organizations"
+      "allOrganizations": "All organizations",
+      "billedTo": "Invoice type",
+      "allInvoices": "All invoices",
+      "billed": {
+        "platform": "Platform invoices (to agencies)",
+        "agency": "Agency invoices (to their clients)"
+      }
     },
     "toast": {
       "created": "Invoice created",
@@ -1466,12 +1509,104 @@
       "statusChanged": "Invoice updated"
     },
     "errors": {
-      "forbidden": "Only super admins can do this",
+      "forbidden": "You don’t have permission to do this",
       "validation": "Please check the entered values",
       "notFound": "Invoice or subscription not found",
       "invalidStatus": "Paid or cancelled invoices can’t be changed",
       "unknown": "Something went wrong, please try again",
       "period": "The period must end after it starts"
+    },
+    "createTitleClient": "New client invoice",
+    "createDescriptionClient": "An invoice from your agency to the client. The amount is filled in from the client’s effective price (custom price applied); you can adjust it.",
+    "toClient": "To client: {client}"
+  },
+  "clientSubscription": {
+    "backToClients": "Back to clients",
+    "title": "{client} — subscription",
+    "description": "The client’s business plan, what it pays you, and how much of it it uses.",
+    "descriptionReadOnly": "Your plan with your agency and how much of it you use. Contact your agency to change it.",
+    "none": "This client has no subscription yet.",
+    "currentPlan": "Client plan",
+    "inactive": "This client’s subscription is inactive: its bots reply with the fallback message and nothing new can be added. Record a payment or change its status to reactivate it.",
+    "inactiveClient": "Your subscription is inactive: bots reply with the fallback message and nothing new can be added. Contact your agency to activate it.",
+    "agencyInactive": "Your agency subscription is inactive, so all your clients are paused. Renew it from Agency subscription.",
+    "agencyInactiveClient": "Your agency’s account is inactive, so your bots are paused. Contact your agency.",
+    "usage": {
+      "title": "Usage",
+      "description": "Messages (this month), channels, knowledge files and team members against the client’s plan."
+    },
+    "plans": {
+      "title": "Business plans",
+      "description": "Prices are set by the platform (with this client’s custom price applied). Switching takes effect right away.",
+      "descriptionReadOnly": "Plans available to you. Ask your agency to switch.",
+      "currentPlan": "Current plan",
+      "upgrade": "Upgrade",
+      "switch": "Switch to this plan",
+      "switchCycle": "Switch billing cycle",
+      "askAgency": "Ask your agency to switch",
+      "confirmTitle": "Move {client} to {plan}?",
+      "confirmDescription": "The new limits apply right away. The client’s price becomes {price} ({cycle}); issue an invoice from Billing when it’s due.",
+      "confirm": "Switch plan",
+      "changed": "Client moved to {plan}",
+      "errors": {
+        "forbidden": "Only your agency’s admins can change the plan",
+        "validation": "This plan isn’t available",
+        "notFound": "Subscription not found",
+        "invalidStatus": "This isn’t possible in the current status",
+        "unknown": "Something went wrong, please try again"
+      }
+    },
+    "pricing": {
+      "set": "Custom price",
+      "remove": "Remove custom price",
+      "removeTitle": "Remove the custom price for {name}?",
+      "removeDescription": "The client goes back to the plan’s normal price.",
+      "notApplied": "A custom price is saved but doesn’t apply right now (expired, or set for a different plan)."
+    },
+    "invoices": {
+      "title": "Invoices",
+      "description": "Invoices from the agency to this client."
+    }
+  },
+  "agencyBilling": {
+    "title": "Billing",
+    "description": "Your clients’ plans and prices, what you expect to collect each month, and your invoices to them.",
+    "stats": {
+      "expected": "Expected monthly revenue",
+      "expectedHint": "{count, plural, =0 {No paying clients yet} one {From # paying client} other {From # paying clients}} (yearly plans ÷ 12)",
+      "trialPipeline": "On free trial",
+      "trialPipelineHint": "{count, plural, =0 {No clients on trial} one {If # client on trial converts} other {If # clients on trial convert}}",
+      "outstanding": "Outstanding",
+      "outstandingHint": "Sent and overdue invoices not paid yet",
+      "collected": "Collected this month",
+      "collectedHint": "Client invoices paid since the 1st"
+    },
+    "clients": {
+      "title": "Clients",
+      "count": "{count, plural, =0 {No clients} one {# client} other {# clients}}",
+      "empty": "No clients yet.",
+      "customPrice": "Custom price",
+      "openInvoices": "{count, plural, one {# open invoice} other {# open invoices}} · {amount} due",
+      "topUsage": "Highest: {limit} {percentage}%",
+      "trialUntil": "Trial until {date}",
+      "createInvoice": "New invoice for {client}",
+      "clientStatus": {
+        "paused": "Paused",
+        "archived": "Archived"
+      },
+      "columns": {
+        "client": "Client",
+        "plan": "Plan",
+        "price": "Effective price",
+        "usage": "Usage",
+        "renewal": "Renewal",
+        "status": "Status",
+        "actions": "Actions"
+      }
+    },
+    "invoices": {
+      "title": "Client invoices",
+      "description": "Invoices your agency issued to its clients. Mark them paid when the money arrives."
     }
   }
 }

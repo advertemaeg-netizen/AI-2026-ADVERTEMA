@@ -4,8 +4,8 @@ import { InvoicesTable } from '@/components/billing/invoices-table'
 import { requireSuperAdmin } from '@/lib/auth/guards'
 import { getAllInvoices, getInvoiceOrganizations } from '@/lib/actions/admin-subscriptions'
 import { UUID_PATTERN } from '@/lib/types/clients'
-import { INVOICE_STATUSES, type InvoiceStatus } from '@/lib/types/subscription'
-import { CreateInvoiceDialog } from '../_components/create-invoice-dialog'
+import { BILLED_TO, INVOICE_STATUSES, type BilledTo, type InvoiceStatus } from '@/lib/types/subscription'
+import { CreateInvoiceDialog } from '@/components/billing/create-invoice-dialog'
 import { InvoiceFilters } from './_components/invoice-filters'
 
 export default async function AdminInvoicesPage({ params, searchParams }: PageProps<'/[locale]/admin/invoices'>) {
@@ -19,6 +19,8 @@ export default async function AdminInvoicesPage({ params, searchParams }: PagePr
       ? (one('status') as InvoiceStatus)
       : undefined,
     organizationId: UUID_PATTERN.test(one('org') ?? '') ? one('org') : undefined,
+    // platform: the platform's invoices to agencies; agency: agencies' invoices to their clients
+    billedTo: (BILLED_TO as readonly string[]).includes(one('billed') ?? '') ? (one('billed') as BilledTo) : undefined,
   }
 
   const t = await getTranslations('invoices')
@@ -31,7 +33,7 @@ export default async function AdminInvoicesPage({ params, searchParams }: PagePr
           <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
           <p className="text-muted-foreground mt-1">{t('description')}</p>
         </div>
-        <CreateInvoiceDialog organizations={organizations} />
+        <CreateInvoiceDialog parties={organizations} />
       </div>
       <Card>
         <CardHeader>
@@ -40,7 +42,7 @@ export default async function AdminInvoicesPage({ params, searchParams }: PagePr
         </CardHeader>
         <CardContent className="grid gap-4">
           <InvoiceFilters organizations={organizations} filters={filters} />
-          <InvoicesTable invoices={invoices} admin />
+          <InvoicesTable invoices={invoices} actions="platform" showOrganization />
         </CardContent>
       </Card>
     </div>

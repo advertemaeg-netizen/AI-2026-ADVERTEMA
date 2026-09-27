@@ -7,10 +7,16 @@ import { normalizePlan } from '@/lib/subscription-data'
 import { UUID_PATTERN } from '@/lib/types/clients'
 import { PLAN_TYPES, planSchema, type Plan, type PlanInput, type PlanType } from '@/lib/types/subscription'
 
-export type PlanActionError = 'forbidden' | 'validation' | 'slugTaken' | 'notFound' | 'unknown'
+export type PlanActionError = 'forbidden' | 'validation' | 'slugTaken' | 'typeInUse' | 'notFound' | 'unknown'
 export type PlanActionResult = { ok: true; id: string } | { ok: false; error: PlanActionError; field?: string }
 
-const PLAN_PATHS = ['/[locale]/admin/plans', '/[locale]/admin/subscriptions', '/[locale]/dashboard/subscription']
+const PLAN_PATHS = [
+  '/[locale]/admin/plans',
+  '/[locale]/admin/subscriptions',
+  '/[locale]/dashboard/subscription',
+  '/[locale]/dashboard/billing',
+  '/[locale]/dashboard/clients/[clientId]/subscription',
+]
 
 async function superAdminSession() {
   const { supabase, profile } = await getSession()
@@ -24,6 +30,8 @@ function revalidatePlans() {
 
 function dbError(error: { code?: string; message: string }): PlanActionResult {
   if (error.code === '23505') return { ok: false, error: 'slugTaken', field: 'slug' }
+  // Organizations or clients are on this plan: it can't move to the other level
+  if (error.message?.includes('plan_type_in_use')) return { ok: false, error: 'typeInUse', field: 'plan_type' }
   if (error.code === '42501') return { ok: false, error: 'forbidden' }
   console.error('[admin-plans]', error)
   return { ok: false, error: 'unknown' }

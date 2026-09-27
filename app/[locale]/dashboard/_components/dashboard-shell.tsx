@@ -17,6 +17,7 @@ import {
   BarChart3,
   ShieldCheck,
   CreditCard,
+  Wallet,
   type LucideIcon,
 } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -63,9 +64,14 @@ export function DashboardShell({
   const canManage = canManageClient(user.role)
   const teamItem: NavItem = { name: t('team'), href: '/dashboard/team', icon: UsersRound }
   const settingsItem: NavItem = { name: t('settings'), href: '/dashboard/settings', icon: Settings }
-  // Billing is the organization admins' business
+  // Billing is the organization admins' business: the agency's own plan
+  // (paid to the platform) and billing its clients. A client's own plan is
+  // one of the client's pages.
   const billingItems: NavItem[] = isOrgAdmin(user.role)
-    ? [{ name: t('subscription'), href: '/dashboard/subscription', icon: CreditCard }]
+    ? [
+        { name: t('subscription'), href: '/dashboard/subscription', icon: CreditCard },
+        { name: t('billing'), href: '/dashboard/billing', icon: Wallet },
+      ]
     : []
 
   // One client in focus: its own pages. All clients (org admins): org-wide pages.

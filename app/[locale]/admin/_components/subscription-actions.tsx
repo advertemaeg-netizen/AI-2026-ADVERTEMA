@@ -35,7 +35,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { dateKeyToIso, toDateKey } from '@/components/billing/date-key'
+import { CustomPricingDialog } from '@/components/billing/custom-pricing-dialog'
 import { useMoney } from '@/components/billing/use-money'
 import {
   changePlan,
@@ -134,7 +134,16 @@ export function SubscriptionActions({
       )}
 
       {open === 'plan' && <ChangePlanDialog target={target} plans={plans} onClose={close} />}
-      {open === 'pricing' && <CustomPricingDialog target={target} onClose={close} />}
+      {open === 'pricing' && (
+        <CustomPricingDialog
+          subject="organization"
+          name={target.organizationName}
+          basePrice={target.basePrice}
+          hasCustomPricing={target.hasCustomPricing}
+          save={(input) => setCustomPricing(target.organizationId, input)}
+          onClose={close}
+        />
+      )}
       {open === 'extend' && <ExtendDialog target={target} onClose={close} />}
       {open === 'reset' && (
         <ConfirmDialog
@@ -237,8 +246,8 @@ function ChangePlanDialog({ target, plans, onClose }: { target: SubscriptionTarg
   const [status, setStatus] = useState<SubscriptionStatus>(target.status)
   const [notes, setNotes] = useState(target.notes ?? '')
   const { isPending, submit } = useSubmit(onClose)
-  // Inactive plans stay selectable only if the org is already on one
-  const options = plans.filter((p) => p.is_active || p.id === target.planId)
+  // Organizations are on agency plans; inactive ones stay selectable only if the org is already on one
+  const options = plans.filter((p) => p.plan_type === 'agency' && (p.is_active || p.id === target.planId))
 
   return (
     <DialogShell
@@ -263,7 +272,7 @@ function ChangePlanDialog({ target, plans, onClose }: { target: SubscriptionTarg
           <SelectContent>
             {options.map((plan) => (
               <SelectItem key={plan.id} value={plan.id}>
-                {locale === 'ar' ? plan.name_ar : plan.name} · {tTypes(plan.plan_type)} · {money.withCurrency(plan.price_monthly)}
+                {locale === 'ar' ? plan.name_ar : plan.name} · {money.withCurrency(plan.price_monthly)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -305,117 +314,6 @@ function ChangePlanDialog({ target, plans, onClose }: { target: SubscriptionTarg
         <Label htmlFor="change-notes">{t('changePlan.notes')}</Label>
         <Textarea id="change-notes" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} rows={2} />
       </div>
-    </DialogShell>
-  )
-}
-
-function CustomPricingDialog({ target, onClose }: { target: SubscriptionTarget; onClose: () => void }) {
-  const t = useTranslations('subscription.admin.pricing')
-  const tAdmin = useTranslations('subscription.admin')
-  const money = useMoney()
-  const [type, setType] = useState<'percentage' | 'fixed_price'>('percentage')
-  const [percentage, setPercentage] = useState('')
-  const [monthly, setMonthly] = useState('')
-  const [yearly, setYearly] = useState('')
-  const [reason, setReason] = useState('')
-  const [until, setUntil] = useState('')
-  const { isPending, submit } = useSubmit(onClose)
-
-  const numOrNull = (value: string) => (value.trim() === '' ? null : Number(value))
-  const pct = numOrNull(percentage)
-  const preview =
-    type === 'percentage'
-      ? pct !== null && pct > 0 && pct <= 100
-        ? {
-            monthly: Math.round(target.basePrice.monthly * (100 - pct)) / 100,
-            yearly: Math.round(target.basePrice.yearly * (100 - pct)) / 100,
-          }
-        : null
-      : { monthly: numOrNull(monthly) ?? target.basePrice.monthly, yearly: numOrNull(yearly) ?? target.basePrice.yearly }
-
-  return (
-    <DialogShell
-      title={t('title', { name: target.organizationName })}
-      description={t('description')}
-      isPending={isPending}
-      onClose={onClose}
-      submitLabel={t('submit')}
-      onSubmit={() =>
-        submit(
-          () =>
-            setCustomPricing(target.organizationId, {
-              discount_type: type,
-              discount_percentage: type === 'percentage' ? pct : null,
-              fixed_price_monthly: type === 'fixed_price' ? numOrNull(monthly) : null,
-              fixed_price_yearly: type === 'fixed_price' ? numOrNull(yearly) : null,
-              reason: reason.trim() || null,
-              // Valid through the end of that Cairo day
-              valid_until: until ? dateKeyToIso(until, '23:59') : null,
-            }),
-          tAdmin('toast.pricingSet')
-        )
-      }
-    >
-      <Tabs value={type} onValueChange={(v) => setType(v as typeof type)}>
-        <TabsList className="w-full">
-          <TabsTrigger value="percentage" className="flex-1">
-            {t('percentage')}
-          </TabsTrigger>
-          <TabsTrigger value="fixed_price" className="flex-1">
-            {t('fixed')}
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      {type === 'percentage' ? (
-        <div className="grid gap-2">
-          <Label htmlFor="pricing-pct">{t('percentageLabel')}</Label>
-          <Input id="pricing-pct" type="number" min={1} max={100} step="0.5" dir="ltr" value={percentage} onChange={(e) => setPercentage(e.target.value)} required />
-          <p className="text-xs text-muted-foreground">{t('percentageHint')}</p>
-        </div>
-      ) : (
-        <div className="grid gap-2">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="pricing-monthly">{t('monthly')}</Label>
-              <Input id="pricing-monthly" type="number" min={0} step="0.01" dir="ltr" value={monthly} onChange={(e) => setMonthly(e.target.value)} />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="pricing-yearly">{t('yearly')}</Label>
-              <Input id="pricing-yearly" type="number" min={0} step="0.01" dir="ltr" value={yearly} onChange={(e) => setYearly(e.target.value)} />
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground">{t('fixedHint')}</p>
-        </div>
-      )}
-
-      {preview && (
-        <div className="rounded-md bg-muted p-3 text-sm">
-          <div className="text-muted-foreground">{t('preview')}</div>
-          <div className="mt-1 grid gap-0.5 tabular-nums">
-            <span>
-              <span className="text-muted-foreground line-through">{money.withCurrency(target.basePrice.monthly)}</span>{' '}
-              → <strong>{money.withCurrency(preview.monthly)}</strong> {t('perMonth')}
-            </span>
-            <span>
-              <span className="text-muted-foreground line-through">{money.withCurrency(target.basePrice.yearly)}</span>{' '}
-              → <strong>{money.withCurrency(preview.yearly)}</strong> {t('perYear')}
-            </span>
-          </div>
-        </div>
-      )}
-
-      <div className="grid gap-2">
-        <Label htmlFor="pricing-reason">{t('reason')}</Label>
-        <Input id="pricing-reason" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} placeholder={t('reasonPlaceholder')} />
-        <p className="text-xs text-muted-foreground">{t('reasonHint')}</p>
-      </div>
-      <div className="grid gap-2">
-        <Label htmlFor="pricing-until">{t('validUntil')}</Label>
-        <Input id="pricing-until" type="date" value={until} min={toDateKey(new Date())} onChange={(e) => setUntil(e.target.value)} />
-        <p className="text-xs text-muted-foreground">{t('validUntilHint')}</p>
-      </div>
-      {target.hasCustomPricing && <p className="text-xs text-amber-700 dark:text-amber-400">{t('replaces')}</p>}
     </DialogShell>
   )
 }

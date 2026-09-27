@@ -4,7 +4,7 @@ import { geminiModel, type ChatTurn } from '@/lib/ai/gemini'
 import { BOT_HISTORY_LIMIT, loadBotSettings, runBot } from '@/lib/ai/bot'
 import { detectLead } from '@/lib/ai/lead-detection'
 import type { BotSettingsInput } from '@/lib/types/bot-settings'
-import { checkLimit } from '@/lib/subscription-limits'
+import { checkClientLimit } from '@/lib/subscription-limits'
 import { UUID_PATTERN } from '@/lib/types/clients'
 
 // The widget is embedded on client websites, so any origin may call this route
@@ -49,7 +49,6 @@ type WebsiteChannel = {
     industry: string | null
     description: string | null
     status: string
-    organization_id: string
     organizations: { is_active: boolean } | null
   } | null
 }
@@ -59,7 +58,7 @@ async function loadChannel(supabase: ReturnType<typeof createAdminClient>, chann
 
   const { data, error } = await supabase
     .from('channels')
-    .select('id, client_id, name, is_active, clients(name, industry, description, status, organization_id, organizations(is_active))')
+    .select('id, client_id, name, is_active, clients(name, industry, description, status, organizations(is_active))')
     .eq('id', channelId)
     .eq('type', 'website')
     .maybeSingle<WebsiteChannel>()
@@ -299,10 +298,10 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
     if (!settings) return json({ ok: false, error: 'ai_unavailable', conversationId }, 502)
 
     // Usage limits only apply to AI replies (handed-off chats keep flowing).
-    // Past the plan's monthly messages, or without an active subscription,
-    // visitors get the client's fallback message instead of an AI reply.
-    const organizationId = channel.clients!.organization_id
-    const quota = await checkLimit(supabase, organizationId, 'messages')
+    // Past the client plan's monthly messages, or without an active
+    // subscription (the client's or its agency's), visitors get the client's
+    // fallback message instead of an AI reply.
+    const quota = await checkClientLimit(supabase, channel.client_id, 'messages')
     if (quota && !quota.allowed) {
       const { error: fallbackError } = await supabase.from('messages').insert({
         conversation_id: conversationId,
@@ -340,7 +339,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
 
     // conversations.last_message_* is kept current by a trigger on messages
 
-    const { error: usageError } = await supabase.rpc('consume_subscription_message', { p_org_id: organizationId })
+    const { error: usageError } = await supabase.rpc('consume_client_message', { p_client_id: channel.client_id })
     if (usageError) console.error('[webhook/website] counting the message failed', usageError)
 
     scheduleLeadDetection([...history, { role: 'assistant', content: reply }])

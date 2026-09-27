@@ -6,10 +6,22 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SubscriptionStatusBadge } from './status-badges'
 import { useMoney } from './use-money'
-import type { SubscriptionDetails } from '@/lib/types/subscription'
+import type { ClientSubscriptionDetails, SubscriptionDetails } from '@/lib/types/subscription'
 
-/** Plan, effective price (original struck through under a custom price), renewal. */
-export function CurrentPlanCard({ details, title }: { details: SubscriptionDetails; title?: string }) {
+/**
+ * Plan, effective price (original struck through under a custom price),
+ * renewal. For an organization's agency plan or a client's business plan.
+ */
+export function CurrentPlanCard({
+  details,
+  title,
+  inactiveNotice,
+}: {
+  details: SubscriptionDetails | ClientSubscriptionDetails
+  title?: string
+  /** Replaces the default "contact us" notice when the subscription can't be used */
+  inactiveNotice?: string
+}) {
   const t = useTranslations('subscription.current')
   const tCard = useTranslations('subscription.card')
   const tTypes = useTranslations('plans.types')
@@ -20,10 +32,13 @@ export function CurrentPlanCard({ details, title }: { details: SubscriptionDetai
   const discounted = price.current < price.base_current
   const date = (value: string) => format.dateTime(new Date(value), { dateStyle: 'long' })
   const trialing = subscription.status === 'trialing'
-  // The monthly message allowance starts over a month after the window began
-  const nextReset = new Date(subscription.messages_period_start)
-  nextReset.setMonth(nextReset.getMonth() + 1)
-  const nextMessagesReset = nextReset.toISOString()
+  // The monthly message allowance (client plans) starts over a month after the window began
+  let nextMessagesReset: string | null = null
+  if (subscription.messages_period_start) {
+    const nextReset = new Date(subscription.messages_period_start)
+    nextReset.setMonth(nextReset.getMonth() + 1)
+    nextMessagesReset = nextReset.toISOString()
+  }
 
   return (
     <Card>
@@ -69,8 +84,10 @@ export function CurrentPlanCard({ details, title }: { details: SubscriptionDetai
                   date: date(subscription.current_period_end),
                 })}
           </div>
-          <div className="text-muted-foreground">{t('messagesReset', { date: date(nextMessagesReset) })}</div>
-          {!subscription.usable && <p className="text-destructive">{t('inactiveNotice')}</p>}
+          {nextMessagesReset && (
+            <div className="text-muted-foreground">{t('messagesReset', { date: date(nextMessagesReset) })}</div>
+          )}
+          {!subscription.usable && <p className="text-destructive">{inactiveNotice ?? t('inactiveNotice')}</p>}
         </div>
       </CardContent>
     </Card>

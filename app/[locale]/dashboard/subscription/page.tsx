@@ -1,5 +1,8 @@
 import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
+import { ArrowRight, Wallet } from 'lucide-react'
+import { Link } from '@/i18n/navigation'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { UsageBars } from '@/components/billing/usage-bars'
 import { InvoicesTable } from '@/components/billing/invoices-table'
@@ -16,6 +19,11 @@ function salesContact(): SalesContact {
   return { whatsapp, email }
 }
 
+/**
+ * The agency's own subscription: the agency plan it pays the platform for,
+ * with the organization-level limits (clients, team members). Each client's
+ * business plan lives on the client's pages and in Billing.
+ */
 export default async function SubscriptionPage({ params }: PageProps<'/[locale]/dashboard/subscription'>) {
   const { locale } = await params
   const { supabase, profile } = await getSession()
@@ -36,7 +44,7 @@ export default async function SubscriptionPage({ params }: PageProps<'/[locale]/
   }
 
   const [plans, invoices, org] = await Promise.all([
-    getAvailablePlans(details.plan.plan_type),
+    getAvailablePlans('agency'),
     getInvoices(),
     supabase.from('organizations').select('name').eq('id', details.subscription.organization_id).maybeSingle<{ name: string }>(),
   ])
@@ -49,6 +57,24 @@ export default async function SubscriptionPage({ params }: PageProps<'/[locale]/
       </div>
 
       <CurrentPlanCard details={details} />
+
+      <Card>
+        <CardContent className="flex flex-wrap items-center justify-between gap-4 pt-6">
+          <div className="flex items-start gap-3">
+            <Wallet className="mt-0.5 size-5 text-muted-foreground" aria-hidden />
+            <div>
+              <p className="font-medium">{t('clientsBilling.title')}</p>
+              <p className="text-sm text-muted-foreground">{t('clientsBilling.description')}</p>
+            </div>
+          </div>
+          <Button asChild variant="outline">
+            <Link href="/dashboard/billing">
+              {t('clientsBilling.open')}
+              <ArrowRight className="rtl:rotate-180" />
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
