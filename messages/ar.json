@@ -46,7 +46,8 @@
     "samePassword": "كلمة المرور الجديدة لازم تكون مختلفة عن القديمة",
     "weakPassword": "كلمة المرور ضعيفة، جرّب كلمة أطول أو فيها أرقام ورموز",
     "tooManyRequests": "طلبت رابط من شوية، استنى دقيقة وحاول تاني",
-    "genericError": "حصلت مشكلة في الاتصال، حاول تاني"
+    "genericError": "حصلت مشكلة في الاتصال، حاول تاني",
+    "orgDisabled": "حساب منظمتك معطّل. تواصل مع دعم Advertema لإعادة التفعيل."
   },
   "dashboard": {
     "overview": "نظرة عامة",
@@ -967,6 +968,140 @@
       "total": "{count, plural, =0 {لا توجد محادثات} one {محادثة واحدة} two {محادثتان} few {# محادثات} many {# محادثة} other {# محادثة}}",
       "viewAll": "عرض التحليلات الكاملة",
       "empty": "لا توجد محادثات خلال آخر 7 أيام."
+    }
+  },
+  "admin": {
+    "badge": "Super Admin",
+    "badgeHint": "أنت تشاهد المنصة بالكامل",
+    "nav": {
+      "overview": "نظرة عامة",
+      "organizations": "المنظمات",
+      "settings": "الإعدادات",
+      "backToDashboard": "العودة للوحة التحكم العادية",
+      "openPanel": "لوحة الإدارة"
+    },
+    "overview": {
+      "title": "نظرة عامة على المنصة",
+      "description": "كل المنظمات على Advertema AI في مكان واحد."
+    },
+    "kpis": {
+      "organizations": "المنظمات",
+      "clients": "العملاء",
+      "users": "المستخدمين",
+      "conversations": "المحادثات",
+      "leads": "الليدز",
+      "activeOf": "{active} نشطة",
+      "added": "{count, plural, =0 {لا إضافات خلال 30 يوم} one {إضافة واحدة خلال 30 يوم} two {إضافتان خلال 30 يوم} few {# إضافات خلال 30 يوم} many {# إضافة خلال 30 يوم} other {# إضافة خلال 30 يوم}}",
+      "growthUp": "زيادة {value} عن الـ 30 يوم السابقة",
+      "growthDown": "انخفاض {value} عن الـ 30 يوم السابقة",
+      "growthSame": "نفس الـ 30 يوم السابقة",
+      "growthNew": "جديد هذا الشهر — لا شيء في الـ 30 يوم السابقة",
+      "growthNone": "لا نمو خلال آخر 60 يوم"
+    },
+    "organizations": {
+      "title": "المنظمات",
+      "description": "ابحث، رتّب وافتح أي منظمة.",
+      "all": "كل المنظمات",
+      "count": "{count, plural, =0 {لا توجد منظمات} one {منظمة واحدة} two {منظمتان} few {# منظمات} many {# منظمة} other {# منظمة}}",
+      "searchPlaceholder": "ابحث بالاسم أو المعرّف…",
+      "statusFilter": "الحالة",
+      "status": {
+        "all": "كل الحالات",
+        "active": "نشطة",
+        "disabled": "معطلة"
+      },
+      "columns": {
+        "name": "الاسم",
+        "clients": "العملاء",
+        "users": "المستخدمين",
+        "conversations": "المحادثات",
+        "leads": "الليدز",
+        "createdAt": "تاريخ الإنشاء",
+        "lastActivityAt": "آخر نشاط"
+      },
+      "noActivity": "لا نشاط بعد",
+      "empty": "لا توجد منظمات بعد.",
+      "noMatches": "لا توجد منظمات تطابق البحث."
+    },
+    "details": {
+      "back": "كل المنظمات",
+      "active": "نشطة",
+      "disabled": "معطلة",
+      "slug": "المعرّف",
+      "createdAt": "تاريخ الإنشاء",
+      "lastActivity": "آخر نشاط",
+      "noActivity": "لا نشاط بعد",
+      "disabledNotice": "هذه المنظمة معطلة. أعضاؤها لا يستطيعون تسجيل الدخول أو الوصول لأي من بياناتها حتى تعيد تفعيلها. لم يتم حذف أي شيء.",
+      "stats": {
+        "clients": "العملاء",
+        "users": "المستخدمين",
+        "channels": "القنوات",
+        "conversations": "المحادثات",
+        "leads": "الليدز",
+        "booked": "المواعيد المحجوزة",
+        "activeClients": "{count} نشط",
+        "last30": "{count, plural, =0 {لا شيء خلال 30 يوم} other {# خلال 30 يوم}}"
+      },
+      "clients": {
+        "title": "العملاء",
+        "count": "{count, plural, =0 {لا يوجد عملاء} one {عميل واحد} two {عميلان} few {# عملاء} many {# عميل} other {# عميل}}",
+        "empty": "لا يوجد عملاء لهذه المنظمة بعد.",
+        "name": "الاسم",
+        "industry": "المجال",
+        "status": "الحالة",
+        "channels": "القنوات",
+        "conversations": "المحادثات",
+        "leads": "الليدز",
+        "createdAt": "تاريخ الإنشاء",
+        "lastActivity": "آخر نشاط"
+      },
+      "users": {
+        "title": "الأعضاء",
+        "count": "{count, plural, =0 {لا يوجد أعضاء} one {عضو واحد} two {عضوان} few {# أعضاء} many {# عضو} other {# عضو}}",
+        "empty": "لا يوجد أعضاء في هذه المنظمة.",
+        "name": "الاسم",
+        "role": "الدور",
+        "clients": "العملاء",
+        "joined": "تاريخ الانضمام",
+        "lastSignIn": "آخر تسجيل دخول",
+        "never": "لم يسجل دخول",
+        "allClients": "كل العملاء"
+      },
+      "toggle": {
+        "disable": {
+          "button": "تعطيل المنظمة",
+          "title": "تعطيل {name}؟",
+          "description": "سيتم تسجيل خروج أعضائها ومنعهم من الدخول. العملاء والمحادثات والليدز محفوظة، ويمكنك إعادة التفعيل في أي وقت.",
+          "confirm": "تعطيل"
+        },
+        "enable": {
+          "button": "تفعيل المنظمة",
+          "title": "تفعيل {name}؟",
+          "description": "سيتمكن أعضاؤها من تسجيل الدخول واستخدام لوحة التحكم مرة أخرى.",
+          "confirm": "تفعيل"
+        },
+        "disabled": "تم تعطيل {name}",
+        "enabled": "تم تفعيل {name} من جديد",
+        "errors": {
+          "forbidden": "هذا الإجراء للـ Super Admin فقط",
+          "notFound": "المنظمة غير موجودة",
+          "failed": "حدث خطأ، حاول مرة أخرى"
+        }
+      }
+    },
+    "settings": {
+      "title": "الإعدادات",
+      "description": "من يمكنه إدارة المنصة.",
+      "superAdmins": "مديرو المنصة (Super Admin)",
+      "superAdminsDesc": "أشخاص لديهم صلاحية كاملة على كل المنظمات.",
+      "columns": {
+        "name": "الاسم",
+        "email": "البريد الإلكتروني",
+        "since": "تاريخ إنشاء الحساب"
+      },
+      "you": "(أنت)",
+      "grantTitle": "إضافة Super Admin",
+      "grantDesc": "لأسباب أمنية لا يمكن ذلك من داخل التطبيق. نفّذ هذا الأمر في محرر SQL في Supabase مع بريد الشخص:"
     }
   }
 }

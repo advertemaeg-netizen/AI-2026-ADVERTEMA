@@ -46,7 +46,8 @@
     "samePassword": "The new password must be different from the old one",
     "weakPassword": "This password is too weak — try a longer one with numbers or symbols",
     "tooManyRequests": "You just requested a link — wait a minute and try again",
-    "genericError": "Connection problem, please try again"
+    "genericError": "Connection problem, please try again",
+    "orgDisabled": "Your organization’s account is disabled. Contact Advertema support to restore access."
   },
   "dashboard": {
     "overview": "Overview",
@@ -967,6 +968,140 @@
       "total": "{count, plural, =0 {No conversations} one {# conversation} other {# conversations}}",
       "viewAll": "View full analytics",
       "empty": "No conversations in the last 7 days."
+    }
+  },
+  "admin": {
+    "badge": "Super Admin",
+    "badgeHint": "You’re viewing the whole platform",
+    "nav": {
+      "overview": "Overview",
+      "organizations": "Organizations",
+      "settings": "Settings",
+      "backToDashboard": "Back to dashboard",
+      "openPanel": "Admin panel"
+    },
+    "overview": {
+      "title": "Platform overview",
+      "description": "Every organization on Advertema AI at a glance."
+    },
+    "kpis": {
+      "organizations": "Organizations",
+      "clients": "Clients",
+      "users": "Users",
+      "conversations": "Conversations",
+      "leads": "Leads",
+      "activeOf": "{active} active",
+      "added": "{count, plural, =0 {None added in 30 days} one {# added in 30 days} other {# added in 30 days}}",
+      "growthUp": "Up {value} vs the previous 30 days",
+      "growthDown": "Down {value} vs the previous 30 days",
+      "growthSame": "Same as the previous 30 days",
+      "growthNew": "New this month — nothing in the previous 30 days",
+      "growthNone": "No growth in the last 60 days"
+    },
+    "organizations": {
+      "title": "Organizations",
+      "description": "Search, sort and open any organization.",
+      "all": "All organizations",
+      "count": "{count, plural, =0 {No organizations} one {# organization} other {# organizations}}",
+      "searchPlaceholder": "Search by name or slug…",
+      "statusFilter": "Status",
+      "status": {
+        "all": "All statuses",
+        "active": "Active",
+        "disabled": "Disabled"
+      },
+      "columns": {
+        "name": "Name",
+        "clients": "Clients",
+        "users": "Users",
+        "conversations": "Conversations",
+        "leads": "Leads",
+        "createdAt": "Created",
+        "lastActivityAt": "Last activity"
+      },
+      "noActivity": "No activity yet",
+      "empty": "No organizations yet.",
+      "noMatches": "No organizations match your search."
+    },
+    "details": {
+      "back": "All organizations",
+      "active": "Active",
+      "disabled": "Disabled",
+      "slug": "Slug",
+      "createdAt": "Created",
+      "lastActivity": "Last activity",
+      "noActivity": "No activity yet",
+      "disabledNotice": "This organization is disabled. Its members can’t sign in or reach any of its data until you enable it again. Nothing has been deleted.",
+      "stats": {
+        "clients": "Clients",
+        "users": "Users",
+        "channels": "Channels",
+        "conversations": "Conversations",
+        "leads": "Leads",
+        "booked": "Appointments booked",
+        "activeClients": "{count} active",
+        "last30": "{count, plural, =0 {None in 30 days} other {# in 30 days}}"
+      },
+      "clients": {
+        "title": "Clients",
+        "count": "{count, plural, =0 {No clients} one {# client} other {# clients}}",
+        "empty": "This organization has no clients yet.",
+        "name": "Name",
+        "industry": "Industry",
+        "status": "Status",
+        "channels": "Channels",
+        "conversations": "Conversations",
+        "leads": "Leads",
+        "createdAt": "Created",
+        "lastActivity": "Last activity"
+      },
+      "users": {
+        "title": "Members",
+        "count": "{count, plural, =0 {No members} one {# member} other {# members}}",
+        "empty": "This organization has no members.",
+        "name": "Name",
+        "role": "Role",
+        "clients": "Clients",
+        "joined": "Joined",
+        "lastSignIn": "Last sign-in",
+        "never": "Never",
+        "allClients": "All clients"
+      },
+      "toggle": {
+        "disable": {
+          "button": "Disable organization",
+          "title": "Disable {name}?",
+          "description": "Its members will be signed out and blocked from signing in. Clients, conversations and leads are kept, and you can enable it again at any time.",
+          "confirm": "Disable"
+        },
+        "enable": {
+          "button": "Enable organization",
+          "title": "Enable {name}?",
+          "description": "Its members will be able to sign in and use the dashboard again.",
+          "confirm": "Enable"
+        },
+        "disabled": "{name} is disabled",
+        "enabled": "{name} is enabled again",
+        "errors": {
+          "forbidden": "Only super admins can do this",
+          "notFound": "Organization not found",
+          "failed": "Something went wrong, please try again"
+        }
+      }
+    },
+    "settings": {
+      "title": "Settings",
+      "description": "Who can manage the platform.",
+      "superAdmins": "Super admins",
+      "superAdminsDesc": "People with full access to every organization.",
+      "columns": {
+        "name": "Name",
+        "email": "Email",
+        "since": "Account created"
+      },
+      "you": "(you)",
+      "grantTitle": "Adding a super admin",
+      "grantDesc": "For safety this can’t be done from the app. Run this in the Supabase SQL editor with the person’s email:"
     }
   }
 }

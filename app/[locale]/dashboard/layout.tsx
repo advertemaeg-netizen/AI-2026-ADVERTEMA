@@ -13,11 +13,13 @@ export default async function DashboardLayout({
 
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+  const [{ data: profile }, { data: orgDisabled }] = await Promise.all([
+    supabase.from('users').select('*').eq('id', user.id).single(),
+    supabase.rpc('org_disabled'),
+  ])
+
+  // Members of a disabled organization are signed out (RLS already hides everything)
+  if (orgDisabled) redirect('/auth/org-disabled')
 
   const context = await getClientContext()
 

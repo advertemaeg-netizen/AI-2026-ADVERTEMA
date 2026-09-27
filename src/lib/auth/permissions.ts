@@ -23,3 +23,8 @@ export function canManageClient(role: string | null | undefined): boolean {
 export function isOrgAdmin(role: string | null | undefined): boolean {
   return (ORG_ADMIN_ROLES as readonly string[]).includes(role ?? '')
 }
+
+/** The platform owner: every organization, the admin panel */
+export function isSuperAdmin(role: string | null | undefined): boolean {
+  return role === 'super_admin'
+}

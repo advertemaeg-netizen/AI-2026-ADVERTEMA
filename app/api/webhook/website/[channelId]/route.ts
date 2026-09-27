@@ -48,6 +48,7 @@ type WebsiteChannel = {
     industry: string | null
     description: string | null
     status: string
+    organizations: { is_active: boolean } | null
   } | null
 }
 
@@ -56,7 +57,7 @@ async function loadChannel(supabase: ReturnType<typeof createAdminClient>, chann
 
   const { data, error } = await supabase
     .from('channels')
-    .select('id, client_id, name, is_active, clients(name, industry, description, status)')
+    .select('id, client_id, name, is_active, clients(name, industry, description, status, organizations(is_active))')
     .eq('id', channelId)
     .eq('type', 'website')
     .maybeSingle<WebsiteChannel>()
@@ -65,8 +66,13 @@ async function loadChannel(supabase: ReturnType<typeof createAdminClient>, chann
   return data
 }
 
+// A disabled organization's bots stop too (super admin panel)
 function isLive(channel: WebsiteChannel) {
-  return channel.is_active && channel.clients?.status === 'active'
+  return (
+    channel.is_active &&
+    channel.clients?.status === 'active' &&
+    channel.clients.organizations?.is_active === true
+  )
 }
 
 export async function OPTIONS() {

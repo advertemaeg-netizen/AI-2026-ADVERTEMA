@@ -16,7 +16,7 @@ export async function proxy(request: NextRequest) {
 
   // Now check auth for protected routes
   const pathname = request.nextUrl.pathname
-  const isProtected = pathname.match(/^\/(ar|en)\/dashboard/)
+  const isProtected = pathname.match(/^\/(ar|en)\/(dashboard|admin)/)
 
   if (isProtected) {
     const supabase = createServerClient(

@@ -15,6 +15,7 @@ import {
   UsersRound,
   CalendarDays,
   BarChart3,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -30,7 +31,7 @@ import {
 import { cn } from '@/lib/utils'
 import { clientSections } from '@/components/client-sections'
 import { ClientSwitcher } from '@/components/client-switcher'
-import { canManageClient } from '@/lib/auth/permissions'
+import { canManageClient, isSuperAdmin } from '@/lib/auth/permissions'
 import type { ClientOption } from '@/lib/auth/client-context'
 
 type NavItem = { name: string; href: string; icon: LucideIcon; exact?: boolean }
@@ -55,6 +56,7 @@ export function DashboardShell({
   const t = useTranslations('dashboard')
   const tCommon = useTranslations('common')
   const tClientNav = useTranslations('clientNav')
+  const tAdmin = useTranslations('admin')
 
   // Team members only work conversations, leads, appointments and the overview
   const canManage = canManageClient(user.role)
@@ -180,6 +182,17 @@ export function DashboardShell({
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              {isSuperAdmin(user.role) && (
+                <>
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin">
+                      <ShieldCheck className="w-4 h-4 me-2" />
+                      {tAdmin('nav.openPanel')}
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="w-4 h-4 me-2" />
                 {tCommon('logout')}

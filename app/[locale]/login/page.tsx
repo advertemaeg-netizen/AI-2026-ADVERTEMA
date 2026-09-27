@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { use, useState } from 'react'
 import { useRouter } from '@/i18n/navigation'
 import { Link } from '@/i18n/navigation'
 import { useTranslations } from 'next-intl'
@@ -11,14 +11,16 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Sparkles } from 'lucide-react'
 
-export default function LoginPage() {
+export default function LoginPage({ searchParams }: PageProps<'/[locale]/login'>) {
+  const t = useTranslations('auth')
+  // Set by /auth/org-disabled after signing out a member of a disabled organization
+  const { error: errorParam } = use(searchParams)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(errorParam === 'org_disabled' ? t('orgDisabled') : null)
   const router = useRouter()
   const supabase = createClient()
-  const t = useTranslations('auth')
   const tCommon = useTranslations('common')
 
   async function handleLogin(e: React.FormEvent) {
@@ -30,6 +32,15 @@ export default function LoginPage() {
 
     if (error) {
       setError(error.message)
+      setLoading(false)
+      return
+    }
+
+    // Disabled organizations can't sign in (super admins are never locked out)
+    const { data: orgDisabled } = await supabase.rpc('org_disabled')
+    if (orgDisabled) {
+      await supabase.auth.signOut()
+      setError(t('orgDisabled'))
       setLoading(false)
       return
     }
