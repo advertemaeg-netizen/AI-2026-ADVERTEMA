@@ -6,6 +6,8 @@ import { getSession } from '@/lib/auth/session'
 import { canManageClient, isOrgAdmin } from '@/lib/auth/permissions'
 import { SELECTED_CLIENT_COOKIE, SELECTED_CLIENT_COOKIE_OPTIONS } from '@/lib/auth/client-context'
 import { appOrigin } from '@/lib/app-url'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { checkLimit, limitError } from '@/lib/subscription-limits'
 import { UUID_PATTERN } from '@/lib/types/clients'
 import {
   inviteSchema,
@@ -119,6 +121,21 @@ export async function createInvite(
     .gt('expires_at', new Date().toISOString())
     .limit(1)
   if (pending && pending.length > 0) return { ok: false, error: 'alreadyInvited' }
+
+  // Pending invites hold a seat too, so accepting them can't pass the limit.
+  // Client admins only see their own clients' invites, hence the admin client.
+  const seats = await checkLimit(supabase, profile.organization_id, 'team_members')
+  const blocked = limitError(seats)
+  if (blocked) return { ok: false, error: blocked }
+  if (seats?.limit !== null && seats?.limit !== undefined) {
+    const { count } = await createAdminClient()
+      .from('organization_invites')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', profile.organization_id)
+      .is('accepted_at', null)
+      .gt('expires_at', new Date().toISOString())
+    if (seats.used + (count ?? 0) >= seats.limit) return { ok: false, error: 'limitReached' }
+  }
 
   // RLS: org admins may invite to any client of their org, client admins only
   // to their own clients, and only as client_admin / team_member

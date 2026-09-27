@@ -79,7 +79,8 @@
     "activeChannelsHint": "قنوات هذا العميل المفعّلة حالياً",
     "scopedTo": "إليك ما يحدث مع {client}.",
     "appointments": "المواعيد",
-    "analytics": "التحليلات"
+    "analytics": "التحليلات",
+    "subscription": "الاشتراك"
   },
   "pages": {
     "conversationsDesc": "كل المحادثات عبر قنواتك.",
@@ -147,7 +148,9 @@
       "slugTaken": "هذا المعرّف مستخدم لعميل آخر.",
       "notFound": "العميل غير موجود أو ليس لديك صلاحية عليه.",
       "noOrganization": "حسابك غير مرتبط بمؤسسة.",
-      "unknown": "حدث خطأ غير متوقع. حاول مرة أخرى."
+      "unknown": "حدث خطأ غير متوقع. حاول مرة أخرى.",
+      "limitReached": "وصلت للحد الأقصى للعملاء في خطتك. رقِّ خطتك لإضافة عملاء أكثر.",
+      "subscriptionInactive": "اشتراكك غير نشط. تواصل معنا لتفعيله."
     },
     "fieldErrors": {
       "nameRequired": "اسم العميل مطلوب.",
@@ -221,7 +224,9 @@
       "comingSoon": "هذا النوع من القنوات غير متاح بعد.",
       "notFound": "القناة غير موجودة أو ليس لديك صلاحية عليها.",
       "unknown": "حدث خطأ غير متوقع. حاول مرة أخرى.",
-      "copyFailed": "تعذّر النسخ. انسخ الكود يدوياً."
+      "copyFailed": "تعذّر النسخ. انسخ الكود يدوياً.",
+      "limitReached": "وصلت للحد الأقصى للقنوات في خطتك. رقِّ خطتك لإضافة قنوات أكثر.",
+      "subscriptionInactive": "اشتراكك غير نشط. تواصل معنا لتفعيله."
     },
     "fieldErrors": {
       "nameRequired": "اسم القناة مطلوب.",
@@ -360,7 +365,9 @@
       "fileTooLarge": "حجم الملف أكبر من 10 ميجابايت.",
       "unsupportedType": "نوع الملف غير مدعوم. استخدم PDF أو DOCX أو TXT.",
       "uploadFailed": "تعذّر رفع الملف. حاول مرة أخرى.",
-      "unknown": "حدث خطأ غير متوقع. حاول مرة أخرى."
+      "unknown": "حدث خطأ غير متوقع. حاول مرة أخرى.",
+      "limitReached": "وصلت للحد الأقصى لملفات المعرفة في خطتك. احذف ملفاً أو رقِّ خطتك.",
+      "subscriptionInactive": "اشتراكك غير نشط. تواصل معنا لتفعيله."
     }
   },
   "playground": {
@@ -670,7 +677,9 @@
       "validation": "بيانات غير صالحة.",
       "alreadyInvited": "توجد دعوة سارية لهذا البريد على نفس العميل.",
       "alreadyMember": "هذا الشخص عضو بالفعل في فريق هذا العميل.",
-      "unknown": "حدث خطأ غير متوقع. حاول مرة أخرى."
+      "unknown": "حدث خطأ غير متوقع. حاول مرة أخرى.",
+      "limitReached": "مقاعد الفريق في خطتك ممتلئة (الدعوات المعلقة محسوبة). رقِّ خطتك لدعوة أشخاص أكثر.",
+      "subscriptionInactive": "اشتراكك غير نشط. تواصل معنا لتفعيله."
     }
   },
   "invites": {
@@ -978,7 +987,10 @@
       "organizations": "المنظمات",
       "settings": "الإعدادات",
       "backToDashboard": "العودة للوحة التحكم العادية",
-      "openPanel": "لوحة الإدارة"
+      "openPanel": "لوحة الإدارة",
+      "plans": "الخطط",
+      "subscriptions": "الاشتراكات",
+      "invoices": "الفواتير"
     },
     "overview": {
       "title": "نظرة عامة على المنصة",
@@ -1102,6 +1114,364 @@
       "you": "(أنت)",
       "grantTitle": "إضافة Super Admin",
       "grantDesc": "لأسباب أمنية لا يمكن ذلك من داخل التطبيق. نفّذ هذا الأمر في محرر SQL في Supabase مع بريد الشخص:"
+    }
+  },
+  "subscription": {
+    "title": "الاشتراك",
+    "description": "خطتك واستهلاكك وفواتيرك.",
+    "none": "لا يوجد اشتراك لمنظمتك بعد. تواصل معنا للبدء.",
+    "currency": "ج.م",
+    "card": {
+      "current": "الحالية",
+      "popular": "الأكثر شيوعاً",
+      "perMonth": "ج.م/شهر",
+      "perYear": "ج.م/سنة",
+      "specialPrice": "سعر خاص"
+    },
+    "current": {
+      "title": "الخطة الحالية",
+      "price": {
+        "monthly": "السعر الشهري",
+        "yearly": "السعر السنوي"
+      },
+      "customReason": "السبب: {reason}",
+      "customUntil": "السعر الخاص سارٍ حتى {date}",
+      "trialEnds": "الفترة التجريبية تنتهي في {date}",
+      "trialEnded": "الفترة التجريبية انتهت في {date}",
+      "renewsOn": "التجديد في {date}",
+      "endsOn": "ينتهي في {date}",
+      "messagesReset": "رصيد الرسائل يتجدد في {date}",
+      "inactiveNotice": "اشتراكك غير نشط: البوت يرد برسالة بديلة ولا يمكن إضافة عناصر جديدة. تواصل معنا للتفعيل."
+    },
+    "usage": {
+      "title": "الاستهلاك",
+      "description": "قد إيه مستخدم من خطتك.",
+      "types": {
+        "messages": "الرسائل / شهر",
+        "clients": "العملاء",
+        "team_members": "أعضاء الفريق",
+        "channels": "القنوات",
+        "knowledge_docs": "ملفات المعرفة"
+      },
+      "usedOf": "{used} من {limit}",
+      "usedUnlimited": "{used} · بلا حدود",
+      "warnings": {
+        "warning": "مستخدم {percentage}% — قربت من الحد",
+        "critical": "مستخدم {percentage}% — على وشك الوصول للحد",
+        "full": "وصلت للحد — رقِّ خطتك لإضافة المزيد"
+      }
+    },
+    "status": {
+      "trialing": "فترة تجريبية",
+      "active": "نشط",
+      "past_due": "مستحق الدفع",
+      "cancelled": "ملغي",
+      "trialEnded": "انتهت التجربة"
+    },
+    "upgrade": {
+      "title": "ترقية الخطة",
+      "description": "اختار الخطة المناسبة ليك — وإحنا هنحوّلها لك.",
+      "cycles": {
+        "monthly": "شهري",
+        "yearly": "سنوي"
+      },
+      "currentPlan": "الخطة الحالية",
+      "upgrade": "ترقية",
+      "switch": "التحويل لهذه الخطة",
+      "contactTitle": "التحويل إلى {plan}",
+      "contactDescription": "ابعت لنا رسالة وهنحوّل حسابك ونبعت لك الفاتورة.",
+      "contactMessage": "مرحباً، أرغب في تحويل {organization} إلى خطة {plan} ({cycle}).",
+      "whatsapp": "راسلنا على واتساب",
+      "email": "راسلنا بالإيميل",
+      "emailSubject": "التحويل إلى خطة {plan}",
+      "noContact": "تواصل مع مدير حسابك في Advertema لتغيير الخطة."
+    },
+    "invoices": {
+      "title": "الفواتير",
+      "description": "الفواتير الصادرة لمنظمتك."
+    },
+    "banner": {
+      "inactive": "اشتراكك غير نشط — البوت يرد برسالة بديلة بدل الذكاء الاصطناعي.",
+      "trialEnding": "{days, plural, =0 {الفترة التجريبية تنتهي النهارده} one {الفترة التجريبية تنتهي بكرة} two {الفترة التجريبية تنتهي بعد يومين} few {الفترة التجريبية تنتهي بعد # أيام} other {الفترة التجريبية تنتهي بعد # يوم}}.",
+      "full": "{limit}: وصلت للحد ({used} من {max}).",
+      "near": "{limit}: مستخدم {percentage}% ({used} من {max}).",
+      "manage": "عرض الاشتراك",
+      "dismiss": "إخفاء"
+    },
+    "admin": {
+      "title": "الاشتراكات",
+      "description": "خطط وأسعار واستهلاك كل المنظمات.",
+      "all": "كل الاشتراكات",
+      "count": "{count, plural, =0 {لا توجد اشتراكات} one {اشتراك واحد} two {اشتراكان} few {# اشتراكات} many {# اشتراكاً} other {# اشتراك}}",
+      "empty": "لا توجد اشتراكات تطابق الفلاتر.",
+      "actionsLabel": "إجراءات",
+      "orgDisabled": "معطلة",
+      "customPrice": "سعر خاص",
+      "topUsage": "الأعلى: {limit} {percentage}%",
+      "trialUntil": "تجربة حتى {date}",
+      "cycle": {
+        "monthly": "شهري",
+        "yearly": "سنوي"
+      },
+      "filters": {
+        "type": "نوع الخطة",
+        "allTypes": "كل الأنواع",
+        "status": "الحالة",
+        "allStatuses": "كل الحالات"
+      },
+      "columns": {
+        "organization": "المنظمة",
+        "type": "النوع",
+        "plan": "الخطة",
+        "price": "السعر الفعلي",
+        "status": "الحالة",
+        "usage": "الاستهلاك",
+        "renewal": "التجديد"
+      },
+      "actions": {
+        "plan": "تغيير الخطة",
+        "pricing": "سعر مخصص",
+        "extend": "تمديد الفترة",
+        "reset": "إعادة تعيين الاستهلاك",
+        "removePricing": "إلغاء السعر المخصص"
+      },
+      "changePlan": {
+        "title": "تغيير خطة {name}",
+        "description": "الحدود تتغير فوراً. الأسعار من الخطة (ومن السعر المخصص لو موجود).",
+        "submit": "حفظ",
+        "plan": "الخطة",
+        "cycle": "دورة الفوترة",
+        "status": "الحالة",
+        "notes": "ملاحظات داخلية"
+      },
+      "pricing": {
+        "title": "سعر مخصص لـ {name}",
+        "description": "خصم أو سعر ثابت لهذه المنظمة. يحل محل أي سعر مخصص سابق.",
+        "submit": "حفظ السعر",
+        "percentage": "نسبة خصم",
+        "fixed": "سعر ثابت",
+        "percentageLabel": "نسبة الخصم %",
+        "percentageHint": "تُطبق على أي خطة تكون عليها المنظمة.",
+        "monthly": "السعر الشهري (ج.م)",
+        "yearly": "السعر السنوي (ج.م)",
+        "fixedHint": "مرتبط بالخطة الحالية. اترك دورة فارغة للإبقاء على سعرها العادي.",
+        "preview": "العميل هيشوف",
+        "perMonth": "/ شهر",
+        "perYear": "/ سنة",
+        "reason": "السبب",
+        "reasonPlaceholder": "عرض ترويجي، عميل قديم، مجاملة…",
+        "reasonHint": "يظهر لمديري المنظمة.",
+        "validUntil": "ساري حتى",
+        "validUntilHint": "اتركه فارغاً ليكون دائماً.",
+        "replaces": "هذه المنظمة لها سعر مخصص بالفعل؛ الحفظ سيستبدله."
+      },
+      "extend": {
+        "title": "تمديد فترة {name}",
+        "description": "إضافة أيام لفترة الفوترة الحالية.",
+        "descriptionTrial": "إضافة أيام للفترة التجريبية والفترة الحالية.",
+        "submit": "تمديد",
+        "days": "{count, plural, one {يوم واحد} two {يومان} few {# أيام} many {# يوماً} other {# يوم}}",
+        "customDays": "عدد الأيام"
+      },
+      "reset": {
+        "title": "إعادة تعيين استهلاك {name}؟",
+        "description": "عدّاد الرسائل الشهري يبدأ من جديد من النهارده، وباقي العدّادات يُعاد حسابها من البيانات الفعلية. التنبيهات غير المقروءة تُمسح.",
+        "confirm": "إعادة تعيين"
+      },
+      "removePricing": {
+        "title": "إلغاء السعر المخصص لـ {name}؟",
+        "description": "المنظمة ترجع لسعر الخطة العادي.",
+        "confirm": "إلغاء السعر"
+      },
+      "toast": {
+        "planChanged": "تم تحديث الخطة",
+        "pricingSet": "تم حفظ السعر المخصص",
+        "pricingRemoved": "تم إلغاء السعر المخصص",
+        "extended": "تم تمديد الفترة",
+        "reset": "تمت إعادة تعيين الاستهلاك"
+      },
+      "errors": {
+        "forbidden": "هذا الإجراء للـ Super Admin فقط",
+        "validation": "راجع القيم المدخلة",
+        "notFound": "الاشتراك غير موجود",
+        "invalidStatus": "غير ممكن في الحالة الحالية",
+        "unknown": "حدث خطأ، حاول مرة أخرى"
+      },
+      "orgSection": {
+        "title": "الاشتراك",
+        "plan": "الخطة",
+        "pricingNotApplied": "يوجد سعر مخصص محفوظ لكنه لا يُطبق حالياً (منتهي، أو لخطة أخرى).",
+        "notes": "ملاحظات: {notes}",
+        "usage": "الاستهلاك",
+        "invoices": "الفواتير",
+        "invoicesCount": "{count, plural, =0 {لا توجد فواتير} one {فاتورة واحدة} two {فاتورتان} few {# فواتير} many {# فاتورة} other {# فاتورة}}",
+        "none": "هذه المنظمة ليس لها اشتراك."
+      }
+    }
+  },
+  "plans": {
+    "title": "الخطط",
+    "description": "الأسعار والحدود والمميزات اللي بيشوفها العملاء. التعديلات تطبق فوراً.",
+    "add": "إضافة خطة",
+    "edit": "تعديل",
+    "activate": "تفعيل",
+    "deactivate": "تعطيل",
+    "empty": "لا توجد خطط من هذا النوع بعد.",
+    "unlimited": "بلا حدود",
+    "moveUp": "تحريك لأعلى",
+    "moveDown": "تحريك لأسفل",
+    "tabs": {
+      "agency": "خطط الوكالات",
+      "business": "خطط الأنشطة"
+    },
+    "types": {
+      "agency": "وكالة",
+      "business": "نشاط تجاري"
+    },
+    "columns": {
+      "order": "الترتيب",
+      "plan": "الخطة",
+      "monthly": "شهري",
+      "yearly": "سنوي",
+      "subscribers": "المشتركين",
+      "status": "الحالة",
+      "actions": "إجراءات"
+    },
+    "status": {
+      "active": "نشطة",
+      "inactive": "معطلة"
+    },
+    "toast": {
+      "created": "تم إنشاء الخطة",
+      "updated": "تم حفظ الخطة",
+      "activated": "تم تفعيل الخطة",
+      "deactivated": "تم تعطيل الخطة — المشتركين الحاليين يحتفظون بها"
+    },
+    "errors": {
+      "forbidden": "هذا الإجراء للـ Super Admin فقط",
+      "validation": "راجع القيم المدخلة",
+      "slugTaken": "يوجد خطة أخرى بنفس المعرّف",
+      "notFound": "الخطة غير موجودة",
+      "unknown": "حدث خطأ، حاول مرة أخرى",
+      "invalidField": "راجع الحقل: {field}"
+    },
+    "form": {
+      "addTitle": "خطة جديدة",
+      "editTitle": "تعديل الخطة",
+      "description": "الأسعار بالجنيه المصري. المعاينة تعرض الكارت بالظبط زي ما العميل هيشوفه.",
+      "limits": "الحدود",
+      "preview": "معاينة",
+      "previewMonthly": "شهري",
+      "previewYearly": "سنوي",
+      "previewButton": "ترقية",
+      "untitled": "اسم الخطة",
+      "noFeatures": "لا توجد مميزات بعد.",
+      "featureAr": "النص بالعربي",
+      "featureEn": "النص بالإنجليزي",
+      "moveUp": "تحريك لأعلى",
+      "moveDown": "تحريك لأسفل",
+      "removeFeature": "حذف",
+      "addFeature": "إضافة ميزة",
+      "fields": {
+        "name": "الاسم (إنجليزي)",
+        "name_ar": "الاسم (عربي)",
+        "slug": "المعرّف",
+        "plan_type": "نوع الخطة",
+        "price_monthly": "السعر الشهري (ج.م)",
+        "price_yearly": "السعر السنوي (ج.م)",
+        "features": "المميزات",
+        "is_active": "نشطة (معروضة للعملاء)",
+        "messages_limit": "الرسائل / شهر",
+        "clients_limit": "العملاء",
+        "team_members_limit": "أعضاء الفريق",
+        "channels_limit": "القنوات",
+        "knowledge_docs_limit": "ملفات المعرفة"
+      },
+      "hints": {
+        "slug": "حروف إنجليزية صغيرة وأرقام و _ أو -. للاستخدام الداخلي.",
+        "unlimited": "اترك الحد فارغاً ليكون بلا حدود.",
+        "preview": "بدّل اللغة والدورة لمراجعة النسختين."
+      }
+    }
+  },
+  "invoices": {
+    "title": "الفواتير",
+    "description": "كل فواتير المنصة. المدفوعات تُسجل يدوياً.",
+    "all": "كل الفواتير",
+    "count": "{count, plural, =0 {لا توجد فواتير} one {فاتورة واحدة} two {فاتورتان} few {# فواتير} many {# فاتورة} other {# فاتورة}}",
+    "empty": "لا توجد فواتير بعد.",
+    "create": "فاتورة جديدة",
+    "createTitle": "فاتورة جديدة",
+    "createDescription": "المبلغ بيتملي تلقائياً من السعر الفعلي للمنظمة (بعد السعر المخصص). تقدر تعدّله.",
+    "periodRange": "{from} – {to}",
+    "fields": {
+      "number": "الفاتورة",
+      "organization": "المنظمة",
+      "period": "الفترة",
+      "amount": "المبلغ",
+      "status": "الحالة",
+      "payment": "الدفع",
+      "paymentMethod": "طريقة الدفع",
+      "paymentReference": "المرجع",
+      "paidAt": "تاريخ الدفع",
+      "amountEgp": "المبلغ (ج.م)",
+      "periodStart": "بداية الفترة",
+      "periodEnd": "نهاية الفترة",
+      "notes": "ملاحظات"
+    },
+    "placeholders": {
+      "paymentReference": "رقم التحويل، الإيصال…",
+      "organization": "اختر منظمة"
+    },
+    "hints": {
+      "amount": "السعر الفعلي لدورة فوترة المنظمة."
+    },
+    "status": {
+      "draft": "مسودة",
+      "sent": "مُرسلة",
+      "paid": "مدفوعة",
+      "overdue": "متأخرة",
+      "cancelled": "ملغاة"
+    },
+    "methods": {
+      "bank_transfer": "تحويل بنكي",
+      "instapay": "إنستاباي",
+      "vodafone_cash": "فودافون كاش",
+      "cash": "نقدي",
+      "fawry": "فوري",
+      "cheque": "شيك",
+      "other": "أخرى"
+    },
+    "actions": {
+      "label": "إجراءات",
+      "markPaid": "تحديد كمدفوعة",
+      "markSent": "تحديد كمُرسلة",
+      "markOverdue": "تحديد كمتأخرة",
+      "cancel": "إلغاء الفاتورة"
+    },
+    "markPaid": {
+      "title": "تحديد {number} كمدفوعة",
+      "description": "تسجيل دفع {amount}.",
+      "hint": "الاشتراك يصبح نشطاً وينتقل لفترة هذه الفاتورة."
+    },
+    "filters": {
+      "status": "الحالة",
+      "allStatuses": "كل الحالات",
+      "organization": "المنظمة",
+      "allOrganizations": "كل المنظمات"
+    },
+    "toast": {
+      "created": "تم إنشاء الفاتورة",
+      "paid": "تم تحديد {number} كمدفوعة",
+      "statusChanged": "تم تحديث الفاتورة"
+    },
+    "errors": {
+      "forbidden": "هذا الإجراء للـ Super Admin فقط",
+      "validation": "راجع القيم المدخلة",
+      "notFound": "الفاتورة أو الاشتراك غير موجود",
+      "invalidStatus": "لا يمكن تعديل فاتورة مدفوعة أو ملغاة",
+      "unknown": "حدث خطأ، حاول مرة أخرى",
+      "period": "نهاية الفترة لازم تكون بعد بدايتها"
     }
   }
 }

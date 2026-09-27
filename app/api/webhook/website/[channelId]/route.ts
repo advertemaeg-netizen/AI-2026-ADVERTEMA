@@ -4,6 +4,7 @@ import { geminiModel, type ChatTurn } from '@/lib/ai/gemini'
 import { BOT_HISTORY_LIMIT, loadBotSettings, runBot } from '@/lib/ai/bot'
 import { detectLead } from '@/lib/ai/lead-detection'
 import type { BotSettingsInput } from '@/lib/types/bot-settings'
+import { checkLimit } from '@/lib/subscription-limits'
 import { UUID_PATTERN } from '@/lib/types/clients'
 
 // The widget is embedded on client websites, so any origin may call this route
@@ -48,6 +49,7 @@ type WebsiteChannel = {
     industry: string | null
     description: string | null
     status: string
+    organization_id: string
     organizations: { is_active: boolean } | null
   } | null
 }
@@ -57,7 +59,7 @@ async function loadChannel(supabase: ReturnType<typeof createAdminClient>, chann
 
   const { data, error } = await supabase
     .from('channels')
-    .select('id, client_id, name, is_active, clients(name, industry, description, status, organizations(is_active))')
+    .select('id, client_id, name, is_active, clients(name, industry, description, status, organization_id, organizations(is_active))')
     .eq('id', channelId)
     .eq('type', 'website')
     .maybeSingle<WebsiteChannel>()
@@ -227,25 +229,6 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       autoReply = existing?.auto_reply_enabled ?? true
     }
 
-    // Usage limits only apply to AI replies; handed-off chats keep flowing
-    let subscription: { id: string; messages_limit: number; messages_used: number; status: string } | null =
-      null
-    if (autoReply) {
-      const { data } = await supabase
-        .from('subscriptions')
-        .select('id, messages_limit, messages_used, status')
-        .eq('client_id', channel.client_id)
-        .maybeSingle<{ id: string; messages_limit: number; messages_used: number; status: string }>()
-      subscription = data
-
-      if (
-        subscription &&
-        (subscription.status !== 'active' || subscription.messages_used >= subscription.messages_limit)
-      ) {
-        return json({ ok: false, error: 'limit_reached' }, 429)
-      }
-    }
-
     if (!conversationId) {
       const { data: created, error } = await supabase
         .from('conversations')
@@ -315,6 +298,23 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
 
     if (!settings) return json({ ok: false, error: 'ai_unavailable', conversationId }, 502)
 
+    // Usage limits only apply to AI replies (handed-off chats keep flowing).
+    // Past the plan's monthly messages, or without an active subscription,
+    // visitors get the client's fallback message instead of an AI reply.
+    const organizationId = channel.clients!.organization_id
+    const quota = await checkLimit(supabase, organizationId, 'messages')
+    if (quota && !quota.allowed) {
+      const { error: fallbackError } = await supabase.from('messages').insert({
+        conversation_id: conversationId,
+        role: 'assistant',
+        content: settings.fallback_message,
+        metadata: { fallback: 'subscription_limit', reason: quota.reason },
+      })
+      if (fallbackError) throw fallbackError
+      scheduleLeadDetection([...history, { role: 'assistant', content: settings.fallback_message }])
+      return json({ ok: true, conversationId, reply: settings.fallback_message })
+    }
+
     let reply: string
     try {
       const result = await runBot({
@@ -340,13 +340,8 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
 
     // conversations.last_message_* is kept current by a trigger on messages
 
-    if (subscription) {
-      // Not atomic under concurrent requests; good enough for usage metering
-      await supabase
-        .from('subscriptions')
-        .update({ messages_used: subscription.messages_used + 1 })
-        .eq('id', subscription.id)
-    }
+    const { error: usageError } = await supabase.rpc('consume_subscription_message', { p_org_id: organizationId })
+    if (usageError) console.error('[webhook/website] counting the message failed', usageError)
 
     scheduleLeadDetection([...history, { role: 'assistant', content: reply }])
 

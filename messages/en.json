@@ -79,7 +79,8 @@
     "activeChannelsHint": "This client’s channels that are currently on",
     "scopedTo": "Here’s what’s happening with {client}.",
     "appointments": "Appointments",
-    "analytics": "Analytics"
+    "analytics": "Analytics",
+    "subscription": "Subscription"
   },
   "pages": {
     "conversationsDesc": "All conversations across your channels.",
@@ -147,7 +148,9 @@
       "slugTaken": "This slug is already used by another client.",
       "notFound": "Client not found or you do not have access to it.",
       "noOrganization": "Your account is not linked to an organization.",
-      "unknown": "Something went wrong. Please try again."
+      "unknown": "Something went wrong. Please try again.",
+      "limitReached": "You’ve reached your plan’s client limit. Upgrade your plan to add more clients.",
+      "subscriptionInactive": "Your subscription is inactive. Contact us to activate it."
     },
     "fieldErrors": {
       "nameRequired": "Client name is required.",
@@ -221,7 +224,9 @@
       "comingSoon": "This channel type is not available yet.",
       "notFound": "Channel not found or you do not have access to it.",
       "unknown": "Something went wrong. Please try again.",
-      "copyFailed": "Could not copy. Please copy the snippet manually."
+      "copyFailed": "Could not copy. Please copy the snippet manually.",
+      "limitReached": "You’ve reached your plan’s channel limit. Upgrade your plan to add more channels.",
+      "subscriptionInactive": "Your subscription is inactive. Contact us to activate it."
     },
     "fieldErrors": {
       "nameRequired": "Channel name is required.",
@@ -360,7 +365,9 @@
       "fileTooLarge": "The file is larger than 10 MB.",
       "unsupportedType": "Unsupported file type. Use PDF, DOCX or TXT.",
       "uploadFailed": "The file could not be uploaded. Please try again.",
-      "unknown": "Something went wrong. Please try again."
+      "unknown": "Something went wrong. Please try again.",
+      "limitReached": "You’ve reached your plan’s knowledge file limit. Delete a file or upgrade your plan.",
+      "subscriptionInactive": "Your subscription is inactive. Contact us to activate it."
     }
   },
   "playground": {
@@ -670,7 +677,9 @@
       "validation": "Invalid data.",
       "alreadyInvited": "There is already a valid invite for this email on this client.",
       "alreadyMember": "This person is already on this client’s team.",
-      "unknown": "Something went wrong. Please try again."
+      "unknown": "Something went wrong. Please try again.",
+      "limitReached": "Your plan’s team seats are full (pending invites count too). Upgrade your plan to invite more people.",
+      "subscriptionInactive": "Your subscription is inactive. Contact us to activate it."
     }
   },
   "invites": {
@@ -978,7 +987,10 @@
       "organizations": "Organizations",
       "settings": "Settings",
       "backToDashboard": "Back to dashboard",
-      "openPanel": "Admin panel"
+      "openPanel": "Admin panel",
+      "plans": "Plans",
+      "subscriptions": "Subscriptions",
+      "invoices": "Invoices"
     },
     "overview": {
       "title": "Platform overview",
@@ -1102,6 +1114,364 @@
       "you": "(you)",
       "grantTitle": "Adding a super admin",
       "grantDesc": "For safety this can’t be done from the app. Run this in the Supabase SQL editor with the person’s email:"
+    }
+  },
+  "subscription": {
+    "title": "Subscription",
+    "description": "Your plan, usage and invoices.",
+    "none": "Your organization has no subscription yet. Contact us to get started.",
+    "currency": "EGP",
+    "card": {
+      "current": "Current",
+      "popular": "Most popular",
+      "perMonth": "EGP/month",
+      "perYear": "EGP/year",
+      "specialPrice": "Special price"
+    },
+    "current": {
+      "title": "Current plan",
+      "price": {
+        "monthly": "Monthly price",
+        "yearly": "Yearly price"
+      },
+      "customReason": "Reason: {reason}",
+      "customUntil": "Special price valid until {date}",
+      "trialEnds": "Free trial ends on {date}",
+      "trialEnded": "Free trial ended on {date}",
+      "renewsOn": "Renews on {date}",
+      "endsOn": "Ends on {date}",
+      "messagesReset": "Message allowance resets on {date}",
+      "inactiveNotice": "Your subscription is inactive: bots reply with the fallback message and nothing new can be added. Contact us to activate it."
+    },
+    "usage": {
+      "title": "Usage",
+      "description": "How much of your plan you’re using.",
+      "types": {
+        "messages": "Messages / month",
+        "clients": "Clients",
+        "team_members": "Team members",
+        "channels": "Channels",
+        "knowledge_docs": "Knowledge files"
+      },
+      "usedOf": "{used} of {limit}",
+      "usedUnlimited": "{used} · unlimited",
+      "warnings": {
+        "warning": "{percentage}% used — you’re getting close to the limit",
+        "critical": "{percentage}% used — almost at the limit",
+        "full": "Limit reached — upgrade to add more"
+      }
+    },
+    "status": {
+      "trialing": "Free trial",
+      "active": "Active",
+      "past_due": "Payment due",
+      "cancelled": "Cancelled",
+      "trialEnded": "Trial ended"
+    },
+    "upgrade": {
+      "title": "Upgrade your plan",
+      "description": "Pick the plan that fits you — we’ll switch it for you.",
+      "cycles": {
+        "monthly": "Monthly",
+        "yearly": "Yearly"
+      },
+      "currentPlan": "Current plan",
+      "upgrade": "Upgrade",
+      "switch": "Switch to this plan",
+      "contactTitle": "Switch to {plan}",
+      "contactDescription": "Send us a message and we’ll move your account over and send the invoice.",
+      "contactMessage": "Hello, I’d like to switch {organization} to the {plan} plan ({cycle}).",
+      "whatsapp": "Message us on WhatsApp",
+      "email": "Email us",
+      "emailSubject": "Switch to the {plan} plan",
+      "noContact": "Contact your Advertema account manager to change your plan."
+    },
+    "invoices": {
+      "title": "Invoices",
+      "description": "Invoices issued to your organization."
+    },
+    "banner": {
+      "inactive": "Your subscription is inactive — bots are replying with the fallback message.",
+      "trialEnding": "{days, plural, =0 {Your free trial ends today} one {Your free trial ends tomorrow} other {Your free trial ends in # days}}.",
+      "full": "{limit}: limit reached ({used} of {max}).",
+      "near": "{limit}: {percentage}% used ({used} of {max}).",
+      "manage": "View subscription",
+      "dismiss": "Dismiss"
+    },
+    "admin": {
+      "title": "Subscriptions",
+      "description": "Plans, prices and usage of every organization.",
+      "all": "All subscriptions",
+      "count": "{count, plural, =0 {No subscriptions} one {# subscription} other {# subscriptions}}",
+      "empty": "No subscriptions match these filters.",
+      "actionsLabel": "Actions",
+      "orgDisabled": "Disabled",
+      "customPrice": "Special price",
+      "topUsage": "Highest: {limit} {percentage}%",
+      "trialUntil": "Trial until {date}",
+      "cycle": {
+        "monthly": "Monthly",
+        "yearly": "Yearly"
+      },
+      "filters": {
+        "type": "Plan type",
+        "allTypes": "All types",
+        "status": "Status",
+        "allStatuses": "All statuses"
+      },
+      "columns": {
+        "organization": "Organization",
+        "type": "Type",
+        "plan": "Plan",
+        "price": "Effective price",
+        "status": "Status",
+        "usage": "Usage",
+        "renewal": "Renewal"
+      },
+      "actions": {
+        "plan": "Change plan",
+        "pricing": "Custom price",
+        "extend": "Extend period",
+        "reset": "Reset usage",
+        "removePricing": "Remove custom price"
+      },
+      "changePlan": {
+        "title": "Change plan for {name}",
+        "description": "Limits change immediately. Prices come from the plan (and any custom price).",
+        "submit": "Save",
+        "plan": "Plan",
+        "cycle": "Billing cycle",
+        "status": "Status",
+        "notes": "Internal notes"
+      },
+      "pricing": {
+        "title": "Custom price for {name}",
+        "description": "A discount or a fixed price for this organization. It replaces any previous custom price.",
+        "submit": "Save price",
+        "percentage": "Discount %",
+        "fixed": "Fixed price",
+        "percentageLabel": "Discount percentage",
+        "percentageHint": "Applies to whichever plan the organization is on.",
+        "monthly": "Monthly price (EGP)",
+        "yearly": "Yearly price (EGP)",
+        "fixedHint": "Tied to the current plan. Leave a cycle empty to keep its normal price.",
+        "preview": "Customers will see",
+        "perMonth": "/ month",
+        "perYear": "/ year",
+        "reason": "Reason",
+        "reasonPlaceholder": "Promotion, long-time customer, courtesy…",
+        "reasonHint": "Shown to the organization’s admins.",
+        "validUntil": "Valid until",
+        "validUntilHint": "Leave empty for no end date.",
+        "replaces": "This organization already has a custom price; saving replaces it."
+      },
+      "extend": {
+        "title": "Extend period for {name}",
+        "description": "Adds days to the current billing period.",
+        "descriptionTrial": "Adds days to the free trial and the current period.",
+        "submit": "Extend",
+        "days": "{count, plural, one {# day} other {# days}}",
+        "customDays": "Days"
+      },
+      "reset": {
+        "title": "Reset usage for {name}?",
+        "description": "The monthly message count starts over from today and the other counters are recounted from the actual data. Unread usage alerts are cleared.",
+        "confirm": "Reset"
+      },
+      "removePricing": {
+        "title": "Remove the custom price for {name}?",
+        "description": "The organization goes back to the plan’s normal price.",
+        "confirm": "Remove"
+      },
+      "toast": {
+        "planChanged": "Plan updated",
+        "pricingSet": "Custom price saved",
+        "pricingRemoved": "Custom price removed",
+        "extended": "Period extended",
+        "reset": "Usage reset"
+      },
+      "errors": {
+        "forbidden": "Only super admins can do this",
+        "validation": "Please check the entered values",
+        "notFound": "Subscription not found",
+        "invalidStatus": "This isn’t possible in the current status",
+        "unknown": "Something went wrong, please try again"
+      },
+      "orgSection": {
+        "title": "Subscription",
+        "plan": "Plan",
+        "pricingNotApplied": "A custom price is saved but doesn’t apply right now (expired, or set for a different plan).",
+        "notes": "Notes: {notes}",
+        "usage": "Usage",
+        "invoices": "Invoices",
+        "invoicesCount": "{count, plural, =0 {No invoices} one {# invoice} other {# invoices}}",
+        "none": "This organization has no subscription."
+      }
+    }
+  },
+  "plans": {
+    "title": "Plans",
+    "description": "Prices, limits and features customers see. Changes apply right away.",
+    "add": "Add plan",
+    "edit": "Edit",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "empty": "No plans of this type yet.",
+    "unlimited": "Unlimited",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "tabs": {
+      "agency": "Agency plans",
+      "business": "Business plans"
+    },
+    "types": {
+      "agency": "Agency",
+      "business": "Business"
+    },
+    "columns": {
+      "order": "Order",
+      "plan": "Plan",
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "subscribers": "Subscribers",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "toast": {
+      "created": "Plan created",
+      "updated": "Plan saved",
+      "activated": "Plan activated",
+      "deactivated": "Plan deactivated — existing subscribers keep it"
+    },
+    "errors": {
+      "forbidden": "Only super admins can do this",
+      "validation": "Please check the entered values",
+      "slugTaken": "Another plan already uses this slug",
+      "notFound": "Plan not found",
+      "unknown": "Something went wrong, please try again",
+      "invalidField": "Please check: {field}"
+    },
+    "form": {
+      "addTitle": "New plan",
+      "editTitle": "Edit plan",
+      "description": "Prices are in Egyptian pounds. The preview shows the card exactly as customers will see it.",
+      "limits": "Limits",
+      "preview": "Preview",
+      "previewMonthly": "Monthly",
+      "previewYearly": "Yearly",
+      "previewButton": "Upgrade",
+      "untitled": "Plan name",
+      "noFeatures": "No features yet.",
+      "featureAr": "Arabic text",
+      "featureEn": "English text",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "removeFeature": "Remove",
+      "addFeature": "Add feature",
+      "fields": {
+        "name": "Name (English)",
+        "name_ar": "Name (Arabic)",
+        "slug": "Slug",
+        "plan_type": "Plan type",
+        "price_monthly": "Monthly price (EGP)",
+        "price_yearly": "Yearly price (EGP)",
+        "features": "Features",
+        "is_active": "Active (offered to customers)",
+        "messages_limit": "Messages / month",
+        "clients_limit": "Clients",
+        "team_members_limit": "Team members",
+        "channels_limit": "Channels",
+        "knowledge_docs_limit": "Knowledge files"
+      },
+      "hints": {
+        "slug": "Lowercase letters, numbers, _ or -. Used internally.",
+        "unlimited": "Leave a limit empty for unlimited.",
+        "preview": "Switch language and cycle to check both versions."
+      }
+    }
+  },
+  "invoices": {
+    "title": "Invoices",
+    "description": "Every invoice on the platform. Payments are recorded by hand.",
+    "all": "All invoices",
+    "count": "{count, plural, =0 {No invoices} one {# invoice} other {# invoices}}",
+    "empty": "No invoices yet.",
+    "create": "New invoice",
+    "createTitle": "New invoice",
+    "createDescription": "The amount is filled in from the organization’s effective price (custom price applied). You can adjust it.",
+    "periodRange": "{from} – {to}",
+    "fields": {
+      "number": "Invoice",
+      "organization": "Organization",
+      "period": "Period",
+      "amount": "Amount",
+      "status": "Status",
+      "payment": "Payment",
+      "paymentMethod": "Payment method",
+      "paymentReference": "Reference",
+      "paidAt": "Paid on",
+      "amountEgp": "Amount (EGP)",
+      "periodStart": "Period start",
+      "periodEnd": "Period end",
+      "notes": "Notes"
+    },
+    "placeholders": {
+      "paymentReference": "Transfer number, receipt…",
+      "organization": "Choose an organization"
+    },
+    "hints": {
+      "amount": "Effective price for the organization’s billing cycle."
+    },
+    "status": {
+      "draft": "Draft",
+      "sent": "Sent",
+      "paid": "Paid",
+      "overdue": "Overdue",
+      "cancelled": "Cancelled"
+    },
+    "methods": {
+      "bank_transfer": "Bank transfer",
+      "instapay": "InstaPay",
+      "vodafone_cash": "Vodafone Cash",
+      "cash": "Cash",
+      "fawry": "Fawry",
+      "cheque": "Cheque",
+      "other": "Other"
+    },
+    "actions": {
+      "label": "Actions",
+      "markPaid": "Mark as paid",
+      "markSent": "Mark as sent",
+      "markOverdue": "Mark as overdue",
+      "cancel": "Cancel invoice"
+    },
+    "markPaid": {
+      "title": "Mark {number} as paid",
+      "description": "Record the payment of {amount}.",
+      "hint": "The subscription becomes active and moves on to this invoice’s period."
+    },
+    "filters": {
+      "status": "Status",
+      "allStatuses": "All statuses",
+      "organization": "Organization",
+      "allOrganizations": "All organizations"
+    },
+    "toast": {
+      "created": "Invoice created",
+      "paid": "{number} marked as paid",
+      "statusChanged": "Invoice updated"
+    },
+    "errors": {
+      "forbidden": "Only super admins can do this",
+      "validation": "Please check the entered values",
+      "notFound": "Invoice or subscription not found",
+      "invalidStatus": "Paid or cancelled invoices can’t be changed",
+      "unknown": "Something went wrong, please try again",
+      "period": "The period must end after it starts"
     }
   }
 }

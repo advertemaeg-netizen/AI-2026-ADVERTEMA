@@ -50,6 +50,8 @@ export type KnowledgeUploadError =
   | 'fileTooLarge'
   | 'unsupportedType'
   | 'uploadFailed'
+  | 'limitReached'
+  | 'subscriptionInactive'
 
 export type KnowledgeActionResult =
   | { ok: true }

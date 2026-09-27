@@ -3,6 +3,7 @@ import { canManage, getSession } from '@/lib/auth/session'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { looksLikeFileType, processKnowledgeDocument } from '@/lib/knowledge/process'
 import { UUID_PATTERN } from '@/lib/types/clients'
+import { checkLimit, limitError, limitErrorFromDb } from '@/lib/subscription-limits'
 import {
   KNOWLEDGE_BUCKET,
   KNOWLEDGE_FILE_TYPES,
@@ -30,10 +31,13 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/knowled
   // RLS decides whether this user can see the client at all
   const { data: client } = await supabase
     .from('clients')
-    .select('id')
+    .select('id, organization_id')
     .eq('id', clientId)
-    .maybeSingle<{ id: string }>()
+    .maybeSingle<{ id: string; organization_id: string }>()
   if (!client) return fail('notFound', 404)
+
+  const blocked = limitError(await checkLimit(supabase, client.organization_id, 'knowledge_docs'))
+  if (blocked) return fail(blocked, 403)
 
   // Reject oversized bodies before buffering them (multipart adds a little overhead)
   const contentLength = Number(request.headers.get('content-length') ?? 0)
@@ -96,8 +100,11 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/knowled
     status: 'processing',
   })
   if (insertError) {
-    console.error('[knowledge/upload] insert', insertError)
     await admin.storage.from(KNOWLEDGE_BUCKET).remove([path])
+    // The subscription limit trigger (a race past the check above)
+    const limit = limitErrorFromDb(insertError)
+    if (limit) return fail(limit, 403)
+    console.error('[knowledge/upload] insert', insertError)
     return fail('uploadFailed', 500)
   }
 

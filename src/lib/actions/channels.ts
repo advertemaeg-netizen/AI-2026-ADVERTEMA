@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { canManage, getSession } from '@/lib/auth/session'
 import { appOrigin } from '@/lib/app-url'
+import { checkLimit, limitError, limitErrorFromDb } from '@/lib/subscription-limits'
 import { UUID_PATTERN } from '@/lib/types/clients'
 import {
   AVAILABLE_CHANNEL_TYPES,
@@ -15,7 +16,10 @@ import {
 const CHANNELS_PATH = '/[locale]/dashboard/clients/[clientId]/channels'
 const CHANNEL_COLUMNS = 'id, client_id, type, name, webhook_url, is_active, created_at'
 
-function dbError(error: { code?: string; message: string }): ChannelActionResult {
+function dbError(error: { code?: string; message: string; hint?: string | null }): ChannelActionResult {
+  // The subscription limit trigger (a race past the check in createChannelAction)
+  const limit = limitErrorFromDb(error)
+  if (limit) return { ok: false, error: limit }
   // 42501 = insufficient_privilege (RLS rejected the write)
   if (error.code === '42501') return { ok: false, error: 'forbidden' }
   console.error('[channels]', error)
@@ -62,6 +66,17 @@ export async function createChannelAction(
   if (name.length > 100) {
     return { ok: false, error: 'validation', fieldErrors: { name: 'nameTooLong' } }
   }
+
+  // RLS: only clients this user can see
+  const { data: client } = await supabase
+    .from('clients')
+    .select('organization_id')
+    .eq('id', clientId)
+    .maybeSingle<{ organization_id: string }>()
+  if (!client) return { ok: false, error: 'notFound' }
+
+  const blocked = limitError(await checkLimit(supabase, client.organization_id, 'channels'))
+  if (blocked) return { ok: false, error: blocked }
 
   const id = crypto.randomUUID()
   // Stored for reference; embed codes are always built from the current origin

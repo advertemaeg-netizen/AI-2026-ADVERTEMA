@@ -48,6 +48,8 @@ export type TeamActionError =
   | 'alreadyInvited'
   | 'alreadyMember'
   | 'self'
+  | 'limitReached'
+  | 'subscriptionInactive'
   | 'unknown'
 
 export type AcceptInviteStatus =

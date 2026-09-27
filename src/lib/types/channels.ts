@@ -21,6 +21,8 @@ export type ChannelActionError =
   | 'validation'
   | 'comingSoon'
   | 'notFound'
+  | 'limitReached'
+  | 'subscriptionInactive'
   | 'unknown'
 
 export type ChannelActionResult =

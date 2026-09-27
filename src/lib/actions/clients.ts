@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { canManage, getSession } from '@/lib/auth/session'
+import { checkLimit, limitError, limitErrorFromDb } from '@/lib/subscription-limits'
 import {
   CLIENT_STATUSES,
   type Client,
@@ -72,7 +73,10 @@ function parseClientForm(formData: FormData) {
   }
 }
 
-function dbError(error: { code?: string; message: string }): ClientActionResult {
+function dbError(error: { code?: string; message: string; hint?: string | null }): ClientActionResult {
+  // The subscription limit trigger (a race past the check below)
+  const limit = limitErrorFromDb(error)
+  if (limit) return { ok: false, error: limit }
   // 23505 = unique_violation on (organization_id, slug)
   if (error.code === '23505') {
     return { ok: false, error: 'slugTaken', fieldErrors: { slug: 'slugTaken' } }
@@ -126,6 +130,9 @@ export async function createClientAction(formData: FormData): Promise<ClientActi
 
   const parsed = parseClientForm(formData)
   if (!parsed.ok) return { ok: false, error: 'validation', fieldErrors: parsed.fieldErrors }
+
+  const blocked = limitError(await checkLimit(supabase, profile.organization_id, 'clients'))
+  if (blocked) return { ok: false, error: blocked }
 
   // No .select() here: a client_admin only gains read access through the
   // client_members row added by an AFTER INSERT trigger, so RETURNING would

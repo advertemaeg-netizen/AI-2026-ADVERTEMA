@@ -8,6 +8,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { RelativeTime } from '@/components/relative-time'
 import { requireSuperAdmin } from '@/lib/auth/guards'
 import { getOrganizationDetails } from '@/lib/actions/admin'
+import { getPlans } from '@/lib/actions/admin-plans'
+import { getOrganizationBilling } from '@/lib/actions/admin-subscriptions'
+import { InvoicesTable } from '@/components/billing/invoices-table'
+import { UsageBars } from '@/components/billing/usage-bars'
+import { CurrentPlanCard } from '@/components/billing/current-plan-card'
+import { SubscriptionActions } from '../../_components/subscription-actions'
+import { CreateInvoiceDialog } from '../../_components/create-invoice-dialog'
 import type { ClientStatus } from '@/lib/types/clients'
 import type { UserRole } from '@/lib/types/team'
 import { ToggleOrgButton } from './_components/toggle-org-button'
@@ -29,12 +36,17 @@ export default async function AdminOrganizationPage({ params }: PageProps<'/[loc
   const { locale, orgId } = await params
   await requireSuperAdmin(locale)
 
-  const details = await getOrganizationDetails(orgId)
+  const [details, billing, plans] = await Promise.all([
+    getOrganizationDetails(orgId),
+    getOrganizationBilling(orgId),
+    getPlans(),
+  ])
   if (!details) notFound()
 
   const t = await getTranslations('admin.details')
   const tRoles = await getTranslations('team.roles')
   const tClients = await getTranslations('clients')
+  const tBilling = await getTranslations('subscription.admin.orgSection')
   const format = await getFormatter()
   const { organization: org, stats, clients, users } = details
 
@@ -103,6 +115,57 @@ export default async function AdminOrganizationPage({ params }: PageProps<'/[loc
           </Card>
         ))}
       </div>
+
+      {billing?.details ? (
+        <section className="grid gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold tracking-tight">{tBilling('title')}</h2>
+            <SubscriptionActions
+              variant="buttons"
+              plans={plans}
+              target={{
+                organizationId: org.id,
+                organizationName: org.name,
+                planId: billing.details.plan.id,
+                billingCycle: billing.details.subscription.billing_cycle,
+                status: billing.details.subscription.status,
+                notes: billing.details.subscription.notes,
+                hasCustomPricing: !!billing.details.custom_pricing,
+                basePrice: { monthly: billing.details.plan.price_monthly, yearly: billing.details.plan.price_yearly },
+              }}
+            />
+          </div>
+          <CurrentPlanCard details={billing.details} title={tBilling('plan')} />
+          {billing.details.custom_pricing && !billing.details.custom_pricing.applies && (
+            <p className="text-sm text-amber-700 dark:text-amber-400">{tBilling('pricingNotApplied')}</p>
+          )}
+          {billing.details.subscription.notes && (
+            <p className="text-sm text-muted-foreground">{tBilling('notes', { notes: billing.details.subscription.notes })}</p>
+          )}
+          <Card>
+            <CardHeader>
+              <CardTitle>{tBilling('usage')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <UsageBars usage={billing.details.usage} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
+              <div className="grid gap-1">
+                <CardTitle>{tBilling('invoices')}</CardTitle>
+                <CardDescription>{tBilling('invoicesCount', { count: billing.invoices.length })}</CardDescription>
+              </div>
+              <CreateInvoiceDialog organizations={[]} organizationId={org.id} />
+            </CardHeader>
+            <CardContent>
+              <InvoicesTable invoices={billing.invoices} admin showOrganization={false} />
+            </CardContent>
+          </Card>
+        </section>
+      ) : (
+        <p className="text-sm text-muted-foreground">{tBilling('none')}</p>
+      )}
 
       <Card>
         <CardHeader>

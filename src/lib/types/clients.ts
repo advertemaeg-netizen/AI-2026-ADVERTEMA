@@ -33,6 +33,8 @@ export type ClientActionError =
   | 'slugTaken'
   | 'notFound'
   | 'noOrganization'
+  | 'limitReached'
+  | 'subscriptionInactive'
   | 'unknown'
 
 export type ClientActionResult =

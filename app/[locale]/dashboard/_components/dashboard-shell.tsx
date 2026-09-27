@@ -16,6 +16,7 @@ import {
   CalendarDays,
   BarChart3,
   ShieldCheck,
+  CreditCard,
   type LucideIcon,
 } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -31,7 +32,7 @@ import {
 import { cn } from '@/lib/utils'
 import { clientSections } from '@/components/client-sections'
 import { ClientSwitcher } from '@/components/client-switcher'
-import { canManageClient, isSuperAdmin } from '@/lib/auth/permissions'
+import { canManageClient, isOrgAdmin, isSuperAdmin } from '@/lib/auth/permissions'
 import type { ClientOption } from '@/lib/auth/client-context'
 
 type NavItem = { name: string; href: string; icon: LucideIcon; exact?: boolean }
@@ -62,6 +63,10 @@ export function DashboardShell({
   const canManage = canManageClient(user.role)
   const teamItem: NavItem = { name: t('team'), href: '/dashboard/team', icon: UsersRound }
   const settingsItem: NavItem = { name: t('settings'), href: '/dashboard/settings', icon: Settings }
+  // Billing is the organization admins' business
+  const billingItems: NavItem[] = isOrgAdmin(user.role)
+    ? [{ name: t('subscription'), href: '/dashboard/subscription', icon: CreditCard }]
+    : []
 
   // One client in focus: its own pages. All clients (org admins): org-wide pages.
   const navigation: NavItem[] = selectedClient
@@ -79,6 +84,7 @@ export function DashboardShell({
             }))
           : []),
         ...(canManage ? [teamItem] : []),
+        ...billingItems,
         settingsItem,
       ]
     : [
@@ -89,6 +95,7 @@ export function DashboardShell({
         { name: t('appointments'), href: '/dashboard/appointments', icon: CalendarDays },
         ...(canSeeAll ? [{ name: t('clients'), href: '/dashboard/clients', icon: Building2 }] : []),
         ...(canManage ? [teamItem] : []),
+        ...billingItems,
         settingsItem,
       ]
 

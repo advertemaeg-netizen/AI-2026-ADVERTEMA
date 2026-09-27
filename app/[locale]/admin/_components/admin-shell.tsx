@@ -1,7 +1,7 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { ArrowLeft, Building2, LayoutDashboard, LogOut, Settings, ShieldCheck, Sparkles, type LucideIcon } from 'lucide-react'
+import { ArrowLeft, Building2, CreditCard, LayoutDashboard, LogOut, Package, Receipt, Settings, ShieldCheck, Sparkles, type LucideIcon } from 'lucide-react'
 import { Link, usePathname, useRouter } from '@/i18n/navigation'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { createClient } from '@/lib/supabase/client'
@@ -36,6 +36,9 @@ export function AdminShell({
   const navigation: NavItem[] = [
     { name: t('nav.overview'), href: '/admin', icon: LayoutDashboard, exact: true },
     { name: t('nav.organizations'), href: '/admin/organizations', icon: Building2 },
+    { name: t('nav.plans'), href: '/admin/plans', icon: Package },
+    { name: t('nav.subscriptions'), href: '/admin/subscriptions', icon: CreditCard },
+    { name: t('nav.invoices'), href: '/admin/invoices', icon: Receipt },
     { name: t('nav.settings'), href: '/admin/settings', icon: Settings },
   ]
 
