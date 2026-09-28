@@ -27,7 +27,8 @@ export function ClientPricingActions({
 }: {
   clientId: string
   clientName: string
-  basePrice: { monthly: number; yearly: number }
+  /** The current plan's monthly price */
+  basePrice: number
   hasCustomPricing: boolean
 }) {
   const t = useTranslations('clientSubscription.pricing')

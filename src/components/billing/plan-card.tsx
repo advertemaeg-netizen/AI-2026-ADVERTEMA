@@ -4,7 +4,6 @@ import { useTranslations } from 'next-intl'
 import { Check } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import type { BillingCycle } from '@/lib/types/subscription'
 import { useMoney } from './use-money'
 
 /**
@@ -17,7 +16,6 @@ export function PlanCard({
   features,
   price,
   originalPrice,
-  cycle,
   current = false,
   popular = false,
   inactive = false,
@@ -28,7 +26,6 @@ export function PlanCard({
   price: number
   /** Shown struck through when higher than price */
   originalPrice?: number
-  cycle: BillingCycle
   current?: boolean
   popular?: boolean
   inactive?: boolean
@@ -68,7 +65,7 @@ export function PlanCard({
         )}
         <div className="flex flex-wrap items-baseline gap-x-1.5">
           <span className="text-4xl font-bold tracking-tight tabular-nums">{money.amount(price)}</span>
-          <span className="text-sm text-muted-foreground">{t(cycle === 'yearly' ? 'perYear' : 'perMonth')}</span>
+          <span className="text-sm text-muted-foreground">{t('perMonth')}</span>
         </div>
         {discounted && (
           <Badge variant="secondary" className="mt-2 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">

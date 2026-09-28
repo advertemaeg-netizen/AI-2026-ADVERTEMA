@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getSession } from '@/lib/auth/session'
+import { getSession, isImpersonating } from '@/lib/auth/session'
 import { isOrgAdmin } from '@/lib/auth/permissions'
 import { fetchSubscriptionDetails, normalizeAvailablePlans, normalizeInvoice, num } from '@/lib/subscription-data'
 import {
@@ -88,6 +88,7 @@ export async function getUsageAlerts(): Promise<UsageAlert[]> {
 }
 
 export async function dismissUsageAlerts(): Promise<{ ok: boolean }> {
+  if (await isImpersonating()) return { ok: false }
   const session = await billingSession()
   if (!session) return { ok: false }
   const { error } = await session.supabase.rpc('dismiss_usage_alerts')

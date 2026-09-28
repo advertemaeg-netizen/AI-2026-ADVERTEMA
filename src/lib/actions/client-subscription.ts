@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getSession } from '@/lib/auth/session'
+import { getSession, isImpersonating } from '@/lib/auth/session'
 import { isOrgAdmin } from '@/lib/auth/permissions'
 import { fetchClientSubscriptionDetails, normalizeAvailablePlans, normalizeInvoice } from '@/lib/subscription-data'
 import { UUID_PATTERN } from '@/lib/types/clients'
@@ -87,8 +87,9 @@ export async function getClientAvailablePlans(clientId: string): Promise<Availab
   return normalizeAvailablePlans(data as AvailablePlan[] | null)
 }
 
-/** Moves the client to another business plan / billing cycle. Limits change right away. */
+/** Moves the client to another business plan. Limits change right away. */
 export async function changeClientPlan(clientId: string, input: ChangeClientPlanInput): Promise<BillingActionResult> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   const session = await managerSession(clientId)
   if (!session) return { ok: false, error: 'forbidden' }
 
@@ -98,7 +99,6 @@ export async function changeClientPlan(clientId: string, input: ChangeClientPlan
   const { data, error } = await session.supabase.rpc('change_client_plan', {
     p_client_id: clientId,
     p_plan_id: parsed.data.plan_id,
-    p_billing_cycle: parsed.data.billing_cycle,
   })
   if (error) return fail(error, 'changeClientPlan')
   if (data === 'not_found') return { ok: false, error: 'notFound' }
@@ -115,6 +115,7 @@ export async function changeClientPlan(clientId: string, input: ChangeClientPlan
  * client's current plan.
  */
 export async function setClientCustomPricing(clientId: string, input: CustomPricingInput): Promise<BillingActionResult> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   const session = await managerSession(clientId)
   if (!session) return { ok: false, error: 'forbidden' }
 
@@ -137,7 +138,6 @@ export async function setClientCustomPricing(clientId: string, input: CustomPric
       discount_type: values.discount_type,
       discount_percentage: percentage ? values.discount_percentage : null,
       fixed_price_monthly: percentage ? null : values.fixed_price_monthly,
-      fixed_price_yearly: percentage ? null : values.fixed_price_yearly,
       reason: values.reason || null,
       valid_until: values.valid_until,
       created_by: session.profile.id,
@@ -152,6 +152,7 @@ export async function setClientCustomPricing(clientId: string, input: CustomPric
 }
 
 export async function removeClientCustomPricing(clientId: string): Promise<BillingActionResult> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   const session = await managerSession(clientId)
   if (!session) return { ok: false, error: 'forbidden' }
 

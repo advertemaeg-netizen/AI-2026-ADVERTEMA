@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { RelativeTime } from '@/components/relative-time'
 import { requireSuperAdmin } from '@/lib/auth/guards'
 import { getOrganizationDetails } from '@/lib/actions/admin'
+import { getOrganizationAiUsage } from '@/lib/actions/ai-usage'
 import { getPlans } from '@/lib/actions/admin-plans'
 import { getOrganizationBilling } from '@/lib/actions/admin-subscriptions'
 import { getClientAvailablePlans, getClientInvoices, getClientSubscription } from '@/lib/actions/client-subscription'
@@ -19,6 +20,7 @@ import { CreateInvoiceDialog } from '@/components/billing/create-invoice-dialog'
 import type { ClientStatus } from '@/lib/types/clients'
 import type { UserRole } from '@/lib/types/team'
 import { ToggleOrgButton } from './_components/toggle-org-button'
+import { ImpersonateButton } from '../../_components/impersonate-button'
 import { ClientPlanPicker } from '@/components/billing/client-plan-picker'
 import { ClientPricingActions } from '@/components/billing/client-pricing-actions'
 
@@ -35,14 +37,15 @@ const ROLE_VARIANT: Record<UserRole, 'default' | 'secondary' | 'outline' | 'dest
   team_member: 'outline',
 }
 
-export default async function AdminOrganizationPage({ params }: PageProps<'/[locale]/admin/organizations/[orgId]'>) {
+export default async function AdminCustomerPage({ params }: PageProps<'/[locale]/admin/customers/[orgId]'>) {
   const { locale, orgId } = await params
   await requireSuperAdmin(locale)
 
-  const [details, billing, plans] = await Promise.all([
+  const [details, billing, plans, aiUsage] = await Promise.all([
     getOrganizationDetails(orgId),
     getOrganizationBilling(orgId),
     getPlans(),
+    getOrganizationAiUsage(orgId),
   ])
   if (!details) notFound()
 
@@ -51,7 +54,8 @@ export default async function AdminOrganizationPage({ params }: PageProps<'/[loc
   const tClients = await getTranslations('clients')
   const tBilling = await getTranslations('subscription.admin.orgSection')
   const format = await getFormatter()
-  const tTypes = await getTranslations('admin.organizations.type')
+  const tTypes = await getTranslations('admin.customers.type')
+  const tAi = await getTranslations('aiUsage.orgClients')
   const { organization: org, stats, clients, users } = details
   const directClient = org.org_type === 'direct' ? clients[0] : undefined
 
@@ -67,7 +71,7 @@ export default async function AdminOrganizationPage({ params }: PageProps<'/[loc
   return (
     <div className="p-8 grid gap-6">
       <Link
-        href="/admin/organizations"
+        href="/admin/customers"
         className="flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-4 rtl:rotate-180" />
@@ -98,7 +102,10 @@ export default async function AdminOrganizationPage({ params }: PageProps<'/[loc
             </div>
           </dl>
         </div>
-        <ToggleOrgButton orgId={org.id} name={org.name} isActive={org.is_active} />
+        <div className="flex flex-wrap gap-2">
+          <ImpersonateButton organizationId={org.id} organizationName={org.name} size="default" />
+          <ToggleOrgButton orgId={org.id} name={org.name} isActive={org.is_active} />
+        </div>
       </div>
 
       {!org.is_active && (
@@ -124,7 +131,7 @@ export default async function AdminOrganizationPage({ params }: PageProps<'/[loc
 
       {org.org_type === 'direct' ? (
         directClient ? (
-          <DirectBilling clientId={directClient.id} clientName={directClient.name} />
+          <DirectBilling organizationId={org.id} clientId={directClient.id} clientName={directClient.name} />
         ) : (
           <p className="text-sm text-muted-foreground">{tBilling('none')}</p>
         )
@@ -139,11 +146,10 @@ export default async function AdminOrganizationPage({ params }: PageProps<'/[loc
                 organizationId: org.id,
                 organizationName: org.name,
                 planId: billing.details.plan.id,
-                billingCycle: billing.details.subscription.billing_cycle,
                 status: billing.details.subscription.status,
                 notes: billing.details.subscription.notes,
                 hasCustomPricing: !!billing.details.custom_pricing,
-                basePrice: { monthly: billing.details.plan.price_monthly, yearly: billing.details.plan.price_yearly },
+                basePrice: billing.details.plan.price_monthly,
               }}
             />
           </div>
@@ -197,6 +203,8 @@ export default async function AdminOrganizationPage({ params }: PageProps<'/[loc
                   <TableHead className="text-end">{t('clients.channels')}</TableHead>
                   <TableHead className="text-end">{t('clients.conversations')}</TableHead>
                   <TableHead className="text-end">{t('clients.leads')}</TableHead>
+                  <TableHead className="text-end">{tAi('tokens30')}</TableHead>
+                  <TableHead className="text-end">{tAi('cost30')}</TableHead>
                   <TableHead>{t('clients.createdAt')}</TableHead>
                   <TableHead>{t('clients.lastActivity')}</TableHead>
                 </TableRow>
@@ -217,6 +225,15 @@ export default async function AdminOrganizationPage({ params }: PageProps<'/[loc
                     <TableCell className="text-end tabular-nums">{format.number(client.channels)}</TableCell>
                     <TableCell className="text-end tabular-nums">{format.number(client.conversations)}</TableCell>
                     <TableCell className="text-end tabular-nums">{format.number(client.leads)}</TableCell>
+                    <TableCell className="text-end tabular-nums">{format.number(aiUsage[client.id]?.total_tokens ?? 0)}</TableCell>
+                    <TableCell className="text-end tabular-nums" dir="ltr">
+                      {format.number(aiUsage[client.id]?.cost_usd ?? 0, {
+                        style: 'currency',
+                        currency: 'USD',
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 4,
+                      })}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">
                       {format.dateTime(new Date(client.created_at), { dateStyle: 'medium' })}
                     </TableCell>
@@ -298,7 +315,15 @@ export default async function AdminOrganizationPage({ params }: PageProps<'/[loc
  * A direct business has no organization subscription: its one client's
  * business plan is what it pays the platform for, managed here.
  */
-async function DirectBilling({ clientId, clientName }: { clientId: string; clientName: string }) {
+async function DirectBilling({
+  organizationId,
+  clientId,
+  clientName,
+}: {
+  organizationId: string
+  clientId: string
+  clientName: string
+}) {
   const tBilling = await getTranslations('subscription.admin.orgSection')
   const [details, plans, invoices] = await Promise.all([
     getClientSubscription(clientId),
@@ -306,7 +331,7 @@ async function DirectBilling({ clientId, clientName }: { clientId: string; clien
     getClientInvoices(clientId),
   ])
   if (!details) return <p className="text-sm text-muted-foreground">{tBilling('none')}</p>
-  const { subscription, plan, custom_pricing: custom } = details
+  const { plan, custom_pricing: custom } = details
 
   return (
     <section className="grid gap-4">
@@ -318,7 +343,7 @@ async function DirectBilling({ clientId, clientName }: { clientId: string; clien
         <ClientPricingActions
           clientId={clientId}
           clientName={clientName}
-          basePrice={{ monthly: plan.price_monthly, yearly: plan.price_yearly }}
+          basePrice={plan.price_monthly}
           hasCustomPricing={!!custom}
         />
       </div>
@@ -337,16 +362,19 @@ async function DirectBilling({ clientId, clientName }: { clientId: string; clien
         clientName={clientName}
         plans={plans}
         currentPlanId={plan.id}
-        currentCycle={subscription.billing_cycle}
         canChange
       />
       <Card>
-        <CardHeader>
-          <CardTitle>{tBilling('invoices')}</CardTitle>
-          <CardDescription>{tBilling('invoicesCount', { count: invoices.length })}</CardDescription>
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
+          <div className="grid gap-1">
+            <CardTitle>{tBilling('invoices')}</CardTitle>
+            <CardDescription>{tBilling('invoicesCount', { count: invoices.length })}</CardDescription>
+          </div>
+          {/* Billed to the organization; the database files it under its one client */}
+          <CreateInvoiceDialog parties={[]} partyId={organizationId} />
         </CardHeader>
         <CardContent>
-          <InvoicesTable invoices={invoices} />
+          <InvoicesTable invoices={invoices} actions="platform" />
         </CardContent>
       </Card>
     </section>

@@ -8,6 +8,7 @@ import { useRouter as useLocaleRouter } from '@/i18n/navigation'
 import { Link } from '@/i18n/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { RelativeTime } from '@/components/relative-time'
 import {
   Select,
@@ -27,6 +28,7 @@ import {
 import { cn } from '@/lib/utils'
 import type { OrgListParams } from '@/lib/admin-list'
 import { ORG_STATUS_FILTERS, ORG_TYPES, type OrganizationOverview, type OrgSortKey } from '@/lib/types/admin'
+import { ImpersonateButton } from './impersonate-button'
 
 const ALL = 'all'
 
@@ -40,17 +42,21 @@ const COLUMNS: { key: OrgSortKey; numeric?: boolean }[] = [
   { key: 'lastActivityAt' },
 ]
 
-/** Organizations with search, sortable columns and (optionally) status and type filters, all kept in the URL. */
-export function OrganizationsTable({
+/**
+ * Customers (organizations: agencies and direct businesses) with search and
+ * sortable columns, plus (optionally) type tabs and a status filter, all kept
+ * in the URL.
+ */
+export function CustomersTable({
   organizations,
   params,
-  showStatusFilter = false,
+  showFilters = false,
 }: {
   organizations: OrganizationOverview[]
   params: OrgListParams
-  showStatusFilter?: boolean
+  showFilters?: boolean
 }) {
-  const t = useTranslations('admin.organizations')
+  const t = useTranslations('admin.customers')
   const format = useFormatter()
   const router = useRouter()
   const localeRouter = useLocaleRouter()
@@ -91,6 +97,20 @@ export function OrganizationsTable({
 
   return (
     <div className="grid gap-4">
+      {showFilters && (
+        <Tabs
+          value={params.type ?? ALL}
+          onValueChange={(value) => update({ type: value === ALL ? undefined : value })}
+        >
+          <TabsList>
+            {[...ORG_TYPES, ALL].map((type) => (
+              <TabsTrigger key={type} value={type}>
+                {t(`tabs.${type}`)}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-56 flex-1">
           <Search className="pointer-events-none absolute start-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -103,7 +123,7 @@ export function OrganizationsTable({
             className="ps-8"
           />
         </div>
-        {showStatusFilter && (
+        {showFilters && (
           <Select
             value={params.status ?? ALL}
             onValueChange={(value) => update({ status: value === ALL ? undefined : value })}
@@ -116,24 +136,6 @@ export function OrganizationsTable({
               {ORG_STATUS_FILTERS.map((status) => (
                 <SelectItem key={status} value={status}>
                   {t(`status.${status}`)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        {showStatusFilter && (
-          <Select
-            value={params.type ?? ALL}
-            onValueChange={(value) => update({ type: value === ALL ? undefined : value })}
-          >
-            <SelectTrigger className="w-40" aria-label={t('typeFilter')}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>{t('type.all')}</SelectItem>
-              {ORG_TYPES.map((type) => (
-                <SelectItem key={type} value={type}>
-                  {t(`type.${type}`)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -176,6 +178,9 @@ export function OrganizationsTable({
                 // The type column (not sortable) sits right after the name
                 return index === 0 ? [head, <TableHead key="type">{t('columns.type')}</TableHead>] : head
               })}
+              <TableHead>
+                <span className="sr-only">{t('columns.actions')}</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -183,12 +188,12 @@ export function OrganizationsTable({
               <TableRow
                 key={org.id}
                 className="cursor-pointer"
-                onClick={() => localeRouter.push(`/admin/organizations/${org.id}`)}
+                onClick={() => localeRouter.push(`/admin/customers/${org.id}`)}
               >
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Link
-                      href={`/admin/organizations/${org.id}`}
+                      href={`/admin/customers/${org.id}`}
                       className="font-medium hover:underline"
                       onClick={(e) => e.stopPropagation()}
                     >
@@ -212,6 +217,9 @@ export function OrganizationsTable({
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {org.lastActivityAt ? <RelativeTime date={org.lastActivityAt} /> : t('noActivity')}
+                </TableCell>
+                <TableCell className="text-end">
+                  <ImpersonateButton organizationId={org.id} organizationName={org.name} />
                 </TableCell>
               </TableRow>
             ))}

@@ -118,4 +118,4 @@ export type LeadUpdateInput = z.input<typeof leadUpdateSchema>
 
 export type LeadActionResult =
   | { ok: true }
-  | { ok: false; error: 'unauthorized' | 'forbidden' | 'notFound' | 'validation' | 'invalidPhone' | 'unknown' }
+  | { ok: false; error: 'unauthorized' | 'forbidden' | 'notFound' | 'validation' | 'invalidPhone' | 'impersonating' | 'unknown' }

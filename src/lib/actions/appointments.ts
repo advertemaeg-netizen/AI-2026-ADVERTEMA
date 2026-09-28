@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getSession } from '@/lib/auth/session'
+import { getSession, isImpersonating } from '@/lib/auth/session'
 import { cairoDayStart } from '@/lib/cairo-time'
 import { UUID_PATTERN } from '@/lib/types/clients'
 import {
@@ -82,6 +82,7 @@ async function updateLeadRow(leadId: string, patch: Record<string, unknown>): Pr
 
 /** Sets (or clears, with null) the appointment time. New leads move to "appointment booked". */
 export async function setAppointment(leadId: string, datetime: string | null): Promise<AppointmentActionResult> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   if (datetime !== null && Number.isNaN(Date.parse(datetime))) return { ok: false, error: 'validation' }
   if (!UUID_PATTERN.test(leadId)) return { ok: false, error: 'notFound' }
 
@@ -98,10 +99,12 @@ export async function setAppointment(leadId: string, datetime: string | null): P
 }
 
 export async function setAppointmentConfirmed(leadId: string, confirmed: boolean): Promise<AppointmentActionResult> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   return updateLeadRow(leadId, { appointment_confirmed: confirmed === true })
 }
 
 export async function confirmArrival(leadId: string): Promise<AppointmentActionResult> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   return updateLeadRow(leadId, {
     status: 'showed_up',
     showed_up: true,
@@ -111,6 +114,7 @@ export async function confirmArrival(leadId: string): Promise<AppointmentActionR
 }
 
 export async function markNoShow(leadId: string, reason?: string | null): Promise<AppointmentActionResult> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   const text = typeof reason === 'string' ? reason.trim().slice(0, 500) : ''
   return updateLeadRow(leadId, {
     status: 'no_show',

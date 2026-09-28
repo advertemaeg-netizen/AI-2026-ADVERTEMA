@@ -1,7 +1,7 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { ArrowLeft, Building2, CreditCard, LayoutDashboard, LogOut, Package, Receipt, Settings, ShieldCheck, Sparkles, type LucideIcon } from 'lucide-react'
+import { BrainCircuit, Building2, CreditCard, LayoutDashboard, LogOut, Package, Receipt, Settings, ShieldCheck, Sparkles, type LucideIcon } from 'lucide-react'
 import { Link, usePathname, useRouter } from '@/i18n/navigation'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { createClient } from '@/lib/supabase/client'
@@ -35,10 +35,11 @@ export function AdminShell({
 
   const navigation: NavItem[] = [
     { name: t('nav.overview'), href: '/admin', icon: LayoutDashboard, exact: true },
-    { name: t('nav.organizations'), href: '/admin/organizations', icon: Building2 },
+    { name: t('nav.customers'), href: '/admin/customers', icon: Building2 },
     { name: t('nav.plans'), href: '/admin/plans', icon: Package },
     { name: t('nav.subscriptions'), href: '/admin/subscriptions', icon: CreditCard },
     { name: t('nav.invoices'), href: '/admin/invoices', icon: Receipt },
+    { name: t('nav.aiUsage'), href: '/admin/ai-usage', icon: BrainCircuit },
     { name: t('nav.settings'), href: '/admin/settings', icon: Settings },
   ]
 
@@ -92,14 +93,7 @@ export function AdminShell({
           })}
         </nav>
 
-        <div className="border-t p-4 grid gap-2">
-          <Button variant="outline" size="sm" className="justify-start" asChild>
-            <Link href="/dashboard">
-              <ArrowLeft className="rtl:rotate-180" />
-              {t('nav.backToDashboard')}
-            </Link>
-          </Button>
-
+        <div className="border-t p-4">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="w-full justify-start px-2 h-auto py-2">

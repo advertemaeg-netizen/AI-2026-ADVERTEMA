@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
-import { getSession } from '@/lib/auth/session'
+import { getSession, isImpersonating } from '@/lib/auth/session'
 import { canManageClient, isOrgAdmin } from '@/lib/auth/permissions'
 import { SELECTED_CLIENT_COOKIE, SELECTED_CLIENT_COOKIE_OPTIONS } from '@/lib/auth/client-context'
 import { appOrigin } from '@/lib/app-url'
@@ -95,6 +95,7 @@ export async function getPendingInvites(): Promise<PendingInvite[]> {
 export async function createInvite(
   input: InviteInput
 ): Promise<{ ok: true; link: string } | { ok: false; error: TeamActionError; field?: string }> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   const { supabase, profile } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
   if (!canManageClient(profile.role) || !profile.organization_id) {
@@ -183,6 +184,7 @@ export async function createInvite(
 }
 
 export async function cancelInvite(inviteId: string): Promise<{ ok: true } | { ok: false; error: TeamActionError }> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   const { supabase, profile } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
   if (!canManageClient(profile.role)) return { ok: false, error: 'forbidden' }
@@ -206,6 +208,7 @@ export async function cancelInvite(inviteId: string): Promise<{ ok: true } | { o
 
 /** Detaches someone from the organization (org admins only). */
 export async function removeTeamMember(userId: string): Promise<{ ok: true } | { ok: false; error: TeamActionError }> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   const { supabase, profile } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
   if (!isOrgAdmin(profile.role)) return { ok: false, error: 'forbidden' }
@@ -227,6 +230,7 @@ export async function removeTeamMember(userId: string): Promise<{ ok: true } | {
 
 /** Accepts an invite for the signed-in user and focuses the dashboard on its client. */
 export async function acceptInvite(code: string): Promise<{ status: AcceptInviteStatus | 'unauthorized' }> {
+  if (await isImpersonating()) return { status: 'unauthorized' }
   const { supabase, profile } = await getSession()
   if (!profile) return { status: 'unauthorized' }
   if (typeof code !== 'string' || !/^[0-9a-f]{16,64}$/i.test(code)) return { status: 'not_found' }

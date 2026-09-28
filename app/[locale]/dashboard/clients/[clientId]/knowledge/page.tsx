@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { getClient, getClientPermissions } from '@/lib/actions/clients'
-import { getKnowledgeDocuments } from '@/lib/actions/knowledge'
+import { getKnowledgeDocuments, getKnowledgeQuota } from '@/lib/actions/knowledge'
 import { requireClientManager } from '@/lib/auth/guards'
 import { BackToClients, ClientTabs } from '../_components/client-page-nav'
 import { UploadCard } from './_components/upload-card'
@@ -17,9 +17,10 @@ export default async function KnowledgePage({
   if (!client) notFound()
 
   const t = await getTranslations('knowledge')
-  const [documents, { canManage }] = await Promise.all([
+  const [documents, { canManage }, quota] = await Promise.all([
     getKnowledgeDocuments(clientId),
     getClientPermissions(),
+    getKnowledgeQuota(clientId),
   ])
 
   return (
@@ -34,7 +35,7 @@ export default async function KnowledgePage({
       <ClientTabs clientId={clientId} />
 
       <div className="grid gap-6">
-        {canManage && <UploadCard clientId={clientId} />}
+        {canManage && <UploadCard clientId={clientId} quota={quota} />}
         <DocumentsList documents={documents} canManage={canManage} />
       </div>
     </div>

@@ -2,9 +2,11 @@ import { getTranslations } from 'next-intl/server'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireSuperAdmin } from '@/lib/auth/guards'
 import { getOrganizations, getPlatformStats } from '@/lib/actions/admin'
+import { getImpersonationLog } from '@/lib/actions/impersonation'
 import { parseOrgListParams } from '@/lib/admin-list'
 import { PlatformKpis } from './_components/platform-kpis'
-import { OrganizationsTable } from './_components/organizations-table'
+import { CustomersTable } from './_components/customers-table'
+import { ImpersonationLog } from './_components/impersonation-log'
 
 export default async function AdminOverviewPage({ params, searchParams }: PageProps<'/[locale]/admin'>) {
   const { locale } = await params
@@ -12,7 +14,11 @@ export default async function AdminOverviewPage({ params, searchParams }: PagePr
 
   const t = await getTranslations('admin')
   const list = parseOrgListParams(await searchParams)
-  const [stats, organizations] = await Promise.all([getPlatformStats(), getOrganizations(list.q, list.sort)])
+  const [stats, organizations, impersonations] = await Promise.all([
+    getPlatformStats(),
+    getOrganizations(list.q, list.sort),
+    getImpersonationLog(),
+  ])
 
   return (
     <div className="p-8 grid gap-8">
@@ -25,13 +31,15 @@ export default async function AdminOverviewPage({ params, searchParams }: PagePr
 
       <Card>
         <CardHeader>
-          <CardTitle>{t('organizations.title')}</CardTitle>
-          <CardDescription>{t('organizations.count', { count: organizations.length })}</CardDescription>
+          <CardTitle>{t('customers.title')}</CardTitle>
+          <CardDescription>{t('customers.count', { count: organizations.length })}</CardDescription>
         </CardHeader>
         <CardContent>
-          <OrganizationsTable organizations={organizations} params={list} />
+          <CustomersTable organizations={organizations} params={list} />
         </CardContent>
       </Card>
+
+      <ImpersonationLog entries={impersonations} />
     </div>
   )
 }

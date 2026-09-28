@@ -1,32 +1,44 @@
 import { after, NextResponse, type NextRequest } from 'next/server'
 import { canManage, getSession } from '@/lib/auth/session'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { looksLikeFileType, processKnowledgeDocument } from '@/lib/knowledge/process'
+import { looksLikeFileType, prepareKnowledgeChunks, processKnowledgeDocument } from '@/lib/knowledge/process'
 import { UUID_PATTERN } from '@/lib/types/clients'
-import { checkClientLimit, guardLimit, limitErrorFromDb } from '@/lib/subscription-limits'
+import { checkClientLimit, checkKnowledgeQuota, guardLimit, limitErrorFromDb } from '@/lib/subscription-limits'
 import {
   KNOWLEDGE_BUCKET,
   KNOWLEDGE_FILE_TYPES,
   KNOWLEDGE_UPLOADS_PER_HOUR,
-  MAX_KNOWLEDGE_FILE_SIZE,
+  MAX_KNOWLEDGE_FILE_SIZE_MB,
   knowledgeFileType,
+  type KnowledgeQuota,
   type KnowledgeUploadError,
+  type KnowledgeUploadFailure,
 } from '@/lib/types/knowledge'
 
-// Extraction + embedding run in after(), which shares this route's time budget
+// Embedding runs in after(), which shares this route's time budget
 export const maxDuration = 300
 
-function fail(error: KnowledgeUploadError, status: number) {
-  return NextResponse.json({ ok: false, error }, { status })
+const MB = 1024 * 1024
+
+function fail(error: KnowledgeUploadError, status: number, details: Omit<KnowledgeUploadFailure, 'ok' | 'error'> = {}) {
+  return NextResponse.json({ ok: false, error, ...details } satisfies KnowledgeUploadFailure, { status })
 }
+
+// Text that can't be read is refused before anything is stored
+const PREPARE_ERRORS = {
+  extractFailed: 'extractFailed',
+  empty: 'noText',
+  tooLarge: 'textTooLarge',
+} as const satisfies Record<string, KnowledgeUploadError>
 
 export async function POST(request: NextRequest, ctx: RouteContext<'/api/knowledge/upload/[clientId]'>) {
   const { clientId } = await ctx.params
   if (!UUID_PATTERN.test(clientId)) return fail('notFound', 404)
 
-  const { supabase, profile } = await getSession()
+  const { supabase, profile, impersonation } = await getSession()
   if (!profile) return fail('unauthorized', 401)
   if (!canManage(profile)) return fail('forbidden', 403)
+  if (impersonation) return fail('impersonating', 403)
 
   // RLS decides whether this user can see the client at all
   const { data: client } = await supabase
@@ -41,9 +53,22 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/knowled
   if (blocked === 'unknown') return fail('uploadFailed', 500)
   if (blocked) return fail(blocked, 403)
 
+  // Chunks left (the client's plan, and the agency's for all its clients)
+  // and the plan's cap on one file
+  let quota: KnowledgeQuota | null
+  try {
+    quota = await checkKnowledgeQuota(supabase, clientId)
+  } catch (error) {
+    console.error('[knowledge/upload] quota', error)
+    return fail('uploadFailed', 500)
+  }
+  if (quota && !quota.usable) return fail('subscriptionInactive', 403)
+  if (quota?.available === 0) return fail('chunkLimit', 403, { chunks: 0, available: 0 })
+  const maxMb = Math.min(quota?.max_file_size_mb ?? MAX_KNOWLEDGE_FILE_SIZE_MB, MAX_KNOWLEDGE_FILE_SIZE_MB)
+
   // Reject oversized bodies before buffering them (multipart adds a little overhead)
   const contentLength = Number(request.headers.get('content-length') ?? 0)
-  if (contentLength > MAX_KNOWLEDGE_FILE_SIZE + 64 * 1024) return fail('fileTooLarge', 413)
+  if (contentLength > maxMb * MB + 64 * 1024) return fail('fileTooLarge', 413, { maxMb })
 
   // Past this point the user is authorized; the secret-key client handles
   // storage and the chunk writes that run after the response
@@ -70,13 +95,22 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/knowled
   }
   if (!(file instanceof File)) return fail('noFile', 400)
   if (file.size === 0) return fail('emptyFile', 400)
-  if (file.size > MAX_KNOWLEDGE_FILE_SIZE) return fail('fileTooLarge', 413)
+  if (file.size > maxMb * MB) return fail('fileTooLarge', 413, { maxMb })
 
   const fileType = knowledgeFileType(file.name)
   if (!fileType) return fail('unsupportedType', 415)
 
   const buffer = Buffer.from(await file.arrayBuffer())
   if (!looksLikeFileType(fileType, buffer)) return fail('unsupportedType', 415)
+
+  // Chunk now (extraction is quick; embedding is what takes time) so a file
+  // that doesn't fit is refused before it's stored or embedded
+  const prepared = await prepareKnowledgeChunks(fileType, buffer)
+  if (!prepared.ok) return fail(PREPARE_ERRORS[prepared.error], 422)
+  const { chunks } = prepared
+  if (quota?.available != null && chunks.length > quota.available) {
+    return fail('chunkLimit', 403, { chunks: chunks.length, available: quota.available })
+  }
 
   const id = crypto.randomUUID()
   const title = file.name.slice(0, 200)
@@ -110,9 +144,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/knowled
     return fail('uploadFailed', 500)
   }
 
-  after(() =>
-    processKnowledgeDocument(admin, { id, client_id: clientId, title, file_type: fileType }, buffer)
-  )
+  after(() => processKnowledgeDocument(admin, { id, client_id: clientId, title, file_type: fileType }, chunks))
 
   return NextResponse.json({ ok: true, documentId: id }, { status: 202 })
 }

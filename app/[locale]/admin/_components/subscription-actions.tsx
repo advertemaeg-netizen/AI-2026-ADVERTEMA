@@ -44,25 +44,18 @@ import {
   setCustomPricing,
   type BillingActionResult,
 } from '@/lib/actions/admin-subscriptions'
-import {
-  BILLING_CYCLES,
-  SUBSCRIPTION_STATUSES,
-  type BillingCycle,
-  type Plan,
-  type SubscriptionStatus,
-} from '@/lib/types/subscription'
+import { SUBSCRIPTION_STATUSES, type Plan, type SubscriptionStatus } from '@/lib/types/subscription'
 
 /** What the actions need to know about one organization's subscription */
 export type SubscriptionTarget = {
   organizationId: string
   organizationName: string
   planId: string
-  billingCycle: BillingCycle
   status: SubscriptionStatus
   notes: string | null
   hasCustomPricing: boolean
-  /** Base prices of the current plan, for the custom price preview */
-  basePrice: { monthly: number; yearly: number }
+  /** The current plan's monthly price, for the custom price preview */
+  basePrice: number
 }
 
 type Open = 'plan' | 'pricing' | 'extend' | 'reset' | 'removePricing' | null
@@ -236,11 +229,9 @@ function DialogShell({
 function ChangePlanDialog({ target, plans, onClose }: { target: SubscriptionTarget; plans: Plan[]; onClose: () => void }) {
   const t = useTranslations('subscription.admin')
   const tStatus = useTranslations('subscription.status')
-  const tCycles = useTranslations('subscription.upgrade.cycles')
   const locale = useLocale()
   const money = useMoney()
   const [planId, setPlanId] = useState(target.planId)
-  const [cycle, setCycle] = useState<BillingCycle>(target.billingCycle)
   const [status, setStatus] = useState<SubscriptionStatus>(target.status)
   const [notes, setNotes] = useState(target.notes ?? '')
   const { isPending, submit } = useSubmit(onClose)
@@ -256,7 +247,7 @@ function ChangePlanDialog({ target, plans, onClose }: { target: SubscriptionTarg
       submitLabel={t('changePlan.submit')}
       onSubmit={() =>
         submit(
-          () => changePlan(target.organizationId, { plan_id: planId, billing_cycle: cycle, status, notes: notes.trim() || null }),
+          () => changePlan(target.organizationId, { plan_id: planId, status, notes: notes.trim() || null }),
           t('toast.planChanged')
         )
       }
@@ -276,37 +267,20 @@ function ChangePlanDialog({ target, plans, onClose }: { target: SubscriptionTarg
           </SelectContent>
         </Select>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="grid gap-2">
-          <Label htmlFor="change-cycle">{t('changePlan.cycle')}</Label>
-          <Select value={cycle} onValueChange={(v) => setCycle(v as BillingCycle)}>
-            <SelectTrigger id="change-cycle" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {BILLING_CYCLES.map((c) => (
-                <SelectItem key={c} value={c}>
-                  {tCycles(c)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="change-status">{t('changePlan.status')}</Label>
-          <Select value={status} onValueChange={(v) => setStatus(v as SubscriptionStatus)}>
-            <SelectTrigger id="change-status" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {SUBSCRIPTION_STATUSES.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {tStatus(s)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="grid gap-2">
+        <Label htmlFor="change-status">{t('changePlan.status')}</Label>
+        <Select value={status} onValueChange={(v) => setStatus(v as SubscriptionStatus)}>
+          <SelectTrigger id="change-status" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SUBSCRIPTION_STATUSES.map((s) => (
+              <SelectItem key={s} value={s}>
+                {tStatus(s)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="grid gap-2">
         <Label htmlFor="change-notes">{t('changePlan.notes')}</Label>

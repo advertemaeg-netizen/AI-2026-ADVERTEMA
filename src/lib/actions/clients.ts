@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { canManage, getSession } from '@/lib/auth/session'
+import { canManage, getSession, isImpersonating } from '@/lib/auth/session'
 import { checkOrgLimit, guardLimit, limitErrorFromDb } from '@/lib/subscription-limits'
 import { getClientContext } from '@/lib/auth/client-context'
 import {
@@ -151,6 +151,7 @@ export async function getClientPermissions(): Promise<{ canManage: boolean }> {
 }
 
 export async function createClientAction(formData: FormData): Promise<ClientActionResult> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   const { supabase, profile } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
   if (!canManage(profile)) return { ok: false, error: 'forbidden' }
@@ -189,6 +190,7 @@ export async function updateClientAction(
   id: string,
   formData: FormData
 ): Promise<ClientActionResult> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   const { supabase, profile } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
   if (!canManage(profile)) return { ok: false, error: 'forbidden' }
@@ -213,6 +215,7 @@ export async function updateClientAction(
 }
 
 export async function deleteClientAction(id: string): Promise<ClientActionResult> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   const { supabase, profile } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
   if (!canManage(profile)) return { ok: false, error: 'forbidden' }

@@ -60,11 +60,14 @@ export function InvoicesTable({ invoices, actions, showOrganization = false, sho
             </TableCell>
             {showOrganization && (
               <TableCell>
-                <Link href={`/admin/organizations/${invoice.organization_id}`} className="hover:underline">
+                <Link href={`/admin/customers/${invoice.organization_id}`} className="hover:underline">
                   {invoice.organization_name}
                 </Link>
                 {invoice.billed_to === 'agency' && invoice.client_name && !showClient && (
                   <span className="block text-xs text-muted-foreground">{t('toClient', { client: invoice.client_name })}</span>
+                )}
+                {invoice.billed_to === 'platform' && invoice.client_id && (
+                  <span className="block text-xs text-muted-foreground">{t('directBusiness')}</span>
                 )}
               </TableCell>
             )}

@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getSession } from '@/lib/auth/session'
+import { getSession, isImpersonating } from '@/lib/auth/session'
 import { isOrgAdmin } from '@/lib/auth/permissions'
 import { fetchClientSubscriptionDetails, nextPeriod, normalizeInvoice, normalizeUsage, num } from '@/lib/subscription-data'
 import { cairoParts, cairoWallTimeToIso } from '@/lib/cairo-time'
@@ -11,7 +11,6 @@ import {
   clientInvoiceSchema,
   markPaidSchema,
   type BillingActionResult,
-  type BillingCycle,
   type ClientBillingRow,
   type ClientInvoiceInput,
   type Invoice,
@@ -56,7 +55,6 @@ export async function getAgencyClientsBilling(): Promise<ClientBillingRow[]> {
     ...row,
     base_price: num(row.base_price),
     effective_price: num(row.effective_price),
-    monthly_value: num(row.monthly_value),
     open_invoices: num(row.open_invoices),
     open_amount: num(row.open_amount),
     usage: normalizeUsage(row.usage, CLIENT_LIMIT_TYPES),
@@ -64,7 +62,7 @@ export async function getAgencyClientsBilling(): Promise<ClientBillingRow[]> {
 }
 
 export type MonthlyRevenue = {
-  /** Paying clients (active, payment due): effective price per month */
+  /** Paying clients (active, payment due): their monthly effective prices */
   expected: number
   /** Clients on a free trial, if they all convert */
   trialPipeline: number
@@ -99,8 +97,8 @@ export async function getMonthlyRevenue(rows?: ClientBillingRow[]): Promise<Mont
 
   const sum = (values: number[]) => Math.round(values.reduce((a, b) => a + b, 0) * 100) / 100
   return {
-    expected: sum(paying.map((c) => c.monthly_value)),
-    trialPipeline: sum(trialing.map((c) => c.monthly_value)),
+    expected: sum(paying.map((c) => c.effective_price)),
+    trialPipeline: sum(trialing.map((c) => c.effective_price)),
     outstanding: sum(clients.map((c) => c.open_amount)),
     collectedThisMonth: sum((data ?? []).map((row) => num(row.amount))),
     payingClients: paying.length,
@@ -125,15 +123,11 @@ export async function getAgencyClientInvoices(): Promise<Invoice[]> {
   return (data ?? []).map(({ client, ...row }) => ({ ...normalizeInvoice(row), client_name: client?.name ?? '' }))
 }
 
-/**
- * Prefill for a new client invoice: the client's effective price for its
- * billing cycle and the period following the current one.
- */
+/** Prefill for a new client invoice: the client's monthly effective price and the month after its current period. */
 export async function getClientInvoiceDefaults(clientId: string): Promise<{
   amount: number
   periodStart: string
   periodEnd: string
-  billingCycle: BillingCycle
 } | null> {
   if (!UUID_PATTERN.test(clientId)) return null
   const session = await agencySession()
@@ -142,15 +136,12 @@ export async function getClientInvoiceDefaults(clientId: string): Promise<{
   const details = await fetchClientSubscriptionDetails(session.supabase, clientId)
   if (!details) return null
 
-  return {
-    amount: details.price.current,
-    ...nextPeriod(details.subscription.current_period_end, details.subscription.billing_cycle),
-    billingCycle: details.subscription.billing_cycle,
-  }
+  return { amount: details.price.current, ...nextPeriod(details.subscription.current_period_end) }
 }
 
 /** An invoice from the agency to one of its clients (numbered by the database). */
 export async function createClientInvoice(input: ClientInvoiceInput): Promise<BillingActionResult> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   const session = await agencySession()
   if (!session) return { ok: false, error: 'forbidden' }
 
@@ -188,6 +179,7 @@ export async function createClientInvoice(input: ClientInvoiceInput): Promise<Bi
 
 /** Records the client's payment; the client's subscription becomes active and moves on to the invoice's period. */
 export async function markClientInvoicePaid(invoiceId: string, input: MarkPaidInput): Promise<BillingActionResult> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   if (!UUID_PATTERN.test(invoiceId)) return { ok: false, error: 'notFound' }
   const session = await agencySession()
   if (!session) return { ok: false, error: 'forbidden' }
@@ -216,6 +208,7 @@ export async function setClientInvoiceStatus(
   invoiceId: string,
   status: Exclude<InvoiceStatus, 'paid'>
 ): Promise<BillingActionResult> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   if (!UUID_PATTERN.test(invoiceId)) return { ok: false, error: 'notFound' }
   if (!(['draft', 'sent', 'overdue', 'cancelled'] as string[]).includes(status)) return { ok: false, error: 'validation' }
   const session = await agencySession()

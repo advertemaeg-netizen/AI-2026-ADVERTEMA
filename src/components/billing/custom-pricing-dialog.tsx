@@ -34,8 +34,8 @@ export function CustomPricingDialog({
 }: {
   subject: 'organization' | 'client'
   name: string
-  /** Base prices of the current plan, for the preview */
-  basePrice: { monthly: number; yearly: number }
+  /** The current plan's monthly price, for the preview */
+  basePrice: number
   hasCustomPricing: boolean
   save: (input: CustomPricingInput) => Promise<BillingActionResult>
   onClose: () => void
@@ -48,7 +48,6 @@ export function CustomPricingDialog({
   const [type, setType] = useState<'percentage' | 'fixed_price'>('percentage')
   const [percentage, setPercentage] = useState('')
   const [monthly, setMonthly] = useState('')
-  const [yearly, setYearly] = useState('')
   const [reason, setReason] = useState('')
   const [until, setUntil] = useState('')
   const [isPending, startTransition] = useTransition()
@@ -58,12 +57,9 @@ export function CustomPricingDialog({
   const preview =
     type === 'percentage'
       ? pct !== null && pct > 0 && pct <= 100
-        ? {
-            monthly: Math.round(basePrice.monthly * (100 - pct)) / 100,
-            yearly: Math.round(basePrice.yearly * (100 - pct)) / 100,
-          }
+        ? Math.round(basePrice * (100 - pct)) / 100
         : null
-      : { monthly: numOrNull(monthly) ?? basePrice.monthly, yearly: numOrNull(yearly) ?? basePrice.yearly }
+      : numOrNull(monthly)
 
   function submit() {
     startTransition(async () => {
@@ -71,7 +67,6 @@ export function CustomPricingDialog({
         discount_type: type,
         discount_percentage: type === 'percentage' ? pct : null,
         fixed_price_monthly: type === 'fixed_price' ? numOrNull(monthly) : null,
-        fixed_price_yearly: type === 'fixed_price' ? numOrNull(yearly) : null,
         reason: reason.trim() || null,
         // Valid through the end of that Cairo day
         valid_until: until ? dateKeyToIso(until, '23:59') : null,
@@ -119,32 +114,18 @@ export function CustomPricingDialog({
             </div>
           ) : (
             <div className="grid gap-2">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="grid gap-2">
-                  <Label htmlFor="pricing-monthly">{t('monthly')}</Label>
-                  <Input id="pricing-monthly" type="number" min={0} step="0.01" dir="ltr" value={monthly} onChange={(e) => setMonthly(e.target.value)} />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="pricing-yearly">{t('yearly')}</Label>
-                  <Input id="pricing-yearly" type="number" min={0} step="0.01" dir="ltr" value={yearly} onChange={(e) => setYearly(e.target.value)} />
-                </div>
-              </div>
+              <Label htmlFor="pricing-monthly">{t('monthly')}</Label>
+              <Input id="pricing-monthly" type="number" min={0} step="0.01" dir="ltr" value={monthly} onChange={(e) => setMonthly(e.target.value)} required />
               <p className="text-xs text-muted-foreground">{t('fixedHint')}</p>
             </div>
           )}
 
-          {preview && (
+          {preview !== null && (
             <div className="rounded-md bg-muted p-3 text-sm">
               <div className="text-muted-foreground">{t('preview')}</div>
-              <div className="mt-1 grid gap-0.5 tabular-nums">
-                <span>
-                  <span className="text-muted-foreground line-through">{money.withCurrency(basePrice.monthly)}</span>{' '}
-                  → <strong>{money.withCurrency(preview.monthly)}</strong> {t('perMonth')}
-                </span>
-                <span>
-                  <span className="text-muted-foreground line-through">{money.withCurrency(basePrice.yearly)}</span>{' '}
-                  → <strong>{money.withCurrency(preview.yearly)}</strong> {t('perYear')}
-                </span>
+              <div className="mt-1 tabular-nums">
+                <span className="text-muted-foreground line-through">{money.withCurrency(basePrice)}</span>{' '}
+                → <strong>{money.withCurrency(preview)}</strong> {t('perMonth')}
               </div>
             </div>
           )}

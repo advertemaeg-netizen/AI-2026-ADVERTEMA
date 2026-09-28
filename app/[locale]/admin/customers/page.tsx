@@ -3,13 +3,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { requireSuperAdmin } from '@/lib/auth/guards'
 import { getOrganizations } from '@/lib/actions/admin'
 import { parseOrgListParams } from '@/lib/admin-list'
-import { OrganizationsTable } from '../_components/organizations-table'
+import { CustomersTable } from '../_components/customers-table'
 
-export default async function AdminOrganizationsPage({ params, searchParams }: PageProps<'/[locale]/admin/organizations'>) {
+export default async function AdminCustomersPage({ params, searchParams }: PageProps<'/[locale]/admin/customers'>) {
   const { locale } = await params
   await requireSuperAdmin(locale)
 
-  const t = await getTranslations('admin.organizations')
+  const t = await getTranslations('admin.customers')
   const list = parseOrgListParams(await searchParams)
   const all = await getOrganizations(list.q, list.sort)
   const organizations = all.filter(
@@ -30,7 +30,7 @@ export default async function AdminOrganizationsPage({ params, searchParams }: P
           <CardDescription>{t('count', { count: organizations.length })}</CardDescription>
         </CardHeader>
         <CardContent>
-          <OrganizationsTable organizations={organizations} params={list} showStatusFilter />
+          <CustomersTable organizations={organizations} params={list} showFilters />
         </CardContent>
       </Card>
     </div>

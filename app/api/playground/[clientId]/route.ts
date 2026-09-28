@@ -11,6 +11,7 @@ const STATUS: Record<PlaygroundError, number> = {
   aiUnavailable: 502,
   limitReached: 403,
   subscriptionInactive: 403,
+  impersonating: 403,
   unknown: 500,
 }
 

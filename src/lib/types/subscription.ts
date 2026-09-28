@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { UUID_PATTERN } from './clients'
 
-export const LIMIT_TYPES = ['messages', 'clients', 'team_members', 'channels', 'knowledge_docs'] as const
+export const LIMIT_TYPES = ['messages', 'clients', 'team_members', 'channels', 'knowledge_docs', 'knowledge_chunks'] as const
 export type LimitType = (typeof LIMIT_TYPES)[number]
 
 export const PLAN_TYPES = ['agency', 'business'] as const
@@ -9,10 +9,17 @@ export type PlanType = (typeof PLAN_TYPES)[number]
 
 /**
  * Two billing levels: the organization (agency plan, paid to the platform)
- * and each client (business plan, paid to the agency).
+ * and each client (business plan, paid to the agency). Knowledge chunks are
+ * limited on both: per client, and for all of an agency's clients together.
  */
-export const ORG_LIMIT_TYPES = ['clients', 'team_members'] as const satisfies readonly LimitType[]
-export const CLIENT_LIMIT_TYPES = ['messages', 'channels', 'knowledge_docs', 'team_members'] as const satisfies readonly LimitType[]
+export const ORG_LIMIT_TYPES = ['clients', 'team_members', 'knowledge_chunks'] as const satisfies readonly LimitType[]
+export const CLIENT_LIMIT_TYPES = [
+  'messages',
+  'channels',
+  'knowledge_docs',
+  'knowledge_chunks',
+  'team_members',
+] as const satisfies readonly LimitType[]
 export type OrgLimitType = (typeof ORG_LIMIT_TYPES)[number]
 export type ClientLimitType = (typeof CLIENT_LIMIT_TYPES)[number]
 
@@ -22,12 +29,12 @@ export const PLAN_LIMIT_TYPES: Record<PlanType, readonly LimitType[]> = {
   business: CLIENT_LIMIT_TYPES,
 }
 
-/** platform: from the platform to an agency; agency: from an agency to its client */
+/**
+ * platform: from the platform to an agency, or to a direct business (then
+ * with its client_id); agency: from an agency to its client
+ */
 export const BILLED_TO = ['platform', 'agency'] as const
 export type BilledTo = (typeof BILLED_TO)[number]
-
-export const BILLING_CYCLES = ['monthly', 'yearly'] as const
-export type BillingCycle = (typeof BILLING_CYCLES)[number]
 
 export const SUBSCRIPTION_STATUSES = ['trialing', 'active', 'past_due', 'cancelled'] as const
 export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number]
@@ -51,6 +58,7 @@ export const LIMIT_COLUMNS = {
   team_members: 'team_members_limit',
   channels: 'channels_limit',
   knowledge_docs: 'knowledge_docs_limit',
+  knowledge_chunks: 'knowledge_chunks_limit',
 } as const satisfies Record<LimitType, string>
 
 export type PlanLimits = { [K in LimitType as (typeof LIMIT_COLUMNS)[K]]: number | null }
@@ -61,15 +69,17 @@ export type Plan = PlanLimits & {
   name: string
   name_ar: string
   plan_type: PlanType
+  /** All plans are billed monthly */
   price_monthly: number
-  price_yearly: number
+  /** Biggest knowledge file one upload may be; null = the platform's cap */
+  max_file_size_mb: number | null
   features: PlanFeature[]
   is_active: boolean
   sort_order: number
 }
 
-/** A plan with this organization's prices (custom pricing applied) */
-export type AvailablePlan = Plan & { effective_monthly: number; effective_yearly: number }
+/** A plan with this organization's price (custom pricing applied) */
+export type AvailablePlan = Plan & { effective_monthly: number }
 
 export type UsageItem = {
   limit_type: LimitType
@@ -82,7 +92,6 @@ export type CustomPricing = {
   discount_type: 'percentage' | 'fixed_price'
   discount_percentage: number | null
   fixed_price_monthly: number | null
-  fixed_price_yearly: number | null
   plan_id: string | null
   reason: string | null
   valid_until: string | null
@@ -97,7 +106,6 @@ export type SubscriptionDetails = {
     organization_id: string
     status: SubscriptionStatus
     usable: boolean
-    billing_cycle: BillingCycle
     current_period_start: string
     current_period_end: string
     trial_ends_at: string | null
@@ -107,7 +115,8 @@ export type SubscriptionDetails = {
   }
   plan: Plan
   custom_pricing: CustomPricing | null
-  price: { monthly: number; yearly: number; current: number; base_current: number }
+  /** Monthly: the plan's price, and after custom pricing */
+  price: { current: number; base: number }
   usage: UsageItem[]
 }
 
@@ -169,7 +178,6 @@ export type SubscriptionRow = {
   subscription_id: string
   status: SubscriptionStatus
   usable: boolean
-  billing_cycle: BillingCycle
   plan_id: string
   plan_slug: string
   plan_name: string
@@ -192,15 +200,12 @@ export type ClientBillingRow = {
   subscription_id: string
   status: SubscriptionStatus
   usable: boolean
-  billing_cycle: BillingCycle
   plan_id: string
   plan_slug: string
   plan_name: string
   plan_name_ar: string
   base_price: number
   effective_price: number
-  /** Effective price per month (yearly / 12) */
-  monthly_value: number
   has_custom_pricing: boolean
   current_period_start: string
   current_period_end: string
@@ -220,7 +225,6 @@ export type ClientSubscriptionRow = {
   subscription_id: string
   status: SubscriptionStatus
   usable: boolean
-  billing_cycle: BillingCycle
   plan_id: string
   plan_slug: string
   plan_name: string
@@ -234,7 +238,7 @@ export type ClientSubscriptionRow = {
   usage: UsageItem[]
 }
 
-export type BillingActionError = 'forbidden' | 'validation' | 'notFound' | 'invalidStatus' | 'unknown'
+export type BillingActionError = 'forbidden' | 'validation' | 'notFound' | 'invalidStatus' | 'impersonating' | 'unknown'
 export type BillingActionResult = { ok: true } | { ok: false; error: BillingActionError; field?: string }
 
 /** Errors the limited actions (clients, channels, files, invites) can add */
@@ -264,12 +268,13 @@ export const planSchema = z.object({
   name_ar: z.string().trim().min(1, 'required').max(80, 'tooLong'),
   plan_type: z.enum(PLAN_TYPES),
   price_monthly: price,
-  price_yearly: price,
   messages_limit: limit,
   clients_limit: limit,
   team_members_limit: limit,
   channels_limit: limit,
   knowledge_docs_limit: limit,
+  knowledge_chunks_limit: limit,
+  max_file_size_mb: z.number().int().min(1).max(100).nullable(),
   features: z.array(planFeatureSchema).max(20, 'tooMany'),
   is_active: z.boolean(),
 })
@@ -281,7 +286,6 @@ export const customPricingSchema = z
     discount_type: z.enum(['percentage', 'fixed_price']),
     discount_percentage: z.number().gt(0).max(100).nullable(),
     fixed_price_monthly: price.nullable(),
-    fixed_price_yearly: price.nullable(),
     reason: z.string().trim().max(200).nullable(),
     valid_until: z.iso.datetime({ offset: true }).nullable(),
   })
@@ -289,7 +293,7 @@ export const customPricingSchema = z
     (v) =>
       v.discount_type === 'percentage'
         ? v.discount_percentage !== null
-        : v.fixed_price_monthly !== null || v.fixed_price_yearly !== null,
+        : v.fixed_price_monthly !== null,
     { message: 'priceRequired' }
   )
 
@@ -297,7 +301,6 @@ export type CustomPricingInput = z.infer<typeof customPricingSchema>
 
 export const changePlanSchema = z.object({
   plan_id: uuid,
-  billing_cycle: z.enum(BILLING_CYCLES),
   status: z.enum(SUBSCRIPTION_STATUSES),
   notes: z.string().trim().max(500).nullable(),
 })
@@ -322,7 +325,6 @@ export type ClientInvoiceInput = z.infer<typeof clientInvoiceSchema>
 
 export const changeClientPlanSchema = z.object({
   plan_id: uuid,
-  billing_cycle: z.enum(BILLING_CYCLES),
 })
 
 export type ChangeClientPlanInput = z.infer<typeof changeClientPlanSchema>

@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { canManage, getSession } from '@/lib/auth/session'
+import { canManage, getSession, isImpersonating } from '@/lib/auth/session'
 import { appOrigin } from '@/lib/app-url'
 import { checkClientLimit, guardLimit, limitErrorFromDb } from '@/lib/subscription-limits'
 import { UUID_PATTERN } from '@/lib/types/clients'
@@ -48,6 +48,7 @@ export async function createChannelAction(
   clientId: string,
   formData: FormData
 ): Promise<ChannelActionResult> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   const { supabase, profile } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
   if (!canManage(profile)) return { ok: false, error: 'forbidden' }
@@ -102,6 +103,7 @@ export async function toggleChannelActive(
   id: string,
   isActive: boolean
 ): Promise<ChannelActionResult> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   const { supabase, profile } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
   if (!canManage(profile)) return { ok: false, error: 'forbidden' }
@@ -122,6 +124,7 @@ export async function toggleChannelActive(
 }
 
 export async function deleteChannelAction(id: string): Promise<ChannelActionResult> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   const { supabase, profile } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
   if (!canManage(profile)) return { ok: false, error: 'forbidden' }

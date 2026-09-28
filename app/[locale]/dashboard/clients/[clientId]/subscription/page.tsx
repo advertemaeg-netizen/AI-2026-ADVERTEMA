@@ -79,7 +79,7 @@ export default async function ClientSubscriptionPage({
               <ClientPricingActions
                 clientId={clientId}
                 clientName={client.name}
-                basePrice={{ monthly: plan.price_monthly, yearly: plan.price_yearly }}
+                basePrice={plan.price_monthly}
                 hasCustomPricing={!!custom}
               />
             </div>
@@ -116,7 +116,6 @@ export default async function ClientSubscriptionPage({
             clientName={client.name}
             plans={plans}
             currentPlanId={plan.id}
-            currentCycle={subscription.billing_cycle}
             canChange={canManageBilling}
           />
         </section>

@@ -159,7 +159,8 @@
       "unknown": "Something went wrong. Please try again.",
       "limitReached": "You’ve reached your plan’s client limit. Upgrade your plan to add more clients.",
       "subscriptionInactive": "Your subscription is inactive. Contact us to activate it.",
-      "directSingleClient": "A business account has a single business, so clients can’t be added."
+      "directSingleClient": "A business account has a single business, so clients can’t be added.",
+      "impersonating": "Changes aren’t allowed while viewing a customer’s account"
     },
     "fieldErrors": {
       "nameRequired": "Client name is required.",
@@ -235,7 +236,8 @@
       "unknown": "Something went wrong. Please try again.",
       "copyFailed": "Could not copy. Please copy the snippet manually.",
       "limitReached": "You’ve reached your plan’s channel limit. Upgrade your plan to add more channels.",
-      "subscriptionInactive": "Your subscription is inactive. Contact us to activate it."
+      "subscriptionInactive": "Your subscription is inactive. Contact us to activate it.",
+      "impersonating": "Changes aren’t allowed while viewing a customer’s account"
     },
     "fieldErrors": {
       "nameRequired": "Channel name is required.",
@@ -315,7 +317,8 @@
       "forbidden": "You do not have permission to do this.",
       "validation": "The submitted data is not valid.",
       "notFound": "Conversation not found or no longer assigned to you.",
-      "unknown": "Something went wrong. Please try again."
+      "unknown": "Something went wrong. Please try again.",
+      "impersonating": "Changes aren’t allowed while viewing a customer’s account"
     },
     "ai": {
       "on": "Auto-reply on",
@@ -333,7 +336,7 @@
       "title": "Upload a file",
       "description": "Text is extracted, split and indexed automatically for the AI assistant.",
       "dropHere": "Drag and drop a file here",
-      "limits": "PDF, DOCX or TXT — up to 10 MB, at most 5 files per hour",
+      "limits": "PDF, DOCX or TXT — up to {max} MB, and at most 5 files an hour",
       "choose": "Choose file",
       "uploading": "Uploading file",
       "progress": "Uploading... {percent}%",
@@ -356,7 +359,8 @@
       "tooLarge": "The file contains more text than allowed.",
       "extractFailed": "The file could not be read. Make sure it is not corrupted or password protected.",
       "embeddingFailed": "The text could not be indexed. Delete the file and try again.",
-      "saveFailed": "The file could not be saved. Delete it and try again."
+      "saveFailed": "The file could not be saved. Delete it and try again.",
+      "chunkLimit": "The knowledge base filled up while this file was processed (another file was uploaded at the same time). Delete it and try again."
     },
     "deleteTitle": "Delete file?",
     "deleteDescription": "\"{name}\" and all of its chunks will be removed from the knowledge base and no longer used by the assistant.",
@@ -371,12 +375,17 @@
       "rateLimited": "Upload limit reached (5 files per hour). Please try again later.",
       "noFile": "No file was selected.",
       "emptyFile": "The file is empty.",
-      "fileTooLarge": "The file is larger than 10 MB.",
+      "fileTooLarge": "The file is larger than your plan allows.",
       "unsupportedType": "Unsupported file type. Use PDF, DOCX or TXT.",
       "uploadFailed": "The file could not be uploaded. Please try again.",
       "unknown": "Something went wrong. Please try again.",
       "limitReached": "You’ve reached your plan’s knowledge file limit. Delete a file or upgrade your plan.",
-      "subscriptionInactive": "Your subscription is inactive. Contact us to activate it."
+      "subscriptionInactive": "Your subscription is inactive. Contact us to activate it.",
+      "chunkLimit": "The knowledge base has reached your plan’s limit. Delete a file or upgrade the plan.",
+      "extractFailed": "The file couldn’t be read. Make sure it isn’t damaged or password-protected.",
+      "noText": "No text was found in the file (it may be a scanned PDF).",
+      "textTooLarge": "The file has more text than one file may hold. Split it into smaller files.",
+      "impersonating": "Changes aren’t allowed while viewing a customer’s account"
     }
   },
   "playground": {
@@ -398,7 +407,8 @@
       "forbidden": "Only client and organization admins can test the bot.",
       "limitReached": "This client has used this month’s messages, and tests here count against the same quota. Upgrade the client’s plan to continue.",
       "subscriptionInactive": "The client’s (or agency’s) subscription is inactive, so the bot is paused here and on the website. Activate it to continue.",
-      "unknown": "Something went wrong. Please try again."
+      "unknown": "Something went wrong. Please try again.",
+      "impersonating": "Changes aren’t allowed while viewing a customer’s account"
     },
     "debug": {
       "title": "Debug info",
@@ -531,7 +541,8 @@
       "forbidden": "You do not have permission to change this bot’s settings.",
       "notFound": "Client not found or you do not have access to it.",
       "validation": "Some values are invalid. Please check the fields.",
-      "unknown": "Something went wrong. Please try again."
+      "unknown": "Something went wrong. Please try again.",
+      "impersonating": "Changes aren’t allowed while viewing a customer’s account"
     }
   },
   "leads": {
@@ -648,7 +659,8 @@
       "notFound": "Lead not found or you do not have access to it.",
       "validation": "Some of the data is invalid.",
       "invalidPhone": "Invalid phone number. Use an Egyptian mobile number (010 / 011 / 012 / 015).",
-      "unknown": "Something went wrong. Please try again."
+      "unknown": "Something went wrong. Please try again.",
+      "impersonating": "Changes aren’t allowed while viewing a customer’s account"
     },
     "phonePlaceholder": "No number yet — e.g. 010 1234 5678"
   },
@@ -693,7 +705,8 @@
       "unknown": "Something went wrong. Please try again.",
       "limitReached": "Your plan’s team seats are full (pending invites count too). Upgrade your plan to invite more people.",
       "subscriptionInactive": "Your subscription is inactive. Contact us to activate it.",
-      "clientLimitReached": "This client’s plan has no free team seats (pending invites count too). Upgrade the client’s plan to invite more people."
+      "clientLimitReached": "This client’s plan has no free team seats (pending invites count too). Upgrade the client’s plan to invite more people.",
+      "impersonating": "Changes aren’t allowed while viewing a customer’s account"
     }
   },
   "invites": {
@@ -748,7 +761,8 @@
       "copyFailed": "Could not copy. Please copy the link manually.",
       "limitReached": "Your plan’s team seats are full (pending invites count too). Upgrade your plan to invite more people.",
       "clientLimitReached": "This client’s plan has no free team seats (pending invites count too). Upgrade the client’s plan to invite more people.",
-      "subscriptionInactive": "Your subscription is inactive. Contact us to activate it."
+      "subscriptionInactive": "Your subscription is inactive. Contact us to activate it.",
+      "impersonating": "Changes aren’t allowed while viewing a customer’s account"
     },
     "accept": {
       "title": "You’re invited",
@@ -788,7 +802,8 @@
         "unauthorized": "Please log in first.",
         "ok": "",
         "accountExists": "An account with this email already exists. Log in, then open the invite link again.",
-        "limit_reached": "There are no free team seats right now. Ask whoever invited you to upgrade the plan, then open the link again."
+        "limit_reached": "There are no free team seats right now. Ask whoever invited you to upgrade the plan, then open the link again.",
+        "impersonating": "Changes aren’t allowed while viewing a customer’s account"
       }
     },
     "descriptionForClient": "An invite link to join the {client} team will be created, valid for 7 days — copy it and send it to them."
@@ -860,7 +875,8 @@
       "unauthorized": "Your session has expired. Please log in again.",
       "notFound": "Appointment not found or you do not have access to it.",
       "validation": "Invalid date.",
-      "unknown": "Something went wrong. Please try again."
+      "unknown": "Something went wrong. Please try again.",
+      "impersonating": "Changes aren’t allowed while viewing a customer’s account"
     }
   },
   "journey": {
@@ -988,7 +1004,8 @@
     },
     "errors": {
       "export": "Could not export the data. Please try again.",
-      "load": "Could not load analytics for this period."
+      "load": "Could not load analytics for this period.",
+      "impersonating": "Changes aren’t allowed while viewing a customer’s account"
     },
     "trend": {
       "title": "Conversations, last 7 days",
@@ -1002,21 +1019,20 @@
     "badgeHint": "You’re viewing the whole platform",
     "nav": {
       "overview": "Overview",
-      "organizations": "Organizations",
+      "customers": "Customers",
       "settings": "Settings",
-      "backToDashboard": "Back to dashboard",
-      "openPanel": "Admin panel",
       "plans": "Plans",
       "subscriptions": "Subscriptions",
-      "invoices": "Invoices"
+      "invoices": "Invoices",
+      "aiUsage": "AI usage"
     },
     "overview": {
       "title": "Platform overview",
-      "description": "Every organization on Connecta AI at a glance."
+      "description": "Every customer on Connecta AI at a glance."
     },
     "kpis": {
-      "organizations": "Organizations",
-      "clients": "Clients",
+      "organizations": "Customers",
+      "clients": "Businesses",
       "users": "Users",
       "conversations": "Conversations",
       "leads": "Leads",
@@ -1028,11 +1044,11 @@
       "growthNew": "New this month — nothing in the previous 30 days",
       "growthNone": "No growth in the last 60 days"
     },
-    "organizations": {
-      "title": "Organizations",
-      "description": "Search, sort and open any organization.",
-      "all": "All organizations",
-      "count": "{count, plural, =0 {No organizations} one {# organization} other {# organizations}}",
+    "customers": {
+      "title": "Customers",
+      "description": "Search, sort and open any customer: agencies and direct businesses.",
+      "all": "All customers",
+      "count": "{count, plural, =0 {No customers} one {# customer} other {# customers}}",
       "searchPlaceholder": "Search by name or slug…",
       "statusFilter": "Status",
       "status": {
@@ -1043,34 +1059,38 @@
       "columns": {
         "name": "Name",
         "type": "Type",
-        "clients": "Clients",
+        "clients": "Businesses",
         "users": "Users",
         "conversations": "Conversations",
         "leads": "Leads",
         "createdAt": "Created",
-        "lastActivityAt": "Last activity"
+        "lastActivityAt": "Last activity",
+        "actions": "Actions"
       },
       "noActivity": "No activity yet",
-      "empty": "No organizations yet.",
-      "noMatches": "No organizations match your search.",
-      "typeFilter": "Type",
+      "empty": "No customers yet.",
+      "noMatches": "No customers match your search.",
       "type": {
-        "all": "All types",
         "agency": "Agency",
         "direct": "Business"
+      },
+      "tabs": {
+        "agency": "Agencies",
+        "direct": "Direct businesses",
+        "all": "All"
       }
     },
     "details": {
-      "back": "All organizations",
+      "back": "All customers",
       "active": "Active",
       "disabled": "Disabled",
       "slug": "Slug",
       "createdAt": "Created",
       "lastActivity": "Last activity",
       "noActivity": "No activity yet",
-      "disabledNotice": "This organization is disabled. Its members can’t sign in or reach any of its data until you enable it again. Nothing has been deleted.",
+      "disabledNotice": "This customer is disabled. Its members can’t sign in or reach any of its data until you enable it again. Nothing has been deleted.",
       "stats": {
-        "clients": "Clients",
+        "clients": "Businesses",
         "users": "Users",
         "channels": "Channels",
         "conversations": "Conversations",
@@ -1080,9 +1100,9 @@
         "last30": "{count, plural, =0 {None in 30 days} other {# in 30 days}}"
       },
       "clients": {
-        "title": "Clients",
-        "count": "{count, plural, =0 {No clients} one {# client} other {# clients}}",
-        "empty": "This organization has no clients yet.",
+        "title": "Businesses",
+        "count": "{count, plural, =0 {No businesses} one {# business} other {# businesses}}",
+        "empty": "This customer has no businesses yet.",
         "name": "Name",
         "industry": "Industry",
         "status": "Status",
@@ -1095,24 +1115,24 @@
       "users": {
         "title": "Members",
         "count": "{count, plural, =0 {No members} one {# member} other {# members}}",
-        "empty": "This organization has no members.",
+        "empty": "This customer has no members.",
         "name": "Name",
         "role": "Role",
-        "clients": "Clients",
+        "clients": "Businesses",
         "joined": "Joined",
         "lastSignIn": "Last sign-in",
         "never": "Never",
-        "allClients": "All clients"
+        "allClients": "All businesses"
       },
       "toggle": {
         "disable": {
-          "button": "Disable organization",
+          "button": "Disable customer",
           "title": "Disable {name}?",
           "description": "Its members will be signed out and blocked from signing in. Clients, conversations and leads are kept, and you can enable it again at any time.",
           "confirm": "Disable"
         },
         "enable": {
-          "button": "Enable organization",
+          "button": "Enable customer",
           "title": "Enable {name}?",
           "description": "Its members will be able to sign in and use the dashboard again.",
           "confirm": "Enable"
@@ -1121,8 +1141,9 @@
         "enabled": "{name} is enabled again",
         "errors": {
           "forbidden": "Only super admins can do this",
-          "notFound": "Organization not found",
-          "failed": "Something went wrong, please try again"
+          "notFound": "Customer not found",
+          "failed": "Something went wrong, please try again",
+          "impersonating": "Changes aren’t allowed while viewing a customer’s account"
         }
       }
     },
@@ -1130,7 +1151,7 @@
       "title": "Settings",
       "description": "Who can manage the platform.",
       "superAdmins": "Super admins",
-      "superAdminsDesc": "People with full access to every organization.",
+      "superAdminsDesc": "People with full access to every customer.",
       "columns": {
         "name": "Name",
         "email": "Email",
@@ -1150,14 +1171,12 @@
       "current": "Current",
       "popular": "Most popular",
       "perMonth": "EGP/month",
-      "perYear": "EGP/year",
       "specialPrice": "Special price"
     },
     "current": {
       "title": "Current plan",
       "price": {
-        "monthly": "Monthly price",
-        "yearly": "Yearly price"
+        "monthly": "Monthly price"
       },
       "customReason": "Reason: {reason}",
       "customUntil": "Special price valid until {date}",
@@ -1176,7 +1195,8 @@
         "clients": "Clients",
         "team_members": "Team members",
         "channels": "Channels",
-        "knowledge_docs": "Knowledge files"
+        "knowledge_docs": "Knowledge files",
+        "knowledge_chunks": "Knowledge base"
       },
       "usedOf": "{used} of {limit}",
       "usedUnlimited": "{used} · unlimited",
@@ -1196,16 +1216,12 @@
     "upgrade": {
       "title": "Upgrade your plan",
       "description": "Pick the plan that fits you — we’ll switch it for you.",
-      "cycles": {
-        "monthly": "Monthly",
-        "yearly": "Yearly"
-      },
       "currentPlan": "Current plan",
       "upgrade": "Upgrade",
       "switch": "Switch to this plan",
       "contactTitle": "Switch to {plan}",
       "contactDescription": "Send us a message and we’ll move your account over and send the invoice.",
-      "contactMessage": "Hello, I’d like to switch {organization} to the {plan} plan ({cycle}).",
+      "contactMessage": "Hello, I’d like to switch {organization} to the {plan} plan.",
       "whatsapp": "Message us on WhatsApp",
       "email": "Email us",
       "emailSubject": "Switch to the {plan} plan",
@@ -1234,10 +1250,6 @@
       "customPrice": "Special price",
       "topUsage": "Highest: {limit} {percentage}%",
       "trialUntil": "Trial until {date}",
-      "cycle": {
-        "monthly": "Monthly",
-        "yearly": "Yearly"
-      },
       "filters": {
         "type": "Plan type",
         "allTypes": "All types",
@@ -1245,10 +1257,10 @@
         "allStatuses": "All statuses"
       },
       "columns": {
-        "organization": "Organization",
+        "organization": "Customer",
         "type": "Type",
         "plan": "Plan",
-        "price": "Effective price",
+        "price": "Monthly price",
         "status": "Status",
         "usage": "Usage",
         "renewal": "Renewal"
@@ -1265,30 +1277,27 @@
         "description": "Limits change immediately. Prices come from the plan (and any custom price).",
         "submit": "Save",
         "plan": "Plan",
-        "cycle": "Billing cycle",
         "status": "Status",
         "notes": "Internal notes"
       },
       "pricing": {
         "title": "Custom price for {name}",
-        "description": "A discount or a fixed price for this organization. It replaces any previous custom price.",
+        "description": "A discount or a fixed price for this customer. It replaces any previous custom price.",
         "submit": "Save price",
         "percentage": "Discount %",
         "fixed": "Fixed price",
         "percentageLabel": "Discount percentage",
-        "percentageHint": "Applies to whichever plan the organization is on.",
+        "percentageHint": "Applies to whichever plan the customer is on.",
         "monthly": "Monthly price (EGP)",
-        "yearly": "Yearly price (EGP)",
-        "fixedHint": "Tied to the current plan. Leave a cycle empty to keep its normal price.",
+        "fixedHint": "A monthly price tied to the current plan.",
         "preview": "Customers will see",
         "perMonth": "/ month",
-        "perYear": "/ year",
         "reason": "Reason",
         "reasonPlaceholder": "Promotion, long-time customer, courtesy…",
-        "reasonHint": "Shown to the organization’s admins.",
+        "reasonHint": "Shown to the customer’s admins.",
         "validUntil": "Valid until",
         "validUntilHint": "Leave empty for no end date.",
-        "replaces": "This organization already has a custom price; saving replaces it.",
+        "replaces": "This customer already has a custom price; saving replaces it.",
         "descriptionClient": "A discount or a fixed price for this client. Plan prices stay as the platform sets them; this replaces any previous custom price.",
         "percentageHintClient": "Applies to whichever plan the client is on.",
         "reasonHintClient": "Shown to the client’s admins.",
@@ -1304,12 +1313,12 @@
       },
       "reset": {
         "title": "Reset usage for {name}?",
-        "description": "The organization’s clients and team members are recounted from the actual data, and its unread usage alerts are cleared. Clients’ message counters aren’t touched.",
+        "description": "The customer’s businesses and team members are recounted from the actual data, and its unread usage alerts are cleared. Businesses’ message counters aren’t touched.",
         "confirm": "Reset"
       },
       "removePricing": {
         "title": "Remove the custom price for {name}?",
-        "description": "The organization goes back to the plan’s normal price.",
+        "description": "The customer goes back to the plan’s normal price.",
         "confirm": "Remove"
       },
       "toast": {
@@ -1324,7 +1333,8 @@
         "validation": "Please check the entered values",
         "notFound": "Subscription not found",
         "invalidStatus": "This isn’t possible in the current status",
-        "unknown": "Something went wrong, please try again"
+        "unknown": "Something went wrong, please try again",
+        "impersonating": "Changes aren’t allowed while viewing a customer’s account"
       },
       "orgSection": {
         "title": "Subscription",
@@ -1334,8 +1344,8 @@
         "usage": "Usage",
         "invoices": "Invoices",
         "invoicesCount": "{count, plural, =0 {No invoices} one {# invoice} other {# invoices}}",
-        "none": "This organization has no subscription.",
-        "directNote": "Direct business: no organization subscription; it pays for its business plan."
+        "none": "This customer has no subscription.",
+        "directNote": "Direct business: no agency subscription; it pays for its business plan."
       },
       "tabs": {
         "label": "Subscription level",
@@ -1388,10 +1398,10 @@
       "order": "Order",
       "plan": "Plan",
       "monthly": "Monthly",
-      "yearly": "Yearly",
       "subscribers": "Subscribers",
       "status": "Status",
-      "actions": "Actions"
+      "actions": "Actions",
+      "maxFile": "Max file size"
     },
     "status": {
       "active": "Active",
@@ -1410,7 +1420,8 @@
       "notFound": "Plan not found",
       "unknown": "Something went wrong, please try again",
       "invalidField": "Please check: {field}",
-      "typeInUse": "Organizations or clients are on this plan, so its type can’t change. Create a new plan instead."
+      "typeInUse": "Customers or businesses are on this plan, so its type can’t change. Create a new plan instead.",
+      "impersonating": "Changes aren’t allowed while viewing a customer’s account"
     },
     "form": {
       "addTitle": "New plan",
@@ -1418,8 +1429,6 @@
       "description": "Prices are in Egyptian pounds. The preview shows the card exactly as customers will see it.",
       "limits": "Limits",
       "preview": "Preview",
-      "previewMonthly": "Monthly",
-      "previewYearly": "Yearly",
       "previewButton": "Upgrade",
       "untitled": "Plan name",
       "noFeatures": "No features yet.",
@@ -1435,25 +1444,28 @@
         "slug": "Slug",
         "plan_type": "Plan type",
         "price_monthly": "Monthly price (EGP)",
-        "price_yearly": "Yearly price (EGP)",
         "features": "Features",
         "is_active": "Active (offered to customers)",
         "messages_limit": "Messages / month",
         "clients_limit": "Clients",
         "team_members_limit": "Team members",
         "channels_limit": "Channels",
-        "knowledge_docs_limit": "Knowledge files"
+        "knowledge_docs_limit": "Knowledge files",
+        "max_file_size_mb": "Max knowledge file size (MB)",
+        "knowledge_chunks_limit": "Knowledge chunks"
       },
       "hints": {
         "slug": "Lowercase letters, numbers, _ or -. Used internally.",
         "unlimited": "Leave a limit empty for unlimited.",
-        "preview": "Switch language and cycle to check both versions.",
+        "preview": "Switch language to check both versions.",
         "limits": {
-          "agency": "Agency plans limit the organization: clients and team members.",
-          "business": "Business plans limit each client: messages, channels, knowledge files and its team."
-        }
+          "agency": "Agency plans limit the organization: clients, team members, and knowledge chunks across all clients.",
+          "business": "Business plans limit each client: messages, channels, knowledge files and chunks, and its team."
+        },
+        "maxFileDefault": "Platform cap (20)"
       }
-    }
+    },
+    "mb": "{size} MB"
   },
   "invoices": {
     "title": "Invoices",
@@ -1463,11 +1475,11 @@
     "empty": "No invoices yet.",
     "create": "New invoice",
     "createTitle": "New invoice",
-    "createDescription": "The amount is filled in from the organization’s effective price (custom price applied). You can adjust it.",
+    "createDescription": "The amount is filled in from the customer’s effective price (custom price applied). You can adjust it.",
     "periodRange": "{from} – {to}",
     "fields": {
       "number": "Invoice",
-      "organization": "Organization",
+      "organization": "Customer",
       "period": "Period",
       "amount": "Amount",
       "status": "Status",
@@ -1483,12 +1495,12 @@
     },
     "placeholders": {
       "paymentReference": "Transfer number, receipt…",
-      "organization": "Choose an organization",
+      "organization": "Choose a customer",
       "client": "Choose a client"
     },
     "hints": {
-      "amount": "Effective price for the organization’s billing cycle.",
-      "amountClient": "The client’s effective price for its billing cycle."
+      "amount": "The monthly effective price (for a direct business: its plan’s).",
+      "amountClient": "The client’s monthly effective price."
     },
     "status": {
       "draft": "Draft",
@@ -1522,12 +1534,12 @@
     "filters": {
       "status": "Status",
       "allStatuses": "All statuses",
-      "organization": "Organization",
-      "allOrganizations": "All organizations",
+      "organization": "Customer",
+      "allOrganizations": "All customers",
       "billedTo": "Invoice type",
       "allInvoices": "All invoices",
       "billed": {
-        "platform": "Platform invoices (to agencies)",
+        "platform": "Platform invoices (to agencies and direct businesses)",
         "agency": "Agency invoices (to their clients)"
       }
     },
@@ -1542,11 +1554,13 @@
       "notFound": "Invoice or subscription not found",
       "invalidStatus": "Paid or cancelled invoices can’t be changed",
       "unknown": "Something went wrong, please try again",
-      "period": "The period must end after it starts"
+      "period": "The period must end after it starts",
+      "impersonating": "Changes aren’t allowed while viewing a customer’s account"
     },
     "createTitleClient": "New client invoice",
     "createDescriptionClient": "An invoice from your agency to the client. The amount is filled in from the client’s effective price (custom price applied); you can adjust it.",
-    "toClient": "To client: {client}"
+    "toClient": "To client: {client}",
+    "directBusiness": "Direct business"
   },
   "clientSubscription": {
     "backToClients": "Back to clients",
@@ -1570,10 +1584,9 @@
       "currentPlan": "Current plan",
       "upgrade": "Upgrade",
       "switch": "Switch to this plan",
-      "switchCycle": "Switch billing cycle",
       "askAgency": "Ask your agency to switch",
       "confirmTitle": "Move {client} to {plan}?",
-      "confirmDescription": "The new limits apply right away. The client’s price becomes {price} ({cycle}); issue an invoice from Billing when it’s due.",
+      "confirmDescription": "The new limits apply right away. The client’s price becomes {price} a month; issue an invoice from Billing when it’s due.",
       "confirm": "Switch plan",
       "changed": "Client moved to {plan}",
       "errors": {
@@ -1581,7 +1594,8 @@
         "validation": "This plan isn’t available",
         "notFound": "Subscription not found",
         "invalidStatus": "This isn’t possible in the current status",
-        "unknown": "Something went wrong, please try again"
+        "unknown": "Something went wrong, please try again",
+        "impersonating": "Changes aren’t allowed while viewing a customer’s account"
       }
     },
     "pricing": {
@@ -1601,7 +1615,7 @@
     "description": "Your clients’ plans and prices, what you expect to collect each month, and your invoices to them.",
     "stats": {
       "expected": "Expected monthly revenue",
-      "expectedHint": "{count, plural, =0 {No paying clients yet} one {From # paying client} other {From # paying clients}} (yearly plans ÷ 12)",
+      "expectedHint": "{count, plural, =0 {No paying clients yet} one {From # paying client} other {From # paying clients}}",
       "trialPipeline": "On free trial",
       "trialPipelineHint": "{count, plural, =0 {No clients on trial} one {If # client on trial converts} other {If # clients on trial convert}}",
       "outstanding": "Outstanding",
@@ -1646,6 +1660,180 @@
     "notFound": {
       "title": "Page not found",
       "description": "The link is wrong, what you’re looking for was deleted, or you don’t have access to it."
+    }
+  },
+  "knowledgeLimits": {
+    "title": "Knowledge base",
+    "usage": "Knowledge base: {used} / {limit} chunks",
+    "agencyUsage": "Knowledge base (all agency clients): {used} / {limit} chunks",
+    "usageUnlimited": "Knowledge base: {used} chunks · unlimited",
+    "usedOf": "{used} / {limit} chunks",
+    "available": "{available} available",
+    "chunkLimit": "This file would add {chunks} chunks, and only {available} are left. Upload a smaller file or upgrade the plan.",
+    "full": "The knowledge base has reached your plan’s limit. Delete a file or upgrade the plan.",
+    "fileTooLarge": "The file is larger than {max} MB, your plan’s limit. Upload a smaller file or upgrade the plan."
+  },
+  "aiUsage": {
+    "title": "AI usage",
+    "description": "What the AI costs the platform for each client, against what its subscription brings in.",
+    "unavailable": "AI usage couldn’t be loaded.",
+    "loading": "Loading",
+    "empty": "No usage in this period.",
+    "exportCsv": "Export CSV",
+    "types": {
+      "agency": "Agency",
+      "direct": "Direct business"
+    },
+    "kpis": {
+      "tokens": "Total tokens",
+      "requests": "{count, plural, =0 {No requests} one {# request} other {# requests}}",
+      "costUsd": "Cost in USD",
+      "costUsdHint": "At each model’s price when the call was made",
+      "costEgp": "Cost in EGP",
+      "rate": "At {rate} EGP to the dollar",
+      "atRisk": "Clients with a weak margin",
+      "atRiskHint": "{negative} negative · {low} under {threshold}%"
+    },
+    "exchangeRate": {
+      "button": "$1 = {rate} EGP",
+      "title": "Dollar exchange rate",
+      "description": "Used to convert AI costs to EGP in every figure and alert.",
+      "label": "EGP per US dollar",
+      "saved": "Exchange rate saved",
+      "errors": {
+        "forbidden": "You don’t have permission to do this",
+        "validation": "Enter a rate above zero",
+        "unknown": "Something went wrong, try again",
+        "impersonating": "Changes aren’t allowed while viewing a customer’s account"
+      }
+    },
+    "unpriced": {
+      "title": "Models without a price",
+      "description": "Some calls were logged with models that have no price, so their cost isn’t counted. Add the model’s price below and they’ll be priced."
+    },
+    "operations": {
+      "title": "Cost by operation",
+      "description": "Each kind of call’s share of the period’s cost.",
+      "detail": "{requests, plural, one {# request} other {# requests}} · {tokens} tokens",
+      "names": {
+        "chat_reply": "Chat replies",
+        "lead_analysis": "Lead analysis",
+        "embedding": "Indexing and search (embedding)",
+        "playground": "Bot playground",
+        "bot_preview": "Bot settings preview"
+      }
+    },
+    "plans": {
+      "title": "Average cost per plan",
+      "description": "The average cost of one client, scaled to a full month, against the plan’s average price — to tune pricing.",
+      "columns": {
+        "plan": "Plan",
+        "clients": "Clients (active / all)",
+        "avgMonthly": "Avg monthly cost",
+        "price": "Avg monthly price",
+        "margin": "Margin"
+      },
+      "clientsValue": "{active} / {total}"
+    },
+    "clients": {
+      "title": "Clients",
+      "description": "Sorted by cost. The subscription’s value covers the period (monthly price × days ÷ 30). Negative margins and margins under {threshold}% are flagged.",
+      "empty": "No clients yet.",
+      "noPlan": "No subscription",
+      "unpriced": "{count, plural, one {# unpriced call} other {# unpriced calls}}",
+      "columns": {
+        "client": "Client",
+        "plan": "Plan",
+        "tokens": "Tokens",
+        "costUsd": "Cost ($)",
+        "costEgp": "Cost (EGP)",
+        "value": "Subscription value",
+        "margin": "Margin",
+        "marginPct": "Margin %"
+      },
+      "flags": {
+        "negative": "Negative margin",
+        "low": "Margin under {threshold}%",
+        "alert": "Cost passed 50% of its price this month"
+      }
+    },
+    "models": {
+      "title": "Model prices",
+      "description": "USD per million tokens. Each call is priced when it’s logged, so a change only affects new calls.",
+      "dialogDescription": "USD per million tokens, from the Gemini API price list. Past calls keep their cost.",
+      "add": "Add model",
+      "addTitle": "Add a model price",
+      "editTitle": "{model} price",
+      "edit": "Edit {model} price",
+      "delete": "Delete {model} price",
+      "deleteTitle": "Delete the {model} price?",
+      "deleteDescription": "Past calls keep their cost; new calls with this model are logged without a price until you add it again.",
+      "confirmDelete": "Delete",
+      "cancel": "Cancel",
+      "empty": "No prices yet.",
+      "columns": {
+        "model": "Model",
+        "input": "Input ($ / 1M)",
+        "output": "Output ($ / 1M)",
+        "updated": "Updated",
+        "actions": "Actions"
+      },
+      "toast": {
+        "saved": "Price saved",
+        "deleted": "Price deleted"
+      },
+      "errors": {
+        "forbidden": "You don’t have permission to do this",
+        "validation": "Check the model name and prices",
+        "unknown": "Something went wrong, try again",
+        "impersonating": "Changes aren’t allowed while viewing a customer’s account"
+      }
+    },
+    "csv": {
+      "client": "Client",
+      "organization": "Customer",
+      "type": "Type",
+      "plan": "Plan",
+      "requests": "Requests",
+      "promptTokens": "Input tokens",
+      "completionTokens": "Output tokens",
+      "totalTokens": "Total tokens",
+      "costUsd": "Cost (USD)",
+      "costEgp": "Cost (EGP)",
+      "value": "Subscription value for the period (EGP)",
+      "margin": "Margin (EGP)",
+      "marginPct": "Margin %"
+    },
+    "orgClients": {
+      "tokens30": "Tokens (30 days)",
+      "cost30": "AI cost (30 days)"
+    }
+  },
+  "impersonation": {
+    "enter": "Open account",
+    "enterLabel": "Open {name}’s account",
+    "banner": "You’re viewing {organization}’s account as a platform admin",
+    "readOnlyHint": "Read-only",
+    "exit": "Back to the admin panel",
+    "readOnly": "Changes aren’t allowed while viewing a customer’s account",
+    "errors": {
+      "forbidden": "Only platform admins can do this",
+      "notFound": "Customer not found",
+      "unknown": "Something went wrong, try again"
+    },
+    "log": {
+      "title": "Account access log",
+      "description": "The latest times platform admins opened a customer’s account.",
+      "empty": "No one has opened a customer’s account yet.",
+      "columns": {
+        "admin": "Admin",
+        "customer": "Customer",
+        "startedAt": "Started",
+        "duration": "Duration",
+        "actions": "Actions"
+      },
+      "active": "In progress",
+      "lessThanMinute": "Under a minute"
     }
   }
 }

@@ -24,6 +24,7 @@ const INDICATOR = {
 /** One progress bar per limit, warning at 80 % and 90 %. */
 export function UsageBars({ usage, compact = false }: { usage: UsageItem[]; compact?: boolean }) {
   const t = useTranslations('subscription.usage')
+  const tChunks = useTranslations('knowledgeLimits')
   const format = useFormatter()
 
   return (
@@ -37,7 +38,9 @@ export function UsageBars({ usage, compact = false }: { usage: UsageItem[]; comp
               <span className="tabular-nums text-muted-foreground">
                 {item.limit === null
                   ? t('usedUnlimited', { used: format.number(item.used) })
-                  : t('usedOf', { used: format.number(item.used), limit: format.number(item.limit) })}
+                  : item.limit_type === 'knowledge_chunks'
+                    ? tChunks('usedOf', { used: format.number(item.used), limit: format.number(item.limit) })
+                    : t('usedOf', { used: format.number(item.used), limit: format.number(item.limit) })}
               </span>
             </div>
             <Progress

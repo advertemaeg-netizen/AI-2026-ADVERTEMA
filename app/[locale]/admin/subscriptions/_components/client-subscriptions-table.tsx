@@ -109,7 +109,7 @@ export function ClientSubscriptionsTable({
                   <TableRow key={row.subscription_id}>
                     <TableCell className="font-medium">{row.client_name}</TableCell>
                     <TableCell>
-                      <Link href={`/admin/organizations/${row.organization_id}`} className="hover:underline">
+                      <Link href={`/admin/customers/${row.organization_id}`} className="hover:underline">
                         {row.organization_name}
                       </Link>
                       {!row.organization_active && (
@@ -132,7 +132,6 @@ export function ClientSubscriptionsTable({
                         )}
                         {money.withCurrency(row.effective_price)}
                       </div>
-                      <div className="text-xs text-muted-foreground">{t(`cycle.${row.billing_cycle}`)}</div>
                     </TableCell>
                     <TableCell>
                       <SubscriptionStatusBadge status={row.status} usable={row.usable} />

@@ -1,5 +1,6 @@
 import 'server-only'
 import { embedTexts } from '@/lib/ai/gemini'
+import { estimateTokens } from '@/lib/ai/usage'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import type { KnowledgeFileType, KnowledgeProcessingError } from '@/lib/types/knowledge'
 
@@ -60,15 +61,6 @@ function normalize(text: string) {
 // ---------------------------------------------------------------------------
 // Chunking
 // ---------------------------------------------------------------------------
-
-/**
- * Token estimate without a tokenizer: ~4 chars/token for Latin text, and
- * Arabic is denser (~2.5 chars/token), so count the two separately.
- */
-export function estimateTokens(text: string) {
-  const arabic = text.match(/[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]/g)?.length ?? 0
-  return Math.ceil(arabic / 2.5 + (text.length - arabic) / 4)
-}
 
 type Unit = { text: string; tokens: number; newParagraph: boolean }
 
@@ -161,32 +153,45 @@ export function chunkText(text: string): string[] {
 type AdminClient = ReturnType<typeof createAdminClient>
 
 /**
- * Extracts, chunks and embeds an uploaded document, storing chunks as child
- * rows of the document. Marks the document ready or failed; never throws.
+ * Extracts and chunks a file, before anything is stored, so the upload can
+ * be refused when its chunks don't fit the plan. Never throws.
+ */
+export async function prepareKnowledgeChunks(
+  type: KnowledgeFileType,
+  buffer: Buffer
+): Promise<{ ok: true; chunks: string[] } | { ok: false; error: 'extractFailed' | 'empty' | 'tooLarge' }> {
+  let text: string
+  try {
+    text = normalize(await extractText(type, buffer))
+  } catch (error) {
+    console.error('[knowledge] extracting text failed', error)
+    return { ok: false, error: 'extractFailed' }
+  }
+
+  // e.g. a scanned PDF with no text layer
+  if (!text) return { ok: false, error: 'empty' }
+
+  const chunks = chunkText(text)
+  if (chunks.length === 0) return { ok: false, error: 'empty' }
+  if (chunks.length > MAX_CHUNKS) return { ok: false, error: 'tooLarge' }
+  return { ok: true, chunks }
+}
+
+/**
+ * Embeds a document's chunks and stores them as child rows of the document.
+ * Marks the document ready or failed; never throws. The database refuses
+ * chunks past the plan's limit (a race with another upload): the document
+ * then fails with 'chunkLimit'.
  */
 export async function processKnowledgeDocument(
   admin: AdminClient,
   doc: { id: string; client_id: string; title: string; file_type: KnowledgeFileType },
-  buffer: Buffer
+  chunks: string[]
 ) {
   try {
-    let text: string
-    try {
-      text = normalize(await extractText(doc.file_type, buffer))
-    } catch (error) {
-      throw new ProcessingError('extractFailed', error)
-    }
-
-    // e.g. a scanned PDF with no text layer
-    if (!text) throw new ProcessingError('empty')
-
-    const chunks = chunkText(text)
-    if (chunks.length === 0) throw new ProcessingError('empty')
-    if (chunks.length > MAX_CHUNKS) throw new ProcessingError('tooLarge')
-
     let embeddings: number[][]
     try {
-      embeddings = await embedTexts(chunks, 'RETRIEVAL_DOCUMENT')
+      embeddings = await embedTexts(chunks, 'RETRIEVAL_DOCUMENT', { operation: 'embedding', clientId: doc.client_id })
     } catch (error) {
       throw new ProcessingError('embeddingFailed', error)
     }
@@ -203,7 +208,11 @@ export async function processKnowledgeDocument(
         embedding: embeddings[i + j],
       }))
       const { error } = await admin.from('knowledge_documents').insert(rows)
-      if (error) throw error
+      if (error) {
+        throw error.message?.startsWith('subscription_limit:knowledge_chunks')
+          ? new ProcessingError('chunkLimit', error)
+          : error
+      }
     }
 
     const { error } = await admin

@@ -80,7 +80,7 @@ export function PlansManager({ plans, subscribers }: { plans: Plan[]; subscriber
                         <TableHead className="w-20">{t('columns.order')}</TableHead>
                         <TableHead>{t('columns.plan')}</TableHead>
                         <TableHead className="text-end">{t('columns.monthly')}</TableHead>
-                        <TableHead className="text-end">{t('columns.yearly')}</TableHead>
+                        <TableHead className="text-end">{t('columns.maxFile')}</TableHead>
                         {PLAN_LIMIT_TYPES[type].map((limitType) => (
                           <TableHead key={limitType} className="text-end">
                             {tUsage(limitType)}
@@ -121,7 +121,9 @@ export function PlansManager({ plans, subscribers }: { plans: Plan[]; subscriber
                             </div>
                           </TableCell>
                           <TableCell className="text-end tabular-nums">{money.withCurrency(plan.price_monthly)}</TableCell>
-                          <TableCell className="text-end tabular-nums">{money.withCurrency(plan.price_yearly)}</TableCell>
+                          <TableCell className="text-end tabular-nums">
+                            {plan.max_file_size_mb === null ? '—' : t('mb', { size: plan.max_file_size_mb })}
+                          </TableCell>
                           {PLAN_LIMIT_TYPES[type].map((limitType) => (
                             <TableCell key={limitType} className="text-end tabular-nums">
                               {limit(plan[LIMIT_COLUMNS[limitType]])}

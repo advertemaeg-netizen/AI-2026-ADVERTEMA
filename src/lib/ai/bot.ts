@@ -8,6 +8,7 @@ import {
   type ChatTurn,
   type GeminiContent,
 } from '@/lib/ai/gemini'
+import type { AiOperation } from '@/lib/ai/usage'
 import {
   WEEK_DAYS,
   businessHoursSchema,
@@ -59,11 +60,16 @@ export type BotDebug = {
   timings: { embeddingMs: number; retrievalMs: number; generationMs: number; totalMs: number }
 }
 
-async function retrieveKnowledge(supabase: SupabaseClient, clientId: string, message: string) {
+async function retrieveKnowledge(
+  supabase: SupabaseClient,
+  clientId: string,
+  message: string,
+  conversationId: string | null
+) {
   const started = performance.now()
   let embeddingMs = 0
   try {
-    const embedding = await embedQuery(message)
+    const embedding = await embedQuery(message, { operation: 'embedding', clientId, conversationId })
     embeddingMs = performance.now() - started
 
     const { data, error } = await supabase.rpc('match_knowledge_chunks', {
@@ -205,18 +211,23 @@ export async function runBot({
   client,
   settings,
   history,
+  operation,
+  conversationId = null,
 }: {
   supabase: SupabaseClient
   clientId: string
   client: BotClient
   settings: BotSettingsInput
   history: ChatTurn[]
+  /** Logged with the reply's tokens: a visitor reply, or a playground test */
+  operation: Extract<AiOperation, 'chat_reply' | 'playground' | 'bot_preview'>
+  conversationId?: string | null
 }): Promise<{ reply: string; debug: BotDebug }> {
   const started = performance.now()
   const trimmed = history.slice(-BOT_HISTORY_LIMIT)
   const lastUserMessage = [...trimmed].reverse().find((turn) => turn.role === 'user')?.content ?? ''
 
-  const retrieval = await retrieveKnowledge(supabase, clientId, lastUserMessage)
+  const retrieval = await retrieveKnowledge(supabase, clientId, lastUserMessage, conversationId)
   const systemPrompt = buildSystemPrompt(
     client,
     settings,
@@ -224,7 +235,12 @@ export async function runBot({
   )
 
   const generationStarted = performance.now()
-  const reply = await generateReply({ systemPrompt, history: trimmed, temperature: settings.temperature })
+  const reply = await generateReply({
+    systemPrompt,
+    history: trimmed,
+    temperature: settings.temperature,
+    usage: { operation, clientId, conversationId },
+  })
   const generationMs = performance.now() - generationStarted
 
   return {

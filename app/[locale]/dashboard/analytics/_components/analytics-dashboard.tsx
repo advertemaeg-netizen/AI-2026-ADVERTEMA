@@ -1,31 +1,21 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { useFormatter, useLocale, useTranslations } from 'next-intl'
+import { useTransition } from 'react'
+import { useFormatter, useTranslations } from 'next-intl'
 import { toast } from 'sonner'
-import { ar, enUS } from 'react-day-picker/locale'
-import type { DateRange } from 'react-day-picker'
-import { CalendarRange, Download, Loader2, Printer } from 'lucide-react'
+import { Download, Loader2, Printer } from 'lucide-react'
 import { usePathname, useRouter } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { DateRangeTabs, fromDateKey } from '@/components/date-range-tabs'
 import { exportAnalyticsCSV } from '@/lib/actions/analytics'
-import { cairoParts } from '@/lib/cairo-time'
 import { cn } from '@/lib/utils'
 import { ANALYTICS_PRESETS, type AnalyticsData } from '@/lib/types/analytics'
 import { KpiCards } from './kpi-cards'
 import { useFormatDuration } from './use-format-duration'
 import { ChannelsChart, FunnelChart, LeadStatusChart, OverTimeChart, PeakHoursChart } from './charts'
 
-const toKey = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-const fromKey = (key: string) => {
-  const [y, m, d] = key.split('-').map(Number)
-  return new Date(y, m - 1, d)
-}
+const fromKey = fromDateKey
 
 export function AnalyticsDashboard({
   data,
@@ -38,30 +28,17 @@ export function AnalyticsDashboard({
 }) {
   const t = useTranslations('analytics')
   const format = useFormatter()
-  const locale = useLocale()
   const router = useRouter()
   const pathname = usePathname()
   const formatDuration = useFormatDuration()
   const [isPending, startTransition] = useTransition()
   const [isExporting, startExporting] = useTransition()
-  const [customOpen, setCustomOpen] = useState(false)
-  const [custom, setCustom] = useState<DateRange | undefined>({
-    from: fromKey(data.range.fromDate),
-    to: fromKey(data.range.toDate),
-  })
 
   const { range } = data
-  const today = cairoParts(new Date())
 
   function navigate(query: Record<string, string>) {
     const params = new URLSearchParams(query).toString()
     startTransition(() => router.replace(`${pathname}?${params}`, { scroll: false }))
-  }
-
-  function applyCustom() {
-    if (!custom?.from) return
-    navigate({ range: 'custom', from: toKey(custom.from), to: toKey(custom.to ?? custom.from) })
-    setCustomOpen(false)
   }
 
   function exportCsv() {
@@ -89,42 +66,11 @@ export function AnalyticsDashboard({
     <div className="grid gap-6 print:block print:*:mb-6">
       {/* One filter row scoping everything below it */}
       <div className="flex flex-wrap items-center gap-2 print:hidden">
-        <Tabs
-          value={range.preset}
-          onValueChange={(value) => value !== 'custom' && navigate({ range: value })}
-        >
-          <TabsList>
-            {ANALYTICS_PRESETS.filter((p) => p !== 'custom').map((preset) => (
-              <TabsTrigger key={preset} value={preset}>
-                {t(`ranges.${preset}`)}
-              </TabsTrigger>
-            ))}
-            <Popover open={customOpen} onOpenChange={setCustomOpen}>
-              <PopoverTrigger asChild>
-                <TabsTrigger value="custom" onClick={() => setCustomOpen(true)}>
-                  <CalendarRange data-icon="inline-start" />
-                  {t('ranges.custom')}
-                </TabsTrigger>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-2" align="start">
-                <Calendar
-                  mode="range"
-                  selected={custom}
-                  onSelect={setCustom}
-                  numberOfMonths={2}
-                  locale={locale === 'ar' ? ar : enUS}
-                  dir={locale === 'ar' ? 'rtl' : 'ltr'}
-                  disabled={{ after: new Date(today.year, today.month, today.day) }}
-                />
-                <div className="flex justify-end border-t p-2">
-                  <Button size="sm" onClick={applyCustom} disabled={!custom?.from}>
-                    {t('apply')}
-                  </Button>
-                </div>
-              </PopoverContent>
-            </Popover>
-          </TabsList>
-        </Tabs>
+        <DateRangeTabs
+          range={range}
+          presets={ANALYTICS_PRESETS.filter((p) => p !== 'custom')}
+          onNavigate={navigate}
+        />
 
         {isPending && <Loader2 className="size-4 animate-spin text-muted-foreground" aria-label={t('loading')} />}
 

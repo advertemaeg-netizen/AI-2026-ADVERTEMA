@@ -16,6 +16,7 @@ export type Channel = {
 }
 
 export type ChannelActionError =
+  | 'impersonating'
   | 'unauthorized'
   | 'forbidden'
   | 'validation'

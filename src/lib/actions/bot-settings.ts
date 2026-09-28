@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { canManage, getSession } from '@/lib/auth/session'
+import { canManage, getSession, isImpersonating } from '@/lib/auth/session'
 import { loadBotSettings } from '@/lib/ai/bot'
 import { UUID_PATTERN } from '@/lib/types/clients'
 import {
@@ -54,6 +54,7 @@ export async function updateBotSettings(
   clientId: string,
   settings: BotSettingsInput
 ): Promise<BotSettingsActionResult> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   const { supabase, profile } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
   if (!canManage(profile)) return { ok: false, error: 'forbidden' }
@@ -71,6 +72,7 @@ export async function resetToPreset(
   clientId: string,
   presetName: BotPresetName
 ): Promise<BotSettingsActionResult> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   const { supabase, profile } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
   if (!canManage(profile)) return { ok: false, error: 'forbidden' }

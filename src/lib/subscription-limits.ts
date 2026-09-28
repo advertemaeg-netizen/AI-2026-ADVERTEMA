@@ -1,6 +1,7 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ClientLimitType, LimitCheck, LimitError, OrgLimitType } from '@/lib/types/subscription'
+import type { KnowledgeQuota } from '@/lib/types/knowledge'
 
 async function rpcLimit(supabase: SupabaseClient, fn: string, args: Record<string, string>): Promise<LimitCheck | null> {
   const { data, error } = await supabase.rpc(fn, args)
@@ -64,4 +65,25 @@ export async function guardLimit(check: Promise<LimitCheck | null>): Promise<Lim
 export function limitErrorFromDb(error: { message?: string; hint?: string | null }): LimitError | null {
   if (!error.message?.startsWith('subscription_limit:')) return null
   return error.hint === 'inactive' ? 'subscriptionInactive' : 'limitReached'
+}
+
+/**
+ * Room left in a client's knowledge base, in chunks, and the plan's cap on
+ * one file (check_knowledge_quota). null when the caller can't see the client.
+ */
+export async function checkKnowledgeQuota(supabase: SupabaseClient, clientId: string): Promise<KnowledgeQuota | null> {
+  const { data, error } = await supabase.rpc('check_knowledge_quota', { p_client_id: clientId })
+  if (error) throw new Error(`check_knowledge_quota failed: ${error.message}`)
+  if (!data) return null
+  const raw = data as KnowledgeQuota
+  const numOrNull = (value: unknown) => (value === null || value === undefined ? null : Number(value))
+  return {
+    used: Number(raw.used ?? 0),
+    limit: numOrNull(raw.limit),
+    org_used: numOrNull(raw.org_used),
+    org_limit: numOrNull(raw.org_limit),
+    available: numOrNull(raw.available),
+    max_file_size_mb: numOrNull(raw.max_file_size_mb),
+    usable: raw.usable !== false,
+  }
 }

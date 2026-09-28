@@ -24,7 +24,13 @@ export default async function AdminInvoicesPage({ params, searchParams }: PagePr
   }
 
   const t = await getTranslations('invoices')
-  const [invoices, organizations] = await Promise.all([getAllInvoices(filters), getInvoiceOrganizations()])
+  const tTypes = await getTranslations('admin.customers.type')
+  const [invoices, orgs] = await Promise.all([getAllInvoices(filters), getInvoiceOrganizations()])
+  // Direct businesses are billed too (for their plan); say which is which
+  const organizations = orgs.map((org) => ({
+    id: org.id,
+    name: org.org_type === 'direct' ? `${org.name} · ${tTypes('direct')}` : org.name,
+  }))
 
   return (
     <div className="p-8 grid gap-6">

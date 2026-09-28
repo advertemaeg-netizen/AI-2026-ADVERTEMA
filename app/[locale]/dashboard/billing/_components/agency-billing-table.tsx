@@ -25,7 +25,6 @@ const LEVEL_CLASS = {
 export function AgencyBillingTable({ rows }: { rows: ClientBillingRow[] }) {
   const t = useTranslations('agencyBilling.clients')
   const tUsage = useTranslations('subscription.usage.types')
-  const tCycle = useTranslations('subscription.admin.cycle')
   const locale = useLocale()
   const format = useFormatter()
   const money = useMoney()
@@ -84,7 +83,6 @@ export function AgencyBillingTable({ rows }: { rows: ClientBillingRow[] }) {
                     {row.has_custom_pricing && <Tag className="size-3.5 text-emerald-600" aria-label={t('customPrice')} />}
                     {money.withCurrency(row.effective_price)}
                   </div>
-                  <div className="text-xs text-muted-foreground">{tCycle(row.billing_cycle)}</div>
                 </TableCell>
                 <TableCell>
                   <div className="grid gap-1.5 text-xs">

@@ -27,6 +27,7 @@ export type ClientFieldError =
   | 'statusInvalid'
 
 export type ClientActionError =
+  | 'impersonating'
   | 'unauthorized'
   | 'forbidden'
   | 'validation'

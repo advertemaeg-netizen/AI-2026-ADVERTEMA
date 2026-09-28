@@ -4,7 +4,6 @@ import {
   CLIENT_LIMIT_TYPES,
   ORG_LIMIT_TYPES,
   type AvailablePlan,
-  type BillingCycle,
   type ClientSubscriptionDetails,
   type Invoice,
   type LimitType,
@@ -50,14 +49,8 @@ function normalizeDetails<T extends SubscriptionDetails | ClientSubscriptionDeta
       ...raw.custom_pricing,
       discount_percentage: numOrNull(raw.custom_pricing.discount_percentage),
       fixed_price_monthly: numOrNull(raw.custom_pricing.fixed_price_monthly),
-      fixed_price_yearly: numOrNull(raw.custom_pricing.fixed_price_yearly),
     },
-    price: {
-      monthly: num(raw.price.monthly),
-      yearly: num(raw.price.yearly),
-      current: num(raw.price.current),
-      base_current: num(raw.price.base_current),
-    },
+    price: { current: num(raw.price.current), base: num(raw.price.base) },
     usage: normalizeUsage(raw.usage, types),
   }
 }
@@ -87,16 +80,14 @@ export function normalizeAvailablePlans(rows: AvailablePlan[] | null): Available
   return (rows ?? []).map((plan) => ({
     ...normalizePlan(plan),
     effective_monthly: num(plan.effective_monthly),
-    effective_yearly: num(plan.effective_yearly),
   }))
 }
 
-/** The next billing period after `from` (invoice prefill). */
-export function nextPeriod(from: string, cycle: BillingCycle) {
+/** The month after `from` (invoice prefill). */
+export function nextPeriod(from: string) {
   const start = new Date(from)
   const end = new Date(start)
-  if (cycle === 'yearly') end.setUTCFullYear(end.getUTCFullYear() + 1)
-  else end.setUTCMonth(end.getUTCMonth() + 1)
+  end.setUTCMonth(end.getUTCMonth() + 1)
   return { periodStart: start.toISOString(), periodEnd: end.toISOString() }
 }
 
@@ -108,7 +99,7 @@ export function normalizePlan<T extends Plan>(plan: T): T {
   return {
     ...plan,
     price_monthly: num(plan.price_monthly),
-    price_yearly: num(plan.price_yearly),
+    max_file_size_mb: numOrNull(plan.max_file_size_mb),
     features: Array.isArray(plan.features) ? plan.features : [],
   }
 }

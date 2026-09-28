@@ -1,4 +1,5 @@
 import 'server-only'
+import { estimateTokens, recordAiUsage, tokensFromMetadata, type AiUsageContext, type GeminiUsageMetadata } from '@/lib/ai/usage'
 
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 // gemini-2.5-flash is no longer offered to new API users
@@ -8,6 +9,7 @@ export type ChatTurn = { role: 'user' | 'assistant'; content: string }
 
 type GenerateContentResponse = {
   candidates?: { content?: { parts?: { text?: string }[] } }[]
+  usageMetadata?: GeminiUsageMetadata
 }
 
 export function geminiModel() {
@@ -26,19 +28,23 @@ export function toGeminiContents(history: ChatTurn[]): GeminiContent[] {
   }))
 }
 
+/** `usage`: who the call is for, to log its tokens and cost (ai_usage) */
 export async function generateReply({
   systemPrompt,
   history,
   temperature = 0.7,
+  usage,
 }: {
   systemPrompt: string
   history: ChatTurn[]
   temperature?: number
+  usage?: AiUsageContext
 }): Promise<string> {
   const apiKey = apiKeyOrThrow()
   const contents = toGeminiContents(history)
+  const model = geminiModel()
 
-  const res = await fetch(`${API_BASE}/${geminiModel()}:generateContent`, {
+  const res = await fetch(`${API_BASE}/${model}:generateContent`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
     body: JSON.stringify({
@@ -56,6 +62,8 @@ export async function generateReply({
   }
 
   const data = (await res.json()) as GenerateContentResponse
+  // Billed even when the reply turns out empty
+  void recordAiUsage(usage, model, tokensFromMetadata(data.usageMetadata))
   const text = data.candidates?.[0]?.content?.parts
     ?.map((part) => part.text ?? '')
     .join('')
@@ -75,12 +83,14 @@ export async function generateJson({
   responseSchema,
   temperature = 0,
   model = geminiModel(),
+  usage,
 }: {
   systemPrompt: string
   prompt: string
   responseSchema: Record<string, unknown>
   temperature?: number
   model?: string
+  usage?: AiUsageContext
 }): Promise<unknown> {
   const apiKey = apiKeyOrThrow()
   const res = await fetch(`${API_BASE}/${model}:generateContent`, {
@@ -99,6 +109,7 @@ export async function generateJson({
   }
 
   const data = (await res.json()) as GenerateContentResponse
+  void recordAiUsage(usage, model, tokensFromMetadata(data.usageMetadata))
   const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text ?? '').join('')
   if (!text) throw new Error('Gemini returned an empty JSON response')
   return JSON.parse(text)
@@ -122,44 +133,59 @@ function apiKeyOrThrow() {
   return apiKey
 }
 
-/** Embeds many texts, batching requests; output order matches input order. */
-export async function embedTexts(texts: string[], taskType: EmbeddingTask): Promise<number[][]> {
+/**
+ * Embeds many texts, batching requests; output order matches input order.
+ * The embedding API doesn't report token counts, so the log estimates them.
+ */
+export async function embedTexts(
+  texts: string[],
+  taskType: EmbeddingTask,
+  usage?: AiUsageContext
+): Promise<number[][]> {
   const apiKey = apiKeyOrThrow()
   const model = embeddingModel()
   const vectors: number[][] = []
+  let embeddedTokens = 0
 
-  for (let i = 0; i < texts.length; i += EMBED_BATCH_SIZE) {
-    const batch = texts.slice(i, i + EMBED_BATCH_SIZE)
-    const res = await fetch(`${API_BASE}/${model}:batchEmbedContents`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({
-        requests: batch.map((text) => ({
-          model: `models/${model}`,
-          content: { parts: [{ text }] },
-          taskType,
-          outputDimensionality: EMBEDDING_DIMENSIONS,
-        })),
-      }),
-      signal: AbortSignal.timeout(60_000),
-    })
+  // Batches already embedded are billed even if a later one fails
+  try {
+    for (let i = 0; i < texts.length; i += EMBED_BATCH_SIZE) {
+      const batch = texts.slice(i, i + EMBED_BATCH_SIZE)
+      const res = await fetch(`${API_BASE}/${model}:batchEmbedContents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+        body: JSON.stringify({
+          requests: batch.map((text) => ({
+            model: `models/${model}`,
+            content: { parts: [{ text }] },
+            taskType,
+            outputDimensionality: EMBEDDING_DIMENSIONS,
+          })),
+        }),
+        signal: AbortSignal.timeout(60_000),
+      })
 
-    if (!res.ok) {
-      throw new Error(`Gemini embedding failed (${res.status}): ${await res.text()}`)
+      if (!res.ok) {
+        throw new Error(`Gemini embedding failed (${res.status}): ${await res.text()}`)
+      }
+
+      const data = (await res.json()) as { embeddings?: { values?: number[] }[] }
+      embeddedTokens += batch.reduce((sum, text) => sum + estimateTokens(text), 0)
+      const values = data.embeddings?.map((e) => e.values ?? [])
+      if (!values || values.length !== batch.length || values.some((v) => v.length !== EMBEDDING_DIMENSIONS)) {
+        throw new Error('Gemini returned an unexpected embedding response')
+      }
+      vectors.push(...values)
     }
-
-    const data = (await res.json()) as { embeddings?: { values?: number[] }[] }
-    const values = data.embeddings?.map((e) => e.values ?? [])
-    if (!values || values.length !== batch.length || values.some((v) => v.length !== EMBEDDING_DIMENSIONS)) {
-      throw new Error('Gemini returned an unexpected embedding response')
+  } finally {
+    if (embeddedTokens > 0) {
+      void recordAiUsage(usage, model, { promptTokens: embeddedTokens, completionTokens: 0, totalTokens: embeddedTokens })
     }
-    vectors.push(...values)
   }
-
   return vectors
 }
 
-export async function embedQuery(text: string): Promise<number[]> {
-  const [vector] = await embedTexts([text], 'RETRIEVAL_QUERY')
+export async function embedQuery(text: string, usage?: AiUsageContext): Promise<number[]> {
+  const [vector] = await embedTexts([text], 'RETRIEVAL_QUERY', usage)
   return vector
 }

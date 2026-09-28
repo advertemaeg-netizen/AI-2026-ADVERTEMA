@@ -24,7 +24,6 @@ import {
   LIMIT_TYPES,
   PLAN_LIMIT_TYPES,
   PLAN_TYPES,
-  type BillingCycle,
   type Plan,
   type PlanInput,
   type PlanType,
@@ -33,9 +32,9 @@ import { FeaturesEditor } from './features-editor'
 
 type LimitColumn = (typeof LIMIT_COLUMNS)[keyof typeof LIMIT_COLUMNS]
 // Form state keeps inputs as text so "" can mean "unlimited"
-type FormState = Omit<PlanInput, 'price_monthly' | 'price_yearly' | LimitColumn> & {
+type FormState = Omit<PlanInput, 'price_monthly' | 'max_file_size_mb' | LimitColumn> & {
   price_monthly: string
-  price_yearly: string
+  max_file_size_mb: string
 } & Record<LimitColumn, string>
 
 function toForm(plan: Plan | null, planType: PlanType): FormState {
@@ -48,7 +47,7 @@ function toForm(plan: Plan | null, planType: PlanType): FormState {
     name_ar: plan?.name_ar ?? '',
     plan_type: plan?.plan_type ?? planType,
     price_monthly: plan?.price_monthly.toString() ?? '',
-    price_yearly: plan?.price_yearly.toString() ?? '',
+    max_file_size_mb: plan?.max_file_size_mb?.toString() ?? '',
     features: plan?.features ?? [],
     is_active: plan?.is_active ?? true,
     ...limits,
@@ -65,12 +64,13 @@ function toInput(form: FormState): PlanInput {
   return {
     ...form,
     price_monthly: Number(form.price_monthly),
-    price_yearly: Number(form.price_yearly),
+    max_file_size_mb: form.max_file_size_mb.trim() === '' ? null : Number(form.max_file_size_mb),
     messages_limit: limit('messages'),
     clients_limit: limit('clients'),
     team_members_limit: limit('team_members'),
     channels_limit: limit('channels'),
     knowledge_docs_limit: limit('knowledge_docs'),
+    knowledge_chunks_limit: limit('knowledge_chunks'),
     features: form.features.map((f) => ({ ar: f.ar.trim(), en: f.en.trim() })),
   }
 }
@@ -93,7 +93,6 @@ export function PlanFormDialog({
   const locale = useLocale()
   const [form, setForm] = useState<FormState>(() => toForm(plan, planType))
   const [previewLang, setPreviewLang] = useState<'ar' | 'en'>(locale === 'en' ? 'en' : 'ar')
-  const [previewCycle, setPreviewCycle] = useState<BillingCycle>('monthly')
   const [errorField, setErrorField] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -120,7 +119,7 @@ export function PlanFormDialog({
   }
 
   const invalid = (field: string) => (errorField === field ? true : undefined)
-  const previewPrice = Number(previewCycle === 'yearly' ? form.price_yearly : form.price_monthly) || 0
+  const previewPrice = Number(form.price_monthly) || 0
 
   return (
     <Dialog open={open} onOpenChange={(next) => !isPending && onOpenChange(next)}>
@@ -176,8 +175,19 @@ export function PlanFormDialog({
                   <Input id="plan-price-monthly" type="number" min={0} step="0.01" dir="ltr" value={form.price_monthly} onChange={(e) => set('price_monthly', e.target.value)} required aria-invalid={invalid('price_monthly')} />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="plan-price-yearly">{t('form.fields.price_yearly')} *</Label>
-                  <Input id="plan-price-yearly" type="number" min={0} step="0.01" dir="ltr" value={form.price_yearly} onChange={(e) => set('price_yearly', e.target.value)} required aria-invalid={invalid('price_yearly')} />
+                  <Label htmlFor="plan-max-file">{t('form.fields.max_file_size_mb')}</Label>
+                  <Input
+                    id="plan-max-file"
+                    type="number"
+                    min={1}
+                    max={100}
+                    step={1}
+                    dir="ltr"
+                    value={form.max_file_size_mb}
+                    onChange={(e) => set('max_file_size_mb', e.target.value)}
+                    placeholder={t('form.hints.maxFileDefault')}
+                    aria-invalid={invalid('max_file_size_mb')}
+                  />
                 </div>
               </div>
 
@@ -230,12 +240,6 @@ export function PlanFormDialog({
                       <TabsTrigger value="en" className="text-xs">EN</TabsTrigger>
                     </TabsList>
                   </Tabs>
-                  <Tabs value={previewCycle} onValueChange={(v) => setPreviewCycle(v as BillingCycle)}>
-                    <TabsList className="h-8">
-                      <TabsTrigger value="monthly" className="text-xs">{t('form.previewMonthly')}</TabsTrigger>
-                      <TabsTrigger value="yearly" className="text-xs">{t('form.previewYearly')}</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
                 </div>
               </div>
               {/* Card text follows the preview language; its direction too */}
@@ -244,7 +248,6 @@ export function PlanFormDialog({
                   name={(previewLang === 'ar' ? form.name_ar : form.name) || t('form.untitled')}
                   features={form.features.map((f) => f[previewLang]).filter(Boolean)}
                   price={previewPrice}
-                  cycle={previewCycle}
                   inactive={!form.is_active}
                   action={
                     <Button type="button" className="w-full" tabIndex={-1}>

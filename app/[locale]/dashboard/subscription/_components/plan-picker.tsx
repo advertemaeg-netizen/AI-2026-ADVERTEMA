@@ -11,9 +11,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PlanCard } from '@/components/billing/plan-card'
-import type { AvailablePlan, BillingCycle } from '@/lib/types/subscription'
+import type { AvailablePlan } from '@/lib/types/subscription'
 
 export type SalesContact = { whatsapp: string | null; email: string | null }
 
@@ -25,19 +24,16 @@ export type SalesContact = { whatsapp: string | null; email: string | null }
 export function PlanPicker({
   plans,
   currentPlanId,
-  currentCycle,
   organizationName,
   contact,
 }: {
   plans: AvailablePlan[]
   currentPlanId: string
-  currentCycle: BillingCycle
   organizationName: string
   contact: SalesContact
 }) {
   const t = useTranslations('subscription.upgrade')
   const locale = useLocale()
-  const [cycle, setCycle] = useState<BillingCycle>(currentCycle)
   const [chosen, setChosen] = useState<AvailablePlan | null>(null)
 
   const currentIndex = plans.findIndex((p) => p.id === currentPlanId)
@@ -47,33 +43,22 @@ export function PlanPicker({
   const message = chosen
     ? t('contactMessage', {
         plan: name(chosen),
-        cycle: t(`cycles.${cycle}`),
         organization: organizationName,
       })
     : ''
 
   return (
     <div className="grid gap-6">
-      <Tabs value={cycle} onValueChange={(value) => setCycle(value as BillingCycle)} className="w-fit">
-        <TabsList>
-          <TabsTrigger value="monthly">{t('cycles.monthly')}</TabsTrigger>
-          <TabsTrigger value="yearly">{t('cycles.yearly')}</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
       <div className="grid gap-6 pt-3 md:grid-cols-2 xl:grid-cols-3">
         {plans.map((plan, index) => {
           const current = plan.id === currentPlanId
-          const price = cycle === 'yearly' ? plan.effective_yearly : plan.effective_monthly
-          const original = cycle === 'yearly' ? plan.price_yearly : plan.price_monthly
           return (
             <PlanCard
               key={plan.id}
               name={name(plan)}
               features={plan.features.map((f) => (locale === 'ar' ? f.ar : f.en))}
-              price={price}
-              originalPrice={original}
-              cycle={cycle}
+              price={plan.effective_monthly}
+              originalPrice={plan.price_monthly}
               current={current}
               popular={plan.id === popularId}
               action={

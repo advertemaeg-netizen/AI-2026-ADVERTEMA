@@ -1,12 +1,14 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { canManage, getSession } from '@/lib/auth/session'
+import { canManage, getSession, isImpersonating } from '@/lib/auth/session'
 import { UUID_PATTERN } from '@/lib/types/clients'
+import { checkKnowledgeQuota } from '@/lib/subscription-limits'
 import {
   KNOWLEDGE_BUCKET,
   type KnowledgeActionResult,
   type KnowledgeDocument,
+  type KnowledgeQuota,
 } from '@/lib/types/knowledge'
 
 const KNOWLEDGE_PATH = '/[locale]/dashboard/clients/[clientId]/knowledge'
@@ -30,7 +32,21 @@ export async function getKnowledgeDocuments(clientId: string): Promise<Knowledge
   return data
 }
 
+/** Chunks used and left for this client, and its plan's file size cap (null: not visible, or failed). */
+export async function getKnowledgeQuota(clientId: string): Promise<KnowledgeQuota | null> {
+  if (!UUID_PATTERN.test(clientId)) return null
+  const { supabase, profile } = await getSession()
+  if (!profile || !canManage(profile)) return null
+  try {
+    return await checkKnowledgeQuota(supabase, clientId)
+  } catch (error) {
+    console.error('[knowledge] quota', error)
+    return null
+  }
+}
+
 export async function deleteKnowledgeDocument(documentId: string): Promise<KnowledgeActionResult> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   const { supabase, profile } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
   if (!canManage(profile)) return { ok: false, error: 'forbidden' }

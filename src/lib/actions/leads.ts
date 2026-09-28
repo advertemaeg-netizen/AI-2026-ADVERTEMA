@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getTranslations } from 'next-intl/server'
-import { canManage, getSession } from '@/lib/auth/session'
+import { canManage, getSession, isImpersonating } from '@/lib/auth/session'
 import { rangeStart, searchTerm } from '@/lib/list-filters'
 import { normalizeEgyptianPhone } from '@/lib/phone'
 import { UUID_PATTERN } from '@/lib/types/clients'
@@ -116,6 +116,7 @@ export async function getLead(id: string): Promise<{
 }
 
 export async function updateLead(id: string, data: LeadUpdateInput): Promise<LeadActionResult> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   const { supabase, profile } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
   if (!UUID_PATTERN.test(id)) return { ok: false, error: 'notFound' }
@@ -148,6 +149,7 @@ export async function bulkUpdateLeadStatus(
   ids: string[],
   status: LeadStatus
 ): Promise<LeadActionResult & { updated?: number }> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   const { supabase, profile } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
   if (!(LEAD_STATUSES as readonly string[]).includes(status)) return { ok: false, error: 'validation' }
@@ -171,6 +173,7 @@ export async function bulkUpdateLeadStatus(
 }
 
 export async function deleteLead(id: string): Promise<LeadActionResult> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   const { supabase, profile } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
   // RLS would allow any member of the client; deleting is kept to admins

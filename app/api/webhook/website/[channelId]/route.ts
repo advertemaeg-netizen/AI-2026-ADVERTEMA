@@ -322,6 +322,8 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
         client: channel.clients!,
         settings,
         history,
+        operation: 'chat_reply',
+        conversationId,
       })
       reply = result.reply
     } catch (error) {

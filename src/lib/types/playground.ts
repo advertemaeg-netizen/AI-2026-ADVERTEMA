@@ -3,6 +3,7 @@ import type { BotDebug } from '@/lib/ai/bot'
 export type PlaygroundMessage = { role: 'user' | 'assistant'; content: string }
 
 export type PlaygroundError =
+  | 'impersonating'
   | 'unauthorized'
   | 'forbidden'
   | 'notFound'

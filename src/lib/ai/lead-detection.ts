@@ -2,6 +2,7 @@ import 'server-only'
 import { z } from 'zod'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { generateJson, type ChatTurn } from '@/lib/ai/gemini'
+import type { AiUsageContext } from '@/lib/ai/usage'
 import { normalizeEgyptianPhone } from '@/lib/phone'
 import { cairoWallTimeToIso, describeCairoNow } from '@/lib/cairo-time'
 import { clientSubscriptionActive } from '@/lib/subscription-limits'
@@ -95,7 +96,8 @@ const analysisSchema = z.object({
 
 export type LeadAnalysis = z.infer<typeof analysisSchema>
 
-export async function analyzeConversation(history: ChatTurn[]): Promise<LeadAnalysis> {
+/** `usage`: whose analysis this is, to log its cost */
+export async function analyzeConversation(history: ChatTurn[], usage?: AiUsageContext): Promise<LeadAnalysis> {
   const transcript = history
     .map((turn) => `${turn.role === 'user' ? 'Visitor' : 'Assistant'}: ${turn.content}`)
     .join('\n')
@@ -104,6 +106,7 @@ export async function analyzeConversation(history: ChatTurn[]): Promise<LeadAnal
     prompt: `Current date and time in Cairo: ${describeCairoNow()}\n\nConversation:\n${transcript}`,
     responseSchema: RESPONSE_SCHEMA,
     model: analysisModel(),
+    usage,
   })
   return analysisSchema.parse(raw)
 }
@@ -170,7 +173,7 @@ export async function detectLead({
     // No AI cost for clients whose subscription (or agency's) isn't active
     if (!(await clientSubscriptionActive(supabase, clientId))) return
 
-    const analysis = await analyzeConversation(history)
+    const analysis = await analyzeConversation(history, { operation: 'lead_analysis', clientId, conversationId })
     const phone = normalizeEgyptianPhone(analysis.phone)
     const appointmentAt = resolveAppointment(analysis)
     const extracted: LeadExtractedData & { phone_raw: string | null } = {

@@ -3,8 +3,16 @@
 import { revalidatePath } from 'next/cache'
 import { getSession } from '@/lib/auth/session'
 import { isSuperAdmin } from '@/lib/auth/permissions'
-import { fetchSubscriptionDetails, nextPeriod, normalizeInvoice, normalizeUsage, num } from '@/lib/subscription-data'
+import {
+  fetchClientSubscriptionDetails,
+  fetchSubscriptionDetails,
+  nextPeriod,
+  normalizeInvoice,
+  normalizeUsage,
+  num,
+} from '@/lib/subscription-data'
 import { UUID_PATTERN } from '@/lib/types/clients'
+import type { OrgType } from '@/lib/types/admin'
 import {
   BILLED_TO,
   changePlanSchema,
@@ -188,7 +196,6 @@ export async function setCustomPricing(
       discount_type: values.discount_type,
       discount_percentage: percentage ? values.discount_percentage : null,
       fixed_price_monthly: percentage ? null : values.fixed_price_monthly,
-      fixed_price_yearly: percentage ? null : values.fixed_price_yearly,
       reason: values.reason || null,
       valid_until: values.valid_until,
       created_by: session.profile.id,
@@ -300,41 +307,62 @@ export async function getAllInvoices(filters: {
   }))
 }
 
-/** Organizations to pick from when creating an invoice. */
-export async function getInvoiceOrganizations(): Promise<{ id: string; name: string }[]> {
+/** Organizations to pick from when creating an invoice (agencies and direct businesses). */
+export async function getInvoiceOrganizations(): Promise<{ id: string; name: string; org_type: OrgType }[]> {
   const session = await superAdminSession()
   if (!session) return []
   const { data, error } = await session.supabase
     .from('organizations')
-    .select('id, name')
+    .select('id, name, org_type')
     .order('name')
-    .returns<{ id: string; name: string }[]>()
+    .returns<{ id: string; name: string; org_type: OrgType }[]>()
   if (error) throw new Error(`Failed to load organizations: ${error.message}`)
   return data ?? []
 }
 
 /**
- * Prefill for a new invoice: the effective price for the org's billing cycle
- * and the period following the current one.
+ * What the platform bills an organization for: an agency's own
+ * subscription, or a direct business's one client's subscription.
  */
+async function billedSubscription(supabase: SuperAdminSupabase, organizationId: string) {
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('org_type')
+    .eq('id', organizationId)
+    .maybeSingle<{ org_type: OrgType }>()
+  if (!org) return null
+
+  if (org.org_type === 'direct') {
+    const { data: client } = await supabase
+      .from('clients')
+      .select('id')
+      .eq('organization_id', organizationId)
+      .limit(1)
+      .maybeSingle<{ id: string }>()
+    const details = client ? await fetchClientSubscriptionDetails(supabase, client.id) : null
+    return details && { details, clientId: client!.id, subscriptionId: null }
+  }
+
+  const details = await fetchSubscriptionDetails(supabase, organizationId)
+  return details && { details, clientId: null, subscriptionId: details.subscription.id }
+}
+
+type SuperAdminSupabase = NonNullable<Awaited<ReturnType<typeof superAdminSession>>>['supabase']
+
+/** Prefill for a new invoice: the monthly effective price and the month after the current period. */
 export async function getInvoiceDefaults(organizationId: string): Promise<{
   amount: number
   periodStart: string
   periodEnd: string
-  billingCycle: 'monthly' | 'yearly'
 } | null> {
   if (!UUID_PATTERN.test(organizationId)) return null
   const session = await superAdminSession()
   if (!session) return null
 
-  const details = await fetchSubscriptionDetails(session.supabase, organizationId)
-  if (!details) return null
+  const billed = await billedSubscription(session.supabase, organizationId)
+  if (!billed) return null
 
-  return {
-    amount: details.price.current,
-    ...nextPeriod(details.subscription.current_period_end, details.subscription.billing_cycle),
-    billingCycle: details.subscription.billing_cycle,
-  }
+  return { amount: billed.details.price.current, ...nextPeriod(billed.details.subscription.current_period_end) }
 }
 
 export async function createInvoice(input: InvoiceInput): Promise<BillingActionResult> {
@@ -348,19 +376,17 @@ export async function createInvoice(input: InvoiceInput): Promise<BillingActionR
     return { ok: false, error: 'validation', field: 'period_end' }
   }
 
-  const { data: subscription } = await session.supabase
-    .from('subscriptions')
-    .select('id')
-    .eq('organization_id', values.organization_id)
-    .maybeSingle<{ id: string }>()
-  if (!subscription) return { ok: false, error: 'notFound' }
+  const billed = await billedSubscription(session.supabase, values.organization_id)
+  if (!billed) return { ok: false, error: 'notFound' }
 
   // invoice_number is assigned by the database (INV-<year>-0001, one
-  // sequence for platform and agency invoices)
+  // sequence for every kind of invoice). A direct business's invoice
+  // carries its client, whose subscription it pays for.
   const { error } = await session.supabase.from('invoices').insert({
     organization_id: values.organization_id,
+    client_id: billed.clientId,
     billed_to: 'platform',
-    subscription_id: subscription.id,
+    subscription_id: billed.subscriptionId,
     amount: values.amount,
     period_start: values.period_start,
     period_end: values.period_end,

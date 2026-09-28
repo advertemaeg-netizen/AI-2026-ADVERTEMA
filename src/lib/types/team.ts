@@ -41,6 +41,7 @@ export const inviteSchema = z.object({
 export type InviteInput = z.input<typeof inviteSchema>
 
 export type TeamActionError =
+  | 'impersonating'
   | 'unauthorized'
   | 'forbidden'
   | 'validation'

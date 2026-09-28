@@ -98,7 +98,6 @@ export default async function SubscriptionPage({ params }: PageProps<'/[locale]/
         <PlanPicker
           plans={plans}
           currentPlanId={details.plan.id}
-          currentCycle={details.subscription.billing_cycle}
           organizationName={org.data?.name ?? ''}
           contact={salesContact()}
         />
@@ -164,7 +163,6 @@ async function DirectSubscription({ clientId, clientName }: { clientId: string; 
         <PlanPicker
           plans={plans}
           currentPlanId={details.plan.id}
-          currentCycle={details.subscription.billing_cycle}
           organizationName={clientName}
           contact={salesContact()}
         />

@@ -1,7 +1,8 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { canManage, getSession } from '@/lib/auth/session'
+import { canManage, getSession, isImpersonating } from '@/lib/auth/session'
+import { recordImpersonationAction } from '@/lib/auth/impersonation'
 import { UUID_PATTERN } from '@/lib/types/clients'
 import { rangeStart, searchTerm } from '@/lib/list-filters'
 import {
@@ -111,6 +112,7 @@ export async function sendAgentMessage(
   conversationId: string,
   content: string
 ): Promise<ConversationActionResult<Message>> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   const { supabase, profile } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
   if (!UUID_PATTERN.test(conversationId)) return { ok: false, error: 'notFound' }
@@ -147,7 +149,8 @@ export async function updateConversationStatus(
   id: string,
   status: ConversationStatus
 ): Promise<ConversationActionResult> {
-  const { supabase, profile } = await getSession()
+  // A support tool: allowed while a super admin views the account (and counted)
+  const { supabase, profile, impersonation } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
   if (!UUID_PATTERN.test(id)) return { ok: false, error: 'notFound' }
   if (!(CONVERSATION_STATUSES as readonly string[]).includes(status)) {
@@ -167,6 +170,7 @@ export async function updateConversationStatus(
   // RLS filters out rows the user can't touch, which shows up as zero rows
   if (!data || data.length === 0) return { ok: false, error: 'notFound' }
 
+  await recordImpersonationAction(supabase, impersonation)
   revalidatePath(INBOX_PATH, 'page')
   return { ok: true }
 }
@@ -175,6 +179,7 @@ export async function setConversationAutoReply(
   id: string,
   enabled: boolean
 ): Promise<ConversationActionResult> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   const { supabase, profile } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
   if (!UUID_PATTERN.test(id)) return { ok: false, error: 'notFound' }
@@ -198,7 +203,8 @@ export async function assignConversation(
   id: string,
   userId: string | null
 ): Promise<ConversationActionResult> {
-  const { supabase, profile } = await getSession()
+  // A support tool: allowed while a super admin views the account (and counted)
+  const { supabase, profile, impersonation } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
   if (!canManage(profile)) return { ok: false, error: 'forbidden' }
   if (!UUID_PATTERN.test(id)) return { ok: false, error: 'notFound' }
@@ -231,6 +237,7 @@ export async function assignConversation(
   }
   if (!data || data.length === 0) return { ok: false, error: 'notFound' }
 
+  await recordImpersonationAction(supabase, impersonation)
   revalidatePath(INBOX_PATH, 'page')
   return { ok: true }
 }

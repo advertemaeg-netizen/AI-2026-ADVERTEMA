@@ -60,10 +60,7 @@ export function SubscriptionsTable({
   }
 
   const date = (value: string) => format.dateTime(new Date(value), { dateStyle: 'medium' })
-  const basePrices = (planId: string) => {
-    const plan = plans.find((p) => p.id === planId)
-    return { monthly: plan?.price_monthly ?? 0, yearly: plan?.price_yearly ?? 0 }
-  }
+  const basePrice = (planId: string) => plans.find((p) => p.id === planId)?.price_monthly ?? 0
 
   return (
     <div className="grid gap-4">
@@ -114,7 +111,7 @@ export function SubscriptionsTable({
                 return (
                   <TableRow key={row.subscription_id}>
                     <TableCell>
-                      <Link href={`/admin/organizations/${row.organization_id}`} className="font-medium hover:underline">
+                      <Link href={`/admin/customers/${row.organization_id}`} className="font-medium hover:underline">
                         {row.organization_name}
                       </Link>
                       {!row.organization_active && (
@@ -134,7 +131,6 @@ export function SubscriptionsTable({
                         )}
                         {money.withCurrency(row.effective_price)}
                       </div>
-                      <div className="text-xs text-muted-foreground">{t(`cycle.${row.billing_cycle}`)}</div>
                     </TableCell>
                     <TableCell>
                       <SubscriptionStatusBadge status={row.status} usable={row.usable} />
@@ -179,11 +175,10 @@ export function SubscriptionsTable({
                           organizationId: row.organization_id,
                           organizationName: row.organization_name,
                           planId: row.plan_id,
-                          billingCycle: row.billing_cycle,
                           status: row.status,
                           notes: null,
                           hasCustomPricing: row.has_custom_pricing,
-                          basePrice: basePrices(row.plan_id),
+                          basePrice: basePrice(row.plan_id),
                         }}
                       />
                     </TableCell>

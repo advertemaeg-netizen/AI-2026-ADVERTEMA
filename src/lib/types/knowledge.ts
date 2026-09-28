@@ -1,5 +1,7 @@
 export const KNOWLEDGE_BUCKET = 'knowledge-base'
-export const MAX_KNOWLEDGE_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
+/** The platform's cap on one file; each plan sets its own (plans.max_file_size_mb) up to this */
+export const MAX_KNOWLEDGE_FILE_SIZE_MB = 20
+export const MAX_KNOWLEDGE_FILE_SIZE = MAX_KNOWLEDGE_FILE_SIZE_MB * 1024 * 1024
 export const KNOWLEDGE_UPLOADS_PER_HOUR = 5
 
 export const KNOWLEDGE_FILE_TYPES = {
@@ -25,6 +27,8 @@ export type KnowledgeProcessingError =
   | 'extractFailed'
   | 'embeddingFailed'
   | 'saveFailed'
+  /** The plan's chunk limit was reached while the file was processed */
+  | 'chunkLimit'
 
 /** A source document row (source_document_id is null) */
 export type KnowledgeDocument = {
@@ -41,6 +45,7 @@ export type KnowledgeDocument = {
 
 /** Error codes returned by the upload route */
 export type KnowledgeUploadError =
+  | 'impersonating'
   | 'unauthorized'
   | 'forbidden'
   | 'notFound'
@@ -52,7 +57,40 @@ export type KnowledgeUploadError =
   | 'uploadFailed'
   | 'limitReached'
   | 'subscriptionInactive'
+  /** The file's chunks don't fit what's left of the plan (with chunks / available) */
+  | 'chunkLimit'
+  | 'extractFailed'
+  | 'noText'
+  | 'textTooLarge'
+
+/** Error body of the upload route; the numbers go into the message */
+export type KnowledgeUploadFailure = {
+  ok: false
+  error: KnowledgeUploadError
+  /** chunkLimit: chunks in this file, chunks still available */
+  chunks?: number
+  available?: number
+  /** fileTooLarge: the plan's cap */
+  maxMb?: number
+}
+
+/**
+ * Room left in one client's knowledge base (check_knowledge_quota). The
+ * client's plan limits its chunks; an agency plan also limits all of the
+ * agency's clients together. null limits = unlimited.
+ */
+export type KnowledgeQuota = {
+  used: number
+  limit: number | null
+  org_used: number | null
+  org_limit: number | null
+  /** The tighter of the two; null = unlimited */
+  available: number | null
+  /** The plan's cap on one file (the smaller of the two plans'); null = the platform's */
+  max_file_size_mb: number | null
+  usable: boolean
+}
 
 export type KnowledgeActionResult =
   | { ok: true }
-  | { ok: false; error: 'unauthorized' | 'forbidden' | 'notFound' | 'unknown' }
+  | { ok: false; error: 'unauthorized' | 'forbidden' | 'notFound' | 'impersonating' | 'unknown' }

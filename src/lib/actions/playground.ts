@@ -1,7 +1,7 @@
 'use server'
 
 import { loadBotSettings, runBot, type BotClient } from '@/lib/ai/bot'
-import { canManage, getSession } from '@/lib/auth/session'
+import { canManage, getSession, isImpersonating } from '@/lib/auth/session'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checkClientLimit, guardLimit } from '@/lib/subscription-limits'
 import { botSettingsSchema, type BotSettingsInput } from '@/lib/types/bot-settings'
@@ -61,6 +61,7 @@ export async function testBot(
   includeDebug = false,
   settingsOverride?: BotSettingsInput
 ): Promise<PlaygroundResult> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   const { supabase, profile } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
   // Testing the bot is part of configuring it: client admins and up
@@ -96,6 +97,8 @@ export async function testBot(
       client,
       settings,
       history: messages.map((m) => ({ role: m.role, content: m.content })),
+      // Unsaved settings: the bot settings page's live preview
+      operation: override ? 'bot_preview' : 'playground',
     })
     // Counted like a widget reply. consume_client_message is service-role
     // only; access to this client was checked above.

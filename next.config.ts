@@ -14,6 +14,13 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     '/api/knowledge/**/*': ['./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs'],
   },
+  // The admin panel's organizations are its customers now
+  async redirects() {
+    return [
+      { source: '/:locale(ar|en)/admin/organizations/:path*', destination: '/:locale/admin/customers/:path*', permanent: true },
+      { source: '/admin/organizations/:path*', destination: '/admin/customers/:path*', permanent: true },
+    ]
+  },
 }
 
 export default withNextIntl(nextConfig)

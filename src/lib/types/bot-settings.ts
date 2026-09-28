@@ -60,4 +60,4 @@ export const DEFAULT_BUSINESS_HOURS: BusinessHours = {
 
 export type BotSettingsActionResult =
   | { ok: true }
-  | { ok: false; error: 'unauthorized' | 'forbidden' | 'notFound' | 'validation' | 'unknown' }
+  | { ok: false; error: 'unauthorized' | 'forbidden' | 'notFound' | 'validation' | 'impersonating' | 'unknown' }

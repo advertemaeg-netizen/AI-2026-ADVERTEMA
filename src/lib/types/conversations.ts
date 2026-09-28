@@ -52,6 +52,7 @@ export type ConversationDetail = ConversationListItem & {
 }
 
 export type ConversationActionError =
+  | 'impersonating'
   | 'unauthorized'
   | 'forbidden'
   | 'validation'

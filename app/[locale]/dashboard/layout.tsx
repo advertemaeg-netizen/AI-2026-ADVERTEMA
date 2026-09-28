@@ -1,10 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { getClientContext } from '@/lib/auth/client-context'
-import { isOrgAdmin } from '@/lib/auth/permissions'
+import { isOrgAdmin, isSuperAdmin } from '@/lib/auth/permissions'
+import { getSession } from '@/lib/auth/session'
 import { getUsageAlerts } from '@/lib/actions/subscription'
 import { DashboardShell } from './_components/dashboard-shell'
 import { UsageBanner } from './_components/usage-banner'
+import { ImpersonationBanner } from './_components/impersonation-banner'
 
 const DAY = 24 * 60 * 60 * 1000
 
@@ -31,18 +33,20 @@ async function billingBanner(
   return { alerts, inactive, trialDaysLeft }
 }
 
-export default async function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+export default async function DashboardLayout({ children, params }: LayoutProps<'/[locale]/dashboard'>) {
+  const { locale } = await params
+  const { supabase, profile, impersonation } = await getSession()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!user) redirect('/login')
+  if (!user || !profile) redirect(`/${locale}/login`)
+  // Super admins have no organization of their own: the admin panel is
+  // theirs, and they see a customer's dashboard only by opening its account
+  if (isSuperAdmin(profile.role)) redirect(`/${locale}/admin`)
 
-  const [{ data: profile }, { data: orgDisabled }] = await Promise.all([
-    supabase.from('users').select('*').eq('id', user.id).single(),
+  const [{ data: me }, { data: orgDisabled }] = await Promise.all([
+    supabase.from('users').select('full_name').eq('id', user.id).single<{ full_name: string | null }>(),
     supabase.rpc('org_disabled'),
   ])
 
@@ -52,7 +56,7 @@ export default async function DashboardLayout({
   const context = await getClientContext()
   const directClientId = context?.orgType === 'direct' ? (context.selected?.id ?? null) : null
   const banner =
-    isOrgAdmin(profile?.role) && profile?.organization_id
+    isOrgAdmin(profile.role) && profile.organization_id
       ? await billingBanner(supabase, profile.organization_id, directClientId)
       : null
 
@@ -64,9 +68,10 @@ export default async function DashboardLayout({
       orgType={context?.orgType ?? 'agency'}
       user={{
         email: user.email!,
-        fullName: profile?.full_name,
-        role: profile?.role,
+        fullName: me?.full_name,
+        role: profile.role,
       }}
+      banner={impersonation && <ImpersonationBanner organizationName={impersonation.organizationName} />}
     >
       {banner && <UsageBanner {...banner} />}
       {children}

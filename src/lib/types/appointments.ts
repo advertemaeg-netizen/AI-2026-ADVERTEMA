@@ -45,4 +45,4 @@ export type JourneyStats = {
 
 export type AppointmentActionResult =
   | { ok: true }
-  | { ok: false; error: 'unauthorized' | 'notFound' | 'validation' | 'unknown' }
+  | { ok: false; error: 'unauthorized' | 'notFound' | 'validation' | 'impersonating' | 'unknown' }

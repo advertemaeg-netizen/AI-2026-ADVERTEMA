@@ -29,7 +29,7 @@ export function CurrentPlanCard({
   const format = useFormatter()
   const money = useMoney()
   const { subscription, plan, price, custom_pricing: custom } = details
-  const discounted = price.current < price.base_current
+  const discounted = price.current < price.base
   const date = (value: string) => format.dateTime(new Date(value), { dateStyle: 'long' })
   const trialing = subscription.status === 'trialing'
   // The monthly message allowance (client plans) starts over a month after the window began
@@ -58,15 +58,13 @@ export function CurrentPlanCard({
       </CardHeader>
       <CardContent className="grid gap-5 sm:grid-cols-2">
         <div>
-          <div className="text-sm text-muted-foreground">{t(`price.${subscription.billing_cycle}`)}</div>
+          <div className="text-sm text-muted-foreground">{t('price.monthly')}</div>
           {discounted && (
-            <div className="text-sm text-muted-foreground line-through">{money.withCurrency(price.base_current)}</div>
+            <div className="text-sm text-muted-foreground line-through">{money.withCurrency(price.base)}</div>
           )}
           <div className="flex items-baseline gap-1.5">
             <span className="text-3xl font-bold tabular-nums">{money.amount(price.current)}</span>
-            <span className="text-sm text-muted-foreground">
-              {tCard(subscription.billing_cycle === 'yearly' ? 'perYear' : 'perMonth')}
-            </span>
+            <span className="text-sm text-muted-foreground">{tCard('perMonth')}</span>
           </div>
           {custom?.applies && (
             <p className="mt-2 text-sm text-muted-foreground">
