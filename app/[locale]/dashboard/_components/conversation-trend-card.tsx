@@ -25,7 +25,7 @@ export function ConversationTrendCard({ data }: { data: { date: string; conversa
         <CardAction>
           <Link
             href="/dashboard/analytics"
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground max-md:min-h-11"
           >
             <BarChart3 className="size-4" />
             {t('viewAll')}

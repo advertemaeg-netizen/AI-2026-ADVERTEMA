@@ -50,10 +50,10 @@ export default async function AgencyBillingPage({ params }: PageProps<'/[locale]
     : []
 
   return (
-    <div className="p-8 grid gap-6">
+    <div className="p-8 grid gap-6 max-md:p-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+          <h1 className="text-3xl font-bold tracking-tight max-md:text-2xl">{t('title')}</h1>
           <p className="text-muted-foreground mt-1">{t('description')}</p>
         </div>
         {clients.length > 0 && <CreateInvoiceDialog billedTo="agency" parties={clients} />}

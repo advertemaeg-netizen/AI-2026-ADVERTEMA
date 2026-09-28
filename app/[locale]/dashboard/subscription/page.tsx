@@ -54,9 +54,9 @@ export default async function SubscriptionPage({ params }: PageProps<'/[locale]/
   ])
 
   return (
-    <div className="p-8 grid gap-6">
+    <div className="p-8 grid gap-6 max-md:p-4">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+        <h1 className="text-3xl font-bold tracking-tight max-md:text-2xl">{t('title')}</h1>
         <p className="text-muted-foreground mt-1">{t('description')}</p>
       </div>
 
@@ -119,8 +119,8 @@ export default async function SubscriptionPage({ params }: PageProps<'/[locale]/
 async function NoSubscription() {
   const t = await getTranslations('subscription')
   return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+    <div className="p-8 max-md:p-4">
+      <h1 className="text-3xl font-bold tracking-tight max-md:text-2xl">{t('title')}</h1>
       <p className="text-muted-foreground mt-4">{t('none')}</p>
     </div>
   )
@@ -137,9 +137,9 @@ async function DirectSubscription({ clientId, clientName }: { clientId: string; 
   if (!details) return <NoSubscription />
 
   return (
-    <div className="p-8 grid gap-6">
+    <div className="p-8 grid gap-6 max-md:p-4">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+        <h1 className="text-3xl font-bold tracking-tight max-md:text-2xl">{t('title')}</h1>
         <p className="text-muted-foreground mt-1">{t('direct.description')}</p>
       </div>
 

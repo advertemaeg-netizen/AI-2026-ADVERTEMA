@@ -127,19 +127,19 @@ export function LeadView({
   const channel = lead.conversation?.channel
 
   return (
-    <div className="p-8">
+    <div className="p-8 max-md:p-4">
       <Link
         href="/dashboard/leads"
-        className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground max-md:mb-2 max-md:min-h-11"
       >
         <ArrowLeft className="size-4 rtl:rotate-180" />
         {t('backToLeads')}
       </Link>
 
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4 max-md:mb-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="truncate text-3xl font-bold tracking-tight">{lead.name || t('unnamed')}</h1>
+            <h1 className="truncate text-3xl font-bold tracking-tight max-md:text-2xl max-md:whitespace-normal">{lead.name || t('unnamed')}</h1>
             <LeadStatusBadge status={lead.status} />
           </div>
           <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
@@ -156,16 +156,16 @@ export function LeadView({
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 max-md:grid max-md:w-full max-md:grid-cols-2">
           {lead.phone && (
             <>
-              <Button asChild variant="outline">
+              <Button asChild variant="outline" className="max-md:h-12 max-md:text-base max-md:[&_svg]:size-5">
                 <a href={telHref(lead.phone)} onClick={recordContact}>
                   <Phone data-icon="inline-start" />
                   {t('actions.call')}
                 </a>
               </Button>
-              <Button asChild className="bg-emerald-600 text-white hover:bg-emerald-700">
+              <Button asChild className="bg-emerald-600 text-white hover:bg-emerald-700 max-md:h-12 max-md:text-base max-md:[&_svg]:size-5">
                 <a href={whatsappHref(lead.phone)} target="_blank" rel="noopener noreferrer" onClick={recordContact}>
                   <MessageCircle data-icon="inline-start" />
                   {t('actions.whatsapp')}
@@ -174,17 +174,17 @@ export function LeadView({
             </>
           )}
           {lead.conversation && (
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" className="max-md:h-11 max-md:min-w-0">
               <Link href={`/dashboard/conversations/${lead.conversation.id}`}>
                 <MessagesSquare data-icon="inline-start" />
-                {t('actions.openConversation')}
+                <span className="truncate">{t('actions.openConversation')}</span>
               </Link>
             </Button>
           )}
           {canManage && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="ghost" className="text-destructive hover:text-destructive">
+                <Button variant="ghost" className="text-destructive hover:text-destructive max-md:h-11">
                   <Trash2 data-icon="inline-start" />
                   {tCommon('delete')}
                 </Button>

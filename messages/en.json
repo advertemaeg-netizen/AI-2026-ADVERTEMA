@@ -292,7 +292,10 @@
       "contact": "Contact details",
       "client": "Client & channel",
       "assignment": "Assignment",
-      "ai": "AI assistant"
+      "ai": "AI assistant",
+      "open": "Conversation details",
+      "close": "Close details",
+      "title": "Conversation details"
     },
     "fields": {
       "name": "Name",
@@ -1835,5 +1838,15 @@
       "active": "In progress",
       "lessThanMinute": "Under a minute"
     }
+  },
+  "mobileNav": {
+    "menu": "Menu",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "bottomNav": "Quick navigation",
+    "home": "Home",
+    "conversations": "Conversations",
+    "leads": "Leads",
+    "appointments": "Appointments"
   }
 }

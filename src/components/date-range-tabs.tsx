@@ -50,8 +50,13 @@ export function DateRangeTabs({
   }
 
   return (
-    <Tabs value={range.preset} onValueChange={(value) => value !== 'custom' && onNavigate({ range: value })}>
-      <TabsList>
+    <Tabs
+      className="max-md:max-w-full max-md:min-w-0"
+      value={range.preset}
+      onValueChange={(value) => value !== 'custom' && onNavigate({ range: value })}
+    >
+      {/* Phones: the presets scroll sideways inside the bar */}
+      <TabsList className="max-md:h-auto! max-md:max-w-full max-md:justify-start max-md:overflow-x-auto max-md:*:min-h-11">
         {presets.map((preset) => (
           <TabsTrigger key={preset} value={preset}>
             {t(`ranges.${preset}`)}

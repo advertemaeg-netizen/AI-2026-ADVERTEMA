@@ -27,12 +27,12 @@ export default async function ChannelsPage({
   ])
 
   return (
-    <div className="p-8">
+    <div className="p-8 max-md:p-4">
       <BackToClients label={t('backToClients')} />
 
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
+          <h1 className="text-3xl font-bold tracking-tight max-md:text-2xl">
             {t('title', { client: client.name })}
           </h1>
           <p className="text-muted-foreground mt-1">

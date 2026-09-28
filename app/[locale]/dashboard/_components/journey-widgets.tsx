@@ -18,7 +18,7 @@ export function TodayAppointmentsCard({ appointments }: { appointments: Appointm
           {t('today.title')}
         </CardTitle>
         <CardAction>
-          <Link href="/dashboard/appointments" className="text-xs text-muted-foreground hover:underline">
+          <Link href="/dashboard/appointments" className="text-xs text-muted-foreground hover:underline max-md:inline-flex max-md:min-h-11 max-md:items-center">
             {t('today.viewAll')}
           </Link>
         </CardAction>
@@ -33,7 +33,7 @@ export function TodayAppointmentsCard({ appointments }: { appointments: Appointm
               <li key={appointment.id}>
                 <Link
                   href={`/dashboard/leads/${appointment.id}`}
-                  className="flex items-center gap-2 rounded-md text-sm hover:bg-muted/50"
+                  className="flex items-center gap-2 rounded-md text-sm hover:bg-muted/50 max-md:min-h-11"
                 >
                   <span className="w-14 shrink-0 font-medium tabular-nums">
                     {format.dateTime(new Date(appointment.appointment_at), { timeStyle: 'short' })}

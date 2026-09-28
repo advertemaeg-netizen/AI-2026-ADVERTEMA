@@ -28,10 +28,10 @@ export default async function TeamPage({ params }: PageProps<'/[locale]/dashboar
   const visibleInvites = selected ? invites.filter((i) => i.client?.id === selected.id) : invites
 
   return (
-    <div className="p-8">
+    <div className="p-8 max-md:p-4">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+          <h1 className="text-3xl font-bold tracking-tight max-md:text-2xl">{t('title')}</h1>
           <p className="text-muted-foreground mt-1">
             {selected ? t('descriptionScoped', { client: selected.name }) : t('description')}
           </p>

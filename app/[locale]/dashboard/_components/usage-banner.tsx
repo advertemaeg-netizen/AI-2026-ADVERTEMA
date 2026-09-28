@@ -3,7 +3,7 @@
 import { useTransition } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { AlertTriangle, X } from 'lucide-react'
-import { Link } from '@/i18n/navigation'
+import { Link, usePathname } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { dismissUsageAlerts } from '@/lib/actions/subscription'
@@ -27,6 +27,8 @@ export function UsageBanner({
   const tTypes = useTranslations('subscription.usage.types')
   const format = useFormatter()
   const [isPending, startTransition] = useTransition()
+  // On a phone, inside a conversation, the screen belongs to the messages
+  const inThread = /^\/dashboard\/conversations\/[^/]+$/.test(usePathname())
 
   const showTrial = !inactive && trialDaysLeft !== null && trialDaysLeft <= 3
   if (alerts.length === 0 && !inactive && !showTrial) return null
@@ -40,7 +42,7 @@ export function UsageBanner({
         : 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-300'
 
   return (
-    <div role="status" className={cn('flex items-start gap-3 border-b px-8 py-3 text-sm print:hidden', tone)}>
+    <div role="status" className={cn('flex items-start gap-3 border-b px-8 py-3 text-sm print:hidden max-md:px-4 max-md:py-2', inThread && 'max-md:hidden', tone)}>
       <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
       <div className="flex-1 grid gap-0.5">
         {inactive && <p className="font-medium">{t('inactive')}</p>}
@@ -74,7 +76,7 @@ export function UsageBanner({
         <Button
           variant="ghost"
           size="icon-sm"
-          className="text-current hover:bg-black/5 dark:hover:bg-white/10"
+          className="text-current hover:bg-black/5 dark:hover:bg-white/10 max-md:-my-2 max-md:-me-2 max-md:size-11"
           aria-label={t('dismiss')}
           disabled={isPending}
           onClick={() => startTransition(async () => void (await dismissUsageAlerts()))}

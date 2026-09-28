@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { NextIntlClientProvider, hasLocale } from 'next-intl'
 import { notFound } from 'next/navigation'
 import { Cairo } from 'next/font/google'
@@ -10,6 +10,16 @@ const cairo = Cairo({
   subsets: ['arabic', 'latin'],
   variable: '--font-cairo',
 })
+
+// cover: env(safe-area-inset-*) is only non-zero with it (notch, home indicator).
+// resizes-content: on Android the layout shrinks above the keyboard, so a
+// conversation's reply box stays visible while typing.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  interactiveWidget: 'resizes-content',
+}
 
 export const metadata: Metadata = {
   title: 'Connecta AI',

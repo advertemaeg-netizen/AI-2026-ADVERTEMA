@@ -74,7 +74,7 @@ export function AppointmentsView({
   return (
     <div className="grid gap-4">
       <Tabs value={range} onValueChange={changeRange}>
-        <TabsList>
+        <TabsList className="max-md:h-auto! max-md:w-full max-md:*:min-h-11">
           {APPOINTMENT_RANGES.map((value) => (
             <TabsTrigger key={value} value={value}>
               {t(`ranges.${value}`)}
@@ -104,17 +104,17 @@ export function AppointmentsView({
                     const state = appointmentState(appointment, now)
                     const resolved = state === 'attended' || state === 'noShow'
                     return (
-                      <li key={appointment.id} className="flex flex-wrap items-center gap-4 px-4 py-3">
+                      <li key={appointment.id} className="flex flex-wrap items-center gap-4 px-4 py-3 max-md:gap-x-3 max-md:gap-y-2">
                         <time
                           dateTime={appointment.appointment_at}
-                          className="w-16 shrink-0 text-lg font-semibold tabular-nums"
+                          className="min-w-16 shrink-0 whitespace-nowrap text-lg font-semibold tabular-nums"
                         >
                           {format.dateTime(new Date(appointment.appointment_at), { timeStyle: 'short' })}
                         </time>
 
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <Link href={`/dashboard/leads/${appointment.id}`} className="font-medium hover:underline">
+                            <Link href={`/dashboard/leads/${appointment.id}`} className="font-medium hover:underline max-md:inline-flex max-md:min-h-11 max-md:items-center">
                               {appointment.name || t('unnamed')}
                             </Link>
                             <AppointmentStateBadge state={state} />
@@ -133,16 +133,17 @@ export function AppointmentsView({
                           </p>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5 max-md:w-full max-md:flex-nowrap">
                           {!resolved && (
                             <>
-                              <Button size="sm" onClick={() => arrive(appointment)} disabled={isPending}>
+                              <Button size="sm" className="max-md:h-11 max-md:flex-1" onClick={() => arrive(appointment)} disabled={isPending}>
                                 <UserCheck data-icon="inline-start" />
                                 {t('actions.confirmArrival')}
                               </Button>
                               <Button
                                 size="sm"
                                 variant="outline"
+                                className="max-md:h-11 max-md:flex-1"
                                 onClick={() => setNoShowFor(appointment)}
                                 disabled={isPending}
                               >
@@ -153,12 +154,12 @@ export function AppointmentsView({
                           )}
                           {appointment.phone && (
                             <>
-                              <Button size="icon-sm" variant="ghost" asChild>
+                              <Button size="icon-sm" variant="ghost" className="max-md:size-11" asChild>
                                 <a href={telHref(appointment.phone)} aria-label={t('actions.call')}>
                                   <Phone />
                                 </a>
                               </Button>
-                              <Button size="icon-sm" variant="ghost" asChild className="text-emerald-600">
+                              <Button size="icon-sm" variant="ghost" asChild className="text-emerald-600 max-md:size-11">
                                 <a
                                   href={whatsappHref(appointment.phone)}
                                   target="_blank"

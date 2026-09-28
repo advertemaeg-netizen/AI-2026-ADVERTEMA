@@ -78,36 +78,36 @@ export default async function DashboardPage() {
   ]
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">{t('overview')}</h1>
+    <div className="p-8 max-md:p-4">
+      <div className="mb-8 max-md:mb-4">
+        <h1 className="text-3xl font-bold tracking-tight max-md:text-2xl">{t('overview')}</h1>
         <p className="text-muted-foreground mt-1">
           {selectedClient ? t('scopedTo', { client: selectedClient.name }) : t('welcomeBack')}
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 max-md:grid-cols-2 max-md:gap-3 max-md:mb-4">
         {stats.map((stat) => (
           <Card key={stat.name}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 max-md:items-start max-md:gap-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {stat.name}
               </CardTitle>
               <stat.icon className="w-4 h-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
+              <div className="text-2xl font-bold tabular-nums">{stat.value}</div>
               <p className="text-xs text-muted-foreground mt-1">{stat.hint}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <div className="mb-8">
+      <div className="mb-8 max-md:mb-4">
         <ConversationTrendCard data={trend} />
       </div>
 
-      <div className="mb-8 grid gap-4 lg:grid-cols-3">
+      <div className="mb-8 grid gap-4 lg:grid-cols-3 max-md:mb-4">
         <TodayAppointmentsCard appointments={todayAppointments} />
         <AttendanceCard current={journey.current} previous={journey.previous} />
         <JourneyFunnel conversations={data.conversations.value} stats={journey.current} />

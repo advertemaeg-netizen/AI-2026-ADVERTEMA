@@ -79,11 +79,13 @@ export function ListFiltersBar({
 
   return (
     <div className="grid gap-3">
+      {/* min-w-0: a long tab list scrolls inside its box instead of widening the page */}
       <Tabs
+        className="min-w-0"
         value={filters.status ?? ALL}
         onValueChange={(value) => update('status', value === ALL ? undefined : value)}
       >
-        <TabsList className="max-w-full overflow-x-auto">
+        <TabsList className="max-w-full overflow-x-auto max-md:h-auto! max-md:justify-start max-md:*:min-h-11 max-md:*:min-w-11">
           <TabsTrigger value={ALL}>{t('status.all')}</TabsTrigger>
           {statuses.map((status) => (
             <TabsTrigger key={status} value={status}>
@@ -93,8 +95,8 @@ export function ListFiltersBar({
         </TabsList>
       </Tabs>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-56 flex-1">
+      <div className="flex flex-wrap items-center gap-2 max-md:grid max-md:grid-cols-2">
+        <div className="relative min-w-56 flex-1 max-md:col-span-2 max-md:min-w-0">
           <Search className="pointer-events-none absolute start-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="search"
@@ -102,7 +104,7 @@ export function ListFiltersBar({
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t('searchPlaceholder')}
             aria-label={t('searchPlaceholder')}
-            className="ps-8"
+            className="ps-8 max-md:h-10"
           />
         </div>
 
@@ -111,7 +113,7 @@ export function ListFiltersBar({
             value={filters.clientId ?? ALL}
             onValueChange={(value) => update('clientId', value === ALL ? undefined : value)}
           >
-            <SelectTrigger className="w-44" aria-label={t('filters.client')}>
+            <SelectTrigger className="w-44 max-md:col-span-2 max-md:h-10! max-md:w-full" aria-label={t('filters.client')}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -129,7 +131,7 @@ export function ListFiltersBar({
           value={filters.channelType ?? ALL}
           onValueChange={(value) => update('channelType', value === ALL ? undefined : value)}
         >
-          <SelectTrigger className="w-44" aria-label={t('filters.channel')}>
+          <SelectTrigger className="w-44 max-md:h-10! max-md:w-full" aria-label={t('filters.channel')}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -147,7 +149,7 @@ export function ListFiltersBar({
           value={filters.range ?? ALL}
           onValueChange={(value) => update('range', value === ALL ? undefined : value)}
         >
-          <SelectTrigger className="w-40" aria-label={t('filters.date')}>
+          <SelectTrigger className="w-40 max-md:h-10! max-md:w-full" aria-label={t('filters.date')}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

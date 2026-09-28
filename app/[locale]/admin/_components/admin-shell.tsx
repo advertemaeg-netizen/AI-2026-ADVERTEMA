@@ -1,7 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { BrainCircuit, Building2, CreditCard, LayoutDashboard, LogOut, Package, Receipt, Settings, ShieldCheck, Sparkles, type LucideIcon } from 'lucide-react'
+import { BrainCircuit, Building2, CreditCard, LayoutDashboard, LogOut, Menu, Package, Receipt, Settings, ShieldCheck, Sparkles, type LucideIcon } from 'lucide-react'
 import { Link, usePathname, useRouter } from '@/i18n/navigation'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { createClient } from '@/lib/supabase/client'
@@ -16,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 
 type NavItem = { name: string; href: string; icon: LucideIcon; exact?: boolean }
@@ -32,6 +34,9 @@ export function AdminShell({
   const supabase = createClient()
   const t = useTranslations('admin')
   const tCommon = useTranslations('common')
+  const tMobile = useTranslations('mobileNav')
+  // Phones: the sidebar opens in a sheet
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const navigation: NavItem[] = [
     { name: t('nav.overview'), href: '/admin', icon: LayoutDashboard, exact: true },
@@ -56,17 +61,17 @@ export function AdminShell({
     router.refresh()
   }
 
-  return (
-    <div className="flex h-screen bg-background">
-      <aside className="w-64 border-e bg-card flex flex-col">
+  function sidebar(inSheet: boolean) {
+    return (
+      <>
         <div className="p-6 border-b flex items-center justify-between">
-          <Link href="/admin" className="flex items-center gap-2">
+          <Link href="/admin" className="flex items-center gap-2" onClick={() => setMenuOpen(false)}>
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-orange-500 flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
             <span className="font-semibold text-lg">Connecta AI</span>
           </Link>
-          <LanguageSwitcher />
+          {!inSheet && <LanguageSwitcher />}
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto p-4">
@@ -79,8 +84,10 @@ export function AdminShell({
                 key={item.href}
                 href={item.href}
                 aria-current={isActive ? 'page' : undefined}
+                onClick={() => setMenuOpen(false)}
                 className={cn(
                   'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
+                  inSheet && 'min-h-11',
                   isActive
                     ? 'bg-accent text-accent-foreground font-medium'
                     : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
@@ -121,10 +128,38 @@ export function AdminShell({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+      </>
+    )
+  }
+
+  return (
+    <div className="flex h-screen bg-background max-md:h-dvh max-md:flex-col">
+      <header className="flex shrink-0 items-center gap-1 border-b bg-card px-1 pt-[env(safe-area-inset-top)] md:hidden">
+        <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon" className="size-11" aria-label={tMobile('openMenu')}>
+              <Menu className="size-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="start" className="gap-0 bg-card p-0" closeLabel={tMobile('closeMenu')}>
+            <SheetTitle className="sr-only">{tMobile('menu')}</SheetTitle>
+            <div className="flex min-h-0 flex-1 flex-col">{sidebar(true)}</div>
+          </SheetContent>
+        </Sheet>
+        <Link href="/admin" className="flex min-h-11 flex-1 items-center gap-2 px-1 font-semibold">
+          Connecta AI
+        </Link>
+        <div className="[&_button]:size-11">
+          <LanguageSwitcher />
+        </div>
+      </header>
+
+      <aside className="w-64 border-e bg-card flex flex-col max-md:hidden">
+        {sidebar(false)}
       </aside>
 
       <main className="flex-1 overflow-y-auto">
-        <header className="sticky top-0 z-10 flex items-center gap-3 border-b bg-background/95 px-8 py-3 backdrop-blur">
+        <header className="sticky top-0 z-10 flex items-center gap-3 border-b bg-background/95 px-8 py-3 backdrop-blur max-md:flex-wrap max-md:gap-x-2 max-md:gap-y-1 max-md:px-4 max-md:py-2">
           <Badge variant="destructive" className="gap-1.5 px-3 py-1 text-sm">
             <ShieldCheck />
             {t('badge')}

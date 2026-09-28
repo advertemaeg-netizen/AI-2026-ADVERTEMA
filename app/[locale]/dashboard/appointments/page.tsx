@@ -18,9 +18,9 @@ export default async function AppointmentsPage({
   const appointments = await getUpcomingAppointments({ range, clientId: selectedClient?.id ?? null })
 
   return (
-    <div className="p-8">
+    <div className="p-8 max-md:p-4">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+        <h1 className="text-3xl font-bold tracking-tight max-md:text-2xl">{t('title')}</h1>
         <p className="text-muted-foreground mt-1">{t('description')}</p>
       </div>
 

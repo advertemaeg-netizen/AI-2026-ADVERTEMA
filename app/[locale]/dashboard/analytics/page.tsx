@@ -16,7 +16,7 @@ export default async function AnalyticsPage({ searchParams }: PageProps<'/[local
   return (
     <div className="p-8 print:p-0">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+        <h1 className="text-3xl font-bold tracking-tight max-md:text-2xl">{t('title')}</h1>
         <p className="text-muted-foreground mt-1 print:hidden">{t('description')}</p>
       </div>
 

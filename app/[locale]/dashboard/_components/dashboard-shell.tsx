@@ -1,4 +1,5 @@
 'use client'
+import { useState } from 'react'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { usePathname } from '@/i18n/navigation'
 import { Link, useRouter } from '@/i18n/navigation'
@@ -34,6 +35,7 @@ import { clientSections } from '@/components/client-sections'
 import { ClientSwitcher } from '@/components/client-switcher'
 import { canManageClient, isOrgAdmin } from '@/lib/auth/permissions'
 import { endImpersonation } from '@/lib/actions/impersonation'
+import { BottomNav, MobileTopBar } from './mobile-nav'
 import type { ClientOption, OrgType } from '@/lib/auth/client-context'
 
 type NavItem = { name: string; href: string; icon: LucideIcon; exact?: boolean }
@@ -140,6 +142,9 @@ export function DashboardShell({
     .toUpperCase()
     .slice(0, 2)
 
+  // Phones: the sidebar lives in a sheet; following a link closes it
+  const [menuOpen, setMenuOpen] = useState(false)
+
   async function handleLogout() {
     // Signing out also ends a super admin's view of this account
     await endImpersonation()
@@ -148,98 +153,117 @@ export function DashboardShell({
     router.refresh()
   }
 
+  function closeMenu() {
+    setMenuOpen(false)
+  }
+
+  function sidebar(inSheet: boolean) {
+    return (
+      <>
+        <div className={cn('p-6 border-b flex items-center justify-between', inSheet && 'p-4 pe-14')}>
+          <Link href="/dashboard" className="flex items-center gap-2" onClick={closeMenu}>
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-orange-500 flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-semibold text-lg">Connecta AI</span>
+          </Link>
+          {/* Phones have it in the top bar */}
+          {!inSheet && <LanguageSwitcher />}
+        </div>
+
+        {/* Everyone who can see more than one client can switch; org admins also get "all" */}
+        {(canSeeAll || clients.length > 1) && (
+          <div className="border-b p-4">
+            <ClientSwitcher clients={clients} selectedId={selectedClient?.id ?? null} allowAll={canSeeAll} />
+          </div>
+        )}
+        {!canSeeAll && clients.length === 1 && selectedClient && (
+          <div className="flex items-center gap-2 border-b px-6 py-3 text-sm font-medium">
+            <Building2 className="size-4 text-muted-foreground" />
+            <span className="truncate">{selectedClient.name}</span>
+          </div>
+        )}
+
+        <nav className="flex-1 space-y-1 overflow-y-auto p-4">
+          {navigation.map((item) => {
+            const isActive = item.exact
+              ? pathname === item.href
+              : pathname === item.href || pathname.startsWith(`${item.href}/`)
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={isActive ? 'page' : undefined}
+                onClick={closeMenu}
+                className={cn(
+                  'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
+                  inSheet && 'min-h-11',
+                  isActive
+                    ? 'bg-accent text-accent-foreground font-medium'
+                    : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+                )}
+              >
+                <item.icon className="w-4 h-4" />
+                {item.name}
+              </Link>
+            )
+          })}
+        </nav>
+
+        <div className="p-4 border-t">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="w-full justify-start px-2 h-auto py-2">
+                <Avatar className="w-8 h-8 me-2">
+                  <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col items-start text-start overflow-hidden">
+                  <span className="text-sm font-medium truncate w-full">
+                    {user.fullName || 'User'}
+                  </span>
+                  <span className="text-xs text-muted-foreground truncate w-full">
+                    {user.email}
+                  </span>
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
+                <div className="flex flex-col">
+                  <span>{user.fullName || 'User'}</span>
+                  <span className="text-xs text-muted-foreground font-normal">
+                    {user.role}
+                  </span>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="w-4 h-4 me-2" />
+                {tCommon('logout')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </>
+    )
+  }
+
   return (
-    <div className="flex h-screen flex-col bg-background print:block print:h-auto">
+    <div className="flex h-screen flex-col bg-background print:block print:h-auto max-md:h-dvh">
       {banner}
+      <MobileTopBar title={selectedClient?.name} open={menuOpen} onOpenChange={setMenuOpen}>
+        <div className="flex min-h-0 flex-1 flex-col">{sidebar(true)}</div>
+      </MobileTopBar>
       <div className="flex min-h-0 flex-1 print:block">
-        <aside className="w-64 border-r bg-card flex flex-col print:hidden">
-          <div className="p-6 border-b flex items-center justify-between">
-            <Link href="/dashboard" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-orange-500 flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-white" />
-              </div>
-              <span className="font-semibold text-lg">Connecta AI</span>
-            </Link>
-            <LanguageSwitcher />
-          </div>
-
-          {/* Everyone who can see more than one client can switch; org admins also get "all" */}
-          {(canSeeAll || clients.length > 1) && (
-            <div className="border-b p-4">
-              <ClientSwitcher clients={clients} selectedId={selectedClient?.id ?? null} allowAll={canSeeAll} />
-            </div>
-          )}
-          {!canSeeAll && clients.length === 1 && selectedClient && (
-            <div className="flex items-center gap-2 border-b px-6 py-3 text-sm font-medium">
-              <Building2 className="size-4 text-muted-foreground" />
-              <span className="truncate">{selectedClient.name}</span>
-            </div>
-          )}
-
-          <nav className="flex-1 space-y-1 overflow-y-auto p-4">
-            {navigation.map((item) => {
-              const isActive = item.exact
-                ? pathname === item.href
-                : pathname === item.href || pathname.startsWith(`${item.href}/`)
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={isActive ? 'page' : undefined}
-                  className={cn(
-                    'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
-                    isActive
-                      ? 'bg-accent text-accent-foreground font-medium'
-                      : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-                  )}
-                >
-                  <item.icon className="w-4 h-4" />
-                  {item.name}
-                </Link>
-              )
-            })}
-          </nav>
-
-          <div className="p-4 border-t">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="w-full justify-start px-2 h-auto py-2">
-                  <Avatar className="w-8 h-8 me-2">
-                    <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col items-start text-start overflow-hidden">
-                    <span className="text-sm font-medium truncate w-full">
-                      {user.fullName || 'User'}
-                    </span>
-                    <span className="text-xs text-muted-foreground truncate w-full">
-                      {user.email}
-                    </span>
-                  </div>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>
-                  <div className="flex flex-col">
-                    <span>{user.fullName || 'User'}</span>
-                    <span className="text-xs text-muted-foreground font-normal">
-                      {user.role}
-                    </span>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="w-4 h-4 me-2" />
-                  {tCommon('logout')}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+        <aside className="w-64 border-e bg-card flex flex-col print:hidden max-md:hidden">
+          {sidebar(false)}
         </aside>
 
-        <main className="flex-1 overflow-y-auto print:overflow-visible">
+        <main className="flex flex-1 flex-col overflow-y-auto print:block print:overflow-visible">
           {children}
         </main>
       </div>
+      <BottomNav />
     </div>
   )
 }

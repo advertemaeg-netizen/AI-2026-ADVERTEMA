@@ -63,7 +63,7 @@ export function AnalyticsDashboard({
   )}`
 
   return (
-    <div className="grid gap-6 print:block print:*:mb-6">
+    <div className="grid gap-6 print:block print:*:mb-6 max-md:grid-cols-1">
       {/* One filter row scoping everything below it */}
       <div className="flex flex-wrap items-center gap-2 print:hidden">
         <DateRangeTabs
@@ -101,7 +101,7 @@ export function AnalyticsDashboard({
       {/* print:block — Chromium overlaps grid items that split across printed pages */}
       <div
         className={cn(
-          'grid gap-6 transition-opacity print:block print:*:mb-6',
+          'grid gap-6 transition-opacity print:block print:*:mb-6 max-md:grid-cols-1',
           isPending && 'pointer-events-none opacity-60'
         )}
       >

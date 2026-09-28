@@ -22,11 +22,11 @@ export default async function BotSettingsPage({
   const t = await getTranslations('botSettings')
 
   return (
-    <div className="p-8">
+    <div className="p-8 max-md:p-4">
       <BackToClients label={t('backToClients')} />
 
       <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">{t('title', { client: client.name })}</h1>
+        <h1 className="text-3xl font-bold tracking-tight max-md:text-2xl">{t('title', { client: client.name })}</h1>
         <p className="text-muted-foreground mt-1">{canManage ? t('description') : t('readOnly')}</p>
       </div>
 

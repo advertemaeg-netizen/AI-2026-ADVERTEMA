@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { toast } from 'sonner'
-import { Download, Loader2, UserRoundSearch } from 'lucide-react'
+import { Download, Loader2, MessageCircle, Phone, UserRoundSearch } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -25,7 +25,8 @@ import {
 } from '@/components/ui/select'
 import { ChannelIcon } from '@/components/channel-icon'
 import { RelativeTime } from '@/components/relative-time'
-import { bulkUpdateLeadStatus, exportLeads } from '@/lib/actions/leads'
+import { bulkUpdateLeadStatus, exportLeads, updateLead } from '@/lib/actions/leads'
+import { telHref, whatsappHref } from '@/lib/phone'
 import { LEAD_STATUSES, type LeadFilters, type LeadListItem, type LeadStatus } from '@/lib/types/leads'
 import { LeadStatusBadge } from './lead-status-badge'
 
@@ -79,6 +80,13 @@ export function LeadsTable({
       } else {
         toast.error(t(`errors.${result.error}`))
       }
+    })
+  }
+
+  function recordContact(lead: LeadListItem) {
+    void updateLead(lead.id, {
+      last_contacted_at: new Date().toISOString(),
+      ...(lead.status === 'new' ? { status: 'contacted' as const } : {}),
     })
   }
 
@@ -145,6 +153,51 @@ export function LeadsTable({
             {hasFilters ? t('emptyFiltered') : t('empty')}
           </div>
         ) : (
+          <>
+          {/* Phones: one card per lead, calling and WhatsApp a tap away */}
+          <ul className="divide-y md:hidden">
+            {leads.map((lead) => (
+              <li key={lead.id} className="flex items-center gap-2 px-4 py-3">
+                <Link href={`/dashboard/leads/${lead.id}`} className="grid min-w-0 flex-1 gap-1">
+                  <span className="flex min-w-0 items-center gap-1.5 font-medium">
+                    {lead.conversation?.channel && (
+                      <ChannelIcon type={lead.conversation.channel.type} className="size-3.5 shrink-0 text-muted-foreground" />
+                    )}
+                    <span className="truncate">{lead.name || t('unnamed')}</span>
+                  </span>
+                  {lead.service_requested && (
+                    <span className="truncate text-sm text-muted-foreground">{lead.service_requested}</span>
+                  )}
+                  <span className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+                    <LeadStatusBadge status={lead.status} />
+                    <span className="truncate">{lead.client.name}</span>
+                    <RelativeTime date={lead.created_at} className="shrink-0" />
+                  </span>
+                </Link>
+                {lead.phone && (
+                  <div className="flex shrink-0 gap-1.5">
+                    <Button asChild variant="outline" size="icon" className="size-11">
+                      <a href={telHref(lead.phone)} onClick={() => recordContact(lead)} aria-label={t('actions.call')}>
+                        <Phone className="size-5" />
+                      </a>
+                    </Button>
+                    <Button asChild size="icon" className="size-11 bg-emerald-600 text-white hover:bg-emerald-700">
+                      <a
+                        href={whatsappHref(lead.phone)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => recordContact(lead)}
+                        aria-label={t('actions.whatsapp')}
+                      >
+                        <MessageCircle className="size-5" />
+                      </a>
+                    </Button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+          <div className="max-md:hidden">
           <Table>
             <TableHeader>
               <TableRow>
@@ -209,6 +262,8 @@ export function LeadsTable({
               ))}
             </TableBody>
           </Table>
+          </div>
+          </>
         )}
         {leads.length >= LIST_LIMIT && (
           <p className="border-t py-3 text-center text-xs text-muted-foreground">{t('limitNotice')}</p>
