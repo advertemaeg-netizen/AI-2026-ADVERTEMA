@@ -1,0 +1,126 @@
+
+########## scenario: burst-existing  visitor=repro-burst-existing-1790628339829  2026-09-28T20:45:39.829Z
+→ visitor: السلام عليكم، أنا كريم مصطفى، عايز أعمل تنظيف وتبييض أسنان. رقمي 01012345678
+← 200 reply: وعليكم السلام يا أستاذ كريم، منورنا! 
+
+طبعا عيونا ليك، تنظيف وتبييض الأسنان عندنا هيخلو ابتسامتك تلمع. متشكرين جداً لحضرتك إنك سبت اسمك ورقمك، فريق العيادة هيتو
+conversationId 2dac8063-6f42-43b3-8704-c33de2c425cc
+
+===== A — after the first message — leads on this conversation: 1 (client total: 40)
+{
+  "id": "b8b8899b-d48f-46a1-a9e5-2d7bf0a435d2",
+  "name": "كريم مصطفى",
+  "phone": "01012345678",
+  "service_requested": "تنظيف وتبييض أسنان",
+  "status": "new",
+  "appointment_at": null,
+  "appointment_confirmed": false,
+  "showed_up": null,
+  "arrival_confirmed_at": null,
+  "confidence_score": 1,
+  "created_at": "2026-09-28T22:46:19.103+02:00",
+  "updated_at": "2026-09-28T22:46:19.103+02:00"
+}
+  ai_extracted_data → {
+  "appointment_date": null,
+  "appointment_time": null,
+  "appointment_at": null,
+  "is_lead": true,
+  "confidence": 1,
+  "summary": "الزائر كريم مصطفى يطلب خدمة تنظيف وتبييض الأسنان."
+}
+  lead_events: [
+  "22:46:19 created  → new (AI/system)"
+]
+  in the "New" leads tab (status=new): YES
+
+===== B — after the team booked + marked "showed up" — leads on this conversation: 1 (client total: 40)
+{
+  "id": "b8b8899b-d48f-46a1-a9e5-2d7bf0a435d2",
+  "name": "كريم مصطفى",
+  "phone": "01012345678",
+  "service_requested": "تنظيف وتبييض أسنان",
+  "status": "showed_up",
+  "appointment_at": "2026-09-25T22:46:22.631+02:00",
+  "appointment_confirmed": false,
+  "showed_up": true,
+  "arrival_confirmed_at": "2026-09-25T22:56:22.647+02:00",
+  "confidence_score": 1,
+  "created_at": "2026-09-28T22:46:19.103+02:00",
+  "updated_at": "2026-09-28T22:46:22.65+02:00"
+}
+  ai_extracted_data → {
+  "appointment_date": null,
+  "appointment_time": null,
+  "appointment_at": null,
+  "is_lead": true,
+  "confidence": 1,
+  "summary": "الزائر كريم مصطفى يطلب خدمة تنظيف وتبييض الأسنان."
+}
+  lead_events: [
+  "22:46:19 created  → new (AI/system)",
+  "22:46:22 status_changed new → appointment_booked (team)",
+  "22:46:22 appointment_set  → 2026-09-25T20:46:22Z (team)",
+  "22:46:22 status_changed appointment_booked → showed_up (team)"
+]
+  in the "New" leads tab (status=new): no
+→ visitor: الساعة 5 العصر
+← 200 reply: أهلاً بيك يا أستاذ كريم مرة تاني! للأسف مش عندي المعلومة دي دلوقتي، بس سيب لي اسمك ورقم تليفونك وحد من فريقنا هيتواصل معاك في أقرب وقت.
+→ visitor: أهلاً تاني، عايز أحجز تاني
+← 200 reply: ولا يهمك يا أستاذ كريم، انا سجلت طلبك بالمعاد ده. 
+
+فريق العيادة هيتأكد من الميعاد ده وهيتصل بيك في أقرب وقت عشان يثبتوا الحجز معاك. 
+
+تنورنا في العيادة، ولو في
+→ visitor: الخميس الجاي لو ينفع
+← 200 reply: أهلاً بيك يا أستاذ كريم مرة تاني! 
+
+ولا يهمك خالص، أنا سجلت طلب حجزك يوم الخميس الجاي الساعة 5 العصر. فريق العيادة هيتواصل معاك قريب جداً عشان يأكدوا معاك الميع
+
+===== D — after 3 quick messages in the same thread — leads on this conversation: 1 (client total: 40)
+{
+  "id": "b8b8899b-d48f-46a1-a9e5-2d7bf0a435d2",
+  "name": "كريم مصطفى",
+  "phone": "01012345678",
+  "service_requested": "تنظيف وتبييض أسنان",
+  "status": "showed_up",
+  "appointment_at": "2026-09-25T22:46:22.631+02:00",
+  "appointment_confirmed": false,
+  "showed_up": true,
+  "arrival_confirmed_at": "2026-09-25T22:56:22.647+02:00",
+  "confidence_score": 1,
+  "created_at": "2026-09-28T22:46:19.103+02:00",
+  "updated_at": "2026-09-28T22:46:22.65+02:00"
+}
+  ai_extracted_data → {
+  "appointment_date": null,
+  "appointment_time": null,
+  "appointment_at": null,
+  "is_lead": true,
+  "confidence": 1,
+  "summary": "الزائر كريم مصطفى يطلب خدمة تنظيف وتبييض الأسنان."
+}
+  lead_events: [
+  "22:46:19 created  → new (AI/system)",
+  "22:46:22 status_changed new → appointment_booked (team)",
+  "22:46:22 appointment_set  → 2026-09-25T20:46:22Z (team)",
+  "22:46:22 status_changed appointment_booked → showed_up (team)"
+]
+  in the "New" leads tab (status=new): no
+
+before (B) lead row: [
+  {
+    "id": "b8b8899b-d48f-46a1-a9e5-2d7bf0a435d2",
+    "name": "كريم مصطفى",
+    "phone": "01012345678",
+    "service_requested": "تنظيف وتبييض أسنان",
+    "status": "showed_up",
+    "appointment_at": "2026-09-25T22:46:22.631+02:00",
+    "appointment_confirmed": false,
+    "showed_up": true,
+    "arrival_confirmed_at": "2026-09-25T22:56:22.647+02:00",
+    "confidence_score": 1,
+    "created_at": "2026-09-28T22:46:19.103+02:00",
+    "updated_at": "2026-09-28T22:46:22.65+02:00"
+  }
+]

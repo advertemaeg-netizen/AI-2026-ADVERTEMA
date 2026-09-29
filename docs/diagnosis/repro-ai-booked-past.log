@@ -1,0 +1,101 @@
+
+########## scenario: ai-booked-past  visitor=repro-ai-booked-past-1790627901268  2026-09-28T20:38:21.268Z
+→ visitor: السلام عليكم، أنا كريم مصطفى، عايز أحجز تنظيف وتبييض أسنان بكرة الساعة 5 العصر. رقمي 01012345678
+← 200 reply: وعليكم السلام يا أستاذ كريم، منورنا! 
+تنورنا بكرة إن شاء الله الساعة 5 العصر في عيادات الدكتور محمد عبد العزيز بالتجمع الخامس عشان جلسة تنظيف وتبييض الأسنان. 
+
+
+conversationId 6a4c8146-c08b-47df-a80c-4bc4f646bb50
+
+===== A — after the first message — leads on this conversation: 1 (client total: 38)
+{
+  "id": "6de393c6-f414-4314-88e2-dec66f8d3cdf",
+  "name": "كريم مصطفى",
+  "phone": "01012345678",
+  "service_requested": "تنظيف وتبييض أسنان",
+  "status": "appointment_booked",
+  "appointment_at": "2026-09-29T16:00:00+02:00",
+  "appointment_confirmed": false,
+  "showed_up": null,
+  "arrival_confirmed_at": null,
+  "confidence_score": 1,
+  "created_at": "2026-09-28T22:39:01.791+02:00",
+  "updated_at": "2026-09-28T22:39:01.791+02:00"
+}
+  ai_extracted_data → {
+  "appointment_date": "2026-09-29",
+  "appointment_time": "17:00",
+  "appointment_at": "2026-09-29T14:00:00.000Z",
+  "is_lead": true,
+  "confidence": 1,
+  "summary": "الزائر كريم مصطفى يرغب في حجز خدمة تنظيف وتبييض أسنان غداً الساعة الخامسة عصراً."
+}
+  lead_events: [
+  "22:39:01 created  → appointment_booked (AI/system)",
+  "22:39:01 appointment_set  → 2026-09-29T14:00:00Z (AI/system)"
+]
+  in the "New" leads tab (status=new): no
+
+===== B — AI-booked visit, now in the past, attendance never marked — leads on this conversation: 1 (client total: 38)
+{
+  "id": "6de393c6-f414-4314-88e2-dec66f8d3cdf",
+  "name": "كريم مصطفى",
+  "phone": "01012345678",
+  "service_requested": "تنظيف وتبييض أسنان",
+  "status": "appointment_booked",
+  "appointment_at": "2026-09-25T22:39:04.611+02:00",
+  "appointment_confirmed": false,
+  "showed_up": null,
+  "arrival_confirmed_at": null,
+  "confidence_score": 1,
+  "created_at": "2026-09-28T22:39:01.791+02:00",
+  "updated_at": "2026-09-28T22:39:04.626+02:00"
+}
+  ai_extracted_data → {
+  "appointment_date": "2026-09-29",
+  "appointment_time": "17:00",
+  "appointment_at": "2026-09-25T20:39:04.611Z",
+  "is_lead": true,
+  "confidence": 1,
+  "summary": "الزائر كريم مصطفى يرغب في حجز خدمة تنظيف وتبييض أسنان غداً الساعة الخامسة عصراً."
+}
+  lead_events: [
+  "22:39:01 created  → appointment_booked (AI/system)",
+  "22:39:01 appointment_set  → 2026-09-29T14:00:00Z (AI/system)",
+  "22:39:04 appointment_set 2026-09-29T14:00:00Z → 2026-09-25T20:39:04Z (AI/system)"
+]
+  in the "New" leads tab (status=new): no
+→ visitor: أهلاً، عايز أحجز تاني الخميس
+← 200 reply: يا هلا بيك يا أستاذ كريم، منورنا تاني! تحت أمرك طبعاً، هنحجزلك ميعاد يوم الخميس إن شاء الله. 
+
+ممكن بس توضح لي حابب تحجز الساعة كام يوم الخميس، ونفس الخدمة (تنظ
+
+===== D — after "عايز أحجز تاني الخميس" — leads on this conversation: 1 (client total: 38)
+{
+  "id": "6de393c6-f414-4314-88e2-dec66f8d3cdf",
+  "name": "كريم مصطفى",
+  "phone": "01012345678",
+  "service_requested": "تنظيف وتبييض أسنان",
+  "status": "appointment_booked",
+  "appointment_at": "2026-09-25T22:39:04.611+02:00",
+  "appointment_confirmed": false,
+  "showed_up": null,
+  "arrival_confirmed_at": null,
+  "confidence_score": 1,
+  "created_at": "2026-09-28T22:39:01.791+02:00",
+  "updated_at": "2026-09-28T22:39:04.626+02:00"
+}
+  ai_extracted_data → {
+  "appointment_date": "2026-09-29",
+  "appointment_time": "17:00",
+  "appointment_at": "2026-09-25T20:39:04.611Z",
+  "is_lead": true,
+  "confidence": 1,
+  "summary": "الزائر كريم مصطفى يرغب في حجز خدمة تنظيف وتبييض أسنان غداً الساعة الخامسة عصراً."
+}
+  lead_events: [
+  "22:39:01 created  → appointment_booked (AI/system)",
+  "22:39:01 appointment_set  → 2026-09-29T14:00:00Z (AI/system)",
+  "22:39:04 appointment_set 2026-09-29T14:00:00Z → 2026-09-25T20:39:04Z (AI/system)"
+]
+  in the "New" leads tab (status=new): no

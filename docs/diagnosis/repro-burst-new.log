@@ -1,0 +1,48 @@
+
+########## scenario: burst-new  visitor=repro-burst-new-1790630304571  2026-09-28T21:18:24.571Z
+→ visitor: مساء الخير
+← 200 reply: مساء النور! أهلاً بيك، منورنا. إزاي أقدر أساعدك النهاردة في عيادات الدكتور محمد عبد العزيز لطب وتجميل الأسنان؟
+→ visitor: رقمي 01122334455
+← 200 reply: أهلاً بيك يا فندم يا هشام، ومساء الفل. نورتنا والله! 
+
+تمام جداً، تسلم على ذوقك وإرسال بياناتك. أنا سجلت اسمك ورقمك وميعاد كشف التقويم يوم الخميس الساعة 6 المغر
+→ visitor: عايز أحجز كشف تقويم، اسمي هشام عادل
+← 200 reply: أهلاً بيك يا أستاذ هشام، منورنا والله! عشان نقدر نأكد لحضرتك الميعاد وتفاصيل حجز كشف التقويم يوم الخميس الساعة 6 المغرب بدقة، ممكن تساهم معايا وتكتب لي رقم تليف
+→ visitor: ممكن الخميس الساعة 6 المغرب؟
+← 200 reply: أهلاً بحضرتك يا استاذ هشام، ومساء الفل. نورتنا والله! متشكرين جداً لذوقك واعطائنا بياناتك. 
+
+خلاص تمام، سجلنا طلب حجز كشف التقويم يوم الخميس الساعة 6 المغرب، وف
+replies ok: [
+  true,
+  true,
+  true
+]
+
+===== burst on a new conversation (3 messages ~ at once) — leads on this conversation: 1 (client total: 52)
+{
+  "id": "c857c95d-aab6-4ae5-9b65-048370c2493f",
+  "name": "هشام عادل",
+  "phone": "01122334455",
+  "service_requested": "كشف تقويم",
+  "status": "appointment_booked",
+  "appointment_at": "2026-10-01T18:00:00+02:00",
+  "appointment_confirmed": false,
+  "showed_up": null,
+  "arrival_confirmed_at": null,
+  "confidence_score": 1,
+  "created_at": "2026-09-28T23:19:17.442+02:00",
+  "updated_at": "2026-09-28T23:19:17.442+02:00"
+}
+  ai_extracted_data → {
+  "appointment_date": "2026-10-01",
+  "appointment_time": "19:00",
+  "appointment_at": "2026-10-01T16:00:00.000Z",
+  "is_lead": true,
+  "confidence": 1,
+  "summary": "الزائر هشام عادل يريد حجز كشف تقويم يوم الخميس الساعة 6 المغرب."
+}
+  lead_events: [
+  "23:19:17 created  → appointment_booked (AI/system)",
+  "23:19:17 appointment_set  → 2026-10-01T16:00:00Z (AI/system)"
+]
+  in the "New" leads tab (status=new): no
