@@ -33,11 +33,14 @@ export async function generateReply({
   systemPrompt,
   history,
   temperature = 0.7,
+  responseSchema,
   usage,
 }: {
   systemPrompt: string
   history: ChatTurn[]
   temperature?: number
+  /** Structured output: the reply is then JSON text matching this schema */
+  responseSchema?: Record<string, unknown>
   usage?: AiUsageContext
 }): Promise<string> {
   const apiKey = apiKeyOrThrow()
@@ -52,7 +55,10 @@ export async function generateReply({
       contents,
       // No maxOutputTokens: on thinking models it also caps the hidden
       // reasoning, which cuts replies off. Length is steered in the prompt.
-      generationConfig: { temperature },
+      generationConfig: {
+        temperature,
+        ...(responseSchema ? { responseMimeType: 'application/json', responseSchema } : {}),
+      },
     }),
     signal: AbortSignal.timeout(30_000),
   })

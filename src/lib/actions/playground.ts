@@ -1,6 +1,7 @@
 'use server'
 
 import { loadBotSettings, runBot, type BotClient } from '@/lib/ai/bot'
+import { renderReply, replyLanguage, resolveAppointment } from '@/lib/ai/appointment'
 import { canManage, getSession, isImpersonating } from '@/lib/auth/session'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checkClientLimit, guardLimit } from '@/lib/subscription-limits'
@@ -91,7 +92,7 @@ export async function testBot(
 
   try {
     const settings = override ?? (await loadBotSettings(supabase, clientId))
-    const { reply, debug } = await runBot({
+    const { reply: template, appointment, debug } = await runBot({
       supabase,
       clientId,
       client,
@@ -100,11 +101,25 @@ export async function testBot(
       // Unsaved settings: the bot settings page's live preview
       operation: override ? 'bot_preview' : 'playground',
     })
+    // Nothing is booked from a test chat: the reply shows what a visitor
+    // would get if the requested time were recorded
+    const resolved = appointment
+      ? resolveAppointment(appointment, { businessHours: settings.business_hours })
+      : ({ status: 'none' } as const)
+    const reply = renderReply(
+      template,
+      resolved.status === 'resolved'
+        ? { status: 'booked', at: resolved.at, confirmed: settings.auto_confirm_appointments, changed: true }
+        : resolved,
+      replyLanguage(settings.language, messages.findLast((m) => m.role === 'user')?.content ?? '')
+    )
+    // The reply reads as a booking: the caller has to say it's a rehearsal
+    const simulated = resolved.status === 'resolved' ? { simulatedAppointment: resolved.at } : {}
     // Counted like a widget reply. consume_client_message is service-role
     // only; access to this client was checked above.
     const { error: usageError } = await createAdminClient().rpc('consume_client_message', { p_client_id: clientId })
     if (usageError) console.error('[playground] counting the message failed', usageError)
-    return includeDebug ? { ok: true, reply, debug } : { ok: true, reply }
+    return includeDebug ? { ok: true, reply, debug, ...simulated } : { ok: true, reply, ...simulated }
   } catch (error) {
     console.error('[playground] bot failed', error)
     return { ok: false, error: 'aiUnavailable' }

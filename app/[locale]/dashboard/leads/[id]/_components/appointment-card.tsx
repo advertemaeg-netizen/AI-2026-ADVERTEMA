@@ -49,9 +49,15 @@ export function AppointmentCard({ lead }: { lead: LeadDetail }) {
     ? appointmentState({ appointment_at: lead.appointment_at, showed_up: lead.showed_up })
     : null
   const ai = lead.ai_extracted_data
+  // Still the time the assistant set
+  const aiTime =
+    !!lead.ai_appointment &&
+    !!lead.appointment_at &&
+    new Date(lead.ai_appointment.at).getTime() === new Date(lead.appointment_at).getTime()
   // The AI picked the time from a vague phrase ("Thursday morning")
-  const approximate =
-    !!ai?.appointment_time_approximate && !!ai.appointment_at && ai.appointment_at === lead.appointment_at
+  const approximate = aiTime && !!lead.ai_appointment?.approximate
+  // Read from a message the bot didn't answer: the customer hasn't been told
+  const fromAnalysis = aiTime && lead.ai_appointment?.source === 'analysis' && !lead.appointment_confirmed
 
   return (
     <Card>
@@ -79,6 +85,9 @@ export function AppointmentCard({ lead }: { lead: LeadDetail }) {
           />
           {approximate && (
             <p className="text-xs text-amber-700 dark:text-amber-300">{t('section.approximate')}</p>
+          )}
+          {fromAnalysis && (
+            <p className="text-xs text-amber-700 dark:text-amber-300">{t('section.fromAnalysis')}</p>
           )}
           {ai?.preferred_time && !lead.appointment_at && (
             <p className="text-xs text-muted-foreground">{t('section.requested', { time: ai.preferred_time })}</p>

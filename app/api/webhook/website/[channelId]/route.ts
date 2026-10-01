@@ -3,6 +3,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { geminiModel, type ChatTurn } from '@/lib/ai/gemini'
 import { BOT_HISTORY_LIMIT, loadBotSettings, runBot } from '@/lib/ai/bot'
 import { detectLead } from '@/lib/ai/lead-detection'
+import { renderReply, replyLanguage, type BookingOutcome } from '@/lib/ai/appointment'
+import { recordAppointment } from '@/lib/ai/booking'
 import type { BotSettingsInput } from '@/lib/types/bot-settings'
 import { checkClientLimit } from '@/lib/subscription-limits'
 import { UUID_PATTERN } from '@/lib/types/clients'
@@ -288,6 +290,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
           sourceMessageId: userMessage.id,
           history: turns,
           replied,
+          businessHours: settings?.business_hours ?? null,
         })
       )
     }
@@ -342,7 +345,27 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
         operation: 'chat_reply',
         conversationId,
       })
-      reply = result.reply
+
+      // The appointment is recorded before the reply goes out, and the reply
+      // quotes the record: it can't promise a time that isn't stored
+      let booking: BookingOutcome = { status: 'none' }
+      if (result.appointment) {
+        try {
+          booking = await recordAppointment({
+            supabase,
+            clientId: channel.client_id,
+            conversationId,
+            sourceMessageId: userMessage.id,
+            request: result.appointment,
+            autoConfirm: settings.auto_confirm_appointments,
+            businessHours: settings.business_hours,
+            source: 'reply',
+          })
+        } catch (error) {
+          console.error('[webhook/website] recording the appointment failed', error)
+        }
+      }
+      reply = renderReply(result.reply, booking, replyLanguage(settings.language, message))
     } catch (error) {
       console.error('[webhook/website] AI reply failed', error)
       // A failed reply (timeout, 503) must not lose the lead: the visitor's

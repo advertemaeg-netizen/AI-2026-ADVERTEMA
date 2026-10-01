@@ -235,6 +235,24 @@ export function BotSettingsForm({
               />
               <Controller
                 control={control}
+                name="auto_confirm_appointments"
+                render={({ field }) => (
+                  <Field orientation="horizontal">
+                    <FieldContent>
+                      <FieldLabel htmlFor="auto_confirm_appointments">{t('fields.autoConfirmAppointments')}</FieldLabel>
+                      <FieldDescription>{t('hints.autoConfirmAppointments')}</FieldDescription>
+                    </FieldContent>
+                    <Switch
+                      id="auto_confirm_appointments"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={field.disabled}
+                    />
+                  </Field>
+                )}
+              />
+              <Controller
+                control={control}
                 name="language"
                 render={({ field }) => (
                   <Field>

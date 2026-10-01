@@ -36,7 +36,7 @@ describe('a lead is one sales episode', () => {
     expect(first.appointment_at).not.toBeNull()
     expect(first.arrival_confirmed_at).not.toBeNull()
 
-    await conversation.send('عايز أحجز تاني بكرة الساعة 5')
+    await conversation.send('عايز أحجز تاني بكرة الساعة 5 العصر')
 
     const [after, second] = await conversation.leads()
     expect(after).toEqual(first)

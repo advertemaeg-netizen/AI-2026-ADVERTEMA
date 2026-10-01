@@ -439,7 +439,8 @@
         "total": "Total",
         "model": "Model"
       }
-    }
+    },
+    "simulatedAppointment": "Test only — no appointment was recorded. In a real chat this would be booked: {time}."
   },
   "clientNav": {
     "label": "Client pages",
@@ -485,7 +486,8 @@
       "temperature": "Creativity",
       "maxLength": "Maximum reply length",
       "hoursEnabled": "Enable business hours",
-      "timezone": "Time zone"
+      "timezone": "Time zone",
+      "autoConfirmAppointments": "Confirm appointments automatically"
     },
     "hints": {
       "systemPrompt": "Describe who the assistant is, what it does, and what it must not do.",
@@ -494,7 +496,8 @@
       "leadQualification": "The assistant asks which service is needed and requests a name and phone number.",
       "maxLength": "An approximate character limit the assistant keeps to in each reply.",
       "hoursEnabled": "The schedule and current time are added to the assistant’s instructions.",
-      "overnight": "A closing time earlier than the opening time (e.g. 12:00 to 02:00) means it closes after midnight."
+      "overnight": "A closing time earlier than the opening time (e.g. 12:00 to 02:00) means it closes after midnight.",
+      "autoConfirmAppointments": "On: the assistant records the appointment and confirms it to the visitor right away. Off: it records it and tells the visitor it will be confirmed, and your team confirms it with one click on the lead page."
     },
     "tones": {
       "friendly": "Friendly",
@@ -873,7 +876,8 @@
       "confirmedHint": "Turn on after checking with the customer that they’ll come.",
       "arrivedAt": "Arrived {time}",
       "noShowReason": "No-show — reason: {reason}",
-      "noShowNoReason": "Didn’t show up."
+      "noShowNoReason": "Didn’t show up.",
+      "fromAnalysis": "Read from the customer's message without a reply from the assistant (an agent had taken over, the message limit was reached, or the reply failed). The customer was told nothing — contact them to confirm it."
     },
     "toast": {
       "arrived": "Arrival confirmed",
@@ -1860,5 +1864,19 @@
     "conversations": "Conversations",
     "leads": "Leads",
     "appointments": "Appointments"
+  },
+  "botReplies": {
+    "appointment": {
+      "at": "at",
+      "am": "AM",
+      "noon": "PM",
+      "pm": "PM",
+      "confirmed": "Your appointment is confirmed ✅",
+      "pending": "We've noted the appointment and will confirm it with you shortly.",
+      "noted": "Your appointment: {time}.",
+      "kept": "You already have an appointment on {time}. If you'd like to change it, someone from our team will be in touch.",
+      "askTime": "Which day and what time would you like to book?",
+      "askPeriod": "{hour} in the morning or in the evening?"
+    }
   }
 }

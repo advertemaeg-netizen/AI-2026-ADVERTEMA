@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { Fragment, useEffect, useRef, useState, useTransition } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { AlertTriangle, Bug, ChevronDown, RotateCcw, SendHorizontal, Sparkles } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -19,7 +19,7 @@ import { PLAYGROUND_MAX_MESSAGE_LENGTH, type PlaygroundError } from '@/lib/types
 
 type ChatItem =
   | { id: string; role: 'user'; content: string }
-  | { id: string; role: 'assistant'; content: string; debug?: BotDebug }
+  | { id: string; role: 'assistant'; content: string; debug?: BotDebug; simulatedAppointment?: string }
   | { id: string; role: 'error'; error: PlaygroundError }
 
 export function Playground({
@@ -38,6 +38,7 @@ export function Playground({
   compact?: boolean
 }) {
   const t = useTranslations('playground')
+  const format = useFormatter()
   const [items, setItems] = useState<ChatItem[]>([])
   const [draft, setDraft] = useState('')
   const [showDebug, setShowDebug] = useState(false)
@@ -73,7 +74,16 @@ export function Playground({
       const result = await testBot(clientId, history, true, getSettingsOverride?.())
       const id = crypto.randomUUID()
       if (result.ok) {
-        setItems((prev) => [...prev, { id, role: 'assistant', content: result.reply, debug: result.debug }])
+        setItems((prev) => [
+          ...prev,
+          {
+            id,
+            role: 'assistant',
+            content: result.reply,
+            debug: result.debug,
+            simulatedAppointment: result.simulatedAppointment,
+          },
+        ])
         setSelectedId(id)
       } else {
         setItems((prev) => [...prev, { id, role: 'error', error: result.error }])
@@ -147,15 +157,28 @@ export function Playground({
               }
               const isSelected = showDebug && selected?.id === item.id
               return (
-                <Bubble
-                  key={item.id}
-                  role="assistant"
-                  onSelect={showDebug ? () => setSelectedId(item.id) : undefined}
-                  selected={isSelected}
-                  selectLabel={t('debug.selectReply')}
-                >
-                  {item.content}
-                </Bubble>
+                <Fragment key={item.id}>
+                  <Bubble
+                    role="assistant"
+                    onSelect={showDebug ? () => setSelectedId(item.id) : undefined}
+                    selected={isSelected}
+                    selectLabel={t('debug.selectReply')}
+                  >
+                    {item.content}
+                  </Bubble>
+                  {/* The reply reads as a booking; nothing was booked */}
+                  {item.simulatedAppointment && (
+                    <p className="max-w-[85%] self-start rounded-md border border-dashed border-amber-500/60 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-800 dark:text-amber-200">
+                      {t('simulatedAppointment', {
+                        time: format.dateTime(new Date(item.simulatedAppointment), {
+                          dateStyle: 'full',
+                          timeStyle: 'short',
+                          timeZone: 'Africa/Cairo',
+                        }),
+                      })}
+                    </p>
+                  )}
+                </Fragment>
               )
             })}
 

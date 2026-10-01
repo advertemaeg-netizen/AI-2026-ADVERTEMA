@@ -15,7 +15,16 @@ export type PlaygroundError =
   | 'unknown'
 
 export type PlaygroundResult =
-  | { ok: true; reply: string; debug?: BotDebug }
+  | {
+      ok: true
+      reply: string
+      debug?: BotDebug
+      /**
+       * The reply reads as if this appointment (UTC ISO) had been booked.
+       * Nothing was: a test chat has no lead. The UI says so next to the reply.
+       */
+      simulatedAppointment?: string
+    }
   | { ok: false; error: PlaygroundError }
 
 export const PLAYGROUND_MAX_MESSAGES = 50

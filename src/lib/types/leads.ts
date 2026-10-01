@@ -63,15 +63,27 @@ export type LeadExtractedData = {
   branch?: string | null
   preferred_time?: string | null
   summary?: string | null
-  appointment_date?: string | null
-  appointment_time?: string | null
-  appointment_time_approximate?: boolean
-  /** The resolved instant the AI stored in appointment_at, if any */
-  appointment_at?: string | null
+}
+
+/** What the assistant last set as the appointment (leads.ai_appointment) */
+export type AiAppointment = {
+  at: string
+  /** The hour was chosen from a part of the day ("Thursday morning") */
+  approximate: boolean
+  /** The assistant confirmed it itself (auto-confirm was on) */
+  confirmed: boolean
+  /**
+   * 'reply': booked while answering, and the visitor was told this time.
+   * 'analysis': read from a message the bot didn't answer (an agent had taken
+   * over, the message limit was reached, or the reply failed) — nobody told
+   * the visitor anything. Absent on older rows.
+   */
+  source?: 'reply' | 'analysis'
 }
 
 export type LeadDetail = LeadListItem & {
   appointment_at: string | null
+  ai_appointment: AiAppointment | null
   appointment_confirmed: boolean
   showed_up: boolean | null
   arrival_confirmed_at: string | null

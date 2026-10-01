@@ -28,8 +28,7 @@ export const INTRO_MESSAGE = 'السلام عليكم، أنا كريم مصطف
 /**
  * Stands in for the analysis model: like the real one, it judges whatever
  * transcript it is given. Buying intent = a visitor line that asks to book
- * ("أحجز"); the name and phone are picked up only if the visitor wrote them;
- * "بكرة الساعة 5" becomes an appointment tomorrow at 17:00.
+ * ("أحجز"); the name and phone are picked up only if the visitor wrote them.
  */
 export function analyseTranscript(call: GeminiCall) {
   const prompt = (call.body.contents as { parts: { text: string }[] }[])[0].parts[0].text
@@ -38,22 +37,44 @@ export function analyseTranscript(call: GeminiCall) {
     .filter((line) => line.startsWith('Visitor: '))
     .join('\n')
   const intent = visitor.includes('أحجز')
-  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
-  const cairoDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo' }).format(tomorrow)
+  // Asked only about messages the bot didn't answer (the schema then has "appointment")
+  const schema = (call.body.generationConfig as { responseSchema: { properties: Record<string, unknown> } }).responseSchema
+  const appointment = !('appointment' in schema.properties)
+    ? {}
+    : visitor.includes('الخميس الساعة 6 المغرب')
+      ? { appointment: { day_type: 'weekday', weekday: 'thursday', hour: 6, period: 'evening' } }
+      : { appointment: null }
   return {
+    ...appointment,
     is_lead: intent,
     confidence: intent ? 0.9 : 0.1,
     name: visitor.includes('كريم مصطفى') ? 'كريم مصطفى' : null,
     phone: visitor.match(/01\d{9}/)?.[0] ?? null,
     service_requested: visitor.includes('تبييض') ? 'تبييض أسنان' : intent ? 'تنظيف أسنان' : null,
-    ...(visitor.includes('بكرة الساعة 5') ? { appointment_date: cairoDate, appointment_time: '17:00' } : {}),
   }
 }
 
-/** The chat model answers, the analysis model reads the transcript */
+/** The visitor's latest message, as the chat model received it */
+export function lastVisitorMessage(call: GeminiCall) {
+  const turns = call.body.contents as { role: string; parts: { text: string }[] }[]
+  return turns.findLast((turn) => turn.role === 'user')?.parts[0].text ?? ''
+}
+
+/** The chat model's structured answer: its text and the appointment components it read */
+export const botReply = (reply: string, appointment: Record<string, unknown> | null = null) =>
+  geminiText(JSON.stringify({ reply, appointment }))
+
+/**
+ * The chat model answers (reporting "بكرة الساعة 5 العصر" as tomorrow, hour
+ * 5, afternoon, the way the real one is asked to), the analysis model reads
+ * the transcript
+ */
 export function geminiWorks(call: GeminiCall) {
   if (call.kind === 'embedding') return Response.json({ error: { message: 'no embeddings in tests' } }, { status: 503 })
-  return geminiText(call.kind === 'analysis' ? JSON.stringify(analyseTranscript(call)) : 'أهلاً بيك، تحت أمرك')
+  if (call.kind === 'analysis') return geminiText(JSON.stringify(analyseTranscript(call)))
+  return lastVisitorMessage(call).includes('بكرة الساعة 5 العصر')
+    ? botReply('تمام، حجزتلك {{appointment}}', { day_type: 'tomorrow', hour: 5, period: 'afternoon' })
+    : geminiText('أهلاً بيك، تحت أمرك')
 }
 
 export type LeadSnapshot = {

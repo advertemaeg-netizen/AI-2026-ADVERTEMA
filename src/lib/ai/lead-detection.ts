@@ -3,9 +3,15 @@ import { z } from 'zod'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { generateJson, type ChatTurn } from '@/lib/ai/gemini'
 import type { AiUsageContext } from '@/lib/ai/usage'
+import {
+  APPOINTMENT_COMPONENTS,
+  APPOINTMENT_REQUEST_SCHEMA,
+  appointmentRequestSchema,
+} from '@/lib/ai/appointment'
+import { recordAppointment } from '@/lib/ai/booking'
 import { normalizeEgyptianPhone } from '@/lib/phone'
-import { cairoWallTimeToIso, describeCairoNow } from '@/lib/cairo-time'
 import { claimLeadAnalysis } from '@/lib/subscription-limits'
+import type { BusinessHours } from '@/lib/types/bot-settings'
 import { CLOSED_LEAD_STATUSES, type LeadExtractedData, type LeadStatus } from '@/lib/types/leads'
 
 // A light model for the per-message analysis: it runs on every visitor
@@ -33,15 +39,19 @@ The LATEST statement always wins. Visitors change their minds mid-conversation: 
 - service_requested: what they want (product, service, order items)
 - budget: any budget or price range they mention
 - branch: a branch or location they mention
-- preferred_time: a date/time they want (appointment, delivery)
+- preferred_time: a date/time they want (appointment, delivery), in their own words
 - summary: one short sentence in Arabic describing the request
 Use null for anything not stated.
+`
 
-Appointments (dates are in Cairo, Egypt):
-- appointment_date (YYYY-MM-DD) and appointment_time (HH:MM, 24h): only when the visitor asks for or agrees to a specific day. If the visitor changes the day or time later ("عايز أغير المعاد", "خليها الساعة 11 ونص"), use ONLY the latest one — the earlier appointment is cancelled. Resolve relative days against the current Cairo date given below: "النهارده" today, "بكرة" tomorrow, "بعد بكرة" in two days, a weekday name means its next occurrence (today if it's still ahead).
-- A bare hour like "الساعة 5" means 17:00 unless they say morning (الصبح). With only a part of the day, use morning 10:00, noon 13:00, afternoon (العصر) 16:00, evening (المغرب / بالليل) 19:00 and set appointment_time_approximate to true.
-- A time change without a day keeps the day from the earlier request (e.g. "النهاردة الساعة 8" then "خليها 11 ونص" → today 23:30).
-- If there's no specific day ("next week", "soon", "any time"), return null for both — the team will schedule it.`
+// Only for messages the bot didn't answer: when it does, the reply call reads
+// the appointment (the reply has to quote what was stored). Same components,
+// same resolver either way.
+const APPOINTMENT_PROMPT = `
+
+Appointments ("appointment", null when the visitor asked for none):
+${APPOINTMENT_COMPONENTS}
+- With no specific day ("next week", "soon") or no time at all, "appointment" is null.`
 
 // Gemini structured-output schema (OpenAPI subset)
 const RESPONSE_SCHEMA = {
@@ -56,15 +66,11 @@ const RESPONSE_SCHEMA = {
     branch: { type: 'STRING', nullable: true },
     preferred_time: { type: 'STRING', nullable: true },
     summary: { type: 'STRING', nullable: true },
-    appointment_date: { type: 'STRING', nullable: true },
-    appointment_time: { type: 'STRING', nullable: true },
-    appointment_time_approximate: { type: 'BOOLEAN', nullable: true },
   },
   required: ['is_lead', 'confidence'],
   propertyOrdering: [
     'is_lead', 'confidence', 'name', 'phone', 'service_requested',
     'budget', 'branch', 'preferred_time', 'summary',
-    'appointment_date', 'appointment_time', 'appointment_time_approximate',
   ],
 }
 
@@ -83,47 +89,33 @@ const analysisSchema = z.object({
   branch: nullableText,
   preferred_time: nullableText,
   summary: nullableText,
-  appointment_date: z
-    .string()
-    .nullish()
-    .transform((v) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null)),
-  appointment_time: z
-    .string()
-    .nullish()
-    .transform((v) => (v && /^([01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : null)),
-  appointment_time_approximate: z.boolean().nullish().transform((v) => v ?? false),
+  appointment: appointmentRequestSchema.nullish().catch(null),
 })
 
 export type LeadAnalysis = z.infer<typeof analysisSchema>
 
-/** `usage`: whose analysis this is, to log its cost */
-export async function analyzeConversation(history: ChatTurn[], usage?: AiUsageContext): Promise<LeadAnalysis> {
+/**
+ * `usage`: whose analysis this is, to log its cost. `withAppointment`: also
+ * read the appointment the visitor asked for (messages the bot didn't answer).
+ */
+export async function analyzeConversation(
+  history: ChatTurn[],
+  usage?: AiUsageContext,
+  withAppointment = false
+): Promise<LeadAnalysis> {
   const transcript = history
     .map((turn) => `${turn.role === 'user' ? 'Visitor' : 'Assistant'}: ${turn.content}`)
     .join('\n')
   const raw = await generateJson({
-    systemPrompt: SYSTEM_PROMPT,
-    prompt: `Current date and time in Cairo: ${describeCairoNow()}\n\nConversation:\n${transcript}`,
-    responseSchema: RESPONSE_SCHEMA,
+    systemPrompt: withAppointment ? SYSTEM_PROMPT + APPOINTMENT_PROMPT : SYSTEM_PROMPT,
+    prompt: `Conversation:\n${transcript}`,
+    responseSchema: withAppointment
+      ? { ...RESPONSE_SCHEMA, properties: { ...RESPONSE_SCHEMA.properties, appointment: APPOINTMENT_REQUEST_SCHEMA } }
+      : RESPONSE_SCHEMA,
     model: analysisModel(),
     usage,
   })
   return analysisSchema.parse(raw)
-}
-
-// How far ahead an extracted appointment may be; anything else is a misread
-const MAX_APPOINTMENT_DAYS_AHEAD = 180
-
-/** The extracted Cairo date + time as an instant, or null if absent/implausible. */
-function resolveAppointment(analysis: LeadAnalysis, now = Date.now()): string | null {
-  if (!analysis.appointment_date || !analysis.appointment_time) return null
-  const [year, month, day] = analysis.appointment_date.split('-').map(Number)
-  const iso = cairoWallTimeToIso(year, month - 1, day, analysis.appointment_time)
-  const at = new Date(iso).getTime()
-  // An hour of slack for "today at 5" mentioned just after 5
-  if (Number.isNaN(at) || at < now - 60 * 60 * 1000) return null
-  if (at > now + MAX_APPOINTMENT_DAYS_AHEAD * 24 * 60 * 60 * 1000) return null
-  return iso
 }
 
 type LeadRow = {
@@ -135,24 +127,15 @@ type LeadRow = {
   branch: string | null
   confidence_score: number | null
   status: LeadStatus
-  appointment_at: string | null
-  appointment_confirmed: boolean
-  showed_up: boolean | null
   ai_extracted_data: LeadExtractedData | null
 }
 
-const LEAD_COLUMNS = `id, name, phone, service_requested, budget, branch, confidence_score, status,
-  appointment_at, appointment_confirmed, showed_up, ai_extracted_data`
+const LEAD_COLUMNS = 'id, name, phone, service_requested, budget, branch, confidence_score, status, ai_extracted_data'
 
 // Matches BOT_HISTORY_LIMIT: the analysis sees as much as the bot does
 const HISTORY_LIMIT = 20
 
 const isClosed = (lead: LeadRow) => CLOSED_LEAD_STATUSES.includes(lead.status)
-
-/** Same instant? (Postgres and JS format timestamps differently) */
-function sameInstant(a: string | null | undefined, b: string | null | undefined) {
-  return !!a && !!b && new Date(a).getTime() === new Date(b).getTime()
-}
 
 /**
  * What was said since the conversation's previous lead closed. Everything
@@ -195,6 +178,12 @@ async function historySinceClosed(supabase: SupabaseClient, conversationId: stri
  *
  * The AI may replace a value only while it's still the one the AI itself set
  * last time (the visitor changed their mind); anything the team edited stays.
+ * Appointments: when the bot answered, the reply path has already recorded
+ * what the visitor asked for, and quoted it. When it didn't (`replied` false:
+ * an agent has taken over, the message limit is reached, or the reply failed)
+ * there is no reply to disagree with the record, so the appointment is read
+ * here — through the same components and the same resolver — and stored
+ * unconfirmed, marked as coming from the analysis.
  * Never throws.
  */
 export async function detectLead({
@@ -204,6 +193,7 @@ export async function detectLead({
   sourceMessageId,
   history,
   replied,
+  businessHours,
 }: {
   supabase: SupabaseClient
   clientId: string
@@ -212,6 +202,8 @@ export async function detectLead({
   history: ChatTurn[]
   /** The bot answered this message (so it's already counted as a message) */
   replied: boolean
+  /** Settles a bare hour ("at 9") in an appointment read here */
+  businessHours: BusinessHours | null
 }) {
   try {
     // No AI cost without a usable subscription. Past the plan's messages the
@@ -237,14 +229,30 @@ export async function detectLead({
     const turns = returningFrom ? await historySinceClosed(supabase, conversationId, returningFrom) : history
     if (!turns.some((turn) => turn.role === 'user')) return
 
-    const analysis = await analyzeConversation(turns, { operation: 'lead_analysis', clientId, conversationId })
+    const analysis = await analyzeConversation(
+      turns,
+      { operation: 'lead_analysis', clientId, conversationId },
+      !replied
+    )
+    // Nobody told the visitor anything, so it is never confirmed here
+    const bookFromAnalysis = async () => {
+      if (replied || !analysis.appointment) return
+      await recordAppointment({
+        supabase,
+        clientId,
+        conversationId,
+        sourceMessageId,
+        request: analysis.appointment,
+        autoConfirm: false,
+        businessHours,
+        source: 'analysis',
+      })
+    }
     const phone = normalizeEgyptianPhone(analysis.phone)
-    const appointmentAt = resolveAppointment(analysis)
     const extracted: LeadExtractedData & { phone_raw: string | null } = {
       ...analysis,
       phone,
       phone_raw: analysis.phone,
-      appointment_at: appointmentAt,
     }
     const fields = {
       name: analysis.name,
@@ -270,14 +278,13 @@ export async function detectLead({
         ...fields,
         name,
         phone: phone ?? returningFrom?.phone ?? null,
-        // AI-set times are unconfirmed; the team confirms or adjusts them
-        appointment_at: appointmentAt,
-        status: appointmentAt ? 'appointment_booked' : 'new',
+        status: 'new',
         confidence_score: analysis.confidence,
         ai_extracted_data: extracted,
       })
       if (!error) {
         await fillContactName(supabase, conversationId, name)
+        await bookFromAnalysis()
         return
       }
       // 23505: a concurrent analysis opened it first — enrich that one
@@ -295,18 +302,6 @@ export async function detectLead({
       if (value && value !== current && aiOwned) patch[key] = value
     }
 
-    // Appointment: fill or move it while it's the AI's own, unconfirmed and
-    // not yet attended/missed. A time the team set or confirmed stays.
-    const appointmentAiOwned =
-      !existing.appointment_at ||
-      (sameInstant(existing.appointment_at, previous.appointment_at) &&
-        !existing.appointment_confirmed &&
-        existing.showed_up === null)
-    if (appointmentAt && appointmentAiOwned && !sameInstant(appointmentAt, existing.appointment_at)) {
-      patch.appointment_at = appointmentAt
-      if (existing.status === 'new' || existing.status === 'contacted') patch.status = 'appointment_booked'
-    }
-
     // Always stored, even when nothing changes: the lead keeps a trace of
     // what the model understood from the latest message
     const { error } = await supabase
@@ -319,6 +314,7 @@ export async function detectLead({
       .eq('id', existing.id)
     if (error) throw error
     await fillContactName(supabase, conversationId, analysis.name)
+    await bookFromAnalysis()
   } catch (error) {
     console.error('[lead-detection] failed', error)
   }

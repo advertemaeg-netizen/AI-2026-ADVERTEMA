@@ -42,6 +42,7 @@ export const botSettingsSchema = z.object({
   welcome_message: z.string().trim().min(1, 'required').max(MESSAGE_MAX, 'tooLong'),
   fallback_message: z.string().trim().min(1, 'required').max(MESSAGE_MAX, 'tooLong'),
   lead_qualification_enabled: z.boolean(),
+  auto_confirm_appointments: z.boolean(),
   business_hours: businessHoursSchema.nullable(),
 })
 

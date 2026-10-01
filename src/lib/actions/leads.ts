@@ -88,7 +88,7 @@ export async function getLead(id: string): Promise<{
   const { data: lead, error } = await supabase
     .from('leads')
     .select(
-      `${LIST_COLUMNS}, budget, branch, notes, updated_at, ai_extracted_data, appointment_at,
+      `${LIST_COLUMNS}, budget, branch, notes, updated_at, ai_extracted_data, appointment_at, ai_appointment,
        appointment_confirmed, showed_up, arrival_confirmed_at, no_show_reason, ${conversationEmbed(false)}`
     )
     .eq('id', id)

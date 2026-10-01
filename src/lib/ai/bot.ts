@@ -10,6 +10,12 @@ import {
 } from '@/lib/ai/gemini'
 import type { AiOperation } from '@/lib/ai/usage'
 import {
+  APPOINTMENT_INSTRUCTIONS,
+  BOT_REPLY_SCHEMA,
+  botReplySchema,
+  type AppointmentRequest,
+} from '@/lib/ai/appointment'
+import {
   WEEK_DAYS,
   businessHoursSchema,
   type BotLanguage,
@@ -166,6 +172,10 @@ export function buildSystemPrompt(
     }, chatting with a visitor through the chat widget on the business's website. The chat opened with this welcome message from you: "${settings.welcome_message}"`,
     client.description ? `About the business:\n${client.description}` : '',
     settings.business_hours?.enabled ? describeBusinessHours(settings.business_hours, now) : '',
+    // Appointments are part of collecting leads: without it nothing is booked
+    settings.lead_qualification_enabled
+      ? APPOINTMENT_INSTRUCTIONS
+      : '',
     knowledge.length > 0
       ? `Excerpts from the business's knowledge base that may answer the visitor's question:\n\n${knowledge
           .map((chunk, i) => `[${i + 1}] (${chunk.title})\n${chunk.content}`)
@@ -195,12 +205,32 @@ export async function loadBotSettings(supabase: SupabaseClient, clientId: string
     welcome_message: row.welcome_message,
     fallback_message: row.fallback_message,
     lead_qualification_enabled: row.lead_qualification_enabled,
+    // Missing on a database that predates the setting: on, like the default
+    auto_confirm_appointments: row.auto_confirm_appointments ?? true,
     business_hours: hours.success ? hours.data : null,
   }
 }
 
 /**
+ * The model's structured answer → its text and the appointment it reported.
+ * Anything that isn't the expected JSON is taken as a plain reply: a
+ * malformed answer must not cost the visitor their reply.
+ */
+export function parseBotReply(text: string): { reply: string; appointment: AppointmentRequest | null } {
+  try {
+    const parsed = botReplySchema.safeParse(JSON.parse(text))
+    if (parsed.success) return { reply: parsed.data.reply, appointment: parsed.data.appointment ?? null }
+  } catch {
+    // not JSON
+  }
+  return { reply: text, appointment: null }
+}
+
+/**
  * Generates the assistant's next reply. Retrieval uses the latest user turn.
+ * With lead collection on, `reply` may hold APPOINTMENT_PLACEHOLDER and
+ * `appointment` what the visitor asked for: the caller records it and renders
+ * the reply (renderReply) before anyone sees it.
  * `supabase` only needs to be able to run match_knowledge_chunks for this
  * client: the secret-key client (webhook) or the signed-in user's (playground).
  * Throws if Gemini fails.
@@ -222,7 +252,7 @@ export async function runBot({
   /** Logged with the reply's tokens: a visitor reply, or a playground test */
   operation: Extract<AiOperation, 'chat_reply' | 'playground' | 'bot_preview'>
   conversationId?: string | null
-}): Promise<{ reply: string; debug: BotDebug }> {
+}): Promise<{ reply: string; appointment: AppointmentRequest | null; debug: BotDebug }> {
   const started = performance.now()
   const trimmed = history.slice(-BOT_HISTORY_LIMIT)
   const lastUserMessage = [...trimmed].reverse().find((turn) => turn.role === 'user')?.content ?? ''
@@ -235,16 +265,21 @@ export async function runBot({
   )
 
   const generationStarted = performance.now()
-  const reply = await generateReply({
+  const text = await generateReply({
     systemPrompt,
     history: trimmed,
     temperature: settings.temperature,
+    responseSchema: settings.lead_qualification_enabled ? BOT_REPLY_SCHEMA : undefined,
     usage: { operation, clientId, conversationId },
   })
   const generationMs = performance.now() - generationStarted
+  const { reply, appointment } = settings.lead_qualification_enabled
+    ? parseBotReply(text)
+    : { reply: text, appointment: null }
 
   return {
     reply,
+    appointment,
     debug: {
       model: geminiModel(),
       temperature: settings.temperature,

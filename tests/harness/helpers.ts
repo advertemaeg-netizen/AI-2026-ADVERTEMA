@@ -76,11 +76,12 @@ export async function harnessFetch(input: RequestInfo | URL, init?: RequestInit)
 
   if (url.host === GEMINI_HOST) {
     const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
-    const generationConfig = body.generationConfig as { responseMimeType?: string } | undefined
+    // Both calls may ask for JSON: the analysis is told apart by its instructions
+    const instructions = (body.systemInstruction as { parts?: { text?: string }[] } | undefined)?.parts?.[0]?.text ?? ''
     const call: GeminiCall = {
       kind: url.pathname.endsWith(':batchEmbedContents')
         ? 'embedding'
-        : generationConfig?.responseMimeType === 'application/json'
+        : instructions.startsWith('You analyze chat conversations')
           ? 'analysis'
           : 'reply',
       url: url.href,
