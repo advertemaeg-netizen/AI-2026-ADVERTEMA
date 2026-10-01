@@ -328,6 +328,10 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       reply = result.reply
     } catch (error) {
       console.error('[webhook/website] AI reply failed', error)
+      // A failed reply (timeout, 503) must not lose the lead: the visitor's
+      // message is stored, so it's still analysed. detectLead itself skips
+      // clients without an active subscription.
+      scheduleLeadDetection(history)
       return json({ ok: false, error: 'ai_unavailable', conversationId }, 502)
     }
 
@@ -337,7 +341,10 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       content: reply,
       metadata: { model: geminiModel() },
     })
-    if (replyError) throw replyError
+    if (replyError) {
+      scheduleLeadDetection(history)
+      throw replyError
+    }
 
     // conversations.last_message_* is kept current by a trigger on messages
 

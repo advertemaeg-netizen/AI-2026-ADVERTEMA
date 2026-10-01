@@ -91,7 +91,7 @@ export async function setAppointment(leadId: string, datetime: string | null): P
   const { data: lead } = await supabase.from('leads').select('status').eq('id', leadId).maybeSingle<{ status: string }>()
   if (!lead) return { ok: false, error: 'notFound' }
 
-  // Rescheduling after a visit/no-show is handled by the sync trigger
+  // A recorded visit/no-show stays as it is when a new time is set (sync trigger)
   return updateLeadRow(leadId, {
     appointment_at: datetime ? new Date(datetime).toISOString() : null,
     ...(datetime && (lead.status === 'new' || lead.status === 'contacted') ? { status: 'appointment_booked' } : {}),
