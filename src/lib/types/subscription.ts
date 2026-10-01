@@ -86,6 +86,8 @@ export type UsageItem = {
   used: number
   limit: number | null
   percentage: number | null
+  /** Messages only, on client subscriptions: analysed for leads past the limit */
+  lead_capture_used?: number
 }
 
 export type CustomPricing = {
@@ -154,18 +156,16 @@ export type Invoice = {
 
 /**
  * Past the plan's monthly messages the bot stops replying, but visitor
- * messages are still analysed for leads until usage reaches this many times
- * the limit. Each analysed message past the limit counts as one.
+ * messages are still analysed for leads until the total reaches this many
+ * times the limit. The messages past the limit are counted separately
+ * (client_subscriptions.lead_capture_used, see claim_lead_capture, which
+ * allows one more plan's worth).
  */
 export const LEAD_CAPTURE_LIMIT_FACTOR = 2
 
-/**
- * Messages still analysed for leads once the limit is passed; null while
- * under the limit (or unlimited).
- */
-export function leadCaptureRemaining(used: number, limit: number | null): number | null {
-  if (limit === null || used < limit) return null
-  return Math.max(limit * LEAD_CAPTURE_LIMIT_FACTOR - used, 0)
+/** Messages still analysed for leads, for a client already at its message limit */
+export function leadCaptureRemaining(limit: number, captureUsed: number): number {
+  return Math.max(limit * (LEAD_CAPTURE_LIMIT_FACTOR - 1) - captureUsed, 0)
 }
 
 export type LimitCheck = {

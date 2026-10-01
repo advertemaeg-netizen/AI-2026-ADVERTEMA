@@ -72,7 +72,21 @@ export async function fetchClientSubscriptionDetails(
 ): Promise<ClientSubscriptionDetails | null> {
   const { data, error } = await supabase.rpc('get_client_subscription_details', { p_client_id: clientId })
   if (error) throw new Error(`Failed to load client subscription: ${error.message}`)
-  return data ? normalizeDetails(data as ClientSubscriptionDetails, CLIENT_LIMIT_TYPES) : null
+  if (!data) return null
+
+  const details = normalizeDetails(data as ClientSubscriptionDetails, CLIENT_LIMIT_TYPES)
+  // Messages analysed for leads past the limit have their own counter
+  const { data: counters } = await supabase
+    .from('client_subscriptions')
+    .select('lead_capture_used')
+    .eq('client_id', clientId)
+    .maybeSingle<{ lead_capture_used: number }>()
+  return {
+    ...details,
+    usage: details.usage.map((item) =>
+      item.limit_type === 'messages' && counters ? { ...item, lead_capture_used: num(counters.lead_capture_used) } : item
+    ),
+  }
 }
 
 /** Plans with a customer's effective prices (get_available_plans / get_client_available_plans). */

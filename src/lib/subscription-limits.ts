@@ -1,12 +1,6 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import {
-  leadCaptureRemaining,
-  type ClientLimitType,
-  type LimitCheck,
-  type LimitError,
-  type OrgLimitType,
-} from '@/lib/types/subscription'
+import type { ClientLimitType, LimitCheck, LimitError, OrgLimitType } from '@/lib/types/subscription'
 import type { KnowledgeQuota } from '@/lib/types/knowledge'
 
 async function rpcLimit(supabase: SupabaseClient, fn: string, args: Record<string, string>): Promise<LimitCheck | null> {
@@ -34,25 +28,26 @@ export function checkClientLimit(supabase: SupabaseClient, clientId: string, lim
 }
 
 /**
- * Whether a visitor message may be analysed for leads:
- * - 'ok': within the plan's messages
- * - 'overage': past the limit, still under the lead-capture ceiling
- * - 'blocked': no usable subscription, past the ceiling, or the check failed
- *   (fails closed: no AI cost without a known-good subscription)
+ * Whether a visitor message may be analysed for leads, counting it when it's
+ * past the plan's messages:
+ * - within the plan: yes
+ * - past the limit: yes while the lead-capture allowance lasts; the message
+ *   takes one from it, unless the bot answered it (`replied`: the reply that
+ *   used up the plan's last message)
+ * - no usable subscription, or a failed check: no (fails closed: no AI cost
+ *   without a known-good subscription)
  */
-export async function leadCaptureStatus(
-  supabase: SupabaseClient,
-  clientId: string
-): Promise<'ok' | 'overage' | 'blocked'> {
+export async function claimLeadAnalysis(supabase: SupabaseClient, clientId: string, replied: boolean): Promise<boolean> {
   try {
     const check = await checkClientLimit(supabase, clientId, 'messages')
-    if (check === null || check.reason === 'inactive') return 'blocked'
-    const remaining = leadCaptureRemaining(check.used, check.limit)
-    if (remaining === null) return 'ok'
-    return remaining > 0 ? 'overage' : 'blocked'
+    if (check === null || check.reason === 'inactive') return false
+    if (check.reason !== 'limit_reached' || replied) return true
+    const { data, error } = await supabase.rpc('claim_lead_capture', { p_client_id: clientId })
+    if (error) throw new Error(`claim_lead_capture failed: ${error.message}`)
+    return data === true
   } catch (error) {
     console.error('[subscription-limits] lead capture check', error)
-    return 'blocked'
+    return false
   }
 }
 

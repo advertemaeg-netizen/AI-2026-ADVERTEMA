@@ -31,8 +31,11 @@ export function UsageBars({ usage, compact = false }: { usage: UsageItem[]; comp
     <div className={cn('grid gap-5', !compact && 'sm:grid-cols-2')}>
       {usage.map((item) => {
         const level = usageLevel(item.percentage)
-        // Past the message limit, leads are still captured up to a ceiling
-        const captureLeft = item.limit_type === 'messages' ? leadCaptureRemaining(item.used, item.limit) : null
+        // At the message limit the bot is silent, but leads are still captured for a while
+        const captureLeft =
+          item.limit !== null && item.used >= item.limit && item.lead_capture_used !== undefined
+            ? leadCaptureRemaining(item.limit, item.lead_capture_used)
+            : null
         return (
           <div key={item.limit_type} className="grid gap-2">
             <div className="flex items-baseline justify-between gap-2 text-sm">

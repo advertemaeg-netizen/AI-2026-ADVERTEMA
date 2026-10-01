@@ -5,7 +5,7 @@ import { generateJson, type ChatTurn } from '@/lib/ai/gemini'
 import type { AiUsageContext } from '@/lib/ai/usage'
 import { normalizeEgyptianPhone } from '@/lib/phone'
 import { cairoWallTimeToIso, describeCairoNow } from '@/lib/cairo-time'
-import { leadCaptureStatus } from '@/lib/subscription-limits'
+import { claimLeadAnalysis } from '@/lib/subscription-limits'
 import { CLOSED_LEAD_STATUSES, type LeadExtractedData, type LeadStatus } from '@/lib/types/leads'
 
 // A light model for the per-message analysis: it runs on every visitor
@@ -214,15 +214,9 @@ export async function detectLead({
   replied: boolean
 }) {
   try {
-    // No AI cost without a usable subscription, or past the capture ceiling
-    const capture = await leadCaptureStatus(supabase, clientId)
-    if (capture === 'blocked') return
-    // Past the plan's messages the bot is silent; each message analysed
-    // anyway counts toward the ceiling
-    if (capture === 'overage' && !replied) {
-      const { error } = await supabase.rpc('consume_client_message', { p_client_id: clientId })
-      if (error) console.error('[lead-detection] counting the message failed', error)
-    }
+    // No AI cost without a usable subscription. Past the plan's messages the
+    // bot is silent and analysis continues on a separate, capped allowance.
+    if (!(await claimLeadAnalysis(supabase, clientId, replied))) return
 
     const loadLeads = async () => {
       const { data, error } = await supabase
