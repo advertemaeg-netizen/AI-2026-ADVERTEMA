@@ -295,7 +295,8 @@
       "ai": "AI assistant",
       "open": "Conversation details",
       "close": "Close details",
-      "title": "Conversation details"
+      "title": "Conversation details",
+      "leads": "Leads from this conversation"
     },
     "fields": {
       "name": "Name",
@@ -665,7 +666,15 @@
       "unknown": "Something went wrong. Please try again.",
       "impersonating": "Changes aren’t allowed while viewing a customer’s account"
     },
-    "phonePlaceholder": "No number yet — e.g. 010 1234 5678"
+    "phonePlaceholder": "No number yet — e.g. 010 1234 5678",
+    "visits": {
+      "returning": "Returning customer — visit #{number}",
+      "previous": "Previous visits",
+      "later": "Later visits",
+      "visit": "Visit #{number}",
+      "appointment": "Appointment: {date}",
+      "noAppointment": "No appointment · added {date}"
+    }
   },
   "team": {
     "title": "Team",
@@ -872,7 +881,8 @@
       "appointmentSet": "Appointment set",
       "appointmentCleared": "Appointment removed",
       "confirmed": "Appointment confirmed",
-      "unconfirmed": "Appointment unconfirmed"
+      "unconfirmed": "Appointment unconfirmed",
+      "newVisit": "A new visit was opened with this appointment; the earlier visit is unchanged"
     },
     "errors": {
       "unauthorized": "Your session has expired. Please log in again.",
@@ -1207,7 +1217,9 @@
         "warning": "{percentage}% used — you’re getting close to the limit",
         "critical": "{percentage}% used — almost at the limit",
         "full": "Limit reached — upgrade to add more"
-      }
+      },
+      "leadCapture": "Over the message limit: the assistant has stopped replying, but leads are still captured for {count, plural, one {# more message} other {# more messages}}. Upgrade the plan to resume replies.",
+      "leadCaptureStopped": "Over twice the message limit: replies and lead capture are paused until next month or a plan upgrade."
     },
     "status": {
       "trialing": "Free trial",

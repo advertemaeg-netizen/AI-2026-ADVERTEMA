@@ -4,7 +4,7 @@ import { useFormatter, useTranslations } from 'next-intl'
 import { AlertTriangle } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
-import { CRITICAL_AT, WARN_AT, type UsageItem } from '@/lib/types/subscription'
+import { CRITICAL_AT, WARN_AT, leadCaptureRemaining, type UsageItem } from '@/lib/types/subscription'
 
 export function usageLevel(percentage: number | null) {
   if (percentage === null) return 'ok' as const
@@ -31,6 +31,8 @@ export function UsageBars({ usage, compact = false }: { usage: UsageItem[]; comp
     <div className={cn('grid gap-5', !compact && 'sm:grid-cols-2')}>
       {usage.map((item) => {
         const level = usageLevel(item.percentage)
+        // Past the message limit, leads are still captured up to a ceiling
+        const captureLeft = item.limit_type === 'messages' ? leadCaptureRemaining(item.used, item.limit) : null
         return (
           <div key={item.limit_type} className="grid gap-2">
             <div className="flex items-baseline justify-between gap-2 text-sm">
@@ -56,7 +58,11 @@ export function UsageBars({ usage, compact = false }: { usage: UsageItem[]; comp
                 )}
               >
                 <AlertTriangle className="size-3.5 shrink-0" aria-hidden />
-                {t(`warnings.${level}`, { percentage: format.number(Math.floor(item.percentage ?? 0)) })}
+                {captureLeft === null
+                  ? t(`warnings.${level}`, { percentage: format.number(Math.floor(item.percentage ?? 0)) })
+                  : captureLeft > 0
+                    ? t('leadCapture', { count: captureLeft })
+                    : t('leadCaptureStopped')}
               </p>
             )}
           </div>

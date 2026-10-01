@@ -5,8 +5,8 @@ import { generateJson, type ChatTurn } from '@/lib/ai/gemini'
 import type { AiUsageContext } from '@/lib/ai/usage'
 import { normalizeEgyptianPhone } from '@/lib/phone'
 import { cairoWallTimeToIso, describeCairoNow } from '@/lib/cairo-time'
-import { clientSubscriptionActive } from '@/lib/subscription-limits'
-import type { LeadExtractedData } from '@/lib/types/leads'
+import { leadCaptureStatus } from '@/lib/subscription-limits'
+import { CLOSED_LEAD_STATUSES, type LeadExtractedData, type LeadStatus } from '@/lib/types/leads'
 
 // A light model for the per-message analysis: it runs on every visitor
 // message, and Gemini quotas are per model, so it doesn't eat into the
@@ -17,7 +17,7 @@ function analysisModel() {
   return process.env.GOOGLE_GEMINI_ANALYSIS_MODEL || DEFAULT_ANALYSIS_MODEL
 }
 
-/** Minimum confidence to *create* a lead (existing leads are always enriched) */
+/** Minimum confidence to *create* a lead (an open lead is always enriched) */
 export const LEAD_CONFIDENCE_THRESHOLD = 0.7
 
 const SYSTEM_PROMPT = `You analyze chat conversations between a website visitor and a business's AI assistant, to find sales leads.
@@ -134,7 +134,7 @@ type LeadRow = {
   budget: string | null
   branch: string | null
   confidence_score: number | null
-  status: string
+  status: LeadStatus
   appointment_at: string | null
   appointment_confirmed: boolean
   showed_up: boolean | null
@@ -144,14 +144,55 @@ type LeadRow = {
 const LEAD_COLUMNS = `id, name, phone, service_requested, budget, branch, confidence_score, status,
   appointment_at, appointment_confirmed, showed_up, ai_extracted_data`
 
+// Matches BOT_HISTORY_LIMIT: the analysis sees as much as the bot does
+const HISTORY_LIMIT = 20
+
+const isClosed = (lead: LeadRow) => CLOSED_LEAD_STATUSES.includes(lead.status)
+
 /** Same instant? (Postgres and JS format timestamps differently) */
 function sameInstant(a: string | null | undefined, b: string | null | undefined) {
   return !!a && !!b && new Date(a).getTime() === new Date(b).getTime()
 }
 
 /**
- * Analyzes a conversation and creates or updates its lead. Runs after the
- * reply has been sent (webhook `after()`), with the secret-key client.
+ * What was said since the conversation's previous lead closed. Everything
+ * before that belongs to the finished episode: analysing it again would turn
+ * a returning customer's "thanks" into a new lead built from the old request.
+ */
+async function historySinceClosed(supabase: SupabaseClient, conversationId: string, closed: LeadRow): Promise<ChatTurn[]> {
+  const { data: closing } = await supabase
+    .from('lead_events')
+    .select('created_at')
+    .eq('lead_id', closed.id)
+    .eq('event_type', 'status_changed')
+    .in('to_value', CLOSED_LEAD_STATUSES)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle<{ created_at: string }>()
+
+  let query = supabase
+    .from('messages')
+    .select('role, content')
+    .eq('conversation_id', conversationId)
+    .in('role', ['user', 'assistant', 'agent'])
+    .order('created_at', { ascending: false })
+    .limit(HISTORY_LIMIT)
+  if (closing) query = query.gt('created_at', closing.created_at)
+
+  const { data, error } = await query.returns<{ role: string; content: string }[]>()
+  if (error) throw error
+  return data.reverse().map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }))
+}
+
+/**
+ * Analyzes a conversation and creates or updates its open lead. Runs after
+ * the reply has been sent (webhook `after()`), with the secret-key client.
+ *
+ * A lead is one sales episode: only the conversation's open lead (not
+ * showed_up / no_show / lost) is enriched. When there is none and the visitor
+ * shows intent, a new lead is opened; a returning customer's name and phone
+ * carry over from their previous lead.
+ *
  * The AI may replace a value only while it's still the one the AI itself set
  * last time (the visitor changed their mind); anything the team edited stays.
  * Never throws.
@@ -162,18 +203,47 @@ export async function detectLead({
   conversationId,
   sourceMessageId,
   history,
+  replied,
 }: {
   supabase: SupabaseClient
   clientId: string
   conversationId: string
   sourceMessageId: string | null
   history: ChatTurn[]
+  /** The bot answered this message (so it's already counted as a message) */
+  replied: boolean
 }) {
   try {
-    // No AI cost for clients whose subscription (or agency's) isn't active
-    if (!(await clientSubscriptionActive(supabase, clientId))) return
+    // No AI cost without a usable subscription, or past the capture ceiling
+    const capture = await leadCaptureStatus(supabase, clientId)
+    if (capture === 'blocked') return
+    // Past the plan's messages the bot is silent; each message analysed
+    // anyway counts toward the ceiling
+    if (capture === 'overage' && !replied) {
+      const { error } = await supabase.rpc('consume_client_message', { p_client_id: clientId })
+      if (error) console.error('[lead-detection] counting the message failed', error)
+    }
 
-    const analysis = await analyzeConversation(history, { operation: 'lead_analysis', clientId, conversationId })
+    const loadLeads = async () => {
+      const { data, error } = await supabase
+        .from('leads')
+        .select(LEAD_COLUMNS)
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true })
+        .returns<LeadRow[]>()
+      if (error) throw error
+      return data
+    }
+
+    const leads = await loadLeads()
+    let existing = leads.find((lead) => !isClosed(lead)) ?? null
+    /** The customer's latest finished episode, if they've been here before */
+    const returningFrom = leads.findLast(isClosed) ?? null
+
+    const turns = returningFrom ? await historySinceClosed(supabase, conversationId, returningFrom) : history
+    if (!turns.some((turn) => turn.role === 'user')) return
+
+    const analysis = await analyzeConversation(turns, { operation: 'lead_analysis', clientId, conversationId })
     const phone = normalizeEgyptianPhone(analysis.phone)
     const appointmentAt = resolveAppointment(analysis)
     const extracted: LeadExtractedData & { phone_raw: string | null } = {
@@ -190,27 +260,22 @@ export async function detectLead({
       branch: analysis.branch,
     }
 
-    const findExisting = () =>
-      supabase
-        .from('leads')
-        .select(LEAD_COLUMNS)
-        .eq('conversation_id', conversationId)
-        .maybeSingle<LeadRow>()
-
-    let { data: existing } = await findExisting()
-
     if (!existing) {
+      // A returning customer is already known: intent alone opens the lead
       const qualifies =
         analysis.is_lead &&
-        analysis.confidence > LEAD_CONFIDENCE_THRESHOLD &&
-        (phone !== null || analysis.name !== null)
+        analysis.confidence >= LEAD_CONFIDENCE_THRESHOLD &&
+        (returningFrom !== null || phone !== null || analysis.name !== null)
       if (!qualifies) return
 
+      const name = analysis.name ?? returningFrom?.name ?? null
       const { error } = await supabase.from('leads').insert({
         client_id: clientId,
         conversation_id: conversationId,
         source_message_id: sourceMessageId,
         ...fields,
+        name,
+        phone: phone ?? returningFrom?.phone ?? null,
         // AI-set times are unconfirmed; the team confirms or adjusts them
         appointment_at: appointmentAt,
         status: appointmentAt ? 'appointment_booked' : 'new',
@@ -218,12 +283,12 @@ export async function detectLead({
         ai_extracted_data: extracted,
       })
       if (!error) {
-        await fillContactName(supabase, conversationId, analysis.name)
+        await fillContactName(supabase, conversationId, name)
         return
       }
-      // 23505: a concurrent analysis created it first — enrich that one
+      // 23505: a concurrent analysis opened it first — enrich that one
       if (error.code !== '23505') throw error
-      existing = (await findExisting()).data
+      existing = (await loadLeads()).find((lead) => !isClosed(lead)) ?? null
       if (!existing) return
     }
 
@@ -247,8 +312,9 @@ export async function detectLead({
       patch.appointment_at = appointmentAt
       if (existing.status === 'new' || existing.status === 'contacted') patch.status = 'appointment_booked'
     }
-    if (Object.keys(patch).length === 0 && (existing.confidence_score ?? 0) >= analysis.confidence) return
 
+    // Always stored, even when nothing changes: the lead keeps a trace of
+    // what the model understood from the latest message
     const { error } = await supabase
       .from('leads')
       .update({

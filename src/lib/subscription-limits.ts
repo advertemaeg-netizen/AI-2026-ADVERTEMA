@@ -1,6 +1,12 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { ClientLimitType, LimitCheck, LimitError, OrgLimitType } from '@/lib/types/subscription'
+import {
+  leadCaptureRemaining,
+  type ClientLimitType,
+  type LimitCheck,
+  type LimitError,
+  type OrgLimitType,
+} from '@/lib/types/subscription'
 import type { KnowledgeQuota } from '@/lib/types/knowledge'
 
 async function rpcLimit(supabase: SupabaseClient, fn: string, args: Record<string, string>): Promise<LimitCheck | null> {
@@ -28,17 +34,25 @@ export function checkClientLimit(supabase: SupabaseClient, clientId: string, lim
 }
 
 /**
- * Whether the client's subscription (and its agency's) can be used at all,
- * whatever its quotas. Fails closed: no subscription, or a failed check,
- * counts as inactive.
+ * Whether a visitor message may be analysed for leads:
+ * - 'ok': within the plan's messages
+ * - 'overage': past the limit, still under the lead-capture ceiling
+ * - 'blocked': no usable subscription, past the ceiling, or the check failed
+ *   (fails closed: no AI cost without a known-good subscription)
  */
-export async function clientSubscriptionActive(supabase: SupabaseClient, clientId: string): Promise<boolean> {
+export async function leadCaptureStatus(
+  supabase: SupabaseClient,
+  clientId: string
+): Promise<'ok' | 'overage' | 'blocked'> {
   try {
     const check = await checkClientLimit(supabase, clientId, 'messages')
-    return check !== null && check.reason !== 'inactive'
+    if (check === null || check.reason === 'inactive') return 'blocked'
+    const remaining = leadCaptureRemaining(check.used, check.limit)
+    if (remaining === null) return 'ok'
+    return remaining > 0 ? 'overage' : 'blocked'
   } catch (error) {
-    console.error('[subscription-limits] subscription check', error)
-    return false
+    console.error('[subscription-limits] lead capture check', error)
+    return 'blocked'
   }
 }
 

@@ -15,6 +15,22 @@ export type LeadStatus = (typeof LEAD_STATUSES)[number]
 /** Statuses that still need work — used for the "active leads" stat */
 export const ACTIVE_LEAD_STATUSES: LeadStatus[] = ['new', 'contacted', 'appointment_booked']
 
+/**
+ * Final statuses: the episode is over. A conversation has at most one lead
+ * outside these (index one_open_lead_per_conversation); a returning customer
+ * gets a new lead.
+ */
+export const CLOSED_LEAD_STATUSES: LeadStatus[] = ['showed_up', 'no_show', 'lost']
+
+/** Another lead of the same conversation (an earlier or later visit) */
+export type LeadVisit = {
+  id: string
+  status: LeadStatus
+  service_requested: string | null
+  appointment_at: string | null
+  created_at: string
+}
+
 export type LeadFilters = {
   clientId?: string
   status?: LeadStatus
@@ -65,6 +81,10 @@ export type LeadDetail = LeadListItem & {
   notes: string | null
   updated_at: string
   ai_extracted_data: LeadExtractedData | null
+  /** 1 for the conversation's first lead, 2 for the customer's next one… */
+  visit_number: number
+  /** The conversation's other leads, oldest first */
+  visits: LeadVisit[]
 }
 
 export type LeadEventType =

@@ -1,8 +1,6 @@
-import { randomUUID } from 'node:crypto'
-import { NextRequest } from 'next/server'
 import { describe, expect, it } from 'vitest'
-import { POST } from '../../app/api/webhook/website/[channelId]/route'
-import { flushAfter, geminiCalls, geminiError, geminiText, mockGemini, seedClient } from '../harness/helpers'
+import { geminiCalls, geminiError, geminiText, mockGemini, seedClient } from '../harness/helpers'
+import { sendVisitorMessage } from './webhook'
 
 const VISITOR_MESSAGE = 'السلام عليكم، أنا كريم مصطفى، عايز أحجز تنظيف أسنان. رقمي 01012345678'
 
@@ -15,25 +13,13 @@ const LEAD_ANALYSIS = JSON.stringify({
   summary: 'العميل عايز يحجز تنظيف أسنان',
 })
 
-async function sendVisitorMessage(channelId: string) {
-  const request = new NextRequest(`http://localhost/api/webhook/website/${channelId}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-forwarded-for': randomUUID() },
-    body: JSON.stringify({ message: VISITOR_MESSAGE, visitorId: `visitor-${randomUUID()}` }),
-  })
-  const response = await POST(request, { params: Promise.resolve({ channelId }) })
-  // Lead detection is scheduled with after(): let it finish before asserting
-  await flushAfter()
-  return { status: response.status, body: (await response.json()) as Record<string, unknown> }
-}
-
 describe('website webhook: lead detection', () => {
   it('still analyses the visitor message and creates the lead when the reply fails with 503', async () => {
     const { supabase, clientId, channelId } = await seedClient()
     // The chat model is down; the analysis model answers
     mockGemini((call) => (call.kind === 'analysis' ? geminiText(LEAD_ANALYSIS) : geminiError(503)))
 
-    const { status, body } = await sendVisitorMessage(channelId)
+    const { status, body } = await sendVisitorMessage(channelId, VISITOR_MESSAGE)
 
     expect(status).toBe(502)
     expect(body).toMatchObject({ ok: false, error: 'ai_unavailable' })
@@ -56,7 +42,7 @@ describe('website webhook: lead detection', () => {
     // Would create a lead if the analysis ran
     mockGemini((call) => geminiText(call.kind === 'analysis' ? LEAD_ANALYSIS : 'أهلاً بيك'))
 
-    const { status, body } = await sendVisitorMessage(channelId)
+    const { status, body } = await sendVisitorMessage(channelId, VISITOR_MESSAGE)
 
     // The visitor gets the client's fallback message instead of an AI reply
     expect(status).toBe(200)

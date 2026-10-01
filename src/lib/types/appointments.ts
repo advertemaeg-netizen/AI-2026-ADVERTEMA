@@ -44,5 +44,6 @@ export type JourneyStats = {
 }
 
 export type AppointmentActionResult =
-  | { ok: true }
+  // leadId: the appointment went to another lead (a new visit was opened)
+  | { ok: true; leadId?: string }
   | { ok: false; error: 'unauthorized' | 'notFound' | 'validation' | 'impersonating' | 'unknown' }

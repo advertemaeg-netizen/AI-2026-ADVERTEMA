@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getSession, isImpersonating } from '@/lib/auth/session'
 import { cairoDayStart } from '@/lib/cairo-time'
 import { UUID_PATTERN } from '@/lib/types/clients'
+import { ACTIVE_LEAD_STATUSES, CLOSED_LEAD_STATUSES, type LeadStatus } from '@/lib/types/leads'
 import {
   APPOINTMENT_RANGES,
   JOURNEY_PERIODS,
@@ -74,13 +75,32 @@ async function updateLeadRow(leadId: string, patch: Record<string, unknown>): Pr
   }
   if (!data || data.length === 0) return { ok: false, error: 'notFound' }
 
-  revalidatePath('/[locale]/dashboard/appointments', 'page')
-  revalidatePath('/[locale]/dashboard/leads/[id]', 'page')
-  revalidatePath('/[locale]/dashboard', 'page')
+  revalidateAppointments()
   return { ok: true }
 }
 
-/** Sets (or clears, with null) the appointment time. New leads move to "appointment booked". */
+function revalidateAppointments() {
+  revalidatePath('/[locale]/dashboard/appointments', 'page')
+  revalidatePath('/[locale]/dashboard/leads/[id]', 'page')
+  revalidatePath('/[locale]/dashboard/leads', 'page')
+  revalidatePath('/[locale]/dashboard', 'page')
+}
+
+type BookableLead = {
+  status: LeadStatus
+  client_id: string
+  conversation_id: string | null
+  name: string | null
+  phone: string | null
+}
+
+/**
+ * Sets (or clears, with null) the appointment time. New leads move to
+ * "appointment booked". A lead that already ended (showed up, no-show, lost)
+ * is left as it is: the booking opens a new lead for the same contact, so the
+ * earlier visit keeps its own time and attendance. `leadId` is then the lead
+ * that got the appointment.
+ */
 export async function setAppointment(leadId: string, datetime: string | null): Promise<AppointmentActionResult> {
   if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   if (datetime !== null && Number.isNaN(Date.parse(datetime))) return { ok: false, error: 'validation' }
@@ -88,14 +108,56 @@ export async function setAppointment(leadId: string, datetime: string | null): P
 
   const { supabase, profile } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
-  const { data: lead } = await supabase.from('leads').select('status').eq('id', leadId).maybeSingle<{ status: string }>()
+  const { data: lead } = await supabase
+    .from('leads')
+    .select('status, client_id, conversation_id, name, phone')
+    .eq('id', leadId)
+    .maybeSingle<BookableLead>()
   if (!lead) return { ok: false, error: 'notFound' }
 
-  // A recorded visit/no-show stays as it is when a new time is set (sync trigger)
-  return updateLeadRow(leadId, {
-    appointment_at: datetime ? new Date(datetime).toISOString() : null,
-    ...(datetime && (lead.status === 'new' || lead.status === 'contacted') ? { status: 'appointment_booked' } : {}),
+  const appointmentAt = datetime ? new Date(datetime).toISOString() : null
+  if (!appointmentAt || !CLOSED_LEAD_STATUSES.includes(lead.status)) {
+    return updateLeadRow(leadId, {
+      appointment_at: appointmentAt,
+      ...(appointmentAt && (lead.status === 'new' || lead.status === 'contacted') ? { status: 'appointment_booked' } : {}),
+    })
+  }
+
+  const { data: created, error } = await supabase
+    .from('leads')
+    .insert({
+      client_id: lead.client_id,
+      conversation_id: lead.conversation_id,
+      name: lead.name,
+      phone: lead.phone,
+      status: 'appointment_booked',
+      appointment_at: appointmentAt,
+    })
+    .select('id')
+    .single<{ id: string }>()
+  if (!error) {
+    revalidateAppointments()
+    return { ok: true, leadId: created.id }
+  }
+  if (error.code !== '23505' || !lead.conversation_id) {
+    console.error('[appointments] new visit', error)
+    return { ok: false, error: 'unknown' }
+  }
+
+  // The conversation already has an open lead (the customer came back on
+  // their own): the appointment belongs on that one
+  const { data: open } = await supabase
+    .from('leads')
+    .select('id, status')
+    .eq('conversation_id', lead.conversation_id)
+    .in('status', ACTIVE_LEAD_STATUSES)
+    .maybeSingle<{ id: string; status: LeadStatus }>()
+  if (!open) return { ok: false, error: 'unknown' }
+  const result = await updateLeadRow(open.id, {
+    appointment_at: appointmentAt,
+    ...(open.status !== 'appointment_booked' ? { status: 'appointment_booked' } : {}),
   })
+  return result.ok ? { ok: true, leadId: open.id } : result
 }
 
 export async function setAppointmentConfirmed(leadId: string, confirmed: boolean): Promise<AppointmentActionResult> {

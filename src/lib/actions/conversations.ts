@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { canManage, getSession, isImpersonating } from '@/lib/auth/session'
 import { recordImpersonationAction } from '@/lib/auth/impersonation'
+import { getConversationLeads } from '@/lib/lead-visits'
 import { UUID_PATTERN } from '@/lib/types/clients'
 import { rangeStart, searchTerm } from '@/lib/list-filters'
 import {
@@ -15,6 +16,7 @@ import {
   type Message,
   type TeamMember,
 } from '@/lib/types/conversations'
+import type { LeadVisit } from '@/lib/types/leads'
 
 const INBOX_PATH = '/[locale]/dashboard/conversations'
 const LIST_LIMIT = 100
@@ -72,6 +74,7 @@ export async function getConversation(id: string): Promise<{
   conversation: ConversationDetail
   messages: Message[]
   team: TeamMember[]
+  leads: LeadVisit[]
 } | null> {
   if (!UUID_PATTERN.test(id)) return null
   const { supabase, profile } = await getSession()
@@ -86,7 +89,7 @@ export async function getConversation(id: string): Promise<{
   if (error) throw new Error(`Failed to load conversation: ${error.message}`)
   if (!conversation) return null
 
-  const [messagesResult, teamResult] = await Promise.all([
+  const [messagesResult, teamResult, leads] = await Promise.all([
     supabase
       .from('messages')
       .select(MESSAGE_COLUMNS)
@@ -94,6 +97,7 @@ export async function getConversation(id: string): Promise<{
       .order('created_at', { ascending: true })
       .returns<Message[]>(),
     supabase.rpc('client_team', { check_client_id: conversation.client.id }),
+    getConversationLeads(supabase, id),
   ])
 
   if (messagesResult.error) {
@@ -105,6 +109,7 @@ export async function getConversation(id: string): Promise<{
     conversation,
     messages: messagesResult.data,
     team: (teamResult.data as TeamMember[] | null) ?? [],
+    leads,
   }
 }
 

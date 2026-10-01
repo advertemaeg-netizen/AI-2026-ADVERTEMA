@@ -92,14 +92,19 @@ async function waitUntilReady(url: string, postgrest: ChildProcess, logs: () => 
   throw new Error(`PostgREST did not start:\n${logs()}`)
 }
 
-export async function startStack(): Promise<Stack> {
-  const bin = await postgrestBinary()
-
+/** PGlite with every migration applied, for tests that speak SQL directly */
+export async function createDatabase() {
   const db = await PGlite.create({ extensions: { pgcrypto, vector } })
   await migrate(db)
+  return db
+}
+
+export async function startStack(): Promise<Stack> {
+  const bin = await postgrestBinary()
+  const db = await createDatabase()
 
   const dbPort = await freePort()
-  const socket = new PGLiteSocketServer({ db, port: dbPort, host: '127.0.0.1' })
+  const socket = new PGLiteSocketServer({ db, port: dbPort, host: '127.0.0.1', debug: !!process.env.SOCKET_DEBUG, inspect: !!process.env.SOCKET_DEBUG })
   await socket.start()
 
   const apiPort = await freePort()
@@ -118,11 +123,17 @@ export async function startStack(): Promise<Stack> {
       PGRST_DB_POOL: '1',
       PGRST_DB_CHANNEL_ENABLED: 'false',
       PGRST_DB_PREPARED_STATEMENTS: 'false',
+      ...(process.env.HARNESS_DEBUG ? { PGRST_LOG_LEVEL: 'debug' } : {}),
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
-  postgrest.stdout!.on('data', (chunk) => (output += chunk))
-  postgrest.stderr!.on('data', (chunk) => (output += chunk))
+  // HARNESS_DEBUG=1 streams PostgREST's log while the tests run
+  const collect = (chunk: Buffer) => {
+    output += chunk
+    if (process.env.HARNESS_DEBUG) process.stderr.write(chunk)
+  }
+  postgrest.stdout!.on('data', collect)
+  postgrest.stderr!.on('data', collect)
 
   const stop = async () => {
     postgrest.kill()

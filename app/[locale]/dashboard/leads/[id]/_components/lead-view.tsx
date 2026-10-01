@@ -50,6 +50,7 @@ import {
   type LeadUpdateInput,
 } from '@/lib/types/leads'
 import { LeadStatusBadge } from '../../_components/lead-status-badge'
+import { LeadVisitsList } from '../../_components/lead-visits-list'
 import { AppointmentCard } from './appointment-card'
 
 const DETAIL_FIELDS = ['name', 'phone', 'service_requested', 'budget', 'branch'] as const
@@ -126,6 +127,16 @@ export function LeadView({
   const ai = lead.ai_extracted_data
   const channel = lead.conversation?.channel
 
+  // The conversation's other leads, numbered among all of them (oldest first)
+  const visitGroups = (['previous', 'later'] as const)
+    .map((group) => ({
+      group,
+      visits: lead.visits
+        .map((visit, index) => ({ visit, number: index < lead.visit_number - 1 ? index + 1 : index + 2 }))
+        .filter(({ number }) => (group === 'previous' ? number < lead.visit_number : number > lead.visit_number)),
+    }))
+    .filter(({ visits }) => visits.length > 0)
+
   return (
     <div className="p-8 max-md:p-4">
       <Link
@@ -141,6 +152,9 @@ export function LeadView({
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="truncate text-3xl font-bold tracking-tight max-md:text-2xl max-md:whitespace-normal">{lead.name || t('unnamed')}</h1>
             <LeadStatusBadge status={lead.status} />
+            {lead.visit_number > 1 && (
+              <Badge variant="outline">{t('visits.returning', { number: lead.visit_number })}</Badge>
+            )}
           </div>
           <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
             {lead.client.name}
@@ -313,6 +327,17 @@ export function LeadView({
         </div>
 
         <div className="grid gap-6">
+          {visitGroups.map(({ group, visits }) => (
+            <Card size="sm" key={group}>
+              <CardHeader>
+                <CardTitle>{t(`visits.${group}`)}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <LeadVisitsList visits={visits} />
+              </CardContent>
+            </Card>
+          ))}
+
           {ai && (
             <Card size="sm">
               <CardHeader>

@@ -33,9 +33,12 @@ export function AppointmentCard({ lead }: { lead: LeadDetail }) {
     startTransition(async () => {
       const result = await action()
       if (result.ok) {
-        toast.success(success)
+        // Booking on a finished lead opens a new one: go to it
+        const movedTo = result.leadId && result.leadId !== lead.id ? result.leadId : null
+        toast.success(movedTo ? t('toast.newVisit') : success)
         onDone?.()
-        router.refresh()
+        if (movedTo) router.push(`/dashboard/leads/${movedTo}`)
+        else router.refresh()
       } else {
         toast.error(t(`errors.${result.error}`))
       }

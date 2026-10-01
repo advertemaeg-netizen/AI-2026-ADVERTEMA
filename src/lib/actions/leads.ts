@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getTranslations } from 'next-intl/server'
 import { canManage, getSession, isImpersonating } from '@/lib/auth/session'
+import { getConversationLeads } from '@/lib/lead-visits'
 import { rangeStart, searchTerm } from '@/lib/list-filters'
 import { normalizeEgyptianPhone } from '@/lib/phone'
 import { UUID_PATTERN } from '@/lib/types/clients'
@@ -91,11 +92,11 @@ export async function getLead(id: string): Promise<{
        appointment_confirmed, showed_up, arrival_confirmed_at, no_show_reason, ${conversationEmbed(false)}`
     )
     .eq('id', id)
-    .maybeSingle<LeadDetail>()
+    .maybeSingle<Omit<LeadDetail, 'visit_number' | 'visits'>>()
   if (error) throw new Error(`Failed to load lead: ${error.message}`)
   if (!lead) return null
 
-  const [eventsResult, teamResult] = await Promise.all([
+  const [eventsResult, teamResult, conversationLeads] = await Promise.all([
     supabase
       .from('lead_events')
       .select('id, event_type, from_value, to_value, actor_id, created_at')
@@ -105,11 +106,19 @@ export async function getLead(id: string): Promise<{
       .returns<LeadEvent[]>(),
     // Names for the timeline (users RLS hides colleagues from non-admins)
     supabase.rpc('client_team', { check_client_id: lead.client.id }),
+    lead.conversation ? getConversationLeads(supabase, lead.conversation.id) : [],
   ])
   if (eventsResult.error) console.error('[leads] events', eventsResult.error)
 
+  // A returning customer's lead is their 2nd, 3rd… on the same conversation
+  const position = conversationLeads.findIndex((visit) => visit.id === lead.id)
+
   return {
-    lead,
+    lead: {
+      ...lead,
+      visit_number: position + 1 || 1,
+      visits: conversationLeads.filter((visit) => visit.id !== lead.id),
+    },
     events: eventsResult.data ?? [],
     team: (teamResult.data as TeamMember[] | null) ?? [],
   }

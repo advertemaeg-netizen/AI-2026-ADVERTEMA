@@ -12,6 +12,41 @@ export type GeminiCall = {
 type GeminiHandler = (call: GeminiCall) => Response | Promise<Response>
 
 let geminiHandler: GeminiHandler | null = null
+type RestInterceptor = {
+  method: string | null
+  path: string
+  remaining: number
+  respond: (passThrough: () => Promise<Response>) => Response | Promise<Response>
+}
+let restInterceptors: RestInterceptor[] = []
+
+/**
+ * Answers the next `times` Supabase REST calls whose path contains `path`
+ * (and whose method matches, if given) with `respond` instead of the
+ * database's own answer. `passThrough` runs the real call.
+ */
+export function interceptRest(
+  match: { path: string; method?: string; times?: number },
+  respond: RestInterceptor['respond']
+) {
+  restInterceptors.push({ method: match.method ?? null, path: match.path, remaining: match.times ?? 1, respond })
+}
+
+/** Makes the next `times` matching Supabase REST calls fail with a 500 */
+export function failRest(path: string, times = 1) {
+  interceptRest({ path, times }, () =>
+    Response.json({ code: 'XX000', message: 'simulated database failure' }, { status: 500 })
+  )
+}
+
+/** PostgREST's answer to an insert that hits a unique index */
+export function uniqueViolation(index: string) {
+  return Response.json(
+    { code: '23505', details: null, hint: null, message: `duplicate key value violates unique constraint "${index}"` },
+    { status: 409 }
+  )
+}
+
 /** Every request the code under test sent to the model */
 export const geminiCalls: GeminiCall[] = []
 
@@ -57,7 +92,16 @@ export async function harnessFetch(input: RequestInfo | URL, init?: RequestInit)
   }
 
   if (url.origin === process.env.NEXT_PUBLIC_SUPABASE_URL && url.pathname.startsWith('/rest/v1')) {
-    url.pathname = url.pathname.slice('/rest/v1'.length) || '/'
+    const restPath = url.pathname.slice('/rest/v1'.length) || '/'
+    const method = (init?.method ?? 'GET').toUpperCase()
+    url.pathname = restPath
+    const interceptor = restInterceptors.find(
+      (i) => i.remaining > 0 && restPath.includes(i.path) && (i.method === null || i.method === method)
+    )
+    if (interceptor) {
+      interceptor.remaining -= 1
+      return interceptor.respond(() => realFetch(url, init))
+    }
     return realFetch(url, init)
   }
 
@@ -78,6 +122,7 @@ export async function flushAfter() {
 
 export function resetHarness() {
   geminiHandler = null
+  restInterceptors = []
   geminiCalls.length = 0
   afterWork.length = 0
 }

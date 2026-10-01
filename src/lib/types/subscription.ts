@@ -152,6 +152,22 @@ export type Invoice = {
   created_at: string
 }
 
+/**
+ * Past the plan's monthly messages the bot stops replying, but visitor
+ * messages are still analysed for leads until usage reaches this many times
+ * the limit. Each analysed message past the limit counts as one.
+ */
+export const LEAD_CAPTURE_LIMIT_FACTOR = 2
+
+/**
+ * Messages still analysed for leads once the limit is passed; null while
+ * under the limit (or unlimited).
+ */
+export function leadCaptureRemaining(used: number, limit: number | null): number | null {
+  if (limit === null || used < limit) return null
+  return Math.max(limit * LEAD_CAPTURE_LIMIT_FACTOR - used, 0)
+}
+
 export type LimitCheck = {
   allowed: boolean
   used: number

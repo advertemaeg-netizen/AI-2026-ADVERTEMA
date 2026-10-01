@@ -272,10 +272,14 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       console.error('[webhook/website] loading bot settings failed', error)
     }
 
-    // Lead detection runs after the response is sent, so it never slows the reply
+    // Lead detection runs after the response is sent, so it never slows the
+    // reply. It runs whatever happens to the reply: detectLead itself decides
+    // whether the client's subscription allows the analysis.
     const convId = conversationId
-    const scheduleLeadDetection = (turns: ChatTurn[]) => {
-      if (!settings?.lead_qualification_enabled) return
+    const scheduleLeadDetection = (turns: ChatTurn[], replied = false) => {
+      // Settings that failed to load don't say whether it's switched off;
+      // it's on by default, so the message is analysed rather than lost
+      if (settings && !settings.lead_qualification_enabled) return
       after(() =>
         detectLead({
           supabase,
@@ -283,6 +287,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
           conversationId: convId,
           sourceMessageId: userMessage.id,
           history: turns,
+          replied,
         })
       )
     }
@@ -295,13 +300,24 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       return json({ ok: true, conversationId, reply: null, handoff: true })
     }
 
-    if (!settings) return json({ ok: false, error: 'ai_unavailable', conversationId }, 502)
+    if (!settings) {
+      scheduleLeadDetection(history)
+      return json({ ok: false, error: 'ai_unavailable', conversationId }, 502)
+    }
 
     // Usage limits only apply to AI replies (handed-off chats keep flowing).
     // Past the client plan's monthly messages, or without an active
     // subscription (the client's or its agency's), visitors get the client's
     // fallback message instead of an AI reply.
-    const quota = await checkClientLimit(supabase, channel.client_id, 'messages')
+    let quota: Awaited<ReturnType<typeof checkClientLimit>>
+    try {
+      quota = await checkClientLimit(supabase, channel.client_id, 'messages')
+    } catch (error) {
+      // No reply without a known quota, but the message is still analysed
+      console.error('[webhook/website] limit check failed', error)
+      scheduleLeadDetection(history)
+      return json({ ok: false, error: 'ai_unavailable', conversationId }, 502)
+    }
     if (quota && !quota.allowed) {
       const { error: fallbackError } = await supabase.from('messages').insert({
         conversation_id: conversationId,
@@ -310,6 +326,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
         metadata: { fallback: 'subscription_limit', reason: quota.reason },
       })
       if (fallbackError) throw fallbackError
+      // Past the limit, leads are still captured up to the ceiling
       scheduleLeadDetection([...history, { role: 'assistant', content: settings.fallback_message }])
       return json({ ok: true, conversationId, reply: settings.fallback_message })
     }
@@ -329,8 +346,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
     } catch (error) {
       console.error('[webhook/website] AI reply failed', error)
       // A failed reply (timeout, 503) must not lose the lead: the visitor's
-      // message is stored, so it's still analysed. detectLead itself skips
-      // clients without an active subscription.
+      // message is stored, so it's still analysed
       scheduleLeadDetection(history)
       return json({ ok: false, error: 'ai_unavailable', conversationId }, 502)
     }
@@ -351,7 +367,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
     const { error: usageError } = await supabase.rpc('consume_client_message', { p_client_id: channel.client_id })
     if (usageError) console.error('[webhook/website] counting the message failed', usageError)
 
-    scheduleLeadDetection([...history, { role: 'assistant', content: reply }])
+    scheduleLeadDetection([...history, { role: 'assistant', content: reply }], true)
 
     return json({ ok: true, conversationId, reply })
   } catch (error) {

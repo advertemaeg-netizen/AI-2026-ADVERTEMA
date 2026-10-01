@@ -35,7 +35,9 @@ import {
   type Message,
   type TeamMember,
 } from '@/lib/types/conversations'
+import type { LeadVisit } from '@/lib/types/leads'
 import { ContactAvatar, StatusBadge, useContactLabel } from '../../_components/conversation-bits'
+import { LeadVisitsList } from '../../../leads/_components/lead-visits-list'
 
 const UNASSIGNED = 'unassigned'
 
@@ -48,12 +50,15 @@ export function ConversationView({
   initialConversation,
   initialMessages,
   team,
+  leads,
   canManage,
   currentUserId,
 }: {
   initialConversation: ConversationDetail
   initialMessages: Message[]
   team: TeamMember[]
+  /** Every lead this conversation produced, oldest first */
+  leads: LeadVisit[]
   canManage: boolean
   currentUserId: string
 }) {
@@ -221,6 +226,17 @@ export function ConversationView({
         </dl>
       </CardContent>
     </Card>
+
+    {leads.length > 0 && (
+      <Card size="sm">
+        <CardHeader>
+          <CardTitle>{t('panel.leads')}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <LeadVisitsList visits={leads.map((visit, index) => ({ visit, number: index + 1 }))} />
+        </CardContent>
+      </Card>
+    )}
 
     <Card size="sm">
       <CardHeader>
