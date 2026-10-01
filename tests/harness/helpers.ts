@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
+import { signJwt } from './jwt'
 
 const realFetch = globalThis.fetch
 const GEMINI_HOST = 'generativelanguage.googleapis.com'
@@ -31,6 +32,9 @@ export function interceptRest(
 ) {
   restInterceptors.push({ method: match.method ?? null, path: match.path, remaining: match.times ?? 1, respond })
 }
+
+/** Every Supabase REST call the code under test made: "POST /rpc/…" */
+export const restCalls: string[] = []
 
 /** Makes the next `times` matching Supabase REST calls fail with a 500 */
 export function failRest(path: string, times = 1) {
@@ -96,6 +100,7 @@ export async function harnessFetch(input: RequestInfo | URL, init?: RequestInit)
     const restPath = url.pathname.slice('/rest/v1'.length) || '/'
     const method = (init?.method ?? 'GET').toUpperCase()
     url.pathname = restPath
+    restCalls.push(`${method} ${restPath}`)
     const interceptor = restInterceptors.find(
       (i) => i.remaining > 0 && restPath.includes(i.path) && (i.method === null || i.method === method)
     )
@@ -124,6 +129,7 @@ export async function flushAfter() {
 export function resetHarness() {
   geminiHandler = null
   restInterceptors = []
+  restCalls.length = 0
   geminiCalls.length = 0
   afterWork.length = 0
 }
@@ -133,6 +139,30 @@ export function serviceClient() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
+}
+
+/** A signed-in user's client: their JWT, so RLS and auth.uid() apply as in production */
+export function userClient(userId: string) {
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, signJwt({ sub: userId, role: 'authenticated', iss: 'supabase' }), {
+    auth: { persistSession: false, autoRefreshToken: false },
+  })
+}
+
+export type TestUser = { id: string; role: string; organization_id: string | null }
+
+/** A user with a profile in `organizationId`, as sign-up plus an admin's role assignment would leave it */
+export async function createUser(
+  role: 'org_admin' | 'client_admin' | 'team_member' | 'super_admin',
+  organizationId: string | null,
+  fullName: string
+): Promise<TestUser> {
+  const supabase = serviceClient()
+  const email = `${randomUUID().slice(0, 12)}@example.com`
+  const id = must(await supabase.rpc('test_create_auth_user', { p_email: email })) as string
+  const profile = { id, email, full_name: fullName, role, organization_id: organizationId }
+  // The sign-up trigger may or may not have made the profile row
+  must(await supabase.from('users').upsert(profile).select('id').single())
+  return { id, role, organization_id: organizationId }
 }
 
 function must<T>({ data, error }: { data: T | null; error: { message: string } | null }): T {

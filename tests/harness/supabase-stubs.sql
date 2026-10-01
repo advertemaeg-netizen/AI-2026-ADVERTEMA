@@ -66,3 +66,16 @@ create function realtime.send(payload jsonb, event text, topic text, private boo
 returns void language sql as $$ select $$;
 
 create publication supabase_realtime;
+
+-- Test-only stand-in for Supabase Auth's sign-up: the auth.users row, which the
+-- app's own trigger turns into a profile. auth isn't exposed over REST.
+create function public.test_create_auth_user(p_email text)
+returns uuid
+language sql
+security definer
+as $$
+  insert into auth.users (email) values (p_email) returning id
+$$;
+
+revoke execute on function public.test_create_auth_user(text) from public, anon, authenticated;
+grant execute on function public.test_create_auth_user(text) to service_role;

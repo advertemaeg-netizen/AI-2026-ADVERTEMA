@@ -1878,5 +1878,39 @@
       "askTime": "Which day and what time would you like to book?",
       "askPeriod": "{hour} in the morning or in the evening?"
     }
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Your own account, and the organization's details for its admins.",
+    "account": {
+      "title": "Account",
+      "description": "Your own details. Nobody else sees or changes them from this page.",
+      "name": "Display name",
+      "nameSaved": "Name saved",
+      "email": "Email",
+      "emailHint": "The email can't be changed here.",
+      "password": "Change password",
+      "changePassword": "Change password",
+      "language": "Interface language"
+    },
+    "organization": {
+      "title": "Organization",
+      "description": "Only the organization's admins see this section.",
+      "name": "Organization name",
+      "nameSaved": "Organization name saved",
+      "type": "Account type",
+      "typeHint": "Set at sign-up; it can't be changed.",
+      "types": {
+        "agency": "Agency",
+        "direct": "Direct business"
+      }
+    },
+    "errors": {
+      "unauthorized": "Your session has ended. Sign in again.",
+      "forbidden": "You're not allowed to make this change.",
+      "validation": "That value isn't valid.",
+      "impersonating": "You can't make changes while viewing a customer's account",
+      "unknown": "Something went wrong, try again"
+    }
   }
 }

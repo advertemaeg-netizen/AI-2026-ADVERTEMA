@@ -1,5 +1,4 @@
 import { spawn, execFileSync, type ChildProcess } from 'node:child_process'
-import { createHmac } from 'node:crypto'
 import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import path from 'node:path'
@@ -7,6 +6,7 @@ import { PGlite } from '@electric-sql/pglite'
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto'
 import { vector } from '@electric-sql/pglite-pgvector'
 import { PGLiteSocketServer } from '@electric-sql/pglite-socket'
+import { JWT_SECRET, signJwt } from './jwt'
 
 /**
  * The database the app talks to, without Supabase: PGlite (in-memory
@@ -18,7 +18,6 @@ const ROOT = path.resolve(__dirname, '../..')
 const MIGRATIONS_DIR = path.join(ROOT, 'supabase/migrations')
 const POSTGREST_VERSION = 'v16.4'
 const CACHE_DIR = path.join(ROOT, 'node_modules/.cache/postgrest', POSTGREST_VERSION)
-const JWT_SECRET = 'test-only-jwt-secret-at-least-32-characters'
 
 export type Stack = { url: string; serviceKey: string; stop: () => Promise<void> }
 
@@ -60,12 +59,6 @@ function freePort() {
       server.close(() => resolve(port))
     })
   })
-}
-
-function signJwt(claims: Record<string, unknown>) {
-  const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url')
-  const body = `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode(claims)}`
-  return `${body}.${createHmac('sha256', JWT_SECRET).update(body).digest('base64url')}`
 }
 
 async function migrate(db: PGlite) {
