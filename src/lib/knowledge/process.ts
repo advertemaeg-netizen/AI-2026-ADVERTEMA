@@ -186,12 +186,14 @@ export async function prepareKnowledgeChunks(
 export async function processKnowledgeDocument(
   admin: AdminClient,
   doc: { id: string; client_id: string; title: string; file_type: KnowledgeFileType },
-  chunks: string[]
+  chunks: string[],
+  // Scripts on a rate-limited key pass a slower embedder; the app uses the batch one
+  embed: typeof embedTexts = embedTexts
 ) {
   try {
     let embeddings: number[][]
     try {
-      embeddings = await embedTexts(chunks, 'RETRIEVAL_DOCUMENT', { operation: 'embedding', clientId: doc.client_id })
+      embeddings = await embed(chunks, 'RETRIEVAL_DOCUMENT', { operation: 'embedding', clientId: doc.client_id })
     } catch (error) {
       throw new ProcessingError('embeddingFailed', error)
     }
