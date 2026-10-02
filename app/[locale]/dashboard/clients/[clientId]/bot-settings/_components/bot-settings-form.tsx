@@ -182,7 +182,7 @@ export function BotSettingsForm({
           </CardHeader>
           <CardContent>
             <FieldGroup>
-              {(['welcome_message', 'fallback_message'] as const).map((name) => (
+              {(['welcome_message', 'fallback_message', 'service_unavailable_message'] as const).map((name) => (
                 <Controller
                   key={name}
                   control={control}

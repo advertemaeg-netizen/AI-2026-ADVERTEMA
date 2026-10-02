@@ -31,15 +31,44 @@ export function toGeminiContents(history: ChatTurn[]): GeminiContent[] {
 const REPLY_TIMEOUT_MS = 30_000
 // So a slow answer costs the visitor a wait, not the reply (at most twice the timeout)
 const REPLY_TIMEOUT_RETRIES = 1
+// 503: the model is overloaded. Waits before the second and third attempt
+const REPLY_OVERLOADED_BACKOFF_MS = [500, 1500]
+
+/** An error response from Gemini, with its HTTP status */
+export class GeminiError extends Error {
+  constructor(
+    public status: number,
+    body: string
+  ) {
+    super(`Gemini request failed (${status}): ${body}`)
+    this.name = 'GeminiError'
+  }
+}
 
 /** AbortSignal.timeout() rejects with a DOMException named TimeoutError */
 function isTimeout(error: unknown) {
   return error instanceof Error && error.name === 'TimeoutError'
 }
 
+export type AiFailureReason = 'rate_limited' | 'timeout' | 'overloaded' | 'error'
+
+/** Why a reply could not be generated, for the record kept with the fallback */
+export function aiFailureReason(error: unknown): AiFailureReason {
+  if (isTimeout(error)) return 'timeout'
+  if (error instanceof GeminiError) {
+    if (error.status === 429) return 'rate_limited'
+    if (error.status === 503) return 'overloaded'
+  }
+  return 'error'
+}
+
 /**
  * `usage`: who the call is for, to log its tokens and cost (ai_usage).
- * Tries once more when Gemini doesn't answer in time.
+ * A failed attempt generated no reply, so trying again can't produce two:
+ * - no answer in time: once more
+ * - 503 (overloaded): twice more, waiting a little longer each time
+ * - 429 (quota or rate limit): never; another request would hit the same
+ *   limit, so the caller falls back at once
  */
 export async function generateReply({
   systemPrompt,
@@ -76,23 +105,32 @@ export async function generateReply({
       signal: AbortSignal.timeout(REPLY_TIMEOUT_MS),
     })
 
-    if (!res.ok) {
-      throw new Error(`Gemini request failed (${res.status}): ${await res.text()}`)
-    }
+    if (!res.ok) throw new GeminiError(res.status, await res.text())
     return (await res.json()) as GenerateContentResponse
   }
 
-  // A request that timed out produced nothing: no text has been returned, so
-  // the caller has stored and sent no reply, and asking again can't give the
-  // visitor two. Only timeouts are retried; an error response is an answer.
+  // Nothing has been returned while this loop runs, so the caller has stored
+  // and sent no reply yet
   let data: GenerateContentResponse
-  for (let attempt = 0; ; attempt++) {
+  let timeouts = 0
+  let overloads = 0
+  for (;;) {
     try {
       data = await request()
       break
     } catch (error) {
-      if (!isTimeout(error) || attempt >= REPLY_TIMEOUT_RETRIES) throw error
-      console.warn(`[gemini] no reply within ${REPLY_TIMEOUT_MS / 1000}s; trying once more`)
+      const reason = aiFailureReason(error)
+      if (reason === 'timeout' && timeouts < REPLY_TIMEOUT_RETRIES) {
+        timeouts += 1
+        console.warn(`[gemini] no reply within ${REPLY_TIMEOUT_MS / 1000}s; trying once more`)
+      } else if (reason === 'overloaded' && overloads < REPLY_OVERLOADED_BACKOFF_MS.length) {
+        const wait = REPLY_OVERLOADED_BACKOFF_MS[overloads]
+        overloads += 1
+        console.warn(`[gemini] model overloaded (503); trying again in ${wait}ms`)
+        await new Promise((resolve) => setTimeout(resolve, wait))
+      } else {
+        throw error
+      }
     }
   }
 

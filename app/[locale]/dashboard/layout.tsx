@@ -6,6 +6,7 @@ import { getSession } from '@/lib/auth/session'
 import { getUsageAlerts } from '@/lib/actions/subscription'
 import { DashboardShell } from './_components/dashboard-shell'
 import { UsageBanner } from './_components/usage-banner'
+import { NeedsHumanBanner } from './_components/needs-human-banner'
 import { ImpersonationBanner } from './_components/impersonation-banner'
 
 const DAY = 24 * 60 * 60 * 1000
@@ -60,6 +61,13 @@ export default async function DashboardLayout({ children, params }: LayoutProps<
       ? await billingBanner(supabase, profile.organization_id, directClientId)
       : null
 
+  // Conversations the assistant could not answer; RLS limits the count to
+  // the ones this user handles
+  const { count: needsHuman } = await supabase
+    .from('conversations')
+    .select('id', { count: 'exact', head: true })
+    .not('needs_human_since', 'is', null)
+
   return (
     <DashboardShell
       clients={context?.clients ?? []}
@@ -73,6 +81,7 @@ export default async function DashboardLayout({ children, params }: LayoutProps<
       }}
       banner={impersonation && <ImpersonationBanner organizationName={impersonation.organizationName} />}
     >
+      <NeedsHumanBanner count={needsHuman ?? 0} />
       {banner && <UsageBanner {...banner} />}
       {children}
     </DashboardShell>

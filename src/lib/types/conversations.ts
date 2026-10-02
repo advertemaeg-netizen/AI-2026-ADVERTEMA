@@ -25,6 +25,8 @@ export type ConversationListItem = {
   last_message_preview: string | null
   last_message_role: MessageRole | null
   assigned_to: string | null
+  /** Since when a visitor message has had no real answer (the AI call failed); null once a person replies */
+  needs_human_since: string | null
   client: { id: string; name: string }
   channel: { id: string; type: ChannelType; name: string }
 }

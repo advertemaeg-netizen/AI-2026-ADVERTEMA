@@ -1,6 +1,7 @@
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import { RelativeTime } from '@/components/relative-time'
+import { Badge } from '@/components/ui/badge'
 import type { ConversationListItem } from '@/lib/types/conversations'
 import { ContactAvatar, StatusBadge, useContactLabel } from './conversation-bits'
 
@@ -44,7 +45,14 @@ export function ConversationRow({ conversation }: { conversation: ConversationLi
               t('noMessages')
             )}
           </p>
-          <StatusBadge status={conversation.status} />
+          <div className="flex shrink-0 items-center gap-1.5">
+            {conversation.needs_human_since && (
+              <Badge variant="secondary" className="bg-destructive/15 text-destructive">
+                {t('needsHuman')}
+              </Badge>
+            )}
+            <StatusBadge status={conversation.status} />
+          </div>
         </div>
       </div>
     </Link>

@@ -97,9 +97,11 @@ describe('messages the bot does not answer', () => {
     models(() => geminiError(503))
     const seeded = await seedClient()
 
-    const { status } = await sendVisitorMessage(seeded.channelId, BOOKING_MESSAGE)
+    const { status, body } = await sendVisitorMessage(seeded.channelId, BOOKING_MESSAGE)
 
-    expect(status).toBe(502)
+    // The fallback message, not an error
+    expect(status).toBe(200)
+    expect(body).toMatchObject({ ok: true, fallback: true })
     const [lead] = await leadsOf(seeded)
     expect(instant(lead.appointment_at)).toBe(THURSDAY_6PM)
     expect(lead.ai_appointment).toMatchObject({ source: 'analysis' })

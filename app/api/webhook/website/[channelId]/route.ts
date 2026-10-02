@@ -1,6 +1,6 @@
 import { after, NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { geminiModel, type ChatTurn } from '@/lib/ai/gemini'
+import { aiFailureReason, geminiModel, type ChatTurn } from '@/lib/ai/gemini'
 import { BOT_HISTORY_LIMIT, loadBotSettings, runBot } from '@/lib/ai/bot'
 import { detectLead } from '@/lib/ai/lead-detection'
 import { renderReply, replyLanguage, type BookingOutcome } from '@/lib/ai/appointment'
@@ -374,10 +374,31 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       reply = renderReply(result.reply, booking, replyLanguage(settings.language, message))
     } catch (error) {
       console.error('[webhook/website] AI reply failed', error)
-      // A failed reply (timeout, 503) must not lose the lead: the visitor's
-      // message is stored, so it's still analysed
+      // A failed reply (rate limit, timeout, 503) must not lose the lead: the
+      // visitor's message is stored, so it's still analysed
       scheduleLeadDetection(history)
-      return json({ ok: false, error: 'ai_unavailable', conversationId }, 502)
+
+      // Nor leave the visitor with an error: they're told the service is
+      // down (not the fallback message, which says the information is
+      // missing), and the conversation is marked for a person to answer
+      const { error: fallbackError } = await supabase.from('messages').insert({
+        conversation_id: conversationId,
+        role: 'assistant',
+        content: settings.service_unavailable_message,
+        metadata: { fallback: 'ai_unavailable', reason: aiFailureReason(error) },
+      })
+      if (fallbackError) {
+        console.error('[webhook/website] storing the fallback failed', fallbackError)
+        return json({ ok: false, error: 'ai_unavailable', conversationId }, 502)
+      }
+      // Since the first message nobody answered, not the latest
+      const { error: flagError } = await supabase
+        .from('conversations')
+        .update({ needs_human_since: new Date().toISOString() })
+        .eq('id', conversationId)
+        .is('needs_human_since', null)
+      if (flagError) console.error('[webhook/website] marking the conversation for a person failed', flagError)
+      return json({ ok: true, conversationId, reply: settings.service_unavailable_message, fallback: true })
     }
 
     const { error: replyError } = await supabase.from('messages').insert({

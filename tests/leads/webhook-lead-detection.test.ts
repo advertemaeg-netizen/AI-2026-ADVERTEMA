@@ -21,9 +21,10 @@ describe('website webhook: lead detection', () => {
 
     const { status, body } = await sendVisitorMessage(channelId, VISITOR_MESSAGE)
 
-    expect(status).toBe(502)
-    expect(body).toMatchObject({ ok: false, error: 'ai_unavailable' })
-    expect(geminiCalls.filter((call) => call.kind === 'reply')).toHaveLength(1)
+    // The visitor gets the fallback message, after the 503 was tried again twice
+    expect(status).toBe(200)
+    expect(body).toMatchObject({ ok: true, fallback: true })
+    expect(geminiCalls.filter((call) => call.kind === 'reply')).toHaveLength(3)
     expect(geminiCalls.filter((call) => call.kind === 'analysis')).toHaveLength(1)
 
     const { data: leads } = await supabase

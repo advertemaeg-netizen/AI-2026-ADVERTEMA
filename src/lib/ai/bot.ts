@@ -16,6 +16,7 @@ import {
   type AppointmentRequest,
 } from '@/lib/ai/appointment'
 import {
+  DEFAULT_SERVICE_UNAVAILABLE_MESSAGE,
   WEEK_DAYS,
   businessHoursSchema,
   type BotLanguage,
@@ -204,6 +205,8 @@ export async function loadBotSettings(supabase: SupabaseClient, clientId: string
     max_response_length: row.max_response_length,
     welcome_message: row.welcome_message,
     fallback_message: row.fallback_message,
+    // Missing on a database that predates the setting
+    service_unavailable_message: row.service_unavailable_message ?? DEFAULT_SERVICE_UNAVAILABLE_MESSAGE,
     lead_qualification_enabled: row.lead_qualification_enabled,
     // Missing on a database that predates the setting: on, like the default
     auto_confirm_appointments: row.auto_confirm_appointments ?? true,

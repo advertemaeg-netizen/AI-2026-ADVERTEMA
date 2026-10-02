@@ -21,6 +21,14 @@ export type WeekDay = (typeof WEEK_DAYS)[number]
 export const SYSTEM_PROMPT_MAX = 4000
 export const MESSAGE_MAX = 500
 
+/**
+ * Sent when the AI call fails. Not the fallback message ("I don't have this
+ * information"): the answer may well be in the knowledge base, the service is
+ * down. Same text as the column's default.
+ */
+export const DEFAULT_SERVICE_UNAVAILABLE_MESSAGE =
+  'فيه ضغط على النظام دلوقتي ومش قادر أرد. الفريق هيشوف رسالتك ويرد عليك قريب — ولو مستعجل اتصل بينا.'
+
 const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'invalidTime')
 
 const dayHours = z.object({ open: z.boolean(), from: time, to: time })
@@ -41,6 +49,7 @@ export const botSettingsSchema = z.object({
   max_response_length: z.number().int().min(100).max(2000),
   welcome_message: z.string().trim().min(1, 'required').max(MESSAGE_MAX, 'tooLong'),
   fallback_message: z.string().trim().min(1, 'required').max(MESSAGE_MAX, 'tooLong'),
+  service_unavailable_message: z.string().trim().min(1, 'required').max(MESSAGE_MAX, 'tooLong'),
   lead_qualification_enabled: z.boolean(),
   auto_confirm_appointments: z.boolean(),
   business_hours: businessHoursSchema.nullable(),

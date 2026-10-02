@@ -3,8 +3,11 @@ import type { BotSettingsInput } from '@/lib/types/bot-settings'
 export const BOT_PRESET_NAMES = ['clinic', 'restaurant', 'ecommerce', 'customerService'] as const
 export type BotPresetName = (typeof BOT_PRESET_NAMES)[number]
 
-/** Values a preset fills in; language, business hours and appointment confirmation are left as they are. */
-export type BotPreset = Omit<BotSettingsInput, 'language' | 'business_hours' | 'auto_confirm_appointments'>
+/** Values a preset fills in; language, business hours, appointment confirmation and the service-down message are left as they are. */
+export type BotPreset = Omit<
+  BotSettingsInput,
+  'language' | 'business_hours' | 'auto_confirm_appointments' | 'service_unavailable_message'
+>
 
 export const BOT_PRESETS: Record<BotPresetName, BotPreset> = {
   clinic: {
