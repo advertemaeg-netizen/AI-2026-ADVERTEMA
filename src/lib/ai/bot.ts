@@ -252,7 +252,7 @@ export async function runBot({
   /** Logged with the reply's tokens: a visitor reply, or a playground test */
   operation: Extract<AiOperation, 'chat_reply' | 'playground' | 'bot_preview'>
   conversationId?: string | null
-}): Promise<{ reply: string; appointment: AppointmentRequest | null; debug: BotDebug }> {
+}): Promise<{ reply: string; appointment: AppointmentRequest | null; raw: string; debug: BotDebug }> {
   const started = performance.now()
   const trimmed = history.slice(-BOT_HISTORY_LIMIT)
   const lastUserMessage = [...trimmed].reverse().find((turn) => turn.role === 'user')?.content ?? ''
@@ -280,6 +280,9 @@ export async function runBot({
   return {
     reply,
     appointment,
+    // The model's answer before anything read it: kept with the message, to
+    // tell a model that reported no appointment from code that dropped one
+    raw: text,
     debug: {
       model: geminiModel(),
       temperature: settings.temperature,

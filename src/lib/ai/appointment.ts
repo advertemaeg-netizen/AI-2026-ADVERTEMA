@@ -293,6 +293,19 @@ export type BookingOutcome =
   | { status: 'none' }
 
 /**
+ * The model's text without the sentences that hold the placeholder. With no
+ * appointment on record those sentences state a booking that didn't happen;
+ * the rest (an answer to another question in the same message) is still true.
+ */
+function withoutAppointmentSentences(template: string) {
+  return template
+    .split(/(?<=[.!?؟…\n])/)
+    .filter((sentence) => !sentence.includes(APPOINTMENT_PLACEHOLDER))
+    .join('')
+    .trim()
+}
+
+/**
  * The reply as the visitor gets it. The model's text never states the time:
  * the placeholder is filled with the appointment that is actually on record,
  * and whether it is confirmed is said here, from the record, not by the model.
@@ -304,7 +317,13 @@ export function renderReply(template: string, outcome: BookingOutcome, language:
   if (outcome.status === 'kept') return t.kept.replace('{time}', formatAppointment(outcome.at, language))
   // Whatever the model wrote, nothing is booked until this is answered
   if (outcome.status === 'ask_period') return t.askPeriod.replace('{hour}', String(outcome.hour))
-  if (outcome.status === 'none') return hasPlaceholder ? t.askTime : template
+  if (outcome.status === 'none') {
+    if (!hasPlaceholder) return template
+    // Nothing was booked: keep what else the model said, and ask for the day
+    // and time instead of the booking it claimed
+    const rest = withoutAppointmentSentences(template)
+    return rest ? `${rest}\n${t.askTime}` : t.askTime
+  }
 
   const time = formatAppointment(outcome.at, language)
   if (!outcome.changed && !hasPlaceholder) return template

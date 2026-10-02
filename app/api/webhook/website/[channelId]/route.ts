@@ -335,6 +335,9 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
     }
 
     let reply: string
+    // Stored with the reply: what the model answered, and what became of the
+    // appointment it reported
+    let trace: { raw: string; booking: BookingOutcome['status']; booking_error?: true }
     try {
       const result = await runBot({
         supabase,
@@ -349,6 +352,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       // The appointment is recorded before the reply goes out, and the reply
       // quotes the record: it can't promise a time that isn't stored
       let booking: BookingOutcome = { status: 'none' }
+      let bookingFailed = false
       if (result.appointment) {
         try {
           booking = await recordAppointment({
@@ -363,8 +367,10 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
           })
         } catch (error) {
           console.error('[webhook/website] recording the appointment failed', error)
+          bookingFailed = true
         }
       }
+      trace = { raw: result.raw, booking: booking.status, ...(bookingFailed ? { booking_error: true } : {}) }
       reply = renderReply(result.reply, booking, replyLanguage(settings.language, message))
     } catch (error) {
       console.error('[webhook/website] AI reply failed', error)
@@ -378,7 +384,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       conversation_id: conversationId,
       role: 'assistant',
       content: reply,
-      metadata: { model: geminiModel() },
+      metadata: { model: geminiModel(), ...trace },
     })
     if (replyError) {
       scheduleLeadDetection(history)

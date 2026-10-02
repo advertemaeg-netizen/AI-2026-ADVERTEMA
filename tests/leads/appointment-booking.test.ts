@@ -47,12 +47,18 @@ async function book(
     .returns<Booked[]>()
   const { data: messages } = await seeded.supabase
     .from('messages')
-    .select('content')
+    .select('content, metadata')
     .eq('conversation_id', conversationId)
     .eq('role', 'assistant')
     .order('created_at', { ascending: false })
     .limit(1)
-  return { reply: body.reply as string, stored: messages![0].content as string, leads: leads!, conversationId }
+  return {
+    reply: body.reply as string,
+    stored: messages![0].content as string,
+    metadata: messages![0].metadata as { raw: string; booking: string },
+    leads: leads!,
+    conversationId,
+  }
 }
 
 const instant = (value: string | null) => (value ? new Date(value).toISOString() : null)
@@ -112,6 +118,32 @@ describe('one appointment parser: the reply quotes the stored appointment', () =
     expect(invented.reply).toBe(TEXT.askTime)
     expect(invented.stored).toBe(TEXT.askTime)
     expect(invented.leads.map((lead) => lead.appointment_at)).toEqual([null])
+  })
+
+  it('keeps the answer to another question when the model claims a booking that was not recorded', async () => {
+    const seeded = await seedClient()
+    const answer = 'التقويم للكبار في الأغلب مش مغطّى. ابعت صورة الكارنيه والفريق هيرد عليك بالتغطية الفعلية.'
+
+    // Mid-booking, the visitor asks something else; the model answers it but
+    // also repeats a booking, with no appointment to go with it
+    chatModel(() => botReply(`${answer} حجزتلك {{appointment}}.`, null))
+    const { reply, stored, leads, metadata } = await book(seeded, 'التأمين بيغطي التقويم؟')
+
+    expect(reply).toBe(`${answer}\n${TEXT.askTime}`)
+    expect(reply).not.toContain('حجزتلك')
+    expect(stored).toBe(reply)
+    expect(leads.map((lead) => lead.appointment_at).filter(Boolean)).toEqual([])
+    // What the model actually answered, and that nothing was booked, stay on record
+    expect(JSON.parse(metadata.raw)).toEqual({ reply: `${answer} حجزتلك {{appointment}}.`, appointment: null })
+    expect(metadata.booking).toBe('none')
+  })
+
+  it('stores the model\'s raw answer and the booking outcome with the reply', async () => {
+    chatModel(() => botReply('حجزتلك {{appointment}}.', THURSDAY_6_EVENING))
+    const { metadata } = await book(await seedClient())
+
+    expect(JSON.parse(metadata.raw)).toEqual({ reply: 'حجزتلك {{appointment}}.', appointment: THURSDAY_6_EVENING })
+    expect(metadata.booking).toBe('booked')
   })
 
   it('confirms the appointment at once when auto-confirm is on (the default), and says so', async () => {
