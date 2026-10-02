@@ -99,7 +99,8 @@ export function DashboardShell({
             : []),
           ...(canManage ? [teamItem] : []),
           ...(isOrgAdmin(user.role)
-            ? [{ name: t('subscription'), href: '/dashboard/subscription', icon: CreditCard }]
+            ? // Not t('subscription'): that one reads "Agency subscription"
+              [{ name: tClientNav('subscription'), href: '/dashboard/subscription', icon: CreditCard }]
             : []),
           settingsItem,
         ]
