@@ -28,7 +28,19 @@ export function toGeminiContents(history: ChatTurn[]): GeminiContent[] {
   }))
 }
 
-/** `usage`: who the call is for, to log its tokens and cost (ai_usage) */
+const REPLY_TIMEOUT_MS = 30_000
+// So a slow answer costs the visitor a wait, not the reply (at most twice the timeout)
+const REPLY_TIMEOUT_RETRIES = 1
+
+/** AbortSignal.timeout() rejects with a DOMException named TimeoutError */
+function isTimeout(error: unknown) {
+  return error instanceof Error && error.name === 'TimeoutError'
+}
+
+/**
+ * `usage`: who the call is for, to log its tokens and cost (ai_usage).
+ * Tries once more when Gemini doesn't answer in time.
+ */
 export async function generateReply({
   systemPrompt,
   history,
@@ -47,27 +59,43 @@ export async function generateReply({
   const contents = toGeminiContents(history)
   const model = geminiModel()
 
-  const res = await fetch(`${API_BASE}/${model}:generateContent`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: systemPrompt }] },
-      contents,
-      // No maxOutputTokens: on thinking models it also caps the hidden
-      // reasoning, which cuts replies off. Length is steered in the prompt.
-      generationConfig: {
-        temperature,
-        ...(responseSchema ? { responseMimeType: 'application/json', responseSchema } : {}),
-      },
-    }),
-    signal: AbortSignal.timeout(30_000),
-  })
+  const request = async () => {
+    const res = await fetch(`${API_BASE}/${model}:generateContent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents,
+        // No maxOutputTokens: on thinking models it also caps the hidden
+        // reasoning, which cuts replies off. Length is steered in the prompt.
+        generationConfig: {
+          temperature,
+          ...(responseSchema ? { responseMimeType: 'application/json', responseSchema } : {}),
+        },
+      }),
+      signal: AbortSignal.timeout(REPLY_TIMEOUT_MS),
+    })
 
-  if (!res.ok) {
-    throw new Error(`Gemini request failed (${res.status}): ${await res.text()}`)
+    if (!res.ok) {
+      throw new Error(`Gemini request failed (${res.status}): ${await res.text()}`)
+    }
+    return (await res.json()) as GenerateContentResponse
   }
 
-  const data = (await res.json()) as GenerateContentResponse
+  // A request that timed out produced nothing: no text has been returned, so
+  // the caller has stored and sent no reply, and asking again can't give the
+  // visitor two. Only timeouts are retried; an error response is an answer.
+  let data: GenerateContentResponse
+  for (let attempt = 0; ; attempt++) {
+    try {
+      data = await request()
+      break
+    } catch (error) {
+      if (!isTimeout(error) || attempt >= REPLY_TIMEOUT_RETRIES) throw error
+      console.warn(`[gemini] no reply within ${REPLY_TIMEOUT_MS / 1000}s; trying once more`)
+    }
+  }
+
   // Billed even when the reply turns out empty
   void recordAiUsage(usage, model, tokensFromMetadata(data.usageMetadata))
   const text = data.candidates?.[0]?.content?.parts
