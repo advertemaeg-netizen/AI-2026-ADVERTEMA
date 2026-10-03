@@ -246,9 +246,27 @@
   },
   "conversations": {
     "title": "Conversations",
-    "needsHuman": "Needs a human reply",
-    "needsHumanBanner": "{count, plural, one {# conversation is waiting for a reply from your team} other {# conversations are waiting for a reply from your team}} — the AI assistant could not answer.",
-    "needsHumanOpen": "Open conversations",
+    "needsHuman": {
+      "badge": {
+        "service_down": "Needs a reply: service down",
+        "limit_reached": "Needs a reply: out of messages",
+        "inactive": "Needs a reply: subscription inactive",
+        "no_answer": "Needs a reply: missing answer"
+      },
+      "banner": {
+        "service_down": "{count, plural, one {# conversation} other {# conversations}} the assistant could not answer because of a problem on our side.",
+        "limit_reached": "{count, plural, one {# conversation} other {# conversations}} left unanswered because the plan's monthly messages are used up.",
+        "inactive": "{count, plural, one {# conversation} other {# conversations}} left unanswered because the subscription is inactive.",
+        "no_answer": "{count, plural, one {# conversation} other {# conversations}} the assistant had no answer for in the knowledge base."
+      },
+      "action": {
+        "service_down": "This is on us and we are fixing it — reply to the visitors from the inbox.",
+        "limit_reached": "Upgrade the plan so the assistant replies again, and reply to the visitors from the inbox.",
+        "inactive": "Activate the subscription so the assistant replies again, and reply to the visitors from the inbox.",
+        "no_answer": "Reply to the visitors, and add the missing information to the knowledge base."
+      },
+      "open": "Open conversations"
+    },
     "description": "A unified inbox for every client conversation across all channels.",
     "empty": "No conversations yet. They will show up here as soon as a visitor writes in.",
     "emptyFiltered": "No conversations match the current filters.",
@@ -497,7 +515,7 @@
       "systemPrompt": "Describe who the assistant is, what it does, and what it must not do.",
       "welcome_message": "Shown as the first message in the website chat window.",
       "fallback_message": "Used when a visitor asks about something that isn’t in the business info or knowledge base.",
-      "service_unavailable_message": "Sent when the assistant cannot reply because the service is down or overloaded; the conversation is then marked as needing a reply from your team. Include a number for urgent cases.",
+      "service_unavailable_message": "Sent when the assistant cannot reply at all: the service is down, the plan is out of messages, or the subscription is inactive. The conversation is then marked as needing a reply from your team. Include a number for urgent cases.",
       "leadQualification": "The assistant asks which service is needed and requests a name and phone number.",
       "maxLength": "An approximate character limit the assistant keeps to in each reply.",
       "hoursEnabled": "The schedule and current time are added to the assistant’s instructions.",

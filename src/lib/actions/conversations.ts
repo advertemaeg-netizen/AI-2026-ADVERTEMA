@@ -24,14 +24,14 @@ const MAX_MESSAGE_LENGTH = 4000
 
 const LIST_COLUMNS = `
   id, status, contact_name, contact_identifier, last_message_at,
-  last_message_preview, last_message_role, assigned_to, needs_human_since,
+  last_message_preview, last_message_role, assigned_to, needs_human_since, needs_human_reason,
   client:clients!inner(id, name),
   channel:channels!inner(id, type, name)
 `
 
 const DETAIL_COLUMNS = `
   id, status, contact_name, contact_identifier, last_message_at,
-  last_message_preview, last_message_role, assigned_to, needs_human_since, created_at, auto_reply_enabled,
+  last_message_preview, last_message_role, assigned_to, needs_human_since, needs_human_reason, created_at, auto_reply_enabled,
   client:clients!inner(id, name, industry, status),
   channel:channels!inner(id, type, name)
 `

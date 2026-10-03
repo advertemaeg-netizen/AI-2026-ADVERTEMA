@@ -3,6 +3,15 @@ import type { ChannelType } from './channels'
 export const CONVERSATION_STATUSES = ['new', 'in_progress', 'converted', 'closed'] as const
 export type ConversationStatus = (typeof CONVERSATION_STATUSES)[number]
 
+/**
+ * Why a conversation waits for a person (conversations.needs_human_reason).
+ * Each one asks something different of the client:
+ * service_down — the AI call failed, ours to fix; limit_reached — upgrade the
+ * plan; inactive — pay; no_answer — the knowledge base lacks the answer.
+ */
+export const NEEDS_HUMAN_REASONS = ['service_down', 'limit_reached', 'inactive', 'no_answer'] as const
+export type NeedsHumanReason = (typeof NEEDS_HUMAN_REASONS)[number]
+
 export const DATE_RANGES = ['today', '7d', '30d'] as const
 export type DateRange = (typeof DATE_RANGES)[number]
 
@@ -27,6 +36,7 @@ export type ConversationListItem = {
   assigned_to: string | null
   /** Since when a visitor message has had no real answer (the AI call failed); null once a person replies */
   needs_human_since: string | null
+  needs_human_reason: NeedsHumanReason | null
   client: { id: string; name: string }
   channel: { id: string; type: ChannelType; name: string }
 }

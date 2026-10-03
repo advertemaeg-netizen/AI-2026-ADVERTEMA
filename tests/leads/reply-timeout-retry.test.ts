@@ -25,10 +25,16 @@ async function assistantMessages(seeded: Awaited<ReturnType<typeof seedClient>>,
 
 const replyCalls = () => geminiCalls.filter((call) => call.kind === 'reply').length
 
-async function needsHumanSince(seeded: Awaited<ReturnType<typeof seedClient>>, conversationId: string) {
-  const { data } = await seeded.supabase.from('conversations').select('needs_human_since').eq('id', conversationId).single()
-  return data!.needs_human_since as string | null
+async function needsHuman(seeded: Awaited<ReturnType<typeof seedClient>>, conversationId: string) {
+  const { data } = await seeded.supabase
+    .from('conversations')
+    .select('needs_human_since, needs_human_reason')
+    .eq('id', conversationId)
+    .single()
+  return data as { needs_human_since: string | null; needs_human_reason: string | null }
 }
+const needsHumanSince = async (seeded: Awaited<ReturnType<typeof seedClient>>, conversationId: string) =>
+  (await needsHuman(seeded, conversationId)).needs_human_since
 
 /** The stored fallback's metadata, after checking the visitor got it as a normal reply */
 async function fallbackOf(seeded: Awaited<ReturnType<typeof seedClient>>, body: Record<string, unknown>) {
@@ -139,7 +145,37 @@ describe('when the AI call fails the visitor is told so and the team is told too
       .eq('client_id', seeded.clientId)
       .single()
     expect(subscription!.messages_used).toBe(0)
-    expect(await needsHumanSince(seeded, body.conversationId as string)).not.toBeNull()
+    expect(await needsHuman(seeded, body.conversationId as string)).toMatchObject({
+      needs_human_since: expect.any(String),
+      needs_human_reason: 'service_down',
+    })
+  })
+
+  it('says the same to the visitor when the plan is out of messages or the subscription is inactive, and tells the team which', async () => {
+    chatModel(() => botReply('أهلاً بيك.'))
+
+    const outOfMessages = await seedClient()
+    const { data: plan } = await outOfMessages.supabase
+      .from('client_subscriptions')
+      .select('plans(messages_limit)')
+      .eq('client_id', outOfMessages.clientId)
+      .single<{ plans: { messages_limit: number } }>()
+    await outOfMessages.supabase
+      .from('client_subscriptions')
+      .update({ messages_used: plan!.plans.messages_limit })
+      .eq('client_id', outOfMessages.clientId)
+    const limited = await sendVisitorMessage(outOfMessages.channelId, INTRO_MESSAGE)
+    expect(limited.body).toMatchObject({ ok: true, reply: DEFAULT_SERVICE_UNAVAILABLE_MESSAGE, fallback: true })
+    expect((await needsHuman(outOfMessages, limited.body.conversationId as string)).needs_human_reason).toBe('limit_reached')
+
+    const unpaid = await seedClient()
+    await unpaid.supabase.from('client_subscriptions').update({ status: 'cancelled' }).eq('client_id', unpaid.clientId)
+    const inactive = await sendVisitorMessage(unpaid.channelId, INTRO_MESSAGE)
+    expect(inactive.body).toMatchObject({ ok: true, reply: DEFAULT_SERVICE_UNAVAILABLE_MESSAGE, fallback: true })
+    expect((await needsHuman(unpaid, inactive.body.conversationId as string)).needs_human_reason).toBe('inactive')
+
+    // Neither called the chat model
+    expect(replyCalls()).toBe(0)
   })
 
   it('uses the message the client wrote', async () => {

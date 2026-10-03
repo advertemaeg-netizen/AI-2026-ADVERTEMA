@@ -7,6 +7,7 @@ import { getUsageAlerts } from '@/lib/actions/subscription'
 import { DashboardShell } from './_components/dashboard-shell'
 import { UsageBanner } from './_components/usage-banner'
 import { NeedsHumanBanner } from './_components/needs-human-banner'
+import type { NeedsHumanReason } from '@/lib/types/conversations'
 import { ImpersonationBanner } from './_components/impersonation-banner'
 
 const DAY = 24 * 60 * 60 * 1000
@@ -63,10 +64,17 @@ export default async function DashboardLayout({ children, params }: LayoutProps<
 
   // Conversations the assistant could not answer; RLS limits the count to
   // the ones this user handles
-  const { count: needsHuman } = await supabase
+  const { data: waiting } = await supabase
     .from('conversations')
-    .select('id', { count: 'exact', head: true })
+    .select('needs_human_reason')
     .not('needs_human_since', 'is', null)
+    .limit(1000)
+    .returns<{ needs_human_reason: NeedsHumanReason | null }[]>()
+  const needsHuman: Partial<Record<NeedsHumanReason, number>> = {}
+  for (const { needs_human_reason } of waiting ?? []) {
+    const reason = needs_human_reason ?? 'service_down'
+    needsHuman[reason] = (needsHuman[reason] ?? 0) + 1
+  }
 
   return (
     <DashboardShell
@@ -81,7 +89,7 @@ export default async function DashboardLayout({ children, params }: LayoutProps<
       }}
       banner={impersonation && <ImpersonationBanner organizationName={impersonation.organizationName} />}
     >
-      <NeedsHumanBanner count={needsHuman ?? 0} />
+      <NeedsHumanBanner counts={needsHuman} />
       {banner && <UsageBanner {...banner} />}
       {children}
     </DashboardShell>

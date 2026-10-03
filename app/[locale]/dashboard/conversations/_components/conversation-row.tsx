@@ -48,7 +48,7 @@ export function ConversationRow({ conversation }: { conversation: ConversationLi
           <div className="flex shrink-0 items-center gap-1.5">
             {conversation.needs_human_since && (
               <Badge variant="secondary" className="bg-destructive/15 text-destructive">
-                {t('needsHuman')}
+                {t(`needsHuman.badge.${conversation.needs_human_reason ?? 'service_down'}`)}
               </Badge>
             )}
             <StatusBadge status={conversation.status} />

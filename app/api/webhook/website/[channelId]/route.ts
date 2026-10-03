@@ -8,6 +8,7 @@ import { recordAppointment } from '@/lib/ai/booking'
 import type { BotSettingsInput } from '@/lib/types/bot-settings'
 import { checkClientLimit } from '@/lib/subscription-limits'
 import { UUID_PATTERN } from '@/lib/types/clients'
+import type { NeedsHumanReason } from '@/lib/types/conversations'
 
 // The widget is embedded on client websites, so any origin may call this route
 const CORS_HEADERS = {
@@ -308,10 +309,22 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       return json({ ok: false, error: 'ai_unavailable', conversationId }, 502)
     }
 
+    // The visitor got no real answer: the conversation waits for a person,
+    // with the cause, from the first message that happened to. Never fails
+    // the request: the visitor has their message either way.
+    const markForPerson = async (reason: NeedsHumanReason) => {
+      const { error } = await supabase
+        .from('conversations')
+        .update({ needs_human_since: new Date().toISOString(), needs_human_reason: reason })
+        .eq('id', convId)
+        .is('needs_human_since', null)
+      if (error) console.error('[webhook/website] marking the conversation for a person failed', error)
+    }
+
     // Usage limits only apply to AI replies (handed-off chats keep flowing).
     // Past the client plan's monthly messages, or without an active
-    // subscription (the client's or its agency's), visitors get the client's
-    // fallback message instead of an AI reply.
+    // subscription (the client's or its agency's), visitors are told the
+    // assistant can't answer right now, and the team why.
     let quota: Awaited<ReturnType<typeof checkClientLimit>>
     try {
       quota = await checkClientLimit(supabase, channel.client_id, 'messages')
@@ -325,13 +338,14 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       const { error: fallbackError } = await supabase.from('messages').insert({
         conversation_id: conversationId,
         role: 'assistant',
-        content: settings.fallback_message,
+        content: settings.service_unavailable_message,
         metadata: { fallback: 'subscription_limit', reason: quota.reason },
       })
       if (fallbackError) throw fallbackError
+      await markForPerson(quota.reason === 'inactive' ? 'inactive' : 'limit_reached')
       // Past the limit, leads are still captured up to the ceiling
-      scheduleLeadDetection([...history, { role: 'assistant', content: settings.fallback_message }])
-      return json({ ok: true, conversationId, reply: settings.fallback_message })
+      scheduleLeadDetection([...history, { role: 'assistant', content: settings.service_unavailable_message }])
+      return json({ ok: true, conversationId, reply: settings.service_unavailable_message, fallback: true })
     }
 
     let reply: string
@@ -391,13 +405,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
         console.error('[webhook/website] storing the fallback failed', fallbackError)
         return json({ ok: false, error: 'ai_unavailable', conversationId }, 502)
       }
-      // Since the first message nobody answered, not the latest
-      const { error: flagError } = await supabase
-        .from('conversations')
-        .update({ needs_human_since: new Date().toISOString() })
-        .eq('id', conversationId)
-        .is('needs_human_since', null)
-      if (flagError) console.error('[webhook/website] marking the conversation for a person failed', flagError)
+      await markForPerson('service_down')
       return json({ ok: true, conversationId, reply: settings.service_unavailable_message, fallback: true })
     }
 
@@ -413,7 +421,6 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
     }
 
     // conversations.last_message_* is kept current by a trigger on messages
-
     const { error: usageError } = await supabase.rpc('consume_client_message', { p_client_id: channel.client_id })
     if (usageError) console.error('[webhook/website] counting the message failed', usageError)
 
