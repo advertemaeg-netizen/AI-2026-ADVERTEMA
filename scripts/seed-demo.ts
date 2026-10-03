@@ -285,8 +285,11 @@ export async function seedBotSettings(admin: Admin, demo: DemoContext) {
     fallback_message:
       'المعلومة دي مش عندي دلوقتي — هوصّلها للفريق وهيردّوا عليك في أقرب وقت. ولو الموضوع مستعجل، اتصل على 02-25201184.',
     // A dental clinic: when the assistant is down the patient still needs a number
-    service_unavailable_message:
-      'فيه ضغط على النظام دلوقتي ومش قادر أرد. الفريق هيشوف رسالتك ويرد عليك قريب — ولو مستعجل اتصل على 02-25201184.',
+    service_unavailable_message: [
+      'فيه ضغط على النظام دلوقتي ومش قادر أرد. الفريق هيشوف رسالتك ويرد عليك قريب.',
+      'للحجز والاستفسار: 02-25201184',
+      'ولو عندك ألم شديد أو طوارئ: 01002847562',
+    ].join('\n'),
     lead_qualification_enabled: true,
     auto_confirm_appointments: bot.autoConfirm,
     // Two branches with different hours don't fit one schedule; the hours are in the knowledge base
