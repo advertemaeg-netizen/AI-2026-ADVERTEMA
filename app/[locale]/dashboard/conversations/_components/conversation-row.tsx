@@ -2,7 +2,7 @@ import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import { RelativeTime } from '@/components/relative-time'
 import { Badge } from '@/components/ui/badge'
-import type { ConversationListItem } from '@/lib/types/conversations'
+import { DEFAULT_NEEDS_HUMAN_REASON, type ConversationListItem } from '@/lib/types/conversations'
 import { ContactAvatar, StatusBadge, useContactLabel } from './conversation-bits'
 
 export function ConversationRow({ conversation }: { conversation: ConversationListItem }) {
@@ -48,7 +48,7 @@ export function ConversationRow({ conversation }: { conversation: ConversationLi
           <div className="flex shrink-0 items-center gap-1.5">
             {conversation.needs_human_since && (
               <Badge variant="secondary" className="bg-destructive/15 text-destructive">
-                {t(`needsHuman.badge.${conversation.needs_human_reason ?? 'service_down'}`)}
+                {t(`needsHuman.badge.${conversation.needs_human_reason ?? DEFAULT_NEEDS_HUMAN_REASON}`)}
               </Badge>
             )}
             <StatusBadge status={conversation.status} />

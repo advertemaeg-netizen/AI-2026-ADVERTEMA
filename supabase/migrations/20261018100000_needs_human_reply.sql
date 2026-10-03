@@ -52,7 +52,9 @@ create trigger messages_clear_needs_human after insert on public.messages
 --    (before this, a failed AI call left nothing behind). Each visitor
 --    message gets one reply when the bot works, so in a run of visitor
 --    messages followed by fewer replies, the last ones had none. Marked from
---    the first of them, unless a person has replied since.
+--    the first of them, unless a person has replied since. Not a handed-off
+--    conversation (auto_reply_enabled false): the bot was told not to answer,
+--    so nothing failed and 'service_down' would be wrong.
 -- --------------------------------------------
 with ordered as (
   select m.conversation_id, m.role, m.created_at, m.id,
@@ -83,6 +85,7 @@ update public.conversations c
        needs_human_reason = 'service_down'
   from unanswered u
  where c.id = u.conversation_id
+   and c.auto_reply_enabled
    and not exists (
      select 1 from public.messages a
       where a.conversation_id = c.id and a.role = 'agent' and a.created_at > u.since

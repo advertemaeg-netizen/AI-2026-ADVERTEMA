@@ -7,7 +7,7 @@ import { getUsageAlerts } from '@/lib/actions/subscription'
 import { DashboardShell } from './_components/dashboard-shell'
 import { UsageBanner } from './_components/usage-banner'
 import { NeedsHumanBanner } from './_components/needs-human-banner'
-import type { NeedsHumanReason } from '@/lib/types/conversations'
+import { DEFAULT_NEEDS_HUMAN_REASON, type NeedsHumanReason } from '@/lib/types/conversations'
 import { ImpersonationBanner } from './_components/impersonation-banner'
 
 const DAY = 24 * 60 * 60 * 1000
@@ -62,18 +62,18 @@ export default async function DashboardLayout({ children, params }: LayoutProps<
       ? await billingBanner(supabase, profile.organization_id, directClientId)
       : null
 
-  // Conversations the assistant could not answer; RLS limits the count to
-  // the ones this user handles
-  const { data: waiting } = await supabase
-    .from('conversations')
-    .select('needs_human_reason')
-    .not('needs_human_since', 'is', null)
-    .limit(1000)
-    .returns<{ needs_human_reason: NeedsHumanReason | null }[]>()
+  // Conversations the assistant could not answer, counted per reason in the
+  // database; RLS limits the count to the ones this user handles
+  const { data: waiting, error: waitingError } = await supabase.rpc('needs_human_counts')
+  // Without the counts the banner is not shown at all, so this must not fail quietly
+  if (waitingError) console.error('[dashboard] needs_human_counts failed', waitingError)
   const needsHuman: Partial<Record<NeedsHumanReason, number>> = {}
-  for (const { needs_human_reason } of waiting ?? []) {
-    const reason = needs_human_reason ?? 'service_down'
-    needsHuman[reason] = (needsHuman[reason] ?? 0) + 1
+  for (const { reason, conversations } of (waiting ?? []) as {
+    reason: NeedsHumanReason | null
+    conversations: number
+  }[]) {
+    const key = reason ?? DEFAULT_NEEDS_HUMAN_REASON
+    needsHuman[key] = (needsHuman[key] ?? 0) + Number(conversations)
   }
 
   return (

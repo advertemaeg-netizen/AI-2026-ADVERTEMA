@@ -11,6 +11,8 @@ export type ConversationStatus = (typeof CONVERSATION_STATUSES)[number]
  */
 export const NEEDS_HUMAN_REASONS = ['service_down', 'limit_reached', 'inactive', 'no_answer'] as const
 export type NeedsHumanReason = (typeof NEEDS_HUMAN_REASONS)[number]
+/** The reason shown for a marked conversation whose needs_human_reason is null */
+export const DEFAULT_NEEDS_HUMAN_REASON: NeedsHumanReason = 'service_down'
 
 export const DATE_RANGES = ['today', '7d', '30d'] as const
 export type DateRange = (typeof DATE_RANGES)[number]

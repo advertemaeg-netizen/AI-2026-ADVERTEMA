@@ -31,7 +31,9 @@ export function toGeminiContents(history: ChatTurn[]): GeminiContent[] {
 const REPLY_TIMEOUT_MS = 30_000
 // So a slow answer costs the visitor a wait, not the reply (at most twice the timeout)
 const REPLY_TIMEOUT_RETRIES = 1
-// 503: the model is overloaded. Waits before the second and third attempt
+// 503: the model is overloaded. Waits before the second and third attempt,
+// each stretched at random between half and one and a half times, so
+// requests that failed together don't all come back together
 const REPLY_OVERLOADED_BACKOFF_MS = [500, 1500]
 
 /** An error response from Gemini, with its HTTP status */
@@ -124,7 +126,7 @@ export async function generateReply({
         timeouts += 1
         console.warn(`[gemini] no reply within ${REPLY_TIMEOUT_MS / 1000}s; trying once more`)
       } else if (reason === 'overloaded' && overloads < REPLY_OVERLOADED_BACKOFF_MS.length) {
-        const wait = REPLY_OVERLOADED_BACKOFF_MS[overloads]
+        const wait = Math.round(REPLY_OVERLOADED_BACKOFF_MS[overloads] * (0.5 + Math.random()))
         overloads += 1
         console.warn(`[gemini] model overloaded (503); trying again in ${wait}ms`)
         await new Promise((resolve) => setTimeout(resolve, wait))
