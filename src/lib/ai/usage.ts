@@ -46,20 +46,36 @@ export function estimateTokens(text: string) {
   return Math.ceil(arabic / 2.5 + (text.length - arabic) / 4)
 }
 
-/** Never throws: a failed log is written to the server log and the caller carries on. */
+// Models already reported as unpriced by this server instance
+const warnedUnpriced = new Set<string>()
+
+/**
+ * Never throws: a failed log is written to the server log and the caller
+ * carries on. A model without a row in model_pricing is logged with no cost;
+ * that is said out loud (once per model), because a missing price otherwise
+ * only shows as AI costs that look lower than they are.
+ */
 export async function recordAiUsage(context: AiUsageContext | undefined, model: string, tokens: TokenCounts) {
   if (!context) return
   try {
-    const { error } = await createAdminClient().from('ai_usage').insert({
-      client_id: context.clientId,
-      conversation_id: context.conversationId ?? null,
-      operation: context.operation,
-      model,
-      prompt_tokens: Math.max(0, Math.round(tokens.promptTokens)),
-      completion_tokens: Math.max(0, Math.round(tokens.completionTokens)),
-      total_tokens: Math.max(0, Math.round(tokens.totalTokens)),
-    })
+    const { data, error } = await createAdminClient()
+      .from('ai_usage')
+      .insert({
+        client_id: context.clientId,
+        conversation_id: context.conversationId ?? null,
+        operation: context.operation,
+        model,
+        prompt_tokens: Math.max(0, Math.round(tokens.promptTokens)),
+        completion_tokens: Math.max(0, Math.round(tokens.completionTokens)),
+        total_tokens: Math.max(0, Math.round(tokens.totalTokens)),
+      })
+      .select('estimated_cost_usd')
+      .single<{ estimated_cost_usd: number | null }>()
     if (error) throw error
+    if (data.estimated_cost_usd === null && !warnedUnpriced.has(model)) {
+      warnedUnpriced.add(model)
+      console.warn(`[ai-usage] model "${model}" has no price in model_pricing: its calls are logged without a cost`)
+    }
   } catch (error) {
     console.error(`[ai-usage] logging ${context.operation} for client ${context.clientId} failed`, error)
   }
