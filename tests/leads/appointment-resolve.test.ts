@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { appointmentRequestSchema, formatAppointment, resolveAppointment } from '@/lib/ai/appointment'
+import ar from '../../messages/ar.json'
+import { appointmentRequestSchema, formatAppointment, renderReply, resolveAppointment } from '@/lib/ai/appointment'
 
 // Monday 5 October 2026, 12:00 in Cairo (UTC+3)
 const now = new Date('2026-10-05T09:00:00.000Z')
@@ -112,5 +113,40 @@ describe('resolveAppointment: components → one Cairo instant', () => {
     expect(formatAppointment('2026-10-08T15:00:00.000Z', 'ar')).toBe('الخميس 8 أكتوبر الساعة 6:00 مساءً')
     expect(formatAppointment('2026-10-08T15:00:00.000Z', 'en')).toBe('Thursday 8 October at 6:00 PM')
     expect(formatAppointment('2026-10-10T08:00:00.000Z', 'ar')).toBe('السبت 10 أكتوبر الساعة 11:00 صباحاً')
+  })
+})
+
+describe('where the reply says the appointment is confirmed', () => {
+  const AT = '2026-10-08T15:00:00.000Z'
+  const TIME = 'الخميس 8 أكتوبر الساعة 6:00 مساءً'
+  const T = ar.botReplies.appointment
+  const booked = (confirmed: boolean, changed = true) => ({ status: 'booked', at: AT, confirmed, changed }) as const
+
+  it('right after the sentence that states the appointment, before the question that follows', () => {
+    expect(renderReply('تمام يا أحمد، {{appointment}}. ممكن رقم موبايلك؟', booked(true), 'ar')).toBe(
+      `تمام يا أحمد، ${TIME}.\n${T.confirmed}\nممكن رقم موبايلك؟`
+    )
+    expect(renderReply('حجزتلك {{appointment}}. تحب الحجز لزرعة الأسنان؟', booked(false), 'ar')).toBe(
+      `حجزتلك ${TIME}.\n${T.pending}\nتحب الحجز لزرعة الأسنان؟`
+    )
+  })
+
+  it('at the end when the appointment is the last thing said', () => {
+    expect(renderReply('تمام، حجزتلك {{appointment}}.', booked(true), 'ar')).toBe(`تمام، حجزتلك ${TIME}.\n${T.confirmed}`)
+    expect(renderReply('أهلاً يا كريم. حجزتلك {{appointment}}', booked(true), 'ar')).toBe(
+      `أهلاً يا كريم. حجزتلك ${TIME}\n${T.confirmed}`
+    )
+  })
+
+  it('once, after the last sentence that states it, when the reply states it twice', () => {
+    expect(renderReply('حجزتلك {{appointment}}. مستنيينك {{appointment}}. محتاج حاجة تانية؟', booked(true), 'ar')).toBe(
+      `حجزتلك ${TIME}. مستنيينك ${TIME}.\n${T.confirmed}\nمحتاج حاجة تانية؟`
+    )
+  })
+
+  it('after the line the system adds when the reply never stated the appointment', () => {
+    expect(renderReply('تمام يا أحمد. ممكن رقم موبايلك؟', booked(true), 'ar')).toBe(
+      `تمام يا أحمد. ممكن رقم موبايلك؟\n${T.noted.replace('{time}', TIME)}\n${T.confirmed}`
+    )
   })
 })

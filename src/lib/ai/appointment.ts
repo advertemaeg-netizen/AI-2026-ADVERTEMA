@@ -296,6 +296,9 @@ export type BookingOutcome =
   /** Nothing recorded: no usable day and time, or the booking failed */
   | { status: 'none' }
 
+// Splits a reply after each sentence
+const SENTENCE_END = /(?<=[.!?؟…\n])/
+
 /**
  * The model's text without the sentences that hold the placeholder. With no
  * appointment on record those sentences state a booking that didn't happen;
@@ -303,7 +306,7 @@ export type BookingOutcome =
  */
 function withoutAppointmentSentences(template: string) {
   return template
-    .split(/(?<=[.!?؟…\n])/)
+    .split(SENTENCE_END)
     .filter((sentence) => !sentence.includes(APPOINTMENT_PLACEHOLDER))
     .join('')
     .trim()
@@ -331,8 +334,15 @@ export function renderReply(template: string, outcome: BookingOutcome, language:
 
   const time = formatAppointment(outcome.at, language)
   if (!outcome.changed && !hasPlaceholder) return template
-  const text = hasPlaceholder
-    ? template.replaceAll(APPOINTMENT_PLACEHOLDER, time)
-    : `${template}\n${t.noted.replace('{time}', time)}`
-  return `${text}\n${outcome.confirmed ? t.confirmed : t.pending}`
+  const status = outcome.confirmed ? t.confirmed : t.pending
+  if (!hasPlaceholder) return `${template}\n${t.noted.replace('{time}', time)}\n${status}`
+
+  // Whether it is confirmed goes right after the sentence that states the
+  // appointment, before anything the reply goes on to ask: "…6:00 مساءً.
+  // موعدك مؤكَّد ✅ ممكن رقم موبايلك؟" reads as settled, then the question
+  const sentences = template.split(SENTENCE_END)
+  const last = sentences.findLastIndex((sentence) => sentence.includes(APPOINTMENT_PLACEHOLDER))
+  const fill = (part: string[]) => part.join('').replaceAll(APPOINTMENT_PLACEHOLDER, time).trim()
+  const rest = fill(sentences.slice(last + 1))
+  return [fill(sentences.slice(0, last + 1)), status, rest].filter(Boolean).join('\n')
 }
