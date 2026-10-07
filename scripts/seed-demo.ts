@@ -19,6 +19,7 @@ import { cairoDayStart, cairoParts, cairoWallTimeToIso } from '@/lib/cairo-time'
 import { prepareKnowledgeChunks, processKnowledgeDocument } from '@/lib/knowledge/process'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { KNOWLEDGE_BUCKET, KNOWLEDGE_FILE_TYPES } from '@/lib/types/knowledge'
+import type { BusinessHours } from '@/lib/types/bot-settings'
 import type { ChannelType } from '@/lib/types/channels'
 import type { ConversationStatus, MessageRole } from '@/lib/types/conversations'
 import type { LeadStatus } from '@/lib/types/leads'
@@ -259,6 +260,30 @@ function parseBotSettings() {
   }
 }
 
+/**
+ * The Maadi branch's hours (demo/kb/03-hours-location.md): the main branch,
+ * and the one most of the demo's data is on. Without a schedule a bare hour
+ * ("الساعة 9") has nothing to be settled by, and is always asked about.
+ *
+ * A known limit, not an oversight: bot_settings holds one schedule and the
+ * clinic has two branches. التجمع الخامس opens at 13:00, not 12:00, and is
+ * closed on Fridays, so a booking there at 12:30, or on a Friday, is taken
+ * as inside opening hours when it is not.
+ */
+export const MAADI_HOURS: BusinessHours = {
+  enabled: true,
+  timezone: 'Africa/Cairo',
+  days: {
+    sat: { open: true, from: '12:00', to: '22:00' },
+    sun: { open: true, from: '12:00', to: '22:00' },
+    mon: { open: true, from: '12:00', to: '22:00' },
+    tue: { open: true, from: '12:00', to: '22:00' },
+    wed: { open: true, from: '12:00', to: '22:00' },
+    thu: { open: true, from: '12:00', to: '22:00' },
+    fri: { open: true, from: '15:00', to: '22:00' },
+  },
+}
+
 export async function seedBotSettings(admin: Admin, demo: DemoContext) {
   console.log('\n[2b] bot settings')
   const bot = parseBotSettings()
@@ -292,8 +317,7 @@ export async function seedBotSettings(admin: Admin, demo: DemoContext) {
     ].join('\n'),
     lead_qualification_enabled: true,
     auto_confirm_appointments: bot.autoConfirm,
-    // Two branches with different hours don't fit one schedule; the hours are in the knowledge base
-    business_hours: null,
+    business_hours: MAADI_HOURS,
   }
   check(await admin.from('bot_settings').upsert(settings, { onConflict: 'client_id' }), 'saving bot settings')
   console.log(`  system prompt ${systemPrompt.length} chars, welcome ${bot.welcome.length} chars, ${bot.keywords.length} handoff keywords, auto-confirm ${bot.autoConfirm}`)
