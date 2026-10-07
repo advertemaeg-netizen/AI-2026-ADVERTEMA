@@ -25,6 +25,7 @@ import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { loadBotSettings, runBot, type BotClient } from '@/lib/ai/bot'
 import {
+  APPOINTMENT_PLACEHOLDER,
   renderReply,
   replyLanguage,
   resolveAppointment,
@@ -169,7 +170,7 @@ export function bookingClaimIn(reply: string) {
   return found
 }
 // A question about the day or the time
-const TIME_QUESTION = /الساعة|ساعة كام|[إا]مت[ىي]|[أا]ي يوم|يوم [إا]يه|وقت|ميعاد|معاد|موعد|الصبح|بالليل|what time|which day|when/i
+const TIME_QUESTION = /الساعة|ساعة كام|[إا]مت[ىي]|[أا]ي يوم|[أا]نهي يوم|يوم [إا]يه|وقت|ميعاد|معاد|موعد|الصبح|بالليل|what time|which day|when/i
 const DEFERS_TO_TEAM = /الفريق|فريقنا|هنرد|هيرد|هنتواصل|هيتواصل|هنتأكد|خدمة العملاء/
 
 /** Every number written in the knowledge base */
@@ -248,6 +249,10 @@ async function converse(bot: Bot, turns: string[]) {
       } else {
         booking = resolved
       }
+    } else if (appointmentAt && result.reply.includes(APPOINTMENT_PLACEHOLDER)) {
+      // appointmentOnRecord: a reply that quotes the appointment without
+      // reporting it again is answered from the record, as the webhook does
+      booking = { status: 'booked', at: appointmentAt, confirmed: settings.auto_confirm_appointments, changed: false }
     }
     const reply = renderReply(result.reply, booking, replyLanguage(settings.language, user))
     history.push({ role: 'assistant', content: reply })
