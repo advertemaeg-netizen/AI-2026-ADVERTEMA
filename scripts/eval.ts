@@ -120,6 +120,8 @@ const plain = (text: string) => text.replace(/[\u064B-\u0652\u0640]/g, '')
 // Wording that states a booking as done, read on plain() text. A second net
 // only: whether something was booked is the booking outcome, a fact. This
 // catches a reply that says so in its own words after nothing was booked.
+// Written before any real reply had been seen: eval/RUNNER.md requires
+// reading what it caught, and what it let through, after the first run.
 const BOOKING_CLAIM_PHRASES = [
   'حجزتلك',
   'حجزت لك',
@@ -130,8 +132,6 @@ const BOOKING_CLAIM_PHRASES = [
   'الحجز تم',
   'خلصنا الحجز',
   'اتحجز',
-  'ميعادك',
-  'موعدك',
   'اتسجل',
   'تم تسجيل',
   'تم تأكيد',
@@ -143,9 +143,30 @@ const BOOKING_CLAIM_PHRASES = [
   "i've booked",
   'i have booked',
 ]
-const bookingClaimIn = (reply: string) => {
+// "Your appointment" (ميعادك / موعدك) is a claim by what its sentence does
+// with it. Stated as settled, always:
+const YOUR_APPOINTMENT = /ميعادك|موعدك/
+const APPOINTMENT_AFFIRMED = /(ميعادك|موعدك)\s+(اتأكد|اتاكد|مؤكد|متأكد|محجوز|اتسجل|اتحجز|جاهز)/
+// Otherwise when the sentence isn't a question ("ميعادك الخميس 6" is a
+// claim, "تحب ميعادك إمتى؟" is not) and isn't about cancelling one
+// ("الفريق هيتواصل لإلغاء ميعادك")
+// Known gap, left open on purpose (eval/RUNNER.md): a claim and a question
+// in one sentence pass ("ميعادك الأسبوع الجاي، تحب يوم إيه؟")
+const QUESTION = /[?؟]|(?<![ء-ي])([إا]يه|[إا]مت[ىي]|فين)(?![ء-ي])/
+const CANCELLING = /[إا]لغا|لغي|اتلغ[ىي]|ملغ[يى]/
+// Sentences as renderReply splits them
+const sentencesOf = (text: string) => text.split(/(?<=[.!?؟…\n])/)
+
+/** The booking wording found in a reply; empty when it claims nothing */
+export function bookingClaimIn(reply: string) {
   const text = plain(reply).toLowerCase()
-  return BOOKING_CLAIM_PHRASES.filter((phrase) => text.includes(phrase))
+  const found = BOOKING_CLAIM_PHRASES.filter((phrase) => text.includes(phrase))
+  for (const sentence of sentencesOf(text)) {
+    if (!YOUR_APPOINTMENT.test(sentence)) continue
+    if (APPOINTMENT_AFFIRMED.test(sentence)) found.push(`"${sentence.trim()}" (stated as settled)`)
+    else if (!QUESTION.test(sentence) && !CANCELLING.test(sentence)) found.push(`"${sentence.trim()}" (not a question)`)
+  }
+  return found
 }
 // A question about the day or the time
 const TIME_QUESTION = /الساعة|ساعة كام|[إا]مت[ىي]|[أا]ي يوم|يوم [إا]يه|وقت|ميعاد|معاد|موعد|الصبح|بالليل|what time|which day|when/i
@@ -616,7 +637,9 @@ async function main() {
   )
 }
 
-main().catch((error) => {
-  console.error(error)
-  process.exit(1)
-})
+if (process.argv[1]?.endsWith('eval.ts')) {
+  main().catch((error) => {
+    console.error(error)
+    process.exit(1)
+  })
+}
