@@ -1,7 +1,7 @@
 import 'server-only'
 import { z } from 'zod'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { generateJson, type ChatTurn } from '@/lib/ai/gemini'
+import { generateJson, type ChatTurn, type JsonSchema } from '@/lib/ai/provider'
 import type { AiUsageContext } from '@/lib/ai/usage'
 import {
   APPOINTMENT_COMPONENTS,
@@ -13,15 +13,6 @@ import { normalizeEgyptianPhone } from '@/lib/phone'
 import { claimLeadAnalysis } from '@/lib/subscription-limits'
 import type { BusinessHours } from '@/lib/types/bot-settings'
 import { CLOSED_LEAD_STATUSES, type LeadExtractedData, type LeadStatus } from '@/lib/types/leads'
-
-// A light model for the per-message analysis: it runs on every visitor
-// message, and Gemini quotas are per model, so it doesn't eat into the
-// chat model's quota
-const DEFAULT_ANALYSIS_MODEL = 'gemini-3.5-flash-lite'
-
-function analysisModel() {
-  return process.env.GOOGLE_GEMINI_ANALYSIS_MODEL || DEFAULT_ANALYSIS_MODEL
-}
 
 /** Minimum confidence to *create* a lead (an open lead is always enriched) */
 export const LEAD_CONFIDENCE_THRESHOLD = 0.7
@@ -53,26 +44,23 @@ Appointments ("appointment", null when the visitor asked for none):
 ${APPOINTMENT_COMPONENTS}
 - With no specific day ("next week", "soon") or no time at all, "appointment" is null.`
 
-// Gemini structured-output schema (OpenAPI subset)
+// Structured-output schema (JSON Schema; each provider translates it). The
+// model writes the properties in this order.
 const RESPONSE_SCHEMA = {
-  type: 'OBJECT',
+  type: 'object',
   properties: {
-    is_lead: { type: 'BOOLEAN' },
-    confidence: { type: 'NUMBER' },
-    name: { type: 'STRING', nullable: true },
-    phone: { type: 'STRING', nullable: true },
-    service_requested: { type: 'STRING', nullable: true },
-    budget: { type: 'STRING', nullable: true },
-    branch: { type: 'STRING', nullable: true },
-    preferred_time: { type: 'STRING', nullable: true },
-    summary: { type: 'STRING', nullable: true },
+    is_lead: { type: 'boolean' },
+    confidence: { type: 'number' },
+    name: { type: ['string', 'null'] },
+    phone: { type: ['string', 'null'] },
+    service_requested: { type: ['string', 'null'] },
+    budget: { type: ['string', 'null'] },
+    branch: { type: ['string', 'null'] },
+    preferred_time: { type: ['string', 'null'] },
+    summary: { type: ['string', 'null'] },
   },
   required: ['is_lead', 'confidence'],
-  propertyOrdering: [
-    'is_lead', 'confidence', 'name', 'phone', 'service_requested',
-    'budget', 'branch', 'preferred_time', 'summary',
-  ],
-}
+} satisfies JsonSchema
 
 const nullableText = z
   .string()
@@ -110,9 +98,13 @@ export async function analyzeConversation(
     systemPrompt: withAppointment ? SYSTEM_PROMPT + APPOINTMENT_PROMPT : SYSTEM_PROMPT,
     prompt: `Conversation:\n${transcript}`,
     responseSchema: withAppointment
-      ? { ...RESPONSE_SCHEMA, properties: { ...RESPONSE_SCHEMA.properties, appointment: APPOINTMENT_REQUEST_SCHEMA } }
+      ? {
+          ...RESPONSE_SCHEMA,
+          properties: { ...RESPONSE_SCHEMA.properties, appointment: APPOINTMENT_REQUEST_SCHEMA },
+          // "appointment" has never been in the stated order; kept exactly so
+          propertyOrder: Object.keys(RESPONSE_SCHEMA.properties),
+        }
       : RESPONSE_SCHEMA,
-    model: analysisModel(),
     usage,
   })
   return analysisSchema.parse(raw)

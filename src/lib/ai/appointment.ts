@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { cairoParts, cairoWallTimeToIso, CAIRO_TZ } from '@/lib/cairo-time'
+import type { JsonSchema } from '@/lib/ai/providers/types'
 import type { BotLanguage, BusinessHours, WeekDay } from '@/lib/types/bot-settings'
 import ar from '../../../messages/ar.json'
 import en from '../../../messages/en.json'
@@ -41,32 +42,35 @@ export const appointmentRequestSchema = z.object({
 /** What the visitor said about when, as the model reported it */
 export type AppointmentRequest = z.infer<typeof appointmentRequestSchema>
 
-// Gemini structured-output schema (OpenAPI subset) of the components. The
-// same one wherever an appointment is read: the reply call, and the analysis
-// of messages the bot didn't answer.
-export const APPOINTMENT_REQUEST_SCHEMA = {
-  type: 'OBJECT',
-  nullable: true,
+// Structured-output schema of the components (JSON Schema; each provider
+// translates it). The same one wherever an appointment is read: the reply
+// call, and the analysis of messages the bot didn't answer.
+export const APPOINTMENT_REQUEST_SCHEMA: JsonSchema = {
+  type: ['object', 'null'],
   properties: {
-    day_type: { type: 'STRING', enum: DAY_TYPES },
-    weekday: { type: 'STRING', enum: WEEKDAYS, nullable: true },
-    day_of_month: { type: 'INTEGER', nullable: true },
-    month: { type: 'INTEGER', nullable: true },
-    hour: { type: 'INTEGER', nullable: true },
-    minute: { type: 'INTEGER', nullable: true },
-    period: { type: 'STRING', enum: PERIODS },
+    day_type: { type: 'string', enum: DAY_TYPES },
+    weekday: { type: ['string', 'null'], enum: WEEKDAYS },
+    day_of_month: { type: ['integer', 'null'] },
+    month: { type: ['integer', 'null'] },
+    hour: { type: ['integer', 'null'] },
+    minute: { type: ['integer', 'null'] },
+    period: { type: 'string', enum: PERIODS },
   },
   required: ['day_type', 'period'],
 }
 
-export const BOT_REPLY_SCHEMA = {
-  type: 'OBJECT',
+export const BOT_REPLY_SCHEMA: JsonSchema = {
+  type: 'object',
   properties: {
-    reply: { type: 'STRING' },
+    // "appointment" BEFORE "reply", on purpose: do not reorder or sort these.
+    // The model writes the properties in this order, so it settles the
+    // appointment first and then writes the reply already knowing it. With
+    // the reply first, the text could claim a booking that the appointment
+    // written after it never backed up (the bug fixed in September 2026).
     appointment: APPOINTMENT_REQUEST_SCHEMA,
+    reply: { type: 'string' },
   },
   required: ['reply'],
-  propertyOrdering: ['appointment', 'reply'],
 }
 
 export const botReplySchema = z.object({

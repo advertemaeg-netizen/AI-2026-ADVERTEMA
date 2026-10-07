@@ -14,7 +14,7 @@ import { randomUUID } from 'node:crypto'
 import { readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 import { loadBotSettings, runBot } from '@/lib/ai/bot'
-import { embedTexts } from '@/lib/ai/gemini'
+import { embedTexts } from '@/lib/ai/provider'
 import { cairoDayStart, cairoParts, cairoWallTimeToIso } from '@/lib/cairo-time'
 import { prepareKnowledgeChunks, processKnowledgeDocument } from '@/lib/knowledge/process'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -307,13 +307,13 @@ const EMBED_DELAY_MS = 2000
 const EMBED_RETRIES = 6
 
 /** embedTexts, one chunk per request with a pause between them (Gemini free tier), backing off on 429. */
-const embedSlowly: typeof embedTexts = async (texts, taskType, usage) => {
+const embedSlowly: typeof embedTexts = async (texts, purpose, usage) => {
   const vectors: number[][] = []
   for (const [i, text] of texts.entries()) {
     if (i > 0) await sleep(EMBED_DELAY_MS)
     for (let attempt = 1; ; attempt++) {
       try {
-        vectors.push(...(await embedTexts([text], taskType, usage)))
+        vectors.push(...(await embedTexts([text], purpose, usage)))
         break
       } catch (error) {
         const rateLimited = error instanceof Error && error.message.includes('(429)')

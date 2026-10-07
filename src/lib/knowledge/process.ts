@@ -1,5 +1,5 @@
 import 'server-only'
-import { embedTexts } from '@/lib/ai/gemini'
+import { embedTexts } from '@/lib/ai/provider'
 import { estimateTokens } from '@/lib/ai/usage'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import type { KnowledgeFileType, KnowledgeProcessingError } from '@/lib/types/knowledge'
@@ -193,7 +193,7 @@ export async function processKnowledgeDocument(
   try {
     let embeddings: number[][]
     try {
-      embeddings = await embed(chunks, 'RETRIEVAL_DOCUMENT', { operation: 'embedding', clientId: doc.client_id })
+      embeddings = await embed(chunks, 'document', { operation: 'embedding', clientId: doc.client_id })
     } catch (error) {
       throw new ProcessingError('embeddingFailed', error)
     }

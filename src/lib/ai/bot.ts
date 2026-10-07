@@ -1,13 +1,6 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import {
-  embedQuery,
-  generateReply,
-  geminiModel,
-  toGeminiContents,
-  type ChatTurn,
-  type GeminiContent,
-} from '@/lib/ai/gemini'
+import { embedQuery, generateReply, replyModel, type ChatTurn } from '@/lib/ai/provider'
 import type { AiOperation } from '@/lib/ai/usage'
 import {
   APPOINTMENT_INSTRUCTIONS,
@@ -27,7 +20,7 @@ import {
 } from '@/lib/types/bot-settings'
 
 /**
- * The client's AI assistant: RAG over the knowledge base + Gemini.
+ * The client's AI assistant: RAG over the knowledge base + the chat model.
  * Shared by the public website webhook and the dashboard playground so the
  * playground shows exactly what visitors get. Behaviour is configured per
  * client in bot_settings.
@@ -63,7 +56,7 @@ export type BotDebug = {
   chunks: RetrievedChunk[]
   retrievalError: boolean
   systemPrompt: string
-  contents: GeminiContent[]
+  contents: ChatTurn[]
   timings: { embeddingMs: number; retrievalMs: number; generationMs: number; totalMs: number }
 }
 
@@ -236,7 +229,7 @@ export function parseBotReply(text: string): { reply: string; appointment: Appoi
  * the reply (renderReply) before anyone sees it.
  * `supabase` only needs to be able to run match_knowledge_chunks for this
  * client: the secret-key client (webhook) or the signed-in user's (playground).
- * Throws if Gemini fails.
+ * Throws if the AI call fails.
  */
 export async function runBot({
   supabase,
@@ -287,13 +280,13 @@ export async function runBot({
     // tell a model that reported no appointment from code that dropped one
     raw: text,
     debug: {
-      model: geminiModel(),
+      model: replyModel(),
       temperature: settings.temperature,
       threshold: KNOWLEDGE_MATCH_THRESHOLD,
       chunks: retrieval.chunks,
       retrievalError: retrieval.error,
       systemPrompt,
-      contents: toGeminiContents(trimmed),
+      contents: trimmed,
       timings: {
         embeddingMs: Math.round(retrieval.embeddingMs),
         retrievalMs: Math.round(retrieval.retrievalMs),

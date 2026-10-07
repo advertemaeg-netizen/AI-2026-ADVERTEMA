@@ -1,6 +1,6 @@
 import { after, NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { aiFailureReason, geminiModel, type ChatTurn } from '@/lib/ai/gemini'
+import { aiFailureReason, replyModel, type ChatTurn } from '@/lib/ai/provider'
 import { BOT_HISTORY_LIMIT, loadBotSettings, runBot } from '@/lib/ai/bot'
 import { detectLead } from '@/lib/ai/lead-detection'
 import { renderReply, replyLanguage, type BookingOutcome } from '@/lib/ai/appointment'
@@ -413,7 +413,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       conversation_id: conversationId,
       role: 'assistant',
       content: reply,
-      metadata: { model: geminiModel(), ...trace },
+      metadata: { model: replyModel(), ...trace },
     })
     if (replyError) {
       scheduleLeadDetection(history)

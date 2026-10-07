@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { AiUsageOperation } from '@/lib/types/ai-usage'
 
 /**
- * Logs what each Gemini call cost (ai_usage). The database fills in the
+ * Logs what each AI call cost (ai_usage). The database fills in the
  * organization from the client and prices the call with the model's current
  * price, so a later price change doesn't rewrite history. Logging never
  * fails the call it describes.
@@ -11,7 +11,7 @@ import type { AiUsageOperation } from '@/lib/types/ai-usage'
 
 export type AiOperation = AiUsageOperation
 
-/** Who a call is for; passed down to the Gemini helpers */
+/** Who a call is for; passed down to the AI calls */
 export type AiUsageContext = {
   operation: AiOperation
   clientId: string
@@ -19,22 +19,6 @@ export type AiUsageContext = {
 }
 
 export type TokenCounts = { promptTokens: number; completionTokens: number; totalTokens: number }
-
-/** Gemini's usageMetadata (generateContent responses) */
-export type GeminiUsageMetadata = {
-  promptTokenCount?: number
-  candidatesTokenCount?: number
-  /** Thinking tokens: billed as output */
-  thoughtsTokenCount?: number
-  toolUsePromptTokenCount?: number
-  totalTokenCount?: number
-}
-
-export function tokensFromMetadata(meta: GeminiUsageMetadata | undefined): TokenCounts {
-  const promptTokens = (meta?.promptTokenCount ?? 0) + (meta?.toolUsePromptTokenCount ?? 0)
-  const completionTokens = (meta?.candidatesTokenCount ?? 0) + (meta?.thoughtsTokenCount ?? 0)
-  return { promptTokens, completionTokens, totalTokens: meta?.totalTokenCount ?? promptTokens + completionTokens }
-}
 
 /**
  * Token estimate without a tokenizer: ~4 chars/token for Latin text, and
