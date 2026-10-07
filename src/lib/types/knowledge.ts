@@ -2,7 +2,7 @@ export const KNOWLEDGE_BUCKET = 'knowledge-base'
 /** The platform's cap on one file; each plan sets its own (plans.max_file_size_mb) up to this */
 export const MAX_KNOWLEDGE_FILE_SIZE_MB = 20
 export const MAX_KNOWLEDGE_FILE_SIZE = MAX_KNOWLEDGE_FILE_SIZE_MB * 1024 * 1024
-export const KNOWLEDGE_UPLOADS_PER_HOUR = 5
+export const KNOWLEDGE_UPLOADS_PER_HOUR = 20
 
 export const KNOWLEDGE_FILE_TYPES = {
   pdf: 'application/pdf',
