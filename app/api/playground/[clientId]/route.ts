@@ -16,7 +16,7 @@ const STATUS: Record<PlaygroundError, number> = {
 }
 
 /**
- * POST { messages: [{ role: 'user' | 'assistant', content }], debug?: boolean }
+ * POST { messages: [{ role: 'user' | 'assistant', content }] }
  * Same assistant as the website widget; nothing is persisted. Requires a
  * signed-in client admin (or org/super admin) with access to the client;
  * team members get 403.
@@ -24,17 +24,13 @@ const STATUS: Record<PlaygroundError, number> = {
 export async function POST(request: NextRequest, ctx: RouteContext<'/api/playground/[clientId]'>) {
   const { clientId } = await ctx.params
 
-  let body: { messages?: unknown; debug?: unknown }
+  let body: { messages?: unknown }
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ ok: false, error: 'validation' }, { status: 400 })
   }
 
-  const result = await testBot(
-    clientId,
-    body.messages as Parameters<typeof testBot>[1],
-    body.debug === true
-  )
+  const result = await testBot(clientId, body.messages as Parameters<typeof testBot>[1])
   return NextResponse.json(result, { status: result.ok ? 200 : STATUS[result.error] })
 }

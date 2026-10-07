@@ -59,7 +59,6 @@ function isValidHistory(messages: unknown): messages is PlaygroundMessage[] {
 export async function testBot(
   clientId: string,
   messages: PlaygroundMessage[],
-  includeDebug = false,
   settingsOverride?: BotSettingsInput
 ): Promise<PlaygroundResult> {
   if (await isImpersonating()) return { ok: false, error: 'impersonating' }
@@ -92,7 +91,7 @@ export async function testBot(
 
   try {
     const settings = override ?? (await loadBotSettings(supabase, clientId))
-    const { reply: template, appointment, debug } = await runBot({
+    const { reply: template, appointment } = await runBot({
       supabase,
       clientId,
       client,
@@ -119,7 +118,7 @@ export async function testBot(
     // only; access to this client was checked above.
     const { error: usageError } = await createAdminClient().rpc('consume_client_message', { p_client_id: clientId })
     if (usageError) console.error('[playground] counting the message failed', usageError)
-    return includeDebug ? { ok: true, reply, debug, ...simulated } : { ok: true, reply, ...simulated }
+    return { ok: true, reply, ...simulated }
   } catch (error) {
     console.error('[playground] bot failed', error)
     return { ok: false, error: 'aiUnavailable' }

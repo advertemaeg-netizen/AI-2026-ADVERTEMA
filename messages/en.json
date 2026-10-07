@@ -421,7 +421,6 @@
     "send": "Send",
     "typing": "Assistant is typing...",
     "newConversation": "New conversation",
-    "showDebug": "Show debug info",
     "errors": {
       "unauthorized": "Your session has expired. Please log in again.",
       "notFound": "Client not found or you do not have access to it.",
@@ -433,32 +432,6 @@
       "subscriptionInactive": "The client’s (or agency’s) subscription is inactive, so the bot is paused here and on the website. Activate it to continue.",
       "unknown": "Something went wrong. Please try again.",
       "impersonating": "Changes aren’t allowed while viewing a customer’s account"
-    },
-    "debug": {
-      "title": "Debug info",
-      "description": "Click any assistant reply to inspect it.",
-      "empty": "Send a message to see how the reply was produced.",
-      "selectReply": "Show debug info for this reply",
-      "tabs": {
-        "chunks": "Chunks",
-        "prompt": "Prompt",
-        "timing": "Timing"
-      },
-      "thresholdNote": "The top 3 chunks with similarity {threshold} or higher are used. Others are shown for comparison only.",
-      "noChunks": "No chunks found. Has anything been uploaded to the knowledge base?",
-      "retrievalError": "Knowledge base search failed, so the assistant replied without extra context.",
-      "chunkIndex": "Chunk #{index}",
-      "used": "Used",
-      "notUsed": "Not used",
-      "systemPrompt": "System prompt",
-      "conversation": "Conversation sent ({count, plural, one {# message} other {# messages}})",
-      "timing": {
-        "embedding": "Embedding",
-        "retrieval": "Knowledge search",
-        "generation": "Generation",
-        "total": "Total",
-        "model": "Model"
-      }
     },
     "simulatedAppointment": "Test only — no appointment was recorded. In a real chat this would be booked: {time}."
   },
