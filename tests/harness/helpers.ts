@@ -158,16 +158,47 @@ export async function createUser(
 ): Promise<TestUser> {
   const supabase = serviceClient()
   const email = `${randomUUID().slice(0, 12)}@example.com`
-  const id = must(await supabase.rpc('test_create_auth_user', { p_email: email })) as string
+  const id = await seed<string>(() => supabase.rpc('test_create_auth_user', { p_email: email }))
   const profile = { id, email, full_name: fullName, role, organization_id: organizationId }
   // The sign-up trigger may or may not have made the profile row
-  must(await supabase.from('users').upsert(profile).select('id').single())
+  await seed(() => supabase.from('users').upsert(profile).select('id').single())
   return { id, role, organization_id: organizationId }
 }
 
-function must<T>({ data, error }: { data: T | null; error: { message: string } | null }): T {
+type SeedResult<T> = { data: T | null; error: { message: string; code?: string } | null }
+
+function must<T>({ data, error }: SeedResult<T>): T {
   if (error || data === null) throw new Error(`Seeding failed: ${error?.message ?? 'no row returned'}`)
   return data
+}
+
+// PostgREST's connection group (PGRST000–PGRST003): it never reached, or lost, the database
+const CONNECTION_ERROR = /^PGRST00[0-3]$/
+const SEED_ATTEMPTS = 3
+
+/**
+ * WORKAROUND, not design: pglite-socket 0.2.11 answers a failed statement
+ * with a premature ReadyForQuery (electric-sql/pglite#958; fix in PR #977,
+ * unmerged), so PostgREST drops its one connection and the next call, often
+ * the next test's seeding, gets "Database connection error". Remove this
+ * once a pglite-socket release carries the fix.
+ *
+ * UNPROVEN: the failure did not show up in the 30 suite runs made after this
+ * went in (2026-10-07), so the retry has never been seen to fire. If the
+ * error comes back, this did not fix it; each retry is logged with
+ * console.warn so that a run where it did fire can be told apart.
+ *
+ * Runs a seeding `query` up to 3 times, retrying connection errors only.
+ * Anything the database itself answered (23505 above all) is returned on
+ * the first attempt, untouched: tests assert on those.
+ */
+async function seed<T>(query: () => PromiseLike<SeedResult<T>>): Promise<T> {
+  for (let attempt = 1; ; attempt += 1) {
+    const result = await query()
+    if (attempt === SEED_ATTEMPTS || !CONNECTION_ERROR.test(result.error?.code ?? '')) return must(result)
+    console.warn(`[harness] seeding hit ${result.error!.code} (pglite#958), retry ${attempt}/${SEED_ATTEMPTS - 1}`)
+    await new Promise((resolve) => setTimeout(resolve, 100 * attempt))
+  }
 }
 
 /**
@@ -178,18 +209,18 @@ export async function seedClient() {
   const supabase = serviceClient()
   const tag = randomUUID().slice(0, 8)
 
-  const org = must(
-    await supabase.from('organizations').insert({ name: `Org ${tag}`, slug: `org-${tag}` }).select('id').single<{ id: string }>()
+  const org = await seed(() =>
+    supabase.from('organizations').insert({ name: `Org ${tag}`, slug: `org-${tag}` }).select('id').single<{ id: string }>()
   )
-  const client = must(
-    await supabase
+  const client = await seed(() =>
+    supabase
       .from('clients')
       .insert({ organization_id: org.id, name: `Client ${tag}`, slug: `client-${tag}` })
       .select('id')
       .single<{ id: string }>()
   )
-  const channel = must(
-    await supabase
+  const channel = await seed(() =>
+    supabase
       .from('channels')
       .insert({ client_id: client.id, type: 'website', name: 'Website' })
       .select('id')
