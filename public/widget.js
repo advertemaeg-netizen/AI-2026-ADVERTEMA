@@ -1,5 +1,5 @@
 /*!
- * Connecta AI — website chat widget
+ * Mudrik AI — website chat widget
  *
  * <script src="https://YOUR-APP/widget.js"
  *         data-webhook="https://YOUR-APP/api/webhook/website/CHANNEL_ID"
@@ -16,7 +16,7 @@
   if (!script) return
   var webhook = script.getAttribute('data-webhook')
   if (!webhook) {
-    console.warn('[Connecta] Missing data-webhook attribute on widget script.')
+    console.warn('[Mudrik] Missing data-webhook attribute on widget script.')
     return
   }
 
@@ -44,7 +44,7 @@
       error: 'حدثت مشكلة في الاتصال. حاول مرة أخرى بعد قليل.',
       busy: 'أرسلت رسائل كثيرة بسرعة. انتظر دقيقة ثم حاول مرة أخرى.',
       unavailable: 'الخدمة غير متاحة حالياً. سيتواصل معك فريقنا قريباً.',
-      powered: 'مدعوم من Connecta AI',
+      powered: 'مدعوم من Mudrik AI',
     },
     en: {
       open: 'Open chat',
@@ -56,7 +56,7 @@
       error: 'Connection problem. Please try again in a moment.',
       busy: "You're sending messages too fast. Please wait a minute.",
       unavailable: 'Chat is unavailable right now. Our team will get back to you soon.',
-      powered: 'Powered by Connecta AI',
+      powered: 'Powered by Mudrik AI',
     },
   }[lang]
 
@@ -428,13 +428,13 @@
       })
       .then(function (info) {
         if (!info || !info.ok) {
-          console.warn('[Connecta] Chat channel is not available:', info && info.error)
+          console.warn('[Mudrik] Chat channel is not available:', info && info.error)
           return
         }
         mount(info)
       })
       .catch(function (err) {
-        console.warn('[Connecta] Could not reach chat server.', err)
+        console.warn('[Mudrik] Could not reach chat server.', err)
       })
   }
 

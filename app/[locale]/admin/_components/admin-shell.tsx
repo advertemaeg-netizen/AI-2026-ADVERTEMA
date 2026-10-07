@@ -69,7 +69,7 @@ export function AdminShell({
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-orange-500 flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
-            <span className="font-semibold text-lg">Connecta AI</span>
+            <span className="font-semibold text-lg">Mudrik AI</span>
           </Link>
           {!inSheet && <LanguageSwitcher />}
         </div>
@@ -147,7 +147,7 @@ export function AdminShell({
           </SheetContent>
         </Sheet>
         <Link href="/admin" className="flex min-h-11 flex-1 items-center gap-2 px-1 font-semibold">
-          Connecta AI
+          Mudrik AI
         </Link>
         <div className="[&_button]:size-11">
           <LanguageSwitcher />

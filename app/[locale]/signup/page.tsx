@@ -94,7 +94,7 @@ export default function SignupPage() {
             </div>
           </div>
           <CardTitle className="text-2xl">{t('signupTitle')}</CardTitle>
-          <CardDescription>Connecta AI</CardDescription>
+          <CardDescription>Mudrik AI</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignup} className="space-y-4">

@@ -45,7 +45,7 @@
     "weakPassword": "This password is too weak — try a longer one with numbers or symbols",
     "tooManyRequests": "You just requested a link — wait a minute and try again",
     "genericError": "Connection problem, please try again",
-    "orgDisabled": "Your organization’s account is disabled. Contact Connecta support to restore access.",
+    "orgDisabled": "Your organization’s account is disabled. Contact Mudrik support to restore access.",
     "accountType": "Account type",
     "agencyOption": "Marketing agency",
     "agencyOptionDesc": "I manage multiple client accounts",
@@ -1068,7 +1068,7 @@
     },
     "overview": {
       "title": "Platform overview",
-      "description": "Every customer on Connecta AI at a glance."
+      "description": "Every customer on Mudrik AI at a glance."
     },
     "kpis": {
       "organizations": "Customers",
@@ -1267,7 +1267,7 @@
       "whatsapp": "Message us on WhatsApp",
       "email": "Email us",
       "emailSubject": "Switch to the {plan} plan",
-      "noContact": "Contact your Connecta account manager to change your plan."
+      "noContact": "Contact your Mudrik account manager to change your plan."
     },
     "invoices": {
       "title": "Invoices",

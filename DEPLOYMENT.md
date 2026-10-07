@@ -1,4 +1,4 @@
-# Deploying Connecta AI
+# Deploying Mudrik AI
 
 Production runs as a single Docker container on the VPS, behind the Traefik
 instance that already serves n8n.

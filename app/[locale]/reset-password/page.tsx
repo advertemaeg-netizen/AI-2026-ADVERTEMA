@@ -92,7 +92,7 @@ export default function ResetPasswordPage() {
             )}
           </div>
           <CardTitle className="text-2xl">{invalid ? t('invalidResetLink') : t('resetPasswordTitle')}</CardTitle>
-          <CardDescription>{invalid ? t('invalidResetLinkDesc') : 'Connecta AI'}</CardDescription>
+          <CardDescription>{invalid ? t('invalidResetLinkDesc') : 'Mudrik AI'}</CardDescription>
         </CardHeader>
         <CardContent>
           {linkState === 'checking' && (

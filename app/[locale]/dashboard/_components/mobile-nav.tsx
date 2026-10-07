@@ -47,7 +47,7 @@ export function MobileTopBar({
           <Sparkles className="size-3.5 text-white" />
         </span>
         <span className="min-w-0">
-          <span className="block text-sm leading-tight font-semibold">Connecta AI</span>
+          <span className="block text-sm leading-tight font-semibold">Mudrik AI</span>
           {title && <span className="block truncate text-xs leading-tight text-muted-foreground">{title}</span>}
         </span>
       </Link>

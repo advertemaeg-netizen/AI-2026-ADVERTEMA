@@ -45,7 +45,7 @@
     "weakPassword": "كلمة المرور ضعيفة، جرّب كلمة أطول أو فيها أرقام ورموز",
     "tooManyRequests": "طلبت رابط من شوية، استنى دقيقة وحاول تاني",
     "genericError": "حصلت مشكلة في الاتصال، حاول تاني",
-    "orgDisabled": "حساب منظمتك معطّل. تواصل مع دعم Connecta لإعادة التفعيل.",
+    "orgDisabled": "حساب منظمتك معطّل. تواصل مع دعم Mudrik لإعادة التفعيل.",
     "accountType": "نوع الحساب",
     "agencyOption": "وكالة تسويق",
     "agencyOptionDesc": "أدير حسابات عملاء متعددين",
@@ -1068,7 +1068,7 @@
     },
     "overview": {
       "title": "نظرة عامة على المنصة",
-      "description": "كل عملاء Connecta AI في مكان واحد."
+      "description": "كل عملاء Mudrik AI في مكان واحد."
     },
     "kpis": {
       "organizations": "العملاء",
@@ -1267,7 +1267,7 @@
       "whatsapp": "راسلنا على واتساب",
       "email": "راسلنا بالإيميل",
       "emailSubject": "التحويل إلى خطة {plan}",
-      "noContact": "تواصل مع مدير حسابك في Connecta لتغيير الخطة."
+      "noContact": "تواصل مع مدير حسابك في Mudrik لتغيير الخطة."
     },
     "invoices": {
       "title": "الفواتير",

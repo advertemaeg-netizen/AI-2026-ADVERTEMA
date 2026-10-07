@@ -1,4 +1,4 @@
-# Connecta AI
+# Mudrik AI
 
 AI chat assistants for businesses and marketing agencies. Deployment: see [DEPLOYMENT.md](DEPLOYMENT.md).
 

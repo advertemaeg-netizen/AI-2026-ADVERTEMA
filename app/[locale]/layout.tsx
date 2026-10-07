@@ -22,7 +22,7 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: 'Connecta AI',
+  title: 'Mudrik AI',
   description: 'AI-powered multi-channel conversation management',
 }
 

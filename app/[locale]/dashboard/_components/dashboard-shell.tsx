@@ -166,7 +166,7 @@ export function DashboardShell({
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-orange-500 flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
-            <span className="font-semibold text-lg">Connecta AI</span>
+            <span className="font-semibold text-lg">Mudrik AI</span>
           </Link>
           {/* Phones have it in the top bar */}
           {!inSheet && <LanguageSwitcher />}

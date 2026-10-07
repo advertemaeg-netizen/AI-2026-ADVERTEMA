@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 #
-# Connecta AI — production image (Next.js standalone output).
+# Mudrik AI — production image (Next.js standalone output).
 # Build/run through deploy/docker-compose.yml; see DEPLOYMENT.md.
 
 ARG NODE_IMAGE=node:22-alpine
