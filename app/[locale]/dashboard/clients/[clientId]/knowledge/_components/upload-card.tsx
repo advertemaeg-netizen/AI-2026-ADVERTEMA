@@ -4,7 +4,7 @@ import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useFormatter, useTranslations } from 'next-intl'
 import { toast } from 'sonner'
-import { FileUp, UploadCloud } from 'lucide-react'
+import { AlertTriangle, FileUp, UploadCloud } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -48,17 +48,14 @@ function uploadWithProgress(
   })
 }
 
-/** The failure as a sentence, with the numbers the route sent back. */
+/** The failure as a sentence a clinic owner can act on. */
 function useFailureMessage() {
   const t = useTranslations('knowledge')
   const tLimits = useTranslations('knowledgeLimits')
   const format = useFormatter()
   return (failure: KnowledgeUploadFailure) => {
-    if (failure.error === 'chunkLimit') {
-      return failure.chunks && failure.available !== undefined
-        ? tLimits('chunkLimit', { chunks: format.number(failure.chunks), available: format.number(failure.available) })
-        : tLimits('full')
-    }
+    // No chunks in the body: nothing fits, whatever the file
+    if (failure.error === 'chunkLimit') return tLimits(failure.chunks ? 'chunkLimit' : 'full')
     if (failure.error === 'fileTooLarge' && failure.maxMb) {
       return tLimits('fileTooLarge', { max: format.number(failure.maxMb) })
     }
@@ -66,39 +63,29 @@ function useFailureMessage() {
   }
 }
 
-/** Chunks used against the plan (and the agency's pool), as a bar. */
-function QuotaBar({ quota }: { quota: KnowledgeQuota }) {
+/** Says so only when the plan's (or the agency pool's) room is running out. */
+function QuotaNotice({ quota }: { quota: KnowledgeQuota }) {
   const t = useTranslations('knowledgeLimits')
-  const format = useFormatter()
   // The tighter limit is the one that matters
   const agencyTighter =
     quota.org_limit !== null && (quota.limit === null || quota.org_limit - (quota.org_used ?? 0) < quota.limit - quota.used)
   const used = agencyTighter ? (quota.org_used ?? 0) : quota.used
   const limit = agencyTighter ? quota.org_limit : quota.limit
-  if (limit === null) {
-    return <p className="text-sm text-muted-foreground">{t('usageUnlimited', { used: format.number(used) })}</p>
-  }
-  const percentage = limit === 0 ? 100 : (used * 100) / limit
-  const level = usageLevel(percentage)
+  if (limit === null) return null
+  const level = quota.available === 0 ? 'full' : usageLevel(limit === 0 ? 100 : (used * 100) / limit)
+  if (level === 'ok') return null
+  const full = level === 'full'
   return (
-    <div className="grid gap-1.5">
-      <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
-        <span className="font-medium">
-          {t(agencyTighter ? 'agencyUsage' : 'usage', { used: format.number(used), limit: format.number(limit) })}
-        </span>
-        <span className="text-muted-foreground">{t('available', { available: format.number(quota.available ?? 0) })}</span>
-      </div>
-      <Progress
-        value={Math.min(percentage, 100)}
-        aria-label={t('title')}
-        className={cn(
-          'h-2',
-          level === 'warning' && '[&_[data-slot=progress-indicator]]:bg-amber-500',
-          level === 'critical' && '[&_[data-slot=progress-indicator]]:bg-orange-600',
-          level === 'full' && '[&_[data-slot=progress-indicator]]:bg-destructive'
-        )}
-      />
-    </div>
+    <p
+      role="status"
+      className={cn(
+        'flex items-center gap-2 rounded-lg px-3 py-2 text-sm',
+        full ? 'bg-destructive/10 text-destructive' : 'bg-amber-500/10 text-amber-800 dark:text-amber-200'
+      )}
+    >
+      <AlertTriangle className="size-4 shrink-0" />
+      {t(full ? 'full' : 'nearlyFull')}
+    </p>
   )
 }
 
@@ -143,7 +130,7 @@ export function UploadCard({ clientId, quota }: { clientId: string; quota: Knowl
         <CardDescription>{t('upload.description')}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
-        {quota && <QuotaBar quota={quota} />}
+        {quota && <QuotaNotice quota={quota} />}
         <div
           onDragOver={(e) => {
             e.preventDefault()

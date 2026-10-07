@@ -165,7 +165,7 @@ export default async function AdminCustomerPage({ params }: PageProps<'/[locale]
               <CardTitle>{tBilling('usage')}</CardTitle>
             </CardHeader>
             <CardContent>
-              <UsageBars usage={billing.details.usage} />
+              <UsageBars usage={billing.details.usage} rawKnowledge />
             </CardContent>
           </Card>
           <Card>
@@ -354,7 +354,7 @@ async function DirectBilling({
           <CardTitle>{tBilling('usage')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <UsageBars usage={details.usage} />
+          <UsageBars usage={details.usage} rawKnowledge />
         </CardContent>
       </Card>
       <ClientPlanPicker

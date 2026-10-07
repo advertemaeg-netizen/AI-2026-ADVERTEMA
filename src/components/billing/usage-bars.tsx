@@ -22,7 +22,16 @@ const INDICATOR = {
 }
 
 /** One progress bar per limit, warning at 80 % and 90 %. */
-export function UsageBars({ usage, compact = false }: { usage: UsageItem[]; compact?: boolean }) {
+export function UsageBars({
+  usage,
+  compact = false,
+  rawKnowledge = false,
+}: {
+  usage: UsageItem[]
+  compact?: boolean
+  /** Support views: the knowledge base's chunk counts next to the percentage */
+  rawKnowledge?: boolean
+}) {
   const t = useTranslations('subscription.usage')
   const tChunks = useTranslations('knowledgeLimits')
   const format = useFormatter()
@@ -36,22 +45,31 @@ export function UsageBars({ usage, compact = false }: { usage: UsageItem[]; comp
           item.limit !== null && item.used >= item.limit && item.lead_capture_used !== undefined
             ? leadCaptureRemaining(item.limit, item.lead_capture_used)
             : null
+        // Chunks mean nothing to a clinic owner: the knowledge base reads as space used
+        const isSpace = item.limit_type === 'knowledge_chunks'
+        const label = isSpace ? tChunks('space') : t(`types.${item.limit_type}`)
+        // Rounded, but never 100 % before the limit is really reached
+        const percentUsed = (item.percentage ?? 0) >= 100 ? 100 : Math.min(Math.round(item.percentage ?? 0), 99)
+        const used = format.number(item.used)
+        const limit = item.limit === null ? null : format.number(item.limit)
+        const percentage = format.number(percentUsed)
+        let value: string
+        if (!isSpace) value = limit === null ? t('usedUnlimited', { used }) : t('usedOf', { used, limit })
+        else if (rawKnowledge) {
+          value = limit === null ? t('usedUnlimited', { used }) : tChunks('usedOfPercent', { used, limit, percentage })
+        } else value = limit === null ? tChunks('unlimited') : tChunks('usedPercent', { percentage })
         return (
           <div key={item.limit_type} className="grid gap-2">
             <div className="flex items-baseline justify-between gap-2 text-sm">
-              <span className="font-medium">{t(`types.${item.limit_type}`)}</span>
+              <span className="font-medium">{label}</span>
               <span className="tabular-nums text-muted-foreground">
-                {item.limit === null
-                  ? t('usedUnlimited', { used: format.number(item.used) })
-                  : item.limit_type === 'knowledge_chunks'
-                    ? tChunks('usedOf', { used: format.number(item.used), limit: format.number(item.limit) })
-                    : t('usedOf', { used: format.number(item.used), limit: format.number(item.limit) })}
+                {value}
               </span>
             </div>
             <Progress
               value={item.limit === null ? 0 : Math.min(item.percentage ?? 0, 100)}
               className={cn('h-2', INDICATOR[level])}
-              aria-label={t(`types.${item.limit_type}`)}
+              aria-label={label}
             />
             {level !== 'ok' && (
               <p

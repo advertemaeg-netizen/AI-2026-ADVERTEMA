@@ -67,15 +67,11 @@ export function DocumentsList({
     })
   }
 
-  const totalChunks = documents.reduce((sum, doc) => sum + (doc.chunk_count ?? 0), 0)
-
   return (
     <Card>
       <CardHeader>
         <CardTitle>{t('list.title')}</CardTitle>
-        <CardDescription>
-          {t('list.summary', { documents: documents.length, chunks: totalChunks })}
-        </CardDescription>
+        <CardDescription>{t('list.summary', { documents: documents.length })}</CardDescription>
       </CardHeader>
       <CardContent>
         {documents.length === 0 ? (
@@ -101,7 +97,6 @@ export function DocumentsList({
                     )}
                     {' · '}
                     <RelativeTime date={doc.created_at} />
-                    {doc.status === 'ready' && <> · {t('list.chunks', { count: doc.chunk_count ?? 0 })}</>}
                   </p>
                   {doc.status === 'failed' && doc.error_message && (
                     <p className="text-xs text-destructive">{t(`processingErrors.${doc.error_message}`)}</p>

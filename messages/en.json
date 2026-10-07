@@ -369,8 +369,7 @@
     },
     "list": {
       "title": "Uploaded files",
-      "summary": "{documents, plural, =0 {No files} one {# file} other {# files}} · {chunks, plural, =0 {no chunks} one {# chunk} other {# chunks}}",
-      "chunks": "{count, plural, =0 {no chunks} one {# chunk} other {# chunks}}",
+      "summary": "{documents, plural, =0 {No files} one {# file} other {# files}}",
       "empty": "No files yet. Upload the first one for the assistant to start using it.",
       "emptyReadOnly": "This client has no knowledge base files yet."
     },
@@ -388,7 +387,7 @@
       "chunkLimit": "The knowledge base filled up while this file was processed (another file was uploaded at the same time). Delete it and try again."
     },
     "deleteTitle": "Delete file?",
-    "deleteDescription": "\"{name}\" and all of its chunks will be removed from the knowledge base and no longer used by the assistant.",
+    "deleteDescription": "\"{name}\" and all of its content will be removed from the knowledge base and no longer used by the assistant.",
     "toast": {
       "uploaded": "File uploaded and processing",
       "deleted": "File deleted"
@@ -1706,13 +1705,13 @@
   },
   "knowledgeLimits": {
     "title": "Knowledge base",
-    "usage": "Knowledge base: {used} / {limit} chunks",
-    "agencyUsage": "Knowledge base (all agency clients): {used} / {limit} chunks",
-    "usageUnlimited": "Knowledge base: {used} chunks · unlimited",
-    "usedOf": "{used} / {limit} chunks",
-    "available": "{available} available",
-    "chunkLimit": "This file would add {chunks} chunks, and only {available} are left. Upload a smaller file or upgrade the plan.",
-    "full": "The knowledge base has reached your plan’s limit. Delete a file or upgrade the plan.",
+    "space": "Knowledge base space",
+    "usedPercent": "{percentage}% used",
+    "usedOfPercent": "{used} / {limit} ({percentage}%)",
+    "unlimited": "Unlimited",
+    "nearlyFull": "The knowledge base is almost full. Delete an old file or upgrade the plan before it runs out of room.",
+    "chunkLimit": "This file is bigger than the room left in the knowledge base. Upload a smaller file or delete an old one first.",
+    "full": "There’s no room for new files. Delete an old file first or upgrade the plan.",
     "fileTooLarge": "The file is larger than {max} MB, your plan’s limit. Upload a smaller file or upgrade the plan."
   },
   "aiUsage": {
