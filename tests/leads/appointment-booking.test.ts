@@ -138,6 +138,42 @@ describe('one appointment parser: the reply quotes the stored appointment', () =
     expect(metadata.booking).toBe('none')
   })
 
+  // Seen on the demo widget (7 October 2026): a booking, then "المعادي" in
+  // answer to "which branch?"; the model repeated the booking through the
+  // placeholder with no appointment, and the visitor was asked for the day
+  // and time they had already given
+  it('quotes the appointment on record when a later reply repeats it without reporting it again', async () => {
+    const seeded = await seedClient()
+    const visitorId = newVisitorId()
+    chatModel(() => botReply('تمام يا أستاذ كريم، حجزتلك {{appointment}}. أنهي فرع تفضّل؟', THURSDAY_6_EVENING))
+    const booked = await book(seeded, BOOKING_MESSAGE, { visitorId })
+
+    chatModel(() => botReply('تمام، فرع المعادي. الميعاد اللي طلبته هو {{appointment}}.', null))
+    const { reply, stored, leads, metadata } = await book(seeded, 'المعادي', { visitorId, conversationId: booked.conversationId })
+
+    expect(reply).toBe(`تمام، فرع المعادي. الميعاد اللي طلبته هو ${THURSDAY_6PM_TEXT}.\n${TEXT.confirmed}`)
+    expect(reply).not.toContain(TEXT.askTime)
+    expect(stored).toBe(reply)
+    // Quoted, not booked again
+    expect(leads).toHaveLength(1)
+    expect(instant(leads[0].appointment_at)).toBe(THURSDAY_6PM)
+    expect(JSON.parse(metadata.raw).appointment).toBeNull()
+    expect(metadata.booking).toBe('booked')
+  })
+
+  it('leaves a later reply that does not mention the appointment exactly as the model wrote it', async () => {
+    const seeded = await seedClient()
+    const visitorId = newVisitorId()
+    chatModel(() => botReply('تمام يا أستاذ كريم، حجزتلك {{appointment}}. أنهي فرع تفضّل؟', THURSDAY_6_EVENING))
+    const booked = await book(seeded, BOOKING_MESSAGE, { visitorId })
+
+    chatModel(() => botReply('تمام، فرع المعادي. تحب أساعدك بحاجة تانية؟', null))
+    const { reply, metadata } = await book(seeded, 'المعادي', { visitorId, conversationId: booked.conversationId })
+
+    expect(reply).toBe('تمام، فرع المعادي. تحب أساعدك بحاجة تانية؟')
+    expect(metadata.booking).toBe('none')
+  })
+
   it('stores the model\'s raw answer and the booking outcome with the reply', async () => {
     chatModel(() => botReply('حجزتلك {{appointment}}.', THURSDAY_6_EVENING))
     const { metadata } = await book(await seedClient())

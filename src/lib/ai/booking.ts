@@ -138,3 +138,30 @@ export async function recordAppointment({
   }
   return { status: 'booked', at: resolved.at, confirmed: autoConfirm, changed: true }
 }
+
+/**
+ * The appointment already on record for the conversation's open lead, as the
+ * outcome of a message that didn't ask for one. For a reply that quotes the
+ * appointment (the placeholder) without reporting it again: it is answered
+ * from the record, not treated as a booking that never happened.
+ * Throws on a database error.
+ */
+export async function appointmentOnRecord({
+  supabase,
+  conversationId,
+}: {
+  supabase: SupabaseClient
+  conversationId: string
+}): Promise<BookingOutcome> {
+  const { data, error } = await supabase
+    .from('leads')
+    .select('status, appointment_at, appointment_confirmed')
+    .eq('conversation_id', conversationId)
+    .not('appointment_at', 'is', null)
+    .order('created_at', { ascending: true })
+    .returns<Pick<BookableLead, 'status' | 'appointment_at' | 'appointment_confirmed'>[]>()
+  if (error) throw error
+  const open = data.find((lead) => !CLOSED_LEAD_STATUSES.includes(lead.status))
+  if (!open) return { status: 'none' }
+  return { status: 'booked', at: open.appointment_at!, confirmed: open.appointment_confirmed, changed: false }
+}

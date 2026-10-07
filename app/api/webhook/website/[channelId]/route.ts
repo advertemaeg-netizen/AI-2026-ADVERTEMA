@@ -3,8 +3,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { aiFailureReason, replyModel, type ChatTurn } from '@/lib/ai/provider'
 import { BOT_HISTORY_LIMIT, loadBotSettings, runBot } from '@/lib/ai/bot'
 import { detectLead } from '@/lib/ai/lead-detection'
-import { renderReply, replyLanguage, type BookingOutcome } from '@/lib/ai/appointment'
-import { recordAppointment } from '@/lib/ai/booking'
+import { APPOINTMENT_PLACEHOLDER, renderReply, replyLanguage, type BookingOutcome } from '@/lib/ai/appointment'
+import { appointmentOnRecord, recordAppointment } from '@/lib/ai/booking'
 import type { BotSettingsInput } from '@/lib/types/bot-settings'
 import { checkClientLimit } from '@/lib/subscription-limits'
 import { UUID_PATTERN } from '@/lib/types/clients'
@@ -381,6 +381,17 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
           })
         } catch (error) {
           console.error('[webhook/website] recording the appointment failed', error)
+          bookingFailed = true
+        }
+      } else if (result.reply.includes(APPOINTMENT_PLACEHOLDER)) {
+        // The reply quotes an appointment the message didn't ask for (an
+        // answer to "which branch?" that repeats the booking). If one is on
+        // record, that is the one quoted; without this the reply would ask
+        // for a day and time the visitor has already given.
+        try {
+          booking = await appointmentOnRecord({ supabase, conversationId })
+        } catch (error) {
+          console.error('[webhook/website] reading the appointment on record failed', error)
           bookingFailed = true
         }
       }
