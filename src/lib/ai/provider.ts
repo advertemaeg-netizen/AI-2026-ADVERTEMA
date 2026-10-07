@@ -1,6 +1,7 @@
 import 'server-only'
 import { recordAiUsage, type AiUsageContext } from '@/lib/ai/usage'
 import { geminiProvider } from '@/lib/ai/providers/gemini'
+import { openaiProvider } from '@/lib/ai/providers/openai'
 import {
   ProviderError,
   type AiProvider,
@@ -19,18 +20,23 @@ export { ProviderError, type ChatTurn, type EmbeddingPurpose, type JsonSchema }
 
 const PROVIDERS: Record<string, AiProvider> = {
   gemini: geminiProvider,
+  openai: openaiProvider,
+}
+// The stored chunks are Gemini vectors: no other provider can embed for them
+const EMBEDDING_PROVIDERS: Record<string, AiProvider> = {
+  gemini: geminiProvider,
 }
 const DEFAULT_PROVIDER = 'gemini'
 
-function providerNamed(name: string, variable: string) {
-  const provider = PROVIDERS[name]
-  if (!provider) throw new Error(`${variable}="${name}" is not a known AI provider (${Object.keys(PROVIDERS).join(', ')})`)
+function providerNamed(providers: Record<string, AiProvider>, name: string, variable: string) {
+  const provider = providers[name]
+  if (!provider) throw new Error(`${variable}="${name}" is not a known AI provider (${Object.keys(providers).join(', ')})`)
   return provider
 }
 
 /** Replies and analyses (AI_PROVIDER) */
 function chatProvider() {
-  return providerNamed(process.env.AI_PROVIDER || DEFAULT_PROVIDER, 'AI_PROVIDER')
+  return providerNamed(PROVIDERS, process.env.AI_PROVIDER || DEFAULT_PROVIDER, 'AI_PROVIDER')
 }
 
 /**
@@ -40,7 +46,7 @@ function chatProvider() {
  * Changing it means re-embedding every chunk first.
  */
 function embeddingProvider() {
-  return providerNamed(process.env.AI_EMBEDDING_PROVIDER || DEFAULT_PROVIDER, 'AI_EMBEDDING_PROVIDER')
+  return providerNamed(EMBEDDING_PROVIDERS, process.env.AI_EMBEDDING_PROVIDER || DEFAULT_PROVIDER, 'AI_EMBEDDING_PROVIDER')
 }
 
 /** The model that writes replies, for the record kept with each one */
