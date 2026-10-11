@@ -1,9 +1,14 @@
 import 'server-only'
-import type { TokenCounts } from '@/lib/ai/usage'
+import { estimateTokens, type TokenCounts } from '@/lib/ai/usage'
 import { ProviderError, type AiProvider, type ChatTurn, type JsonSchema } from '@/lib/ai/providers/types'
 
 const API_URL = 'https://api.openai.com/v1/chat/completions'
+const EMBEDDINGS_API_URL = 'https://api.openai.com/v1/embeddings'
 const DEFAULT_MODEL = 'gpt-6-luna'
+// text-embedding-3-small is natively 1536-d; `dimensions` shortens it to the
+// app's 768 (EMBEDDING_DIMENSIONS, src/lib/ai/provider.ts) so it fits the
+// existing vector(768) column and HNSW index with no migration.
+const DEFAULT_EMBEDDING_MODEL = 'text-embedding-3-small'
 
 const NAME = 'OpenAI'
 
@@ -122,13 +127,17 @@ const toMessages = (systemPrompt: string, history: ChatTurn[]): ChatMessage[] =>
   ...history.map((turn) => ({ role: turn.role, content: turn.content })),
 ]
 
+type EmbeddingResponse = {
+  data?: { embedding?: number[]; index?: number }[]
+  usage?: { prompt_tokens?: number; total_tokens?: number }
+}
+
 export const openaiProvider: AiProvider = {
   name: NAME,
   replyModel: () => process.env.OPENAI_MODEL || DEFAULT_MODEL,
   analysisModel: () => process.env.OPENAI_ANALYSIS_MODEL || DEFAULT_MODEL,
-  // Not offered: see embed()
-  embeddingModel: () => 'none',
-  embedBatchSize: 0,
+  embeddingModel: () => process.env.OPENAI_EMBEDDING_MODEL || DEFAULT_EMBEDDING_MODEL,
+  embedBatchSize: 100, // mirrors Gemini's batchEmbedContents limit; well under OpenAI's per-request cap
 
   generateReply({ model, systemPrompt, history, temperature, schema, timeoutMs }) {
     return complete(model, toMessages(systemPrompt, history), temperature, schema && { name: 'reply', schema }, timeoutMs)
@@ -139,12 +148,27 @@ export const openaiProvider: AiProvider = {
   },
 
   /**
-   * Embeddings stay on Gemini: the knowledge base is stored as Gemini
-   * vectors, and a question embedded by another model matches none of them,
-   * so the bot would answer without the knowledge base. This provider is not
-   * selectable for them (AI_EMBEDDING_PROVIDER, src/lib/ai/provider.ts).
+   * `dimensions` asks the API to shorten the (otherwise 1536-d)
+   * text-embedding-3 output to the app's EMBEDDING_DIMENSIONS, so the vector
+   * fits the existing column/index. The embeddings endpoint doesn't always
+   * report usage, so prompt tokens fall back to the same estimate Gemini
+   * uses when its API omits them.
    */
-  async embed() {
-    throw new Error('OpenAI embeddings are not supported: the knowledge base is embedded with Gemini')
+  async embed({ model, texts, dimensions, timeoutMs }) {
+    const apiKey = apiKeyOrThrow()
+    const res = await fetch(EMBEDDINGS_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({ model, input: texts, dimensions }),
+      signal: AbortSignal.timeout(timeoutMs),
+    })
+    if (!res.ok) throw new ProviderError(NAME, res.status, await res.text())
+    const data = (await res.json()) as EmbeddingResponse
+    const items = [...(data.data ?? [])].sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
+    const promptTokens = data.usage?.prompt_tokens ?? texts.reduce((sum, text) => sum + estimateTokens(text), 0)
+    return {
+      vectors: items.map((item) => item.embedding ?? []),
+      tokens: { promptTokens, completionTokens: 0, totalTokens: data.usage?.total_tokens ?? promptTokens },
+    }
   },
 }

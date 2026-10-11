@@ -22,9 +22,12 @@ const PROVIDERS: Record<string, AiProvider> = {
   gemini: geminiProvider,
   openai: openaiProvider,
 }
-// The stored chunks are Gemini vectors: no other provider can embed for them
+// Whichever model embedded the stored chunks is the only one that can embed
+// a visitor's question for them: vectors from two models aren't comparable.
+// Changing AI_EMBEDDING_PROVIDER means re-embedding every chunk first.
 const EMBEDDING_PROVIDERS: Record<string, AiProvider> = {
   gemini: geminiProvider,
+  openai: openaiProvider,
 }
 const DEFAULT_PROVIDER = 'gemini'
 
