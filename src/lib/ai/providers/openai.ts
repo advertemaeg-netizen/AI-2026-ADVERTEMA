@@ -12,7 +12,17 @@ const DEFAULT_MODEL = 'gpt-6-luna'
 // (at 768 or 1536) ranked the right chunk as low as 12th of 15 for short
 // Egyptian-Arabic questions. The stored chunks carry this model's vectors:
 // another model here means re-embedding them (scripts/reembed-knowledge.ts).
-const DEFAULT_EMBEDDING_MODEL = 'text-embedding-3-large'
+//
+// OPENAI_EMBEDDING_MODEL has no default: every text-embedding-3 model
+// returns the 1536 dimensions it is asked for, so the wrong one is accepted
+// by the database and only shows as a bot that stopped finding its answers.
+function embeddingModelOrThrow() {
+  const model = process.env.OPENAI_EMBEDDING_MODEL
+  if (!model) {
+    throw new Error('OPENAI_EMBEDDING_MODEL is not set: it must name the model the stored chunks were embedded with (text-embedding-3-large)')
+  }
+  return model
+}
 
 const NAME = 'OpenAI'
 
@@ -140,7 +150,7 @@ export const openaiProvider: AiProvider = {
   name: NAME,
   replyModel: () => process.env.OPENAI_MODEL || DEFAULT_MODEL,
   analysisModel: () => process.env.OPENAI_ANALYSIS_MODEL || DEFAULT_MODEL,
-  embeddingModel: () => process.env.OPENAI_EMBEDDING_MODEL || DEFAULT_EMBEDDING_MODEL,
+  embeddingModel: embeddingModelOrThrow,
   embedBatchSize: 100, // mirrors Gemini's batchEmbedContents limit; well under OpenAI's per-request cap
 
   generateReply({ model, systemPrompt, history, temperature, schema, timeoutMs }) {

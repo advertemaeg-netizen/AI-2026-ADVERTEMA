@@ -4,6 +4,7 @@ import { signJwt } from './jwt'
 
 const realFetch = globalThis.fetch
 const GEMINI_HOST = 'generativelanguage.googleapis.com'
+const OPENAI_EMBEDDINGS_URL = 'https://api.openai.com/v1/embeddings'
 
 export type GeminiCall = {
   kind: 'reply' | 'analysis' | 'embedding'
@@ -93,6 +94,14 @@ export async function harnessFetch(input: RequestInfo | URL, init?: RequestInit)
     }
     geminiCalls.push(call)
     if (!geminiHandler) throw new Error('Unexpected Gemini call: use mockGemini() in the test')
+    return geminiHandler(call)
+  }
+
+  // Embeddings go to OpenAI, as in production; the same mock answers them
+  if (url.href === OPENAI_EMBEDDINGS_URL) {
+    const call: GeminiCall = { kind: 'embedding', url: url.href, body: JSON.parse(String(init?.body ?? '{}')) }
+    geminiCalls.push(call)
+    if (!geminiHandler) throw new Error('Unexpected embedding call: use mockGemini() in the test')
     return geminiHandler(call)
   }
 

@@ -29,9 +29,14 @@ const EMBEDDING_PROVIDERS: Record<string, AiProvider> = {
   gemini: geminiProvider,
   openai: openaiProvider,
 }
-const DEFAULT_PROVIDER = 'gemini'
 
-function providerNamed(providers: Record<string, AiProvider>, name: string, variable: string) {
+/**
+ * No default for either switch, on purpose: a provider that was never chosen
+ * answers anyway, and nothing in the reply says which one wrote it. An unset
+ * variable stops the app at startup instead (instrumentation.ts).
+ */
+function providerNamed(providers: Record<string, AiProvider>, name: string | undefined, variable: string) {
+  if (!name) throw new Error(`${variable} is not set (${Object.keys(providers).join(', ')})`)
   const provider = providers[name]
   if (!provider) throw new Error(`${variable}="${name}" is not a known AI provider (${Object.keys(providers).join(', ')})`)
   return provider
@@ -39,7 +44,7 @@ function providerNamed(providers: Record<string, AiProvider>, name: string, vari
 
 /** Replies and analyses (AI_PROVIDER) */
 function chatProvider() {
-  return providerNamed(PROVIDERS, process.env.AI_PROVIDER || DEFAULT_PROVIDER, 'AI_PROVIDER')
+  return providerNamed(PROVIDERS, process.env.AI_PROVIDER, 'AI_PROVIDER')
 }
 
 /**
@@ -47,9 +52,33 @@ function chatProvider() {
  * AI_PROVIDER: vectors from two models can't be compared, so the stored
  * chunks and the visitor's question must be embedded by the same one.
  * Changing it means re-embedding every chunk first.
+ *
+ * Unset is the worst case here: every provider is asked for
+ * EMBEDDING_DIMENSIONS, so another provider's vectors fit the column and the
+ * database accepts them. Nothing errors, the question is just compared with
+ * vectors it has nothing to do with, and the bot answers without its
+ * knowledge base.
  */
 function embeddingProvider() {
-  return providerNamed(EMBEDDING_PROVIDERS, process.env.AI_EMBEDDING_PROVIDER || DEFAULT_PROVIDER, 'AI_EMBEDDING_PROVIDER')
+  return providerNamed(EMBEDDING_PROVIDERS, process.env.AI_EMBEDDING_PROVIDER, 'AI_EMBEDDING_PROVIDER')
+}
+
+/**
+ * What the app's AI calls will use, read from the environment the way the
+ * calls themselves read it. Throws when a required variable is missing:
+ * called once at startup (instrumentation.ts), which logs it.
+ */
+export function resolveAiConfig() {
+  const chat = chatProvider()
+  const embedding = embeddingProvider()
+  return {
+    chatProvider: chat.name,
+    replyModel: chat.replyModel(),
+    analysisModel: chat.analysisModel(),
+    embeddingProvider: embedding.name,
+    embeddingModel: embedding.embeddingModel(),
+    embeddingDimensions: EMBEDDING_DIMENSIONS,
+  }
 }
 
 /** The model that writes replies, for the record kept with each one */
