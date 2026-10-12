@@ -8,9 +8,10 @@
 --
 -- Safe to apply BEFORE the image that writes the two columns: the columns
 -- are nullable and an older image ignores them. The constraints that make
--- the model name mandatory are a separate migration (20261027100000), applied
--- only once that image is live: they refuse a chunk whose vector comes
--- without a model name, which is every upload made by an older image.
+-- the model name mandatory are a separate migration, kept out of this folder
+-- until then (supabase/pending/20261027100000_…): it is applied only once
+-- that image is live, because it refuses a chunk whose vector comes without
+-- a model name, which is every upload made by an older image.
 -- ============================================
 
 alter table public.knowledge_documents
