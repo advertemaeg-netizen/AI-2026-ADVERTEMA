@@ -96,6 +96,28 @@ export type BotDebug = {
   timings: { embeddingMs: number; retrievalMs: number; generationMs: number; totalMs: number }
 }
 
+// One warning per stored model for the life of the process
+const warnedForeignModels = new Set<string>()
+
+/**
+ * Says so, once, when a chunk that came back was embedded by another model
+ * than the one that just embedded the question: its score means nothing.
+ * A warning and not an error, on purpose: a mismatch is legitimate while a
+ * re-embed is under way, and this must never be what stops a reply (nor,
+ * at startup, the app). A chunk with no model on record is not reported.
+ */
+export function warnOnForeignVectors(clientId: string, rows: { embedding_model?: string | null }[]) {
+  const model = embeddingModel()
+  for (const stored of new Set(rows.map((row) => row.embedding_model))) {
+    if (!stored || stored === model || warnedForeignModels.has(stored)) continue
+    warnedForeignModels.add(stored)
+    console.warn(
+      `[bot] knowledge chunks of client ${clientId} were embedded with ${stored}, but questions are embedded with ${model}: ` +
+        'their similarity scores are meaningless until the chunks are re-embedded (scripts/reembed-knowledge.ts)'
+    )
+  }
+}
+
 async function retrieveKnowledge(
   supabase: SupabaseClient,
   clientId: string,
@@ -116,7 +138,15 @@ async function retrieveKnowledge(
     })
     if (error) throw error
 
-    const candidates = (data as Omit<RetrievedChunk, 'used'>[] | null) ?? []
+    const rows = (data as (Omit<RetrievedChunk, 'used'> & { embedding_model?: string | null })[] | null) ?? []
+    warnOnForeignVectors(clientId, rows)
+    const candidates = rows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      content: row.content,
+      chunk_index: row.chunk_index,
+      similarity: row.similarity,
+    }))
     const threshold = knowledgeMatchThreshold()
     // Rows arrive ordered by similarity, so the first eligible ones are used
     let usedCount = 0

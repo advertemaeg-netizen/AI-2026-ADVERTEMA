@@ -1,5 +1,5 @@
 import 'server-only'
-import { embedTexts } from '@/lib/ai/provider'
+import { EMBEDDING_DIMENSIONS, embedTexts, embeddingModel } from '@/lib/ai/provider'
 import { estimateTokens } from '@/lib/ai/usage'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import type { KnowledgeFileType, KnowledgeProcessingError } from '@/lib/types/knowledge'
@@ -198,6 +198,9 @@ export async function processKnowledgeDocument(
       throw new ProcessingError('embeddingFailed', error)
     }
 
+    // Read once, next to the call that used it: each chunk records the model
+    // that produced its vector
+    const model = embeddingModel()
     for (let i = 0; i < chunks.length; i += INSERT_BATCH) {
       const rows = chunks.slice(i, i + INSERT_BATCH).map((content, j) => ({
         client_id: doc.client_id,
@@ -208,6 +211,8 @@ export async function processKnowledgeDocument(
         chunk_index: i + j,
         content,
         embedding_1536: embeddings[i + j],
+        embedding_model: model,
+        embedding_dimensions: EMBEDDING_DIMENSIONS,
       }))
       const { error } = await admin.from('knowledge_documents').insert(rows)
       if (error) {

@@ -46,6 +46,11 @@ The file is only read when the container is recreated — step 3 does that.
 Supabase Dashboard → SQL Editor, on the production project:
 
 ```sql
+-- Since 20261026100000 the function also returns embedding_model, and a
+-- function's result columns can't be changed in place: drop it first. The
+-- drop takes the grants with it, hence the two lines at the end.
+drop function if exists public.match_knowledge_chunks(uuid, extensions.vector, int, float);
+
 create or replace function public.match_knowledge_chunks(
   client_id uuid,
   query_embedding extensions.vector(768),
@@ -80,6 +85,9 @@ as $$
   order by k.embedding <=> query_embedding
   limit least(greatest(match_count, 1), 20)
 $$;
+
+revoke execute on function public.match_knowledge_chunks(uuid, extensions.vector, int, float) from public, anon;
+grant execute on function public.match_knowledge_chunks(uuid, extensions.vector, int, float) to authenticated, service_role;
 ```
 
 From this moment until step 3 finishes, the running (new) image gets
@@ -116,10 +124,10 @@ docker logs --since 5m advertema 2>&1 | grep "knowledge retrieval failed"
 
 ## Going forward again
 
-The migration history still lists `20261025100000` as applied, so
-`npx supabase db push` will not put the function back. Run the
-`create or replace function` statement from
-`supabase/migrations/20261025100000_match_chunks_embedding_1536.sql` in the SQL
+The migration history still lists the function's migrations as applied, so
+`npx supabase db push` will not put the function back. Run the `drop
+function`, `create function` and grant statements from
+`supabase/migrations/20261026100000_knowledge_embedding_model.sql` in the SQL
 editor, set `OPENAI_EMBEDDING_MODEL=text-embedding-3-large` again, then
 `./deploy/update.sh`.
 

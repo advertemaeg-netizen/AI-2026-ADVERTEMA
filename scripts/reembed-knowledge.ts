@@ -153,7 +153,8 @@ async function main() {
       // matches no row is not an error to PostgREST
       const { data: updated, error: updateError } = await admin
         .from('knowledge_documents')
-        .update({ [COLUMN]: vector })
+        // The vector and the model that made it, in one statement
+        .update({ [COLUMN]: vector, embedding_model: MODEL, embedding_dimensions: DIMENSIONS })
         .eq('id', id)
         .eq('client_id', clientId)
         .select('id')
