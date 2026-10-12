@@ -5,10 +5,14 @@ import { ProviderError, type AiProvider, type ChatTurn, type JsonSchema } from '
 const API_URL = 'https://api.openai.com/v1/chat/completions'
 const EMBEDDINGS_API_URL = 'https://api.openai.com/v1/embeddings'
 const DEFAULT_MODEL = 'gpt-6-luna'
-// text-embedding-3-small is natively 1536-d; `dimensions` shortens it to the
-// app's 768 (EMBEDDING_DIMENSIONS, src/lib/ai/provider.ts) so it fits the
-// existing vector(768) column and HNSW index with no migration.
-const DEFAULT_EMBEDDING_MODEL = 'text-embedding-3-small'
+// text-embedding-3-large is natively 3072-d; `dimensions` shortens it to the
+// app's 1536 (EMBEDDING_DIMENSIONS, src/lib/ai/provider.ts), the width of
+// knowledge_documents.embedding_1536. Measured on the demo knowledge base,
+// 1536 ranked the same as 3072 at half the storage; text-embedding-3-small
+// (at 768 or 1536) ranked the right chunk as low as 12th of 15 for short
+// Egyptian-Arabic questions. The stored chunks carry this model's vectors:
+// another model here means re-embedding them (scripts/reembed-knowledge.ts).
+const DEFAULT_EMBEDDING_MODEL = 'text-embedding-3-large'
 
 const NAME = 'OpenAI'
 
@@ -148,9 +152,9 @@ export const openaiProvider: AiProvider = {
   },
 
   /**
-   * `dimensions` asks the API to shorten the (otherwise 1536-d)
-   * text-embedding-3 output to the app's EMBEDDING_DIMENSIONS, so the vector
-   * fits the existing column/index. The embeddings endpoint doesn't always
+   * `dimensions` asks the API to shorten the text-embedding-3 output to the
+   * app's EMBEDDING_DIMENSIONS, so the vector fits the column and its index.
+   * The embeddings endpoint doesn't always
    * report usage, so prompt tokens fall back to the same estimate Gemini
    * uses when its API omits them.
    */

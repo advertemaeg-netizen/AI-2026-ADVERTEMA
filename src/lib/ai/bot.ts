@@ -1,6 +1,6 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { embedQuery, generateReply, replyModel, type ChatTurn } from '@/lib/ai/provider'
+import { embedQuery, embeddingModel, generateReply, replyModel, type ChatTurn } from '@/lib/ai/provider'
 import type { AiOperation } from '@/lib/ai/usage'
 import {
   APPOINTMENT_INSTRUCTIONS,
@@ -27,12 +27,48 @@ import {
  */
 
 export const BOT_HISTORY_LIMIT = 20
-const KNOWLEDGE_MATCH_COUNT = 3
-// Cosine similarity floor; below this a chunk is more noise than help
-export const KNOWLEDGE_MATCH_THRESHOLD = 0.5
+// Five, not three: on the demo knowledge base the chunk holding the answer
+// sometimes ranks second, behind a chunk that only mentions the subject.
+// Recorded before the eval that follows this change (2026-10-12): five chunks
+// put more prices side by side in one prompt (a full-arch price next to a
+// single implant's). If a price assertion fails there, this count is as much
+// a suspect as the embedding model.
+const KNOWLEDGE_MATCH_COUNT = 5
 // Fetch a few extra candidates so debug views can show near misses; only the
 // top KNOWLEDGE_MATCH_COUNT at or above the threshold reach the prompt
-const KNOWLEDGE_CANDIDATES = 6
+const KNOWLEDGE_CANDIDATES = 10
+
+/**
+ * Cosine similarity floor per embedding model: scores from two models are
+ * not on the same scale, so one number can't serve both.
+ *
+ * What it is for: telling that a question has no answer in the knowledge
+ * base at all, so the client can be shown a knowledge gap. It is not what
+ * picks the chunks — the ranking and KNOWLEDGE_MATCH_COUNT do that.
+ *
+ * What was measured (demo clinic, 15 chunks, three questions, 2026-10-12):
+ * - gemini-embedding-001 at 768-d: every chunk scored 0.558–0.731, so 0.5
+ *   never filtered anything. Not measured at 1536-d.
+ * - text-embedding-3-small at 768-d: every chunk scored 0.033–0.288. With a
+ *   single 0.5 for both models, retrieval returned nothing.
+ * - text-embedding-3-large at 1536-d: the right chunks scored 0.320, 0.394
+ *   and 0.324; the best wrong chunk for one question scored 0.327, above
+ *   another question's right chunk. Right and wrong chunks share one band,
+ *   and three questions with an answer say nothing about questions without
+ *   one: no value could be chosen from this.
+ *
+ * So a model without an entry is left permissive (0, nothing filtered) on
+ * purpose. Setting a value needs scores for questions the knowledge base
+ * does not answer — measure that; don't guess a number.
+ */
+const KNOWLEDGE_MATCH_THRESHOLDS: Record<string, number> = {
+  'gemini-embedding-001': 0.5,
+}
+const PERMISSIVE_MATCH_THRESHOLD = 0
+
+export function knowledgeMatchThreshold(model = embeddingModel()) {
+  return KNOWLEDGE_MATCH_THRESHOLDS[model] ?? PERMISSIVE_MATCH_THRESHOLD
+}
 
 export type BotClient = {
   name: string
@@ -81,10 +117,11 @@ async function retrieveKnowledge(
     if (error) throw error
 
     const candidates = (data as Omit<RetrievedChunk, 'used'>[] | null) ?? []
+    const threshold = knowledgeMatchThreshold()
     // Rows arrive ordered by similarity, so the first eligible ones are used
     let usedCount = 0
     const chunks = candidates.map((chunk) => {
-      const used = chunk.similarity >= KNOWLEDGE_MATCH_THRESHOLD && usedCount < KNOWLEDGE_MATCH_COUNT
+      const used = chunk.similarity >= threshold && usedCount < KNOWLEDGE_MATCH_COUNT
       if (used) usedCount += 1
       return { ...chunk, used }
     })
@@ -282,7 +319,7 @@ export async function runBot({
     debug: {
       model: replyModel(),
       temperature: settings.temperature,
-      threshold: KNOWLEDGE_MATCH_THRESHOLD,
+      threshold: knowledgeMatchThreshold(),
       chunks: retrieval.chunks,
       retrievalError: retrieval.error,
       systemPrompt,

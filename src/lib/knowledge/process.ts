@@ -207,7 +207,7 @@ export async function processKnowledgeDocument(
         status: 'ready',
         chunk_index: i + j,
         content,
-        embedding: embeddings[i + j],
+        embedding_1536: embeddings[i + j],
       }))
       const { error } = await admin.from('knowledge_documents').insert(rows)
       if (error) {

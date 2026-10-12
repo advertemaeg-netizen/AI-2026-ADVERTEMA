@@ -180,8 +180,13 @@ export async function generateJson({
   return JSON.parse(completion.text)
 }
 
-/** The width of knowledge_documents.embedding; every provider is asked for it */
-export const EMBEDDING_DIMENSIONS = 768
+/** The model that embeds the knowledge base and the questions asked of it */
+export function embeddingModel() {
+  return embeddingProvider().embeddingModel()
+}
+
+/** The width of knowledge_documents.embedding_1536; every provider is asked for it */
+export const EMBEDDING_DIMENSIONS = 1536
 
 /** Embeds many texts, batching requests; output order matches input order. */
 export async function embedTexts(

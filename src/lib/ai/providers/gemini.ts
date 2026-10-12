@@ -10,7 +10,7 @@ const DEFAULT_MODEL = 'gemini-3.8-flash'
 // chat model's quota
 const DEFAULT_ANALYSIS_MODEL = 'gemini-3.5-flash-lite'
 // text-embedding-004 has been retired by Google (404); gemini-embedding-001
-// supports the same 768 dimensions through outputDimensionality
+// gives the app's EMBEDDING_DIMENSIONS through outputDimensionality
 const DEFAULT_EMBEDDING_MODEL = 'gemini-embedding-001'
 
 const NAME = 'Gemini'

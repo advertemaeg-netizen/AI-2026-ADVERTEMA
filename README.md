@@ -61,5 +61,8 @@ To set the bucket up by hand instead (Dashboard → Storage → New bucket):
 
 Uploads go through `POST /api/knowledge/upload/[clientId]`, which uses
 `SUPABASE_SECRET_KEY` server-side; the browser never writes to Storage directly.
-Embeddings use `GOOGLE_GEMINI_API_KEY` with `gemini-embedding-001` at 768 dimensions
-(override with `GOOGLE_GEMINI_EMBEDDING_MODEL`).
+Embeddings are 1536-dimensional (`knowledge_documents.embedding_1536`) and come from
+the provider named by `AI_EMBEDDING_PROVIDER`: `text-embedding-3-large` with
+`openai`, `gemini-embedding-001` with `gemini` (the default). The stored chunks
+carry one model's vectors, so changing the provider or the model means re-embedding
+them first (`npm run reembed:knowledge`).
