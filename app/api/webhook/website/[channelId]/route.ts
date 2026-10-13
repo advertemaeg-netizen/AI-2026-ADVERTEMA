@@ -5,8 +5,15 @@ import { BOT_HISTORY_LIMIT, loadBotSettings, runBot } from '@/lib/ai/bot'
 import { detectLead } from '@/lib/ai/lead-detection'
 import { APPOINTMENT_PLACEHOLDER, replyLanguage, type BookingOutcome } from '@/lib/ai/appointment'
 import { appointmentOnRecord, confirmPending, recordAppointment, saveContact, savedRecord } from '@/lib/ai/booking'
-import { composeReply, type SavedRecord } from '@/lib/ai/compose'
-import { EMPTY_CONTACT, parseContactState, readContact, type ContactEvents, type ContactState } from '@/lib/ai/contact'
+import { composeReply, mentionsName, type SavedRecord } from '@/lib/ai/compose'
+import {
+  EMPTY_CONTACT,
+  MAX_PHONE_REJECTIONS,
+  parseContactState,
+  readContact,
+  type ContactEvents,
+  type ContactState,
+} from '@/lib/ai/contact'
 import type { BotSettingsInput } from '@/lib/types/bot-settings'
 import { checkClientLimit } from '@/lib/subscription-limits'
 import { UUID_PATTERN } from '@/lib/types/clients'
@@ -453,6 +460,16 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       } catch (error) {
         console.error('[webhook/website] reading the lead on record failed', error)
       }
+      // Only when the reply talks about the visitor's name and code may have
+      // to ask the next question itself: is a day and time on record already?
+      let timeOnRecord = booking.status !== 'none'
+      if (!timeOnRecord && contact?.name && mentionsName(result.reply)) {
+        try {
+          timeOnRecord = (await appointmentOnRecord({ supabase, conversationId })).status === 'booked'
+        } catch (error) {
+          console.error('[webhook/website] reading the appointment on record failed', error)
+        }
+      }
       trace = {
         raw: result.raw,
         booking: booking.status,
@@ -468,6 +485,16 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
         language: replyLanguage(settings.language, message),
         appointmentReported: result.appointment !== null,
         flaggedForTeam: result.appointment?.needs_team_check === true,
+        ...(contact
+          ? {
+              known: {
+                name: contact.name,
+                phone: contact.phone ?? record.phone,
+                phoneGivenUp: contact.phoneRejections >= MAX_PHONE_REJECTIONS,
+                time: timeOnRecord,
+              },
+            }
+          : {}),
       })
       // The visitor was told a person will take it from here: make that true.
       // 'no_answer' is the nearest reason the column allows today; a reason

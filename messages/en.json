@@ -1887,6 +1887,8 @@
       "phoneInvalid": "That number doesn't look right. A mobile number is 11 digits starting with 01, or an international number starting with +. Could you send it again?",
       "phoneGiveUp": "That number isn't valid either, so I can't record it. Someone from our team will contact you here and take your number.",
       "nameAsk": "Could I have your full name (first name and family name)?",
+      "nameAck": "Thanks, {name}.",
+      "phoneAsk": "Could I have your mobile number?",
       "noPhoneOnRecord": "We don't have a mobile number on record for you yet.",
       "phoneOnRecord": "The mobile number we have on record: {phone}.",
       "noNameOnRecord": "We don't have a name on record for you yet."

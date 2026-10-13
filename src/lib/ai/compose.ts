@@ -71,6 +71,47 @@ function withoutUnsavedNumbers(text: string, record: SavedRecord, visitorMessage
   return [kept.join('').trim(), onRecord].filter(Boolean).join('\n')
 }
 
+/**
+ * What code holds for this visitor after their message, or has stopped
+ * asking for: what a question in the reply must not be about, and what the
+ * next one should be.
+ */
+export type Known = {
+  /** As given, a full name or not: code is no longer asking for it */
+  name: string | null
+  phone: string | null
+  /** The bot has stopped asking for the number; a person takes it */
+  phoneGivenUp: boolean
+  /** A day and time are on record, as an appointment or as a request */
+  time: boolean
+}
+
+// The VISITOR's name: اسمك، اسم حضرتك، الاسم (الرباعي…)، اسمين, "your name",
+// "full name". Not someone else's ("اسم الدكتورة منة"), and not a word that
+// only contains it (اسمح، قاسم): an answer about a doctor must not be dropped.
+const NAME_WORD =
+  /(?<![\p{L}])(?:[وبل]?اسم(?:كم|ك)|و?اسم حضرتك|[وبل]?(?:ال|لل)اسم|اسمين|your (?:full |first |last )?name|full name)(?![\p{L}])/iu
+const unmarked = (text: string) => text.replace(/[ً-ْـ]/g, '').replace(/[أإآٱ]/g, 'ا')
+const isAboutName = (sentence: string) => !sentence.includes(SAVED_NAME_PLACEHOLDER) && NAME_WORD.test(unmarked(sentence))
+
+/** The model's text talks about the visitor's name (other than quoting it from the record) */
+export function mentionsName(template: string) {
+  return template.split(SENTENCE_END).some(isAboutName)
+}
+
+/**
+ * The next thing the booking still needs, asked by code: the phone number,
+ * then the day and time. The branch is not asked for here: until a client's
+ * branches are data (the branches table) code cannot know whether it has one
+ * branch or several, and "which branch?" to a business with one is a new
+ * defect.
+ */
+function nextQuestion(known: Known, language: ReplyLanguage) {
+  if (!known.phone && !known.phoneGivenUp) return TEXTS[language].phoneAsk
+  if (!known.time) return (language === 'ar' ? ar : en).botReplies.appointment.askTime
+  return ''
+}
+
 export function composeReply({
   template,
   outcome,
@@ -80,6 +121,7 @@ export function composeReply({
   language,
   appointmentReported = false,
   flaggedForTeam = false,
+  known,
 }: {
   /** The model's reply, placeholders included */
   template: string
@@ -94,6 +136,8 @@ export function composeReply({
   appointmentReported?: boolean
   /** The model reported it with needs_team_check: it did not believe the time could be honoured */
   flaggedForTeam?: boolean
+  /** Without it the model's questions are not checked against what code holds */
+  known?: Known
 }): string {
   const t = TEXTS[language]
   const refusals = [
@@ -127,6 +171,33 @@ export function composeReply({
     outcome.status === 'booked' &&
     outcome.changed &&
     (flaggedForTeam || !template.includes(APPOINTMENT_PLACEHOLDER))
-  const rendered = renderReply(contradicted ? '' : template, outcome, language).trim()
-  return withoutUnsavedNumbers(renderSaved(rendered, record, language), record, visitorMessages, language)
+
+  // Code has the visitor's name, as given, and is not asking for it again;
+  // the model, told so, asks all the same when the business's own prompt
+  // demands a fuller name. Seen in the eval on 13 October 2026 (NM01): "م"
+  // accepted and flagged, and "محتاج اسمك بالكامل لو سمحت" sent on that turn
+  // and the one after — the loop the single re-ask exists to prevent, in the
+  // text the visitor reads. What the model says about the name goes; the
+  // visitor is greeted by the name they gave and asked for the next thing the
+  // booking needs. They are never told the name was short of a full one: the
+  // flag is for the team.
+  // (Not when the record already speaks alone: none of the text is kept then.)
+  const nameSettled = !contradicted && Boolean(known?.name) && mentionsName(template)
+  const text = nameSettled
+    ? template
+        .split(SENTENCE_END)
+        .filter((sentence) => !isAboutName(sentence))
+        .join('')
+        .trim()
+    : template
+
+  const rendered = renderReply(contradicted ? '' : text, outcome, language).trim()
+  const reply = withoutUnsavedNumbers(renderSaved(rendered, record, language), record, visitorMessages, language)
+  if (!nameSettled || !known?.name) return reply
+
+  const greeting = t.nameAck.replace('{name}', known.name.split(' ')[0])
+  // A question the model asked about something else, or what code says of
+  // the booking, already moves the conversation on
+  const movesOn = /[?؟]/.test(reply) || outcome.status !== 'none'
+  return [greeting, reply, movesOn ? '' : nextQuestion(known, language)].filter(Boolean).join('\n')
 }

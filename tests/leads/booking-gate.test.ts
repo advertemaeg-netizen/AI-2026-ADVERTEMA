@@ -164,6 +164,32 @@ describe('a name is checked, with one re-ask and never a loop', () => {
     expect(lead.name).toBe('م')
     expect(lead.ai_extracted_data).toMatchObject({ name_incomplete: true })
   })
+
+  // The eval, case NM01, 13 October 2026: the real model, told the name was
+  // on record, went on asking for it — its words here are the ones it used.
+  // The test above could not see this: its stand-in model stops asking.
+  it('does not send the model\'s request for the name once the name is on record, and asks for what is next', async () => {
+    const asksAgain = () => botReply('محتاج اسمك بالكامل لو سمحت.', null, { name: 'م' })
+    chatModel({
+      'عايز أحجز، رقمي 01002847901': botReply('تمام، محتاج اسمك بالكامل لو سمحت.'),
+      'اسمي م': asksAgain,
+      'م': asksAgain,
+      'م م': asksAgain,
+    })
+    const { say, leads } = await visitor()
+    await say('عايز أحجز، رقمي 01002847901')
+    expect(await say('اسمي م')).toBe(CONTACT.nameAsk)
+
+    // Accepted as given: greeted by it, and asked for the day and time, the
+    // next thing the booking needs (the number is on record)
+    const moved = `${CONTACT.nameAck.replace('{name}', 'م')}\n${APPOINTMENT.askTime}`
+    expect(await say('م')).toBe(moved)
+    // And on the message after it, whatever the model writes
+    expect(await say('م م')).toBe(moved)
+    const [lead] = await leads()
+    expect(lead.name).toBe('م')
+    expect(lead.ai_extracted_data).toMatchObject({ name_incomplete: true })
+  })
 })
 
 describe('no appointment without a name and a valid phone number', () => {

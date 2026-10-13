@@ -358,6 +358,12 @@ async function converse(bot: Bot, turns: string[]) {
       language: replyLanguage(settings.language, user),
       appointmentReported: result.appointment !== null,
       flaggedForTeam: result.appointment?.needs_team_check === true,
+      known: {
+        name: contact.name,
+        phone: contact.phone ?? record.phone,
+        phoneGivenUp: contact.phoneRejections >= MAX_PHONE_REJECTIONS,
+        time: booking.status !== 'none' || appointmentAt !== null || pending !== null,
+      },
     })
     history.push({ role: 'assistant', content: reply })
     records.push({

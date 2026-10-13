@@ -263,6 +263,73 @@ describe('the reply states only what is on record', () => {
   })
 })
 
+describe('a name code has accepted is not asked for again', () => {
+  const none = { status: 'none' } as const
+  const known = { name: 'م', phone: '+201002847901', phoneGivenUp: false, time: false }
+  const compose = (over: Partial<Parameters<typeof composeReply>[0]>) =>
+    composeReply({
+      template: 'محتاج اسمك بالكامل لو سمحت.',
+      outcome: none,
+      events: { name: 'stored_incomplete', phone: 'none' },
+      record: { name: 'م', phone: '+201002847901' },
+      visitorMessages: [],
+      language: 'ar',
+      known,
+      ...over,
+    })
+  const hello = (name: string) => T.nameAck.replace('{name}', name)
+  const A = ar.botReplies.appointment
+
+  // The eval, case NM01, 13 October 2026
+  it('greets the visitor by the name they gave and asks for the next thing the booking needs', () => {
+    expect(compose({})).toBe(`${hello('م')}\n${A.askTime}`)
+    expect(compose({ known: { ...known, phone: null } })).toBe(`${hello('م')}\n${T.phoneAsk}`)
+    // The number is not asked for once the bot has stopped asking for it
+    expect(compose({ known: { ...known, phone: null, phoneGivenUp: true } })).toBe(`${hello('م')}\n${A.askTime}`)
+  })
+
+  it('never says the name was not a full one', () => {
+    const reply = compose({ template: 'اسمك مكتوب من جزء واحد، ممكن تكمله؟ الاسم لازم يكون اسمين.' })
+    expect(reply).toBe(`${hello('م')}\n${A.askTime}`)
+  })
+
+  it('keeps on asking on later messages too, when the model does', () => {
+    expect(compose({ events: { name: 'none', phone: 'none' } })).toBe(`${hello('م')}\n${A.askTime}`)
+  })
+
+  it('uses the first name, and adds nothing when nothing is missing', () => {
+    expect(compose({ template: 'محتاج الاسم الرباعي كامل لو سمحت.', known: { ...known, name: 'محمود رضا', time: true } })).toBe(hello('محمود'))
+  })
+
+  it('keeps what else the model said, and the question it asked about something else', () => {
+    expect(compose({ template: 'محتاج اسمك بالكامل لو سمحت. تحب أنهي فرع؟' })).toBe(`${hello('م')}\nتحب أنهي فرع؟`)
+    expect(compose({ template: 'محتاج اسمك بالكامل. التبييض بالليزر بـ4500 جنيه.' })).toBe(
+      `${hello('م')}\nالتبييض بالليزر بـ4500 جنيه.\n${A.askTime}`
+    )
+  })
+
+  it('lets what code says of the booking be the way forward', () => {
+    const at = '2026-10-06T16:00:00.000Z'
+    const reply = compose({ template: 'محتاج اسمك بالكامل لو سمحت.', outcome: { status: 'booked', at, confirmed: true, changed: true } })
+    expect(reply.startsWith(hello('م'))).toBe(true)
+    expect(reply).toContain(A.confirmed)
+    expect(reply).not.toContain(A.askTime)
+  })
+
+  it('leaves alone a reply that is not about the visitor\'s name', () => {
+    for (const template of ['اسم الدكتورة منة، ومتخصصة في الأطفال.', 'اسمحلي أسألك: تحب أنهي فرع؟', 'تمام يا م. تحب الميعاد إمتى؟', 'اسمك عندنا {{saved_name}}.']) {
+      expect(compose({ template })).toBe(template.replace('{{saved_name}}', 'م'))
+    }
+  })
+
+  it('leaves the model\'s question alone while the name is not on record', () => {
+    const template = 'ممكن أعرف اسمك؟'
+    expect(compose({ template, events: { name: 'none', phone: 'none' }, known: { ...known, name: null } })).toBe(template)
+    // The widget's test chat passes nothing: nothing is checked
+    expect(compose({ template, known: undefined })).toBe(template)
+  })
+})
+
 describe('what the model is told about the record', () => {
   it('names what is on record, so it is not asked for again', () => {
     const told = describeContact({ ...EMPTY_CONTACT, name: 'كريم سامي', phone: '+201002847901' })
