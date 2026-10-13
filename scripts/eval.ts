@@ -28,6 +28,7 @@
  * webhook gives it. The webhook, the database writes and the widget are not
  * exercised.
  */
+import { createHash } from 'node:crypto'
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { loadBotSettings, runBot, type BotClient } from '@/lib/ai/bot'
@@ -123,13 +124,34 @@ function normalize(text: string) {
 }
 
 /**
+ * Arabic as it is compared, not as it is spelled. The same word is written
+ * several ways and a comparison must not tell them apart: حالاً / حالًا (the
+ * tanween before or after the alef), أ إ آ / ا, ى / ي, ة / ه, with or without
+ * tashkeel and tatweel, with one space or several.
+ *
+ * Seen on 13 October 2026: EM01 and EM02 failed on replies that said "اتصل
+ * حالًا" and "فورًا" because the cases spell them حالاً and فوراً.
+ */
+export function foldArabic(text: string) {
+  return text
+    .replace(/[ؐ-ًؚ-ٰٟۖ-ۭـ]/g, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ة/g, 'ه')
+    .replace(/\s+/g, ' ')
+}
+
+/**
+ * Both sides are folded (numbers, then Arabic spelling) before the search.
  * A needle that starts or ends with a digit must not continue into another
  * digit there: "500" is not found in "4500", nor "3" in "13".
  */
-function contains(haystack: string, needle: string) {
-  const n = normalize(needle)
+export function contains(haystack: string, needle: string) {
+  const n = foldArabic(normalize(needle))
   const escaped = n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return new RegExp(`${/^\d/.test(n) ? '(?<!\\d)' : ''}${escaped}${/\d$/.test(n) ? '(?!\\d)' : ''}`).test(haystack)
+  return new RegExp(`${/^\d/.test(n) ? '(?<!\\d)' : ''}${escaped}${/\d$/.test(n) ? '(?!\\d)' : ''}`).test(
+    foldArabic(normalize(haystack))
+  )
 }
 
 /** Without tashkeel or tatweel: اتسجّل = اتسجل */
@@ -589,6 +611,21 @@ async function collectUsage(admin: Admin, clientId: string, since: string, expec
 
 // ---------------------------------------------------------------------------
 
+/**
+ * Which system prompt a run was measured on. The demo bot's prompt is edited
+ * in the dashboard, so two runs can differ by nothing but this: on 13 October
+ * 2026 it was saved between two runs of the frozen set, and their scores
+ * (30/36 and 27/36) could not be compared.
+ */
+function fingerprint(systemPrompt: string) {
+  return { sha256: createHash('sha256').update(systemPrompt).digest('hex').slice(0, 12), chars: systemPrompt.length }
+}
+
+async function promptSavedAt(admin: Admin, clientId: string) {
+  const { data } = await admin.from('bot_settings').select('updated_at').eq('client_id', clientId).maybeSingle<{ updated_at: string }>()
+  return data?.updated_at ?? null
+}
+
 async function runOnce(bot: Bot, testCase: Case, since: string) {
   const now = new Date()
   let error: string | null = null
@@ -682,9 +719,12 @@ async function main() {
   const bot: Bot = { admin, clientId: demo.clientId, client, settings, kbNumbers: knowledgeBaseNumbers() }
   const startedAt = new Date()
   const since = await usageWatermark(admin, demo.clientId)
+  // The run uses the settings loaded above; the fingerprint says which prompt that was
+  const prompt = { ...fingerprint(settings.system_prompt), savedAt: await promptSavedAt(admin, demo.clientId) }
   console.log(
     `provider ${provider} · model ${model} · temperature ${settings.temperature} · eval/${casesFile}: ${cases.length} cases × ${repeats}\n` +
-      `database ${new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).host} · demo client ${demo.clientId} · ${chunks ?? '?'} knowledge chunks\n`
+      `database ${new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).host} · demo client ${demo.clientId} · ${chunks ?? '?'} knowledge chunks\n` +
+      `system prompt ${prompt.sha256} · ${prompt.chars} chars · saved ${prompt.savedAt ?? '?'}\n`
   )
 
   const results = []
@@ -716,11 +756,17 @@ async function main() {
     )
   )
   const allRuns = results.flatMap((result) => result.runs)
+  // Edited in the dashboard while the run was in flight: the run itself kept
+  // the prompt it started with, but whoever compares it should know
+  const promptNow = fingerprint((await loadBotSettings(admin, demo.clientId)).system_prompt)
   const summary = {
     provider,
     model,
     set: casesFile,
     temperature: settings.temperature,
+    // Two runs are comparable only when this is the same in both (RUNNER.md)
+    prompt: { ...prompt, editedDuringRun: promptNow.sha256 !== prompt.sha256 },
+    knowledgeChunks: chunks ?? null,
     startedAt: startedAt.toISOString(),
     finishedAt: new Date().toISOString(),
     repeats,
@@ -745,6 +791,9 @@ async function main() {
   writeFileSync(file, JSON.stringify({ note: RESULTS_NOTE, summary, results }, null, 2))
 
   for (const c of critical) console.log(`CRITICAL ${c.case} run ${c.run}: ${c.assertion} — ${c.detail}`)
+  if (summary.prompt.editedDuringRun) {
+    console.log(`the demo bot's system prompt was edited during the run (now ${promptNow.sha256}): later runs are not comparable to this one`)
+  }
   if (summary.usage.unpricedRows) console.log(`${summary.usage.unpricedRows} ai_usage rows have no price: the cost below is too low`)
   if (summary.usage.runsWithIncompleteUsage) {
     console.log(`${summary.usage.runsWithIncompleteUsage} runs did not log the ai_usage rows expected of them`)
