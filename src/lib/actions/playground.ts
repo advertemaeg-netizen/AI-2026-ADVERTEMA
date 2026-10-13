@@ -115,6 +115,8 @@ export async function testBot(
       record: { name: null, phone: null },
       visitorMessages,
       language: replyLanguage(settings.language, visitorMessages.at(-1) ?? ''),
+      appointmentReported: Boolean(appointment),
+      flaggedForTeam: appointment?.needs_team_check === true,
       outcome:
       resolved.status === 'resolved'
         ? {

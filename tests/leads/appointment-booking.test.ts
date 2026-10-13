@@ -211,13 +211,30 @@ describe('one appointment parser: the reply quotes the stored appointment', () =
   })
 
   // Seen on the demo widget (12 October 2026): the model's text refused a day
-  // it believed was a holiday, and the system confirmed the booking under it
+  // it believed was a holiday, and the system confirmed the booking under it.
+  // What the model wrote under that belief is not kept: the record speaks.
   it('never confirms by itself a time the model flagged for the team', async () => {
     chatModel(() => botReply('حجزتلك {{appointment}}.', { ...THURSDAY_6_EVENING, needs_team_check: true }))
     const { reply, leads } = await book(await seedOpenClient())
 
     expect(leads[0]).toMatchObject({ status: 'appointment_booked', appointment_confirmed: false })
-    expect(reply).toBe(`حجزتلك ${THURSDAY_6PM_TEXT}.\n${TEXT.pending}`)
+    expect(reply).toBe(`${TEXT.noted.replace('{time}', THURSDAY_6PM_TEXT)}\n${TEXT.pending}`)
+  })
+
+  // The frozen eval, case BK04, 13 October 2026: one reply said the time was
+  // outside opening hours and then that it was recorded
+  it('does not put a refusal the model wrote next to the booking the system made', async () => {
+    chatModel(() =>
+      botReply('ميعاد الساعة 6 خارج مواعيد فرع المعادي، لأنه بيفتح من 12 ظهرًا لحد 10 مساءً. {{appointment}}', {
+        ...THURSDAY_6_EVENING,
+        needs_team_check: true,
+      })
+    )
+    const { reply, leads } = await book(await seedOpenClient())
+
+    expect(leads[0]).toMatchObject({ status: 'appointment_booked', appointment_confirmed: false })
+    expect(reply).toBe(`${TEXT.noted.replace('{time}', THURSDAY_6PM_TEXT)}\n${TEXT.pending}`)
+    expect(reply).not.toContain('خارج مواعيد')
   })
 
   it('leaves the appointment for the team to confirm when auto-confirm is off, and says it will be confirmed', async () => {

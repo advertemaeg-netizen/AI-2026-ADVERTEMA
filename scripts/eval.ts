@@ -357,6 +357,7 @@ async function converse(bot: Bot, turns: string[]) {
       visitorMessages: said,
       language: replyLanguage(settings.language, user),
       appointmentReported: result.appointment !== null,
+      flaggedForTeam: result.appointment?.needs_team_check === true,
     })
     history.push({ role: 'assistant', content: reply })
     records.push({

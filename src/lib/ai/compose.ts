@@ -79,6 +79,7 @@ export function composeReply({
   visitorMessages,
   language,
   appointmentReported = false,
+  flaggedForTeam = false,
 }: {
   /** The model's reply, placeholders included */
   template: string
@@ -91,6 +92,8 @@ export function composeReply({
   language: ReplyLanguage
   /** The model reported an appointment for this message (the outcome is what became of it) */
   appointmentReported?: boolean
+  /** The model reported it with needs_team_check: it did not believe the time could be honoured */
+  flaggedForTeam?: boolean
 }): string {
   const t = TEXTS[language]
   const refusals = [
@@ -111,8 +114,19 @@ export function composeReply({
   // seen in the eval of 12 October 2026, each followed by the system's own
   // "موعدك مؤكَّد ✅"). Two voices that disagree are worse than one: the record
   // speaks alone.
+  //
+  // The placeholder alone does not show the text agrees with the booking.
+  // In the frozen eval, case BK04, 13 October 2026, the model refused a time
+  // that was fine and ended on the placeholder: "ميعاد الساعة 1 الضهر خارج
+  // مواعيد فرع المعادي… {{appointment}}", which came out as the refusal and
+  // then "سجّلنا الموعد". It had reported the request with needs_team_check,
+  // its own statement that it did not believe the time could be honoured, so
+  // a text written under that belief is not kept either.
   const contradicted =
-    appointmentReported && outcome.status === 'booked' && outcome.changed && !template.includes(APPOINTMENT_PLACEHOLDER)
+    appointmentReported &&
+    outcome.status === 'booked' &&
+    outcome.changed &&
+    (flaggedForTeam || !template.includes(APPOINTMENT_PLACEHOLDER))
   const rendered = renderReply(contradicted ? '' : template, outcome, language).trim()
   return withoutUnsavedNumbers(renderSaved(rendered, record, language), record, visitorMessages, language)
 }

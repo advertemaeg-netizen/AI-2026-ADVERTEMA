@@ -467,6 +467,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
         visitorMessages,
         language: replyLanguage(settings.language, message),
         appointmentReported: result.appointment !== null,
+        flaggedForTeam: result.appointment?.needs_team_check === true,
       })
       // The visitor was told a person will take it from here: make that true.
       // 'no_answer' is the nearest reason the column allows today; a reason
