@@ -7,3 +7,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+# Database migrations: do not use a real timestamp
+
+The filenames in `supabase/migrations/` run ahead of the calendar, so a file made by `supabase migration new` (or named with today's date) sorts before migrations that are already applied. Read `supabase/README.md` before adding one: name it after the highest timestamp in `supabase/migrations/` and `supabase/pending/`, and never pass `--include-all` to `supabase db push`.
