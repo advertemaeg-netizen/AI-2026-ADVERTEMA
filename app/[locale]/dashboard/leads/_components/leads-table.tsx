@@ -26,7 +26,7 @@ import {
 import { ChannelIcon } from '@/components/channel-icon'
 import { RelativeTime } from '@/components/relative-time'
 import { bulkUpdateLeadStatus, exportLeads, updateLead } from '@/lib/actions/leads'
-import { telHref, whatsappHref } from '@/lib/phone'
+import { displayPhone, telHref, whatsappHref } from '@/lib/phone'
 import { LEAD_STATUSES, type LeadFilters, type LeadListItem, type LeadStatus } from '@/lib/types/leads'
 import { LeadStatusBadge } from './lead-status-badge'
 
@@ -242,7 +242,7 @@ export function LeadsTable({
                   </TableCell>
                   <TableCell>
                     <span dir="ltr" className="font-mono text-sm">
-                      {lead.phone ?? '—'}
+                      {lead.phone ? displayPhone(lead.phone) : '—'}
                     </span>
                   </TableCell>
                   <TableCell className="max-w-56 truncate" title={lead.service_requested ?? undefined}>

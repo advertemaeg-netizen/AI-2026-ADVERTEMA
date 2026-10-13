@@ -17,6 +17,7 @@ import { loadBotSettings, runBot } from '@/lib/ai/bot'
 import { embedTexts } from '@/lib/ai/provider'
 import { cairoDayStart, cairoParts, cairoWallTimeToIso } from '@/lib/cairo-time'
 import { prepareKnowledgeChunks, processKnowledgeDocument } from '@/lib/knowledge/process'
+import { normalizePhone } from '@/lib/phone'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { KNOWLEDGE_BUCKET, KNOWLEDGE_FILE_TYPES } from '@/lib/types/knowledge'
 import type { BusinessHours } from '@/lib/types/bot-settings'
@@ -282,6 +283,18 @@ export const MAADI_HOURS: BusinessHours = {
     thu: { open: true, from: '12:00', to: '22:00' },
     fri: { open: true, from: '15:00', to: '22:00' },
   },
+}
+
+/**
+ * A lead's phone as the app would store it. demo/leads.json used to go into
+ * the table as written, past the app's normalisation: a second stored format
+ * next to the app's own, which is where wa.me/20+20… came from. The seed now
+ * takes the same path as a visitor's number, and refuses a row it can't read.
+ */
+function storedPhone(lead: { ref: string; phone: string }) {
+  const phone = normalizePhone(lead.phone)
+  if (!phone) throw new Error(`${lead.ref}: "${lead.phone}" in demo/leads.json is not a phone number the app accepts`)
+  return phone
 }
 
 export async function seedBotSettings(admin: Admin, demo: DemoContext) {
@@ -700,7 +713,7 @@ export async function seedLeads(admin: Admin, demo: DemoContext) {
           channel_id: channel.id,
           external_conversation_id: `demo-${lead.ref}`,
           contact_name: lead.name,
-          contact_identifier: lead.channel === 'whatsapp' ? lead.phone : `demo_${lead.ref}_visitor`,
+          contact_identifier: lead.channel === 'whatsapp' ? storedPhone(lead) : `demo_${lead.ref}_visitor`,
           status: CONVERSATION_STATUS[STATUS[lead.status]],
           created_at: at(0).toISOString(),
         })
@@ -776,7 +789,7 @@ export async function seedLeads(admin: Admin, demo: DemoContext) {
     const status = STATUS[lead.status]
     await step(at(session).getTime(), {
       name: lead.name,
-      phone: lead.phone,
+      phone: storedPhone(lead),
       branch: lead.branch,
       budget: lead.budget_egp == null ? null : `${lead.budget_egp} جنيه`,
       ...(status === 'new' ? { notes: lead.notes } : {}),

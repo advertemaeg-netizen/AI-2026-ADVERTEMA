@@ -39,7 +39,7 @@ import {
 import { ChannelIcon } from '@/components/channel-icon'
 import { RelativeTime } from '@/components/relative-time'
 import { CairoDateTimePicker } from '@/components/cairo-date-time-picker'
-import { telHref, whatsappHref } from '@/lib/phone'
+import { displayPhone, telHref, whatsappHref } from '@/lib/phone'
 import { deleteLead, updateLead } from '@/lib/actions/leads'
 import type { TeamMember } from '@/lib/types/conversations'
 import {
@@ -76,11 +76,13 @@ export function LeadView({
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
+  // The phone is stored as E.164 and shown, and edited, the way it is dialled
+  const shown = (f: DetailField) => (f === 'phone' && lead.phone ? displayPhone(lead.phone) : (lead[f] ?? ''))
   const [details, setDetails] = useState<Record<DetailField, string>>(() =>
-    Object.fromEntries(DETAIL_FIELDS.map((f) => [f, lead[f] ?? ''])) as Record<DetailField, string>
+    Object.fromEntries(DETAIL_FIELDS.map((f) => [f, shown(f)])) as Record<DetailField, string>
   )
   const [notes, setNotes] = useState(lead.notes ?? '')
-  const detailsDirty = DETAIL_FIELDS.some((f) => details[f] !== (lead[f] ?? ''))
+  const detailsDirty = DETAIL_FIELDS.some((f) => details[f] !== shown(f))
   const notesDirty = notes !== (lead.notes ?? '')
 
   function save(data: LeadUpdateInput, successMessage?: string, onSuccess?: () => void) {
@@ -362,6 +364,7 @@ export function LeadView({
                   {ai.summary && <AiField label={t('ai.summary')}>{ai.summary}</AiField>}
                   {ai.preferred_time && <AiField label={t('ai.preferredTime')}>{ai.preferred_time}</AiField>}
                   {ai.service_requested && <AiField label={t('fields.service')}>{ai.service_requested}</AiField>}
+                  {ai.name_incomplete && <AiField label={t('ai.nameIncomplete')}>{t('ai.nameIncompleteHint')}</AiField>}
                   {'phone_raw' in ai && typeof ai.phone_raw === 'string' && ai.phone_raw !== lead.phone && (
                     <AiField label={t('ai.phoneRaw')}>
                       <span dir="ltr">{ai.phone_raw}</span>

@@ -9,7 +9,8 @@ import {
   appointmentRequestSchema,
 } from '@/lib/ai/appointment'
 import { recordAppointment } from '@/lib/ai/booking'
-import { normalizeEgyptianPhone } from '@/lib/phone'
+import { validateName, type ContactState } from '@/lib/ai/contact'
+import { normalizePhone } from '@/lib/phone'
 import { claimLeadAnalysis } from '@/lib/subscription-limits'
 import type { BusinessHours } from '@/lib/types/bot-settings'
 import { CLOSED_LEAD_STATUSES, type LeadExtractedData, type LeadStatus } from '@/lib/types/leads'
@@ -170,6 +171,12 @@ async function historySinceClosed(supabase: SupabaseClient, conversationId: stri
  *
  * The AI may replace a value only while it's still the one the AI itself set
  * last time (the visitor changed their mind); anything the team edited stays.
+ * Name and phone: when the bot answered, they are the ones code accepted
+ * while answering (`contact`: checked before the reply, and already on the
+ * lead); the analysis's own reading of them is kept as a trace only, so the
+ * lead never holds a value the visitor was told nothing about. When it
+ * didn't answer, nobody can ask again: the analysis's name is taken as given
+ * and flagged when it isn't a full name, and its number only if it is one.
  * Appointments: when the bot answered, the reply path has already recorded
  * what the visitor asked for, and quoted it. When it didn't (`replied` false:
  * an agent has taken over, the message limit is reached, or the reply failed)
@@ -186,6 +193,7 @@ export async function detectLead({
   history,
   replied,
   businessHours,
+  contact = null,
 }: {
   supabase: SupabaseClient
   clientId: string
@@ -196,6 +204,8 @@ export async function detectLead({
   replied: boolean
   /** Settles a bare hour ("at 9") in an appointment read here */
   businessHours: BusinessHours | null
+  /** The name and number code accepted while answering; null when the bot didn't answer */
+  contact?: ContactState | null
 }) {
   try {
     // No AI cost without a usable subscription. Past the plan's messages the
@@ -238,16 +248,23 @@ export async function detectLead({
         autoConfirm: false,
         businessHours,
         source: 'analysis',
+        contact: null,
       })
     }
-    const phone = normalizeEgyptianPhone(analysis.phone)
+    const phone = contact ? contact.phone : normalizePhone(analysis.phone)
+    const name = contact ? contact.name : analysis.name
+    const nameIncomplete = contact ? contact.nameIncomplete : name !== null && validateName(name) === null
+    // What the analysis itself read stays as a trace, next to what was accepted
     const extracted: LeadExtractedData & { phone_raw: string | null } = {
       ...analysis,
-      phone,
+      phone: normalizePhone(analysis.phone),
       phone_raw: analysis.phone,
+      name_incomplete: nameIncomplete,
+      accepted_name: name,
+      accepted_phone: phone,
     }
     const fields = {
-      name: analysis.name,
+      name,
       phone,
       service_requested: analysis.service_requested,
       budget: analysis.budget,
@@ -259,23 +276,23 @@ export async function detectLead({
       const qualifies =
         analysis.is_lead &&
         analysis.confidence >= LEAD_CONFIDENCE_THRESHOLD &&
-        (returningFrom !== null || phone !== null || analysis.name !== null)
+        (returningFrom !== null || phone !== null || name !== null)
       if (!qualifies) return
 
-      const name = analysis.name ?? returningFrom?.name ?? null
+      const leadName = name ?? returningFrom?.name ?? null
       const { error } = await supabase.from('leads').insert({
         client_id: clientId,
         conversation_id: conversationId,
         source_message_id: sourceMessageId,
         ...fields,
-        name,
+        name: leadName,
         phone: phone ?? returningFrom?.phone ?? null,
         status: 'new',
         confidence_score: analysis.confidence,
         ai_extracted_data: extracted,
       })
       if (!error) {
-        await fillContactName(supabase, conversationId, name)
+        await fillContactName(supabase, conversationId, leadName)
         await bookFromAnalysis()
         return
       }
@@ -290,8 +307,12 @@ export async function detectLead({
     for (const [key, value] of Object.entries(fields)) {
       const current = existing[key as keyof typeof fields]
       // Empty, or still the AI's own earlier value (not edited by the team)
-      const aiOwned = !current || current === previous[key as keyof typeof fields]
-      if (value && value !== current && aiOwned) patch[key] = value
+      const own = key === 'name' ? (previous.accepted_name ?? previous.name) : key === 'phone' ? (previous.accepted_phone ?? previous.phone) : previous[key as keyof typeof fields]
+      const aiOwned = !current || current === own
+      // A row from before E.164 holds the local form of the same number:
+      // that is not a change, and existing rows are not converted in passing
+      const same = key === 'phone' ? normalizePhone(current) === value : value === current
+      if (value && !same && aiOwned) patch[key] = value
     }
 
     // Always stored, even when nothing changes: the lead keeps a trace of
@@ -305,7 +326,7 @@ export async function detectLead({
       })
       .eq('id', existing.id)
     if (error) throw error
-    await fillContactName(supabase, conversationId, analysis.name)
+    await fillContactName(supabase, conversationId, name)
     await bookFromAnalysis()
   } catch (error) {
     console.error('[lead-detection] failed', error)

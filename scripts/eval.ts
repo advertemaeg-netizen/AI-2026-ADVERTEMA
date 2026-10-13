@@ -5,13 +5,20 @@
  *   npm run eval -- --provider=gemini
  *   npm run eval -- --provider=openai
  *   npm run eval -- --provider=gemini --only=AM01,PR03 --repeats=1   a quick look
+ *   npm run eval -- --provider=openai --cases=phase1   eval/cases-phase1.json, scored on its own
+ *
+ * eval/cases.json is frozen: a set that changes can't be compared with its
+ * own earlier scores. Cases written since go in a file of their own
+ * (--cases=<name> reads eval/cases-<name>.json) and are scored separately.
  *
  * Calls runBot directly as a `playground` operation: nothing counts against
  * the demo's 300 messages, and no conversation, message or lead is written.
  * What production would have recorded is worked out the way production does
- * it, in memory: the appointment through resolveAppointment (as
- * recordAppointment would store it, a time-only change keeping the day), the
- * lead through analyzeConversation (as detectLead would read it). The only
+ * it, in memory: the name and number through readContact, the appointment
+ * through resolveAppointment and the booking gate (as recordAppointment would
+ * store it: a time-only change keeping the day, and no appointment without a
+ * name and a valid phone number), the reply through composeReply, the rest of
+ * the lead through analyzeConversation (as detectLead would read it). The only
  * rows written are the calls' own ai_usage rows, which is where the tokens
  * and the cost in the results come from.
  *
@@ -26,17 +33,19 @@ import path from 'node:path'
 import { loadBotSettings, runBot, type BotClient } from '@/lib/ai/bot'
 import {
   APPOINTMENT_PLACEHOLDER,
-  renderReply,
+  confirmsItself,
+  openingAt,
   replyLanguage,
   resolveAppointment,
   sameInstant,
   type AppointmentRequest,
   type BookingOutcome,
 } from '@/lib/ai/appointment'
+import { composeReply, type SavedRecord } from '@/lib/ai/compose'
+import { EMPTY_CONTACT, MAX_PHONE_REJECTIONS, missingDetails, readContact, type ContactEvents } from '@/lib/ai/contact'
 import { LEAD_CONFIDENCE_THRESHOLD, analyzeConversation } from '@/lib/ai/lead-detection'
 import { aiFailureReason, replyModel, type ChatTurn } from '@/lib/ai/provider'
 import { cairoParts } from '@/lib/cairo-time'
-import { normalizeEgyptianPhone } from '@/lib/phone'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { findDemo, type Admin } from './seed-demo'
 
@@ -49,8 +58,8 @@ const GEMINI_BASELINE_MODEL = 'gemini-3-flash-preview'
 // Written at the top of every results file
 const RESULTS_NOTE =
   'Provider comparison, NOT an end-to-end test. runBot is called directly; appointments and leads are worked out in memory ' +
-  'by the same pure code for every provider (resolveAppointment, renderReply, analyzeConversation). The webhook, the database ' +
-  'writes (recordAppointment, detectLead) and the widget are not exercised: a pass here is not evidence that the full path works.'
+  'by the same pure code for every provider (readContact, resolveAppointment, the booking gate, composeReply, analyzeConversation). The webhook, the database ' +
+  'writes (saveContact, recordAppointment, detectLead) and the widget are not exercised: a pass here is not evidence that the full path works.'
 const EMERGENCY_NUMBER = '01002847562'
 const PRICE_GROUP = 'الأسعار'
 // A 429 is the quota, not the model's answer: the run waits and starts over
@@ -68,6 +77,14 @@ type Expect = {
   defers_to_team?: boolean
   emergency_number?: boolean
   no_invented_price?: boolean
+  /** The phone number the lead row would hold at the end, as E.164; null = none may be stored */
+  phone_on_record?: string | null
+  /** Whether the lead would be flagged name_incomplete */
+  name_incomplete?: boolean
+  /** No reply may hold Chinese, Japanese or Korean script */
+  no_cjk?: boolean
+  /** The last reply steers back to the business (declining alone is not enough) */
+  redirects?: boolean
 }
 type Case = {
   id: string
@@ -172,6 +189,12 @@ export function bookingClaimIn(reply: string) {
 // A question about the day or the time
 const TIME_QUESTION = /الساعة|ساعة كام|[إا]مت[ىي]|[أا]ي يوم|[أا]نهي يوم|يوم [إا]يه|وقت|ميعاد|معاد|موعد|الصبح|بالليل|what time|which day|when/i
 const DEFERS_TO_TEAM = /الفريق|فريقنا|هنرد|هيرد|هنتواصل|هيتواصل|هنتأكد|خدمة العملاء/
+// Han, kana and hangul
+const CJK = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uf900-\ufaff]/
+// What the bot is here for, named in the reply. Wide on purpose: the case is
+// failed by the answer appearing (not_contains), this only asks that the
+// reply points somewhere
+const BACK_TO_BUSINESS = /عياد|[أا]سنان|حجز|ميعاد|موعد|خدم|[أا]سعار|[أا]ساعدك|clinic|dental|appointment|book/i
 
 /** Every number written in the knowledge base */
 function knowledgeBaseNumbers() {
@@ -211,6 +234,8 @@ type TurnRecord = {
   raw: string
   appointmentRequest: AppointmentRequest | null
   booking: BookingOutcome
+  /** What became of the name and number in this message */
+  contact: ContactEvents
   /** What the visitor would have been sent */
   reply: string
   /** The appointment on record once this turn was answered */
@@ -223,8 +248,18 @@ async function converse(bot: Bot, turns: string[]) {
   const history: ChatTurn[] = []
   const records: TurnRecord[] = []
   let appointmentAt: string | null = null
+  // The lead row as production would leave it: saveContact and
+  // recordAppointment, without the database
+  let contact = EMPTY_CONTACT
+  let record: SavedRecord = { name: null, phone: null }
+  let leadOpen = false
+  /** A time asked for while the name or the number was missing (ai_appointment.pending) */
+  let pending: { at: string; confirmed: boolean } | null = null
+  const said: string[] = []
+  const hours = settings.business_hours
 
   for (const user of turns) {
+    said.push(user)
     history.push({ role: 'user', content: user })
     const result = await runBot({
       supabase: bot.admin,
@@ -233,51 +268,104 @@ async function converse(bot: Bot, turns: string[]) {
       settings,
       history,
       operation: 'playground',
+      knownContact: contact,
     })
+
+    // saveContact: the name and number code accepts go on the open lead; a
+    // valid number opens one
+    const read = readContact(contact, result.contact, user, said)
+    contact = read.state
+    if (read.events.phone === 'stored') leadOpen = true
+    const fill = () => {
+      if (leadOpen) record = { name: contact.name ?? record.name, phone: contact.phone ?? record.phone }
+    }
+    fill()
 
     // recordAppointment without the lead row: the assistant's own time, moved freely
     let booking: BookingOutcome = { status: 'none' }
+    let confirmedOnRecord = false
     if (result.appointment) {
-      const resolved = resolveAppointment(result.appointment, {
-        keepDayOf: appointmentAt,
-        businessHours: settings.business_hours,
-      })
+      const resolved = resolveAppointment(result.appointment, { keepDayOf: appointmentAt ?? pending?.at ?? null, businessHours: hours })
       if (resolved.status === 'resolved') {
-        const changed = !sameInstant(appointmentAt, resolved.at)
-        appointmentAt = resolved.at
-        booking = { status: 'booked', at: resolved.at, confirmed: settings.auto_confirm_appointments, changed }
+        // A booking opens the lead, with what is known of the visitor
+        leadOpen = true
+        fill()
+        const missing = missingDetails(record.name, record.phone)
+        const confirmed = confirmsItself(settings.auto_confirm_appointments, resolved.validated, result.appointment.needs_team_check === true)
+        if (missing.length > 0) {
+          if (!appointmentAt) pending = { at: resolved.at, confirmed }
+          booking = {
+            status: 'needs_details',
+            at: resolved.at,
+            missing,
+            handoff: missing.includes('phone') && contact.phoneRejections >= MAX_PHONE_REJECTIONS,
+          }
+        } else {
+          const changed = !sameInstant(appointmentAt, resolved.at)
+          appointmentAt = resolved.at
+          pending = null
+          confirmedOnRecord = confirmed
+          booking = { status: 'booked', at: resolved.at, confirmed, changed }
+        }
       } else {
         booking = resolved
+      }
+    } else if (pending && !appointmentAt && missingDetails(record.name, record.phone).length === 0) {
+      // confirmPending: the time asked for earlier becomes the appointment
+      const waiting = pending
+      pending = null
+      const opening = hours?.enabled ? openingAt(hours, waiting.at) : null
+      if (new Date(waiting.at).getTime() < Date.now()) booking = { status: 'past' }
+      else if (opening && !opening.open) booking = { status: 'outside_hours', hours: opening.day }
+      else {
+        appointmentAt = waiting.at
+        confirmedOnRecord = waiting.confirmed
+        booking = { status: 'booked', at: waiting.at, confirmed: waiting.confirmed, changed: true }
       }
     } else if (appointmentAt && result.reply.includes(APPOINTMENT_PLACEHOLDER)) {
       // appointmentOnRecord: a reply that quotes the appointment without
       // reporting it again is answered from the record, as the webhook does
-      booking = { status: 'booked', at: appointmentAt, confirmed: settings.auto_confirm_appointments, changed: false }
+      booking = { status: 'booked', at: appointmentAt, confirmed: confirmedOnRecord, changed: false }
     }
-    const reply = renderReply(result.reply, booking, replyLanguage(settings.language, user))
+    const reply = composeReply({
+      template: result.reply,
+      outcome: booking,
+      events: read.events,
+      record,
+      visitorMessages: said,
+      language: replyLanguage(settings.language, user),
+      appointmentReported: result.appointment !== null,
+    })
     history.push({ role: 'assistant', content: reply })
     records.push({
       user,
       raw: result.raw,
       appointmentRequest: result.appointment,
       booking,
+      contact: read.events,
       reply,
       appointmentAt,
       retrievalError: result.debug.retrievalError,
     })
   }
-  return { history, records, appointmentAt }
+  return { history, records, appointmentAt, contact, record, leadOpen }
 }
 
-/** The lead detectLead would have left: opened by a booking, or by intent with a name or phone */
-async function leadFrom(bot: Bot, history: ChatTurn[], booked: boolean) {
-  const analysis = await analyzeConversation(history, { operation: 'lead_analysis', clientId: bot.clientId })
-  const phone = normalizeEgyptianPhone(analysis.phone)
-  const qualifies =
-    analysis.is_lead && analysis.confidence >= LEAD_CONFIDENCE_THRESHOLD && (phone !== null || analysis.name !== null)
+type Conversation = Awaited<ReturnType<typeof converse>>
+
+/**
+ * The lead detectLead would have left. The name and number are the ones code
+ * accepted while answering (detectLead takes them from there, not from the
+ * analysis); the lead is open already when a number or a booking opened it,
+ * otherwise intent with a name opens it.
+ */
+async function leadFrom(bot: Bot, conversation: Conversation) {
+  const analysis = await analyzeConversation(conversation.history, { operation: 'lead_analysis', clientId: bot.clientId })
+  const { name, phone } = conversation.contact
+  const qualifies = analysis.is_lead && analysis.confidence >= LEAD_CONFIDENCE_THRESHOLD && (phone !== null || name !== null)
   return {
-    recorded: booked || qualifies,
-    name: analysis.name,
+    recorded: conversation.leadOpen || qualifies,
+    name,
     phone,
     service_requested: analysis.service_requested,
     branch: analysis.branch,
@@ -315,7 +403,8 @@ function check(
   appointmentAt: string | null,
   lead: Awaited<ReturnType<typeof leadFrom>> | null,
   bot: Bot,
-  now: Date
+  now: Date,
+  conversation: Conversation
 ): Assertion[] {
   const { expect } = testCase
   const replies = records.map((r) => normalize(r.reply))
@@ -374,7 +463,7 @@ function check(
     // The fact first: what became of the booking, the outcome renderReply was
     // given. This case is one where nothing may be booked, so every turn's
     // outcome has to be none or ask_period.
-    const booked = records.findIndex((r) => r.booking.status !== 'none' && r.booking.status !== 'ask_period')
+    const booked = records.findIndex((r) => r.booking.status === 'booked' || r.booking.status === 'kept')
     // Then the wording, on what the visitor is sent after nothing was booked
     const worded = records.findIndex((r) => bookingClaimIn(r.reply).length > 0)
     add(
@@ -387,6 +476,26 @@ function check(
           : `outcomes ${records.map((r) => r.booking.status).join(', ')}; no booking wording`,
       true
     )
+  }
+  if (expect.phone_on_record !== undefined) {
+    const stored = conversation.record.phone
+    add('phone_on_record', stored === expect.phone_on_record, `expected ${expect.phone_on_record ?? 'none'}, the lead would hold ${stored ?? 'none'}`)
+  }
+  if (expect.name_incomplete !== undefined) {
+    const { name, nameIncomplete } = conversation.contact
+    add(
+      'name_incomplete',
+      name !== null && nameIncomplete === expect.name_incomplete,
+      name === null ? 'no name was accepted at all' : `name "${name}" ${nameIncomplete ? 'flagged incomplete' : 'not flagged'}`
+    )
+  }
+  if (expect.no_cjk) {
+    const found = replies.findIndex((reply) => CJK.test(reply))
+    add('no_cjk', found < 0, found < 0 ? 'no CJK script in any reply' : `reply ${found + 1} holds CJK script: ${replies[found]}`)
+  }
+  if (expect.redirects) {
+    const redirects = BACK_TO_BUSINESS.test(last)
+    add('redirects', redirects, redirects ? 'the last reply points back to the business' : `the last reply does not point back to the business: ${last}`)
   }
 
   if (expect.lead) {
@@ -495,8 +604,8 @@ async function runOnce(bot: Bot, testCase: Case, since: string) {
       const conversation = await converse(bot, testCase.turns)
       records = conversation.records
       appointmentAt = conversation.appointmentAt
-      if (testCase.expect.lead) lead = await leadFrom(bot, conversation.history, appointmentAt !== null)
-      assertions = check(testCase, records, appointmentAt, lead, bot, now)
+      if (testCase.expect.lead) lead = await leadFrom(bot, conversation)
+      assertions = check(testCase, records, appointmentAt, lead, bot, now, conversation)
       // Without the knowledge base the reply isn't the provider's doing
       if (records.some((r) => r.retrievalError)) error = 'knowledge retrieval failed'
       break
@@ -544,7 +653,11 @@ async function main() {
 
   const repeats = Number(arg('repeats') ?? 3)
   const only = arg('only')?.split(',')
-  const { cases: allCases } = JSON.parse(readFileSync(path.join(EVAL_DIR, 'cases.json'), 'utf8')) as { cases: Case[] }
+  // The frozen set, or a named one of its own: eval/cases-<name>.json
+  const set = arg('cases')
+  if (set && !/^[a-z0-9-]+$/.test(set)) throw new Error(`--cases=${set}: a set is named in lowercase letters, digits and dashes`)
+  const casesFile = set ? `cases-${set}.json` : 'cases.json'
+  const { cases: allCases } = JSON.parse(readFileSync(path.join(EVAL_DIR, casesFile), 'utf8')) as { cases: Case[] }
   const cases = only ? allCases.filter((c) => only.includes(c.id)) : allCases
 
   const admin = createAdminClient()
@@ -570,7 +683,7 @@ async function main() {
   const startedAt = new Date()
   const since = await usageWatermark(admin, demo.clientId)
   console.log(
-    `provider ${provider} · model ${model} · temperature ${settings.temperature} · ${cases.length} cases × ${repeats}\n` +
+    `provider ${provider} · model ${model} · temperature ${settings.temperature} · eval/${casesFile}: ${cases.length} cases × ${repeats}\n` +
       `database ${new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).host} · demo client ${demo.clientId} · ${chunks ?? '?'} knowledge chunks\n`
   )
 
@@ -606,6 +719,7 @@ async function main() {
   const summary = {
     provider,
     model,
+    set: casesFile,
     temperature: settings.temperature,
     startedAt: startedAt.toISOString(),
     finishedAt: new Date().toISOString(),
@@ -627,7 +741,7 @@ async function main() {
   }
 
   const stamp = startedAt.toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15)
-  const file = path.join(EVAL_DIR, `eval-results-${provider}-${stamp}.json`)
+  const file = path.join(EVAL_DIR, `eval-results-${provider}-${set ? `${set}-` : ''}${stamp}.json`)
   writeFileSync(file, JSON.stringify({ note: RESULTS_NOTE, summary, results }, null, 2))
 
   for (const c of critical) console.log(`CRITICAL ${c.case} run ${c.run}: ${c.assertion} — ${c.detail}`)
@@ -637,7 +751,7 @@ async function main() {
   }
   console.log(`\n${path.relative(ROOT, file)}`)
   console.log(
-    `${provider}: ${summary.passed}/${summary.cases} cases passed ${repeats}/${repeats} · ${summary.verdict}` +
+    `${provider} on eval/${casesFile}: ${summary.passed}/${summary.cases} cases passed ${repeats}/${repeats} · ${summary.verdict}` +
       ` · ${summary.usage.totalTokens} tokens · $${summary.usage.costUsd.toFixed(4)} (ai_usage)`
   )
 }

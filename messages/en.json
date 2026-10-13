@@ -628,7 +628,9 @@
     "ai": {
       "summary": "Summary",
       "preferredTime": "Preferred time",
-      "phoneRaw": "Phone as the visitor wrote it"
+      "phoneRaw": "Phone as the visitor wrote it",
+      "nameIncomplete": "Name",
+      "nameIncompleteHint": "Incomplete: the visitor gave no full name, and it was accepted after one re-ask"
     },
     "timeline": {
       "ai": "AI assistant",
@@ -660,7 +662,7 @@
       "forbidden": "You do not have permission to do this.",
       "notFound": "Lead not found or you do not have access to it.",
       "validation": "Some of the data is invalid.",
-      "invalidPhone": "Invalid phone number. Use an Egyptian mobile number (010 / 011 / 012 / 015).",
+      "invalidPhone": "Invalid phone number. Use an Egyptian mobile number (010 / 011 / 012 / 015) or an international number starting with +.",
       "unknown": "Something went wrong. Please try again.",
       "impersonating": "Changes aren’t allowed while viewing a customer’s account"
     },
@@ -1871,7 +1873,23 @@
       "noted": "Your appointment: {time}.",
       "kept": "You already have an appointment on {time}. If you'd like to change it, someone from our team will be in touch.",
       "askTime": "Which day and what time would you like to book?",
-      "askPeriod": "{hour} in the morning or in the evening?"
+      "askPeriod": "{hour} in the morning or in the evening?",
+      "outsideHours": "That time is outside our working hours: on {day} we are open from {from} to {to}. Would another time suit you?",
+      "closedDay": "We are closed on {day}. Would another day suit you?",
+      "past": "That time has already passed. Which day and what time would you like?",
+      "needDetails": "To book {time} I need {missing}.",
+      "needDetailsHandoff": "Your request for {time} is noted as a request, and someone from our team will contact you here to complete it.",
+      "missingName": "your full name",
+      "missingPhone": "your mobile number",
+      "and": " and "
+    },
+    "contact": {
+      "phoneInvalid": "That number doesn't look right. A mobile number is 11 digits starting with 01, or an international number starting with +. Could you send it again?",
+      "phoneGiveUp": "That number isn't valid either, so I can't record it. Someone from our team will contact you here and take your number.",
+      "nameAsk": "Could I have your full name (first name and family name)?",
+      "noPhoneOnRecord": "We don't have a mobile number on record for you yet.",
+      "phoneOnRecord": "The mobile number we have on record: {phone}.",
+      "noNameOnRecord": "We don't have a name on record for you yet."
     }
   },
   "settings": {

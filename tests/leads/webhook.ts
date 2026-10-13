@@ -60,9 +60,35 @@ export function lastVisitorMessage(call: GeminiCall) {
   return turns.findLast((turn) => turn.role === 'user')?.parts[0].text ?? ''
 }
 
-/** The chat model's structured answer: its text and the appointment components it read */
-export const botReply = (reply: string, appointment: Record<string, unknown> | null = null) =>
-  geminiText(JSON.stringify({ reply, appointment }))
+/**
+ * What the stand-in chat model reports as the visitor's own details, whatever
+ * the message: the name these tests' visitor uses. The real model reports
+ * what the latest message gave; the app keeps a reported name only if the
+ * visitor wrote it (readContact), so in a conversation where they never did,
+ * this is dropped — which is the rule under test, not a shortcut around it.
+ */
+export const REPORTED_CONTACT = { name: 'كريم مصطفى', phone: null }
+
+/** The chat model's structured answer: the details and appointment components it read, and its text */
+export const botReply = (
+  reply: string,
+  appointment: Record<string, unknown> | null = null,
+  contact: { name?: string | null; phone?: string | null } | null = REPORTED_CONTACT
+) => geminiText(JSON.stringify({ contact, appointment, reply }))
+
+/** Opening hours on the client: the assistant only confirms a time it could check against them */
+export async function openEveryDay(
+  seeded: Pick<Awaited<ReturnType<typeof seedClient>>, 'supabase' | 'clientId'>,
+  from = '08:00',
+  to = '23:00'
+) {
+  const days = Object.fromEntries(['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'].map((day) => [day, { open: true, from, to }]))
+  const { error } = await seeded.supabase
+    .from('bot_settings')
+    .update({ business_hours: { enabled: true, timezone: 'Africa/Cairo', days } })
+    .eq('client_id', seeded.clientId)
+  if (error) throw new Error(`Setting the opening hours failed: ${error.message}`)
+}
 
 /**
  * The chat model answers (reporting "بكرة الساعة 5 العصر" as tomorrow, hour
@@ -74,7 +100,7 @@ export function geminiWorks(call: GeminiCall) {
   if (call.kind === 'analysis') return geminiText(JSON.stringify(analyseTranscript(call)))
   return lastVisitorMessage(call).includes('بكرة الساعة 5 العصر')
     ? botReply('تمام، حجزتلك {{appointment}}', { day_type: 'tomorrow', hour: 5, period: 'afternoon' })
-    : geminiText('أهلاً بيك، تحت أمرك')
+    : botReply('أهلاً بيك، تحت أمرك')
 }
 
 export type LeadSnapshot = {
@@ -91,6 +117,9 @@ export type LeadSnapshot = {
   updated_at: string
 }
 
+/** A lead row as dumpLeadsOnFailure prints it */
+type LeadTrace = { id: string; conversation_id: string; status: string; created_at: string; updated_at: string }
+
 const LEAD_SNAPSHOT =
   'id, name, phone, service_requested, status, appointment_at, appointment_confirmed, showed_up, arrival_confirmed_at, ai_extracted_data, updated_at'
 
@@ -104,15 +133,63 @@ export async function startConversation() {
   const { body } = await sendVisitorMessage(seeded.channelId, INTRO_MESSAGE, { visitorId })
   const conversationId = body.conversationId as string
 
-  const leads = async () => {
-    const { data, error } = await seeded.supabase
+  const readTrace = () =>
+    seeded.supabase
       .from('leads')
-      .select(LEAD_SNAPSHOT)
+      .select(`${LEAD_SNAPSHOT}, conversation_id, created_at`)
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true })
-      .returns<LeadSnapshot[]>()
+      .returns<(LeadSnapshot & { conversation_id: string; created_at: string })[]>()
+  const trace = ({ id, conversation_id, status, created_at, updated_at }: LeadTrace): LeadTrace => ({
+    id,
+    conversation_id,
+    status,
+    created_at,
+    updated_at,
+  })
+
+  // What the last leads() call got back, kept for dumpLeadsOnFailure
+  let lastRead: LeadTrace[] = []
+  const leads = async (): Promise<LeadSnapshot[]> => {
+    const { data, error } = await readTrace()
     if (error) throw new Error(error.message)
-    return data
+    lastRead = data.map(trace)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    return data.map(({ conversation_id, created_at, ...snapshot }) => snapshot)
+  }
+
+  /**
+   * Runs the assertions, and when one fails prints the lead rows before
+   * rethrowing: the rows the last leads() call returned, in the order it
+   * returned them, the same query read again, and the ids the test captured
+   * as the leads were created. Prints nothing when the assertions pass.
+   *
+   * Here for a failure seen once in a full run and not since (lead #2 came
+   * back ahead of lead #1 in "leaves lead #1's appointment and attendance
+   * untouched"): it records what was returned, it does not change the order.
+   */
+  const dumpLeadsOnFailure = async (captured: Record<string, string | undefined>, assertions: () => void | Promise<void>) => {
+    const returned = lastRead
+    try {
+      await assertions()
+    } catch (failure) {
+      const again = await readTrace()
+      console.error(
+        '[lead dump] the assertions failed\n' +
+          JSON.stringify(
+            {
+              conversationId,
+              captured,
+              returned,
+              readAgain: again.error ? `error: ${again.error.message}` : again.data.map(trace),
+              readAgainAt: new Date().toISOString(),
+            },
+            null,
+            2
+          )
+      )
+      throw failure
+    }
   }
   const send = (message: string) => sendVisitorMessage(seeded.channelId, message, { visitorId, conversationId })
 
@@ -126,5 +203,5 @@ export async function startConversation() {
     return (await leads())[0]
   }
 
-  return { ...seeded, visitorId, conversationId, leads, send, attendFirstVisit }
+  return { ...seeded, visitorId, conversationId, leads, send, attendFirstVisit, dumpLeadsOnFailure }
 }

@@ -58,6 +58,19 @@ export type LeadExtractedData = {
   confidence?: number
   name?: string | null
   phone?: string | null
+  /**
+   * The name was accepted after one re-ask without being a full name (two
+   * words, letters only). Information for the team, not a defect in the lead.
+   */
+  name_incomplete?: boolean
+  /**
+   * The name and number as code accepted them (readContact), next to what
+   * the analysis itself read above. These are what the assistant last put on
+   * the lead: a field that still equals them is the assistant's own to
+   * replace; anything else was edited by the team and stays.
+   */
+  accepted_name?: string | null
+  accepted_phone?: string | null
   service_requested?: string | null
   budget?: string | null
   branch?: string | null
@@ -79,6 +92,12 @@ export type AiAppointment = {
    * the visitor anything. Absent on older rows.
    */
   source?: 'reply' | 'analysis'
+  /**
+   * A time the visitor asked for that is NOT an appointment: their name or
+   * phone number was still missing, so appointment_at was left alone. It
+   * becomes the appointment once both are on record (confirmPending).
+   */
+  pending?: true
 }
 
 export type LeadDetail = LeadListItem & {

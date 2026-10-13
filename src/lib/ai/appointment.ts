@@ -34,9 +34,11 @@ export const appointmentRequestSchema = z.object({
   weekday: z.enum(WEEKDAYS).nullish().catch(null),
   day_of_month: optionalInt(1, 31),
   month: optionalInt(1, 12),
+  year: optionalInt(2000, 2100),
   hour: optionalInt(0, 23),
   minute: optionalInt(0, 59),
   period: z.enum(PERIODS).catch('unspecified'),
+  needs_team_check: z.boolean().nullish().catch(null),
 })
 
 /** What the visitor said about when, as the model reported it */
@@ -52,21 +54,34 @@ export const APPOINTMENT_REQUEST_SCHEMA: JsonSchema = {
     weekday: { type: ['string', 'null'], enum: WEEKDAYS },
     day_of_month: { type: ['integer', 'null'] },
     month: { type: ['integer', 'null'] },
+    year: { type: ['integer', 'null'] },
     hour: { type: ['integer', 'null'] },
     minute: { type: ['integer', 'null'] },
     period: { type: 'string', enum: PERIODS },
+    needs_team_check: { type: ['boolean', 'null'] },
   },
   required: ['day_type', 'period'],
+}
+
+// What the visitor's latest message gave of their own details, as written
+export const CONTACT_REPORT_SCHEMA: JsonSchema = {
+  type: ['object', 'null'],
+  properties: {
+    name: { type: ['string', 'null'] },
+    phone: { type: ['string', 'null'] },
+  },
 }
 
 export const BOT_REPLY_SCHEMA: JsonSchema = {
   type: 'object',
   properties: {
-    // "appointment" BEFORE "reply", on purpose: do not reorder or sort these.
-    // The model writes the properties in this order, so it settles the
-    // appointment first and then writes the reply already knowing it. With
-    // the reply first, the text could claim a booking that the appointment
-    // written after it never backed up (the bug fixed in September 2026).
+    // "contact" and "appointment" BEFORE "reply", on purpose: do not reorder
+    // or sort these. The model writes the properties in this order, so it
+    // settles what the visitor gave first and then writes the reply already
+    // knowing it. With the reply first, the text could claim a booking that
+    // the appointment written after it never backed up (the bug fixed in
+    // September 2026).
+    contact: CONTACT_REPORT_SCHEMA,
     appointment: APPOINTMENT_REQUEST_SCHEMA,
     reply: { type: 'string' },
   },
@@ -76,19 +91,34 @@ export const BOT_REPLY_SCHEMA: JsonSchema = {
 export const botReplySchema = z.object({
   reply: z.string().trim().min(1),
   appointment: appointmentRequestSchema.nullish().catch(null),
+  contact: z
+    .object({ name: z.string().nullish().catch(null), phone: z.string().nullish().catch(null) })
+    .nullish()
+    .catch(null),
 })
 
 /** How to report an appointment as components: shared by every prompt that reads one */
 export const APPOINTMENT_COMPONENTS = `- When the visitor's latest message asks for, agrees to or changes an appointment with a specific day and time, fill "appointment" with what THEY said, as components. Report, don't calculate: no dates worked out from "tomorrow" or a weekday, no 24-hour conversion, and no guessing a part of the day they didn't say.
-  day_type: today (النهارده), tomorrow (بكرة), day_after_tomorrow (بعد بكرة), weekday (a named day: set "weekday"), date (a calendar date: set "day_of_month", and "month" if stated), or none.
+  day_type: today (النهارده), tomorrow (بكرة), day_after_tomorrow (بعد بكرة), weekday (a named day: set "weekday"), date (a calendar date: set "day_of_month", "month" if stated, and "year" only if they said a year), or none.
   hour and minute exactly as said ("الساعة 6" → 6; "11 ونص" → 11 and 30). period: morning (الصبح), noon (الضهر), afternoon (العصر), evening (المغرب), night (بالليل / العشا), or unspecified when they didn't say.
 - A new time without a day ("خليها 7") is day_type none with the new hour: the day they already chose is kept. Always the visitor's latest choice.
-- When the latest message only completes what they asked before (answering which part of the day, or which hour), report the whole request: the day and hour from earlier with what they just added.`
+- When the latest message only completes what they asked before (answering which part of the day, or which hour), report the whole request: the day and hour from earlier with what they just added.
+- needs_team_check: true when the information you were given says the business is closed or unavailable at that time (a holiday, a doctor who is away), or you cannot tell whether it can be honoured. Report the request all the same: the system decides what becomes of it.`
+
+/** Where the reply states what is on record; replaced from the lead row */
+export const SAVED_PHONE_PLACEHOLDER = '{{saved_phone}}'
+export const SAVED_NAME_PLACEHOLDER = '{{saved_name}}'
 
 /** The instructions that go with BOT_REPLY_SCHEMA in the system prompt */
-export const APPOINTMENT_INSTRUCTIONS = `Appointments. Answer as JSON with "reply" (your message to the visitor) and "appointment".
+export const APPOINTMENT_INSTRUCTIONS = `Answer as JSON with "contact", "appointment" and "reply" (your message to the visitor).
+
+The visitor's details ("contact", null when the latest message gives none):
+- name: the name the visitor gave for themselves in their LATEST message, copied exactly as they wrote it. phone: the phone number they gave in their LATEST message, every digit as written, even if it looks wrong or incomplete. Report, don't judge and don't correct: the system checks them and tells the visitor itself when one is not usable.
+- You cannot see what has been saved, but the system can. Never say that a name or a number was received, saved, recorded, registered or updated, and never write the visitor's phone number in "reply". When the visitor asks what is on record ("سجلت رقمي؟"), or you want to state it, answer with the placeholder — ${SAVED_PHONE_PLACEHOLDER} for the phone number, ${SAVED_NAME_PLACEHOLDER} for the name, as in "رقمك المسجّل عندنا ${SAVED_PHONE_PLACEHOLDER}" — and never by saying that you can't see it: the system replaces the placeholder with what is actually stored, or says that nothing is.
+
+Appointments ("appointment"):
 ${APPOINTMENT_COMPONENTS}
-- In "reply", write ${APPOINTMENT_PLACEHOLDER} exactly where the appointment's day and time belong, and never write the day or the time yourself: the system replaces it with the appointment it recorded, and adds whether it is confirmed. Don't say that it is confirmed or that someone will confirm it.
+- In "reply", write ${APPOINTMENT_PLACEHOLDER} exactly where the appointment's day and time belong, and never write the day or the time yourself: the system replaces it with the appointment it recorded, and adds whether it is confirmed. Don't say that it is booked, confirmed or that someone will confirm it: an appointment is only recorded once the system has the visitor's name and phone number and the time is one the business works at, and the system says so itself.
 - With no specific day ("next week", "soon", "any time") or no time at all, "appointment" is null: don't use ${APPOINTMENT_PLACEHOLDER}, and ask for the missing day or time.
 - "appointment" is null whenever the latest message isn't about scheduling.`
 
@@ -154,6 +184,9 @@ const weekdayOf = ({ year, month, day }: CalendarDay) => new Date(Date.UTC(year,
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
+/** A day of the business's week: closed, or open between two wall-clock times */
+export type OpeningDay = { weekday: number; open: false } | { weekday: number; open: true; from: string; to: string }
+
 export type AppointmentResolution =
   | {
       status: 'resolved'
@@ -161,13 +194,45 @@ export type AppointmentResolution =
       at: string
       /** The hour was chosen from a part of the day ("Thursday morning") */
       approximate: boolean
+      /**
+       * Code checked the time against the business's opening hours. False
+       * when the business has set none: the time is then a request that only
+       * a person can accept, never one the assistant confirms by itself.
+       */
+      validated: boolean
     }
   /** "at 9" with nothing to say whether morning or evening: the visitor has to be asked */
   | { status: 'ask_period'; hour: number }
+  /** A real day and time, when the business is closed; `hours` is that day's */
+  | { status: 'outside_hours'; hours: OpeningDay }
+  /** A real day and time that has already gone */
+  | { status: 'past' }
   /** No usable day and time, or an implausible one */
   | { status: 'none' }
 
 const NONE: AppointmentResolution = { status: 'none' }
+const PAST: AppointmentResolution = { status: 'past' }
+
+/**
+ * Whether the business is open at an instant, and that day's hours.
+ *
+ * INTERIM (October 2026): `hours` is bot_settings.business_hours, one
+ * schedule for the whole business. A business with branches has one per
+ * branch: for the demo clinic this is right for المعادي and wrong for التجمع
+ * (which opens an hour later and is closed on Fridays). It stops a patient
+ * being told to come at 5 in the morning, which is what it is here for;
+ * per-branch hours come with the branches table.
+ */
+export function openingAt(hours: BusinessHours, at: string | Date): { open: boolean; day: OpeningDay } {
+  const wall = cairoParts(at)
+  const weekday = new Date(Date.UTC(wall.year, wall.month, wall.day)).getUTCDay()
+  const [hour, minute] = wall.time.split(':').map(Number)
+  const schedule = hours.days[HOURS_DAY[weekday]]
+  return {
+    open: isOpenAt(hours, weekday, hour, minute),
+    day: schedule.open ? { weekday, open: true, from: schedule.from, to: schedule.to } : { weekday, open: false },
+  }
+}
 
 /**
  * Components → the instant in Cairo time. Nothing is ever guessed to fill a
@@ -206,7 +271,15 @@ export function resolveAppointment(
       }
       break
     case 'date':
-      if (request.day_of_month) {
+      if (request.day_of_month && request.year) {
+        // A year the visitor stated is taken as said, never moved: a date
+        // that has gone is refused, not rolled to next year
+        const month = request.month ? request.month - 1 : today.month
+        const candidate = new Date(Date.UTC(request.year, month, request.day_of_month))
+        if (candidate.getUTCDate() !== request.day_of_month) return NONE
+        if (candidate.getTime() < Date.UTC(today.year, today.month, today.day)) return PAST
+        day = { year: candidate.getUTCFullYear(), month: candidate.getUTCMonth(), day: candidate.getUTCDate() }
+      } else if (request.day_of_month) {
         // No month: this month's, or next month's once that day has passed
         const month = request.month ? request.month - 1 : today.month + (request.day_of_month < today.day ? 1 : 0)
         const candidate = new Date(Date.UTC(today.year, month, request.day_of_month))
@@ -250,11 +323,25 @@ export function resolveAppointment(
   let at = instant(day)
   if (request.day_type === 'weekday' && at.getTime() < now.getTime()) at = instant(addDays(day, 7))
 
+  if (Number.isNaN(at.getTime())) return NONE
   // An hour of slack for "today at 5" said just after 5
-  if (Number.isNaN(at.getTime()) || at.getTime() < now.getTime() - HOUR_MS) return NONE
+  if (at.getTime() < now.getTime() - HOUR_MS) return PAST
   if (at.getTime() > now.getTime() + MAX_DAYS_AHEAD * DAY_MS) return NONE
-  return { status: 'resolved', at: at.toISOString(), approximate }
+  if (businessHours?.enabled) {
+    const opening = openingAt(businessHours, at)
+    if (!opening.open) return { status: 'outside_hours', hours: opening.day }
+  }
+  return { status: 'resolved', at: at.toISOString(), approximate, validated: businessHours?.enabled === true }
 }
+
+/**
+ * Whether the assistant confirms an appointment itself: only when the client
+ * lets it (auto-confirm), code checked the time against opening hours, and
+ * the model saw no reason for a person to look at it. Anything else is a
+ * request the team confirms — the reply then says so, and never "confirmed".
+ */
+export const confirmsItself = (autoConfirm: boolean, validated: boolean, needsTeamCheck: boolean) =>
+  autoConfirm && validated && !needsTeamCheck
 
 /** Same instant? (Postgres and JS format timestamps differently) */
 export function sameInstant(a: string | null | undefined, b: string | null | undefined) {
@@ -270,18 +357,39 @@ export function replyLanguage(language: BotLanguage, lastUserMessage: string): R
 }
 
 const TEXTS = { ar: ar.botReplies.appointment, en: en.botReplies.appointment }
+const LOCALES = { ar: 'ar-EG-u-nu-latn', en: 'en-GB' } as const
+
+/** "12:00 ظهراً" / "12:00 PM" from a wall-clock "HH:MM" */
+function formatClock(time: string, language: ReplyLanguage) {
+  const t = TEXTS[language]
+  const [hours, minutes] = time.split(':').map(Number)
+  const dayPart = hours < 12 ? t.am : hours < 15 ? t.noon : t.pm
+  return `${hours % 12 || 12}:${pad(minutes)} ${dayPart}`
+}
+
+/** That day's opening hours, in words: what a refused time is answered with */
+function describeOpening(day: OpeningDay, language: ReplyLanguage) {
+  const t = TEXTS[language]
+  // 4 January 1970 was a Sunday: index = Date#getDay()
+  const name = new Intl.DateTimeFormat(LOCALES[language], { weekday: 'long', timeZone: 'UTC' }).format(
+    new Date(Date.UTC(1970, 0, 4 + day.weekday))
+  )
+  if (!day.open) return t.closedDay.replace('{day}', name)
+  return t.outsideHours
+    .replace('{day}', name)
+    .replace('{from}', formatClock(day.from, language))
+    .replace('{to}', formatClock(day.to, language))
+}
 
 /** "الخميس 8 أكتوبر الساعة 6:00 مساءً" / "Thursday 8 October at 6:00 PM", in Cairo time */
 export function formatAppointment(at: string, language: ReplyLanguage): string {
   const t = TEXTS[language]
   const date = new Date(at)
   // Latin digits in Arabic too, as visitors write them
-  const locale = language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB'
+  const locale = LOCALES[language]
   const part = (options: Intl.DateTimeFormatOptions) =>
     new Intl.DateTimeFormat(locale, { timeZone: CAIRO_TZ, ...options }).format(date)
-  const [hours, minutes] = cairoParts(date).time.split(':').map(Number)
-  const dayPart = hours < 12 ? t.am : hours < 15 ? t.noon : t.pm
-  const time = `${hours % 12 || 12}:${pad(minutes)} ${dayPart}`
+  const time = formatClock(cairoParts(date).time, language)
   return `${part({ weekday: 'long' })} ${part({ day: 'numeric' })} ${part({ month: 'long' })} ${t.at} ${time}`
 }
 
@@ -293,6 +401,16 @@ export type BookingOutcome =
   | { status: 'kept'; at: string }
   /** Nothing recorded yet: morning or evening has to be asked */
   | { status: 'ask_period'; hour: number }
+  /**
+   * Not an appointment yet: the time is kept as a request until the visitor's
+   * name and phone number are both on record. `handoff`: the bot has stopped
+   * asking for the phone number, a person completes it.
+   */
+  | { status: 'needs_details'; at: string; missing: ('name' | 'phone')[]; handoff: boolean }
+  /** Nothing recorded: the business is closed then */
+  | { status: 'outside_hours'; hours: OpeningDay }
+  /** Nothing recorded: that day and time have gone */
+  | { status: 'past' }
   /** Nothing recorded: no usable day and time, or the booking failed */
   | { status: 'none' }
 
@@ -330,6 +448,23 @@ export function renderReply(template: string, outcome: BookingOutcome, language:
     // and time instead of the booking it claimed
     const rest = withoutAppointmentSentences(template)
     return rest ? `${rest}\n${t.askTime}` : t.askTime
+  }
+  // Refused, or not an appointment yet: what the model wrote about the
+  // booking goes, the rest of its answer stays, and code says why
+  if (outcome.status === 'outside_hours' || outcome.status === 'past' || outcome.status === 'needs_details') {
+    const rest = withoutAppointmentSentences(template)
+    let said: string
+    if (outcome.status === 'outside_hours') said = describeOpening(outcome.hours, language)
+    else if (outcome.status === 'past') said = t.past
+    else {
+      const time = formatAppointment(outcome.at, language)
+      said = outcome.handoff
+        ? t.needDetailsHandoff.replace('{time}', time)
+        : t.needDetails
+            .replace('{time}', time)
+            .replace('{missing}', outcome.missing.map((field) => (field === 'name' ? t.missingName : t.missingPhone)).join(t.and))
+    }
+    return rest ? `${rest}\n${said}` : said
   }
 
   const time = formatAppointment(outcome.at, language)

@@ -5,7 +5,7 @@ import { getTranslations } from 'next-intl/server'
 import { canManage, getSession, isImpersonating } from '@/lib/auth/session'
 import { getConversationLeads } from '@/lib/lead-visits'
 import { rangeStart, searchTerm } from '@/lib/list-filters'
-import { normalizeEgyptianPhone } from '@/lib/phone'
+import { displayPhone, normalizePhone, toLatinDigits } from '@/lib/phone'
 import { UUID_PATTERN } from '@/lib/types/clients'
 import type { TeamMember } from '@/lib/types/conversations'
 import {
@@ -54,9 +54,12 @@ function leadsQuery(supabase: Supabase, columns: string, filters: LeadFilters) {
 
   const term = filters.q ? searchTerm(filters.q) : ''
   if (term) {
-    // Also match phones typed with spaces, +20 or Arabic digits
-    const phone = normalizeEgyptianPhone(term)
-    const phoneTerm = phone ?? term.replace(/\s/g, '')
+    // Also match phones typed with spaces, +20 or Arabic digits. Numbers are
+    // stored as E.164 (+201…) and typed the local way (01…); rows from before
+    // E.164 hold the local form. The digits after the leading zero are in both.
+    const phone = normalizePhone(term)
+    const typed = toLatinDigits(term).replace(/[\s\-]/g, '')
+    const phoneTerm = phone ? displayPhone(phone).replace(/^[0+]+/, '') : /^[+\d]+$/.test(typed) ? typed.replace(/^[0+]+/, '') : typed
     query = query.or(
       `name.ilike.%${term}%,phone.ilike.%${phoneTerm}%,service_requested.ilike.%${term}%`
     )
@@ -135,7 +138,7 @@ export async function updateLead(id: string, data: LeadUpdateInput): Promise<Lea
 
   const patch = { ...parsed.data }
   if (patch.phone) {
-    const phone = normalizeEgyptianPhone(patch.phone)
+    const phone = normalizePhone(patch.phone)
     if (!phone) return { ok: false, error: 'invalidPhone' }
     patch.phone = phone
   }
@@ -258,7 +261,7 @@ export async function exportLeads(filters: LeadFilters = {}): Promise<{ ok: true
     [
       csvCell(lead.name),
       // ="0101…" keeps Excel from dropping the leading zero
-      lead.phone ? `="${lead.phone}"` : '',
+      lead.phone ? `="${displayPhone(lead.phone)}"` : '',
       csvCell(lead.service_requested),
       csvCell(lead.budget),
       csvCell(lead.branch),

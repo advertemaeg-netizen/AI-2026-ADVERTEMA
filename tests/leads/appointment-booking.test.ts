@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ar from '../../messages/ar.json'
 import { geminiCalls, geminiText, mockGemini, seedClient, type GeminiCall } from '../harness/helpers'
-import { analyseTranscript, botReply, newVisitorId, sendVisitorMessage } from './webhook'
+import { analyseTranscript, botReply, newVisitorId, openEveryDay, REPORTED_CONTACT, sendVisitorMessage } from './webhook'
 
 const TEXT = ar.botReplies.appointment
 
@@ -28,6 +28,13 @@ function chatModel(reply: (call: GeminiCall) => Response) {
     if (call.kind === 'embedding') return Response.json({ error: { message: 'no embeddings in tests' } }, { status: 503 })
     return call.kind === 'analysis' ? geminiText(JSON.stringify(analyseTranscript(call))) : reply(call)
   })
+}
+
+/** A client with opening hours: the assistant only confirms a time it could check against them */
+async function seedOpenClient() {
+  const seeded = await seedClient()
+  await openEveryDay(seeded)
+  return seeded
 }
 
 type Booked = { status: string; appointment_at: string | null; appointment_confirmed: boolean; name: string | null }
@@ -66,7 +73,7 @@ const instant = (value: string | null) => (value ? new Date(value).toISOString()
 describe('one appointment parser: the reply quotes the stored appointment', () => {
   it('stores "الخميس الساعة 6 المغرب" as one fixed instant and puts that same value in the reply', async () => {
     chatModel(() => botReply('تمام يا أستاذ كريم، حجزتلك {{appointment}} لتنظيف الأسنان.', THURSDAY_6_EVENING))
-    const seeded = await seedClient()
+    const seeded = await seedOpenClient()
 
     const { reply, stored, leads } = await book(seeded)
 
@@ -94,7 +101,7 @@ describe('one appointment parser: the reply quotes the stored appointment', () =
     const results: { at: string | null; reply: string }[] = []
     for (const reading of readings) {
       chatModel(() => botReply('حجزتلك {{appointment}}.', reading))
-      const { reply, leads } = await book(await seedClient())
+      const { reply, leads } = await book(await seedOpenClient())
       results.push({ at: instant(leads[0].appointment_at), reply })
     }
 
@@ -104,7 +111,7 @@ describe('one appointment parser: the reply quotes the stored appointment', () =
   })
 
   it('books nothing for "الأسبوع الجاي", asks for the time, and never invents a value', async () => {
-    const seeded = await seedClient()
+    const seeded = await seedOpenClient()
 
     // The model does as told: no appointment, and it asks
     chatModel(() => botReply('تمام يا أستاذ كريم، تحب يوم إيه والساعة كام؟', null))
@@ -121,7 +128,7 @@ describe('one appointment parser: the reply quotes the stored appointment', () =
   })
 
   it('keeps the answer to another question when the model claims a booking that was not recorded', async () => {
-    const seeded = await seedClient()
+    const seeded = await seedOpenClient()
     const answer = 'التقويم للكبار في الأغلب مش مغطّى. ابعت صورة الكارنيه والفريق هيرد عليك بالتغطية الفعلية.'
 
     // Mid-booking, the visitor asks something else; the model answers it but
@@ -134,7 +141,7 @@ describe('one appointment parser: the reply quotes the stored appointment', () =
     expect(stored).toBe(reply)
     expect(leads.map((lead) => lead.appointment_at).filter(Boolean)).toEqual([])
     // What the model actually answered, and that nothing was booked, stay on record
-    expect(JSON.parse(metadata.raw)).toEqual({ reply: `${answer} حجزتلك {{appointment}}.`, appointment: null })
+    expect(JSON.parse(metadata.raw)).toEqual({ contact: REPORTED_CONTACT, appointment: null, reply: `${answer} حجزتلك {{appointment}}.` })
     expect(metadata.booking).toBe('none')
   })
 
@@ -143,7 +150,7 @@ describe('one appointment parser: the reply quotes the stored appointment', () =
   // placeholder with no appointment, and the visitor was asked for the day
   // and time they had already given
   it('quotes the appointment on record when a later reply repeats it without reporting it again', async () => {
-    const seeded = await seedClient()
+    const seeded = await seedOpenClient()
     const visitorId = newVisitorId()
     chatModel(() => botReply('تمام يا أستاذ كريم، حجزتلك {{appointment}}. أنهي فرع تفضّل؟', THURSDAY_6_EVENING))
     const booked = await book(seeded, BOOKING_MESSAGE, { visitorId })
@@ -162,7 +169,7 @@ describe('one appointment parser: the reply quotes the stored appointment', () =
   })
 
   it('leaves a later reply that does not mention the appointment exactly as the model wrote it', async () => {
-    const seeded = await seedClient()
+    const seeded = await seedOpenClient()
     const visitorId = newVisitorId()
     chatModel(() => botReply('تمام يا أستاذ كريم، حجزتلك {{appointment}}. أنهي فرع تفضّل؟', THURSDAY_6_EVENING))
     const booked = await book(seeded, BOOKING_MESSAGE, { visitorId })
@@ -176,15 +183,15 @@ describe('one appointment parser: the reply quotes the stored appointment', () =
 
   it('stores the model\'s raw answer and the booking outcome with the reply', async () => {
     chatModel(() => botReply('حجزتلك {{appointment}}.', THURSDAY_6_EVENING))
-    const { metadata } = await book(await seedClient())
+    const { metadata } = await book(await seedOpenClient())
 
-    expect(JSON.parse(metadata.raw)).toEqual({ reply: 'حجزتلك {{appointment}}.', appointment: THURSDAY_6_EVENING })
+    expect(JSON.parse(metadata.raw)).toEqual({ contact: REPORTED_CONTACT, appointment: THURSDAY_6_EVENING, reply: 'حجزتلك {{appointment}}.' })
     expect(metadata.booking).toBe('booked')
   })
 
   it('confirms the appointment at once when auto-confirm is on (the default), and says so', async () => {
     chatModel(() => botReply('حجزتلك {{appointment}}.', THURSDAY_6_EVENING))
-    const seeded = await seedClient()
+    const seeded = await seedOpenClient()
 
     const { reply, leads } = await book(seeded)
 
@@ -193,9 +200,29 @@ describe('one appointment parser: the reply quotes the stored appointment', () =
     expect(reply).toBe(`حجزتلك ${THURSDAY_6PM_TEXT}.\n${TEXT.confirmed}`)
   })
 
+  it('never confirms by itself a time it could not check: no opening hours, so the team confirms', async () => {
+    chatModel(() => botReply('حجزتلك {{appointment}}.', THURSDAY_6_EVENING))
+    // Auto-confirm is on (the default), but the client has set no opening hours
+    const { reply, leads } = await book(await seedClient())
+
+    expect(leads[0]).toMatchObject({ status: 'appointment_booked', appointment_confirmed: false })
+    expect(reply).toBe(`حجزتلك ${THURSDAY_6PM_TEXT}.\n${TEXT.pending}`)
+    expect(reply).not.toContain(TEXT.confirmed)
+  })
+
+  // Seen on the demo widget (12 October 2026): the model's text refused a day
+  // it believed was a holiday, and the system confirmed the booking under it
+  it('never confirms by itself a time the model flagged for the team', async () => {
+    chatModel(() => botReply('حجزتلك {{appointment}}.', { ...THURSDAY_6_EVENING, needs_team_check: true }))
+    const { reply, leads } = await book(await seedOpenClient())
+
+    expect(leads[0]).toMatchObject({ status: 'appointment_booked', appointment_confirmed: false })
+    expect(reply).toBe(`حجزتلك ${THURSDAY_6PM_TEXT}.\n${TEXT.pending}`)
+  })
+
   it('leaves the appointment for the team to confirm when auto-confirm is off, and says it will be confirmed', async () => {
     chatModel(() => botReply('حجزتلك {{appointment}}.', THURSDAY_6_EVENING))
-    const seeded = await seedClient()
+    const seeded = await seedOpenClient()
     const { error } = await seeded.supabase
       .from('bot_settings')
       .update({ auto_confirm_appointments: false })
@@ -212,7 +239,7 @@ describe('one appointment parser: the reply quotes the stored appointment', () =
 
   it('moves its own appointment when the visitor changes the time, and keeps one the team set', async () => {
     chatModel(() => botReply('حجزتلك {{appointment}}.', THURSDAY_6_EVENING))
-    const seeded = await seedClient()
+    const seeded = await seedOpenClient()
     const visitorId = newVisitorId()
     const { conversationId } = await book(seeded, BOOKING_MESSAGE, { visitorId })
 

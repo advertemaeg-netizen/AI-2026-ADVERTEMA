@@ -110,6 +110,7 @@ describe('messages the bot does not answer', () => {
   it('leaves the appointment to the reply call when the bot answers: the analysis is not asked for one', async () => {
     models(() => botReply('حجزتلك {{appointment}}.', { day_type: 'weekday', weekday: 'thursday', hour: 6, period: 'evening' }))
     const seeded = await seedClient()
+    await setBusinessHours(seeded, '08:00', '23:00')
 
     await sendVisitorMessage(seeded.channelId, BOOKING_MESSAGE)
 
@@ -154,6 +155,7 @@ describe('the playground', () => {
   it('flags the appointment in its reply as simulated, and books nothing', async () => {
     models(() => botReply('حجزتلك {{appointment}}.', { day_type: 'weekday', weekday: 'thursday', hour: 6, period: 'evening' }))
     const seeded = await seedClient()
+    await setBusinessHours(seeded, '08:00', '23:00')
 
     const result = await testBot(seeded.clientId, [{ role: 'user', content: BOOKING_MESSAGE }])
 

@@ -10,6 +10,7 @@
     "test": "vitest run",
     "seed:demo": "JITI_ALIAS=\"{\\\"@\\\":\\\"$PWD/src\\\",\\\"server-only\\\":\\\"$PWD/tests/harness/server-only.ts\\\"}\" jiti scripts/seed-demo.ts",
     "reset:demo": "JITI_ALIAS=\"{\\\"@\\\":\\\"$PWD/src\\\",\\\"server-only\\\":\\\"$PWD/tests/harness/server-only.ts\\\"}\" jiti scripts/reset-demo.ts",
+    "audit:leads": "JITI_ALIAS=\"{\\\"@\\\":\\\"$PWD/src\\\",\\\"server-only\\\":\\\"$PWD/tests/harness/server-only.ts\\\"}\" jiti scripts/audit-leads.ts",
     "eval": "JITI_ALIAS=\"{\\\"@\\\":\\\"$PWD/src\\\",\\\"server-only\\\":\\\"$PWD/tests/harness/server-only.ts\\\"}\" jiti scripts/eval.ts",
     "reembed:knowledge": "JITI_ALIAS=\"{\\\"@\\\":\\\"$PWD/src\\\",\\\"server-only\\\":\\\"$PWD/tests/harness/server-only.ts\\\"}\" jiti scripts/reembed-knowledge.ts"
   },

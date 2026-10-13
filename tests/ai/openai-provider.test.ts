@@ -48,9 +48,9 @@ const ask = (schema = false) =>
 describe('the reply schema as OpenAI strict structured output', () => {
   const schema = toOpenAiSchema(BOT_REPLY_SCHEMA)
 
-  it('keeps "appointment" before "reply"', () => {
-    expect(Object.keys(schema.properties!)).toEqual(['appointment', 'reply'])
-    expect(schema.required).toEqual(['appointment', 'reply'])
+  it('keeps "contact" and "appointment" before "reply"', () => {
+    expect(Object.keys(schema.properties!)).toEqual(['contact', 'appointment', 'reply'])
+    expect(schema.required).toEqual(['contact', 'appointment', 'reply'])
   })
 
   it('closes every object and requires every property, optional ones as nullable', () => {
@@ -60,7 +60,7 @@ describe('the reply schema as OpenAI strict structured output', () => {
     // Optional at the top level, and declared nullable
     expect(appointment.type).toEqual(['object', 'null'])
     expect(appointment.required).toEqual(Object.keys(appointment.properties!))
-    expect(appointment.required).toEqual(['day_type', 'weekday', 'day_of_month', 'month', 'hour', 'minute', 'period'])
+    expect(appointment.required).toEqual(['day_type', 'weekday', 'day_of_month', 'month', 'year', 'hour', 'minute', 'period', 'needs_team_check'])
     // Required stays as it is; an optional enum also lists null
     expect(appointment.properties!.day_type.type).toBe('string')
     expect(appointment.properties!.day_type.enum).not.toContain(null)
@@ -105,7 +105,7 @@ describe('replies and analyses through OpenAI', () => {
     })
     const sent = (bodies[0].response_format as { json_schema: { schema: { properties: object } } }).json_schema.schema
     // As it travels: JSON keeps the order the keys were written in
-    expect(Object.keys(sent.properties)).toEqual(['appointment', 'reply'])
+    expect(Object.keys(sent.properties)).toEqual(['contact', 'appointment', 'reply'])
   })
 
   it('sends no response_format for a plain reply', async () => {

@@ -40,7 +40,7 @@ async function attendedLead() {
       client_id: clientId,
       conversation_id: conversation!.id,
       name: 'كريم مصطفى',
-      phone: '01012345678',
+      phone: '+201012345678',
       status: 'appointment_booked',
       appointment_at: daysFromNow(-2),
     })
@@ -77,7 +77,7 @@ it('opens a new lead when the team books an appointment for a lead that attended
   expect(result).toEqual({ ok: true, leadId: second.id })
   expect(second).toMatchObject({
     name: 'كريم مصطفى',
-    phone: '01012345678',
+    phone: '+201012345678',
     conversation_id: attended.conversation_id,
     status: 'appointment_booked',
     appointment_confirmed: false,

@@ -3,8 +3,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { aiFailureReason, replyModel, type ChatTurn } from '@/lib/ai/provider'
 import { BOT_HISTORY_LIMIT, loadBotSettings, runBot } from '@/lib/ai/bot'
 import { detectLead } from '@/lib/ai/lead-detection'
-import { APPOINTMENT_PLACEHOLDER, renderReply, replyLanguage, type BookingOutcome } from '@/lib/ai/appointment'
-import { appointmentOnRecord, recordAppointment } from '@/lib/ai/booking'
+import { APPOINTMENT_PLACEHOLDER, replyLanguage, type BookingOutcome } from '@/lib/ai/appointment'
+import { appointmentOnRecord, confirmPending, recordAppointment, saveContact, savedRecord } from '@/lib/ai/booking'
+import { composeReply, type SavedRecord } from '@/lib/ai/compose'
+import { EMPTY_CONTACT, parseContactState, readContact, type ContactEvents, type ContactState } from '@/lib/ai/contact'
 import type { BotSettingsInput } from '@/lib/types/bot-settings'
 import { checkClientLimit } from '@/lib/subscription-limits'
 import { UUID_PATTERN } from '@/lib/types/clients'
@@ -256,17 +258,21 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
 
     const { data: recent, error: historyError } = await supabase
       .from('messages')
-      .select('role, content')
+      .select('role, content, metadata')
       .eq('conversation_id', conversationId)
       .in('role', ['user', 'assistant', 'agent'])
       .order('created_at', { ascending: false })
       .limit(BOT_HISTORY_LIMIT)
-      .returns<{ role: string; content: string }[]>()
+      .returns<{ role: string; content: string; metadata: { contact?: unknown } | null }[]>()
     if (historyError) throw historyError
 
+    // Newest first here: the name and number as the latest reply left them
+    const previousContact =
+      recent.map((m) => (m.role === 'assistant' ? parseContactState(m.metadata?.contact) : null)).find(Boolean) ?? EMPTY_CONTACT
     const history: ChatTurn[] = recent
       .reverse()
       .map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }))
+    const visitorMessages = recent.filter((m) => m.role === 'user').map((m) => m.content)
 
     let settings: BotSettingsInput | null = null
     try {
@@ -279,7 +285,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
     // reply. It runs whatever happens to the reply: detectLead itself decides
     // whether the client's subscription allows the analysis.
     const convId = conversationId
-    const scheduleLeadDetection = (turns: ChatTurn[], replied = false) => {
+    const scheduleLeadDetection = (turns: ChatTurn[], replied = false, contact: ContactState | null = null) => {
       // Settings that failed to load don't say whether it's switched off;
       // it's on by default, so the message is analysed rather than lost
       if (settings && !settings.lead_qualification_enabled) return
@@ -292,6 +298,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
           history: turns,
           replied,
           businessHours: settings?.business_hours ?? null,
+          contact,
         })
       )
     }
@@ -351,7 +358,15 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
     let reply: string
     // Stored with the reply: what the model answered, and what became of the
     // appointment it reported
-    let trace: { raw: string; booking: BookingOutcome['status']; booking_error?: true }
+    let trace: {
+      raw: string
+      booking: BookingOutcome['status']
+      booking_error?: true
+      /** The name and number as code holds them after this message; the next message starts from here */
+      contact?: ContactState
+      contact_events?: ContactEvents
+    }
+    let contact: ContactState | null = null
     try {
       const result = await runBot({
         supabase,
@@ -361,12 +376,36 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
         history,
         operation: 'chat_reply',
         conversationId,
+        knownContact: previousContact,
       })
+
+      // The model reported; code decides. The name and the number are
+      // checked and written before the reply is rendered, so the reply can
+      // only state what the lead row holds.
+      let events: ContactEvents = { name: 'none', phone: 'none' }
+      let booking: BookingOutcome = { status: 'none' }
+      let bookingFailed = false
+      if (settings.lead_qualification_enabled) {
+        const read = readContact(previousContact, result.contact, message, visitorMessages)
+        contact = read.state
+        events = read.events
+        try {
+          await saveContact({
+            supabase,
+            clientId: channel.client_id,
+            conversationId,
+            sourceMessageId: userMessage.id,
+            contact,
+            events,
+          })
+        } catch (error) {
+          // Not saved: the reply states the record, so it will say so
+          console.error('[webhook/website] saving the contact details failed', error)
+        }
+      }
 
       // The appointment is recorded before the reply goes out, and the reply
       // quotes the record: it can't promise a time that isn't stored
-      let booking: BookingOutcome = { status: 'none' }
-      let bookingFailed = false
       if (result.appointment) {
         try {
           booking = await recordAppointment({
@@ -378,12 +417,24 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
             autoConfirm: settings.auto_confirm_appointments,
             businessHours: settings.business_hours,
             source: 'reply',
+            contact,
           })
         } catch (error) {
           console.error('[webhook/website] recording the appointment failed', error)
           bookingFailed = true
         }
-      } else if (result.reply.includes(APPOINTMENT_PLACEHOLDER)) {
+      } else if (settings.lead_qualification_enabled) {
+        // A time asked for earlier, held back for a name or a number: once
+        // both are on record it becomes the appointment, whatever this
+        // message is about
+        try {
+          booking = (await confirmPending({ supabase, conversationId, businessHours: settings.business_hours })) ?? booking
+        } catch (error) {
+          console.error('[webhook/website] confirming the requested appointment failed', error)
+          bookingFailed = true
+        }
+      }
+      if (!result.appointment && booking.status === 'none' && !bookingFailed && result.reply.includes(APPOINTMENT_PLACEHOLDER)) {
         // The reply quotes an appointment the message didn't ask for (an
         // answer to "which branch?" that repeats the booking). If one is on
         // record, that is the one quoted; without this the reply would ask
@@ -395,8 +446,34 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
           bookingFailed = true
         }
       }
-      trace = { raw: result.raw, booking: booking.status, ...(bookingFailed ? { booking_error: true } : {}) }
-      reply = renderReply(result.reply, booking, replyLanguage(settings.language, message))
+      // Read last, after every write of this message: what the reply may state as saved
+      let record: SavedRecord = { name: null, phone: null }
+      try {
+        record = await savedRecord(supabase, conversationId)
+      } catch (error) {
+        console.error('[webhook/website] reading the lead on record failed', error)
+      }
+      trace = {
+        raw: result.raw,
+        booking: booking.status,
+        ...(bookingFailed ? { booking_error: true } : {}),
+        ...(contact ? { contact, contact_events: events } : {}),
+      }
+      reply = composeReply({
+        template: result.reply,
+        outcome: booking,
+        events,
+        record,
+        visitorMessages,
+        language: replyLanguage(settings.language, message),
+        appointmentReported: result.appointment !== null,
+      })
+      // The visitor was told a person will take it from here: make that true.
+      // 'no_answer' is the nearest reason the column allows today; a reason
+      // of its own needs a migration.
+      if (events.phone === 'rejected_final' || (booking.status === 'needs_details' && booking.handoff)) {
+        await markForPerson('no_answer')
+      }
     } catch (error) {
       console.error('[webhook/website] AI reply failed', error)
       // A failed reply (rate limit, timeout, 503) must not lose the lead: the
@@ -435,7 +512,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
     const { error: usageError } = await supabase.rpc('consume_client_message', { p_client_id: channel.client_id })
     if (usageError) console.error('[webhook/website] counting the message failed', usageError)
 
-    scheduleLeadDetection([...history, { role: 'assistant', content: reply }], true)
+    scheduleLeadDetection([...history, { role: 'assistant', content: reply }], true, contact)
 
     return json({ ok: true, conversationId, reply })
   } catch (error) {

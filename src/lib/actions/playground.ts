@@ -1,7 +1,8 @@
 'use server'
 
 import { loadBotSettings, runBot, type BotClient } from '@/lib/ai/bot'
-import { renderReply, replyLanguage, resolveAppointment } from '@/lib/ai/appointment'
+import { confirmsItself, replyLanguage, resolveAppointment } from '@/lib/ai/appointment'
+import { composeReply } from '@/lib/ai/compose'
 import { canManage, getSession, isImpersonating } from '@/lib/auth/session'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checkClientLimit, guardLimit } from '@/lib/subscription-limits'
@@ -105,13 +106,26 @@ export async function testBot(
     const resolved = appointment
       ? resolveAppointment(appointment, { businessHours: settings.business_hours })
       : ({ status: 'none' } as const)
-    const reply = renderReply(
+    const visitorMessages = messages.filter((m) => m.role === 'user').map((m) => m.content)
+    // Nothing is saved from a test chat either: a reply that states what is
+    // on record says there is nothing, as it would to a visitor with no lead
+    const reply = composeReply({
       template,
+      events: { name: 'none', phone: 'none' },
+      record: { name: null, phone: null },
+      visitorMessages,
+      language: replyLanguage(settings.language, visitorMessages.at(-1) ?? ''),
+      outcome:
       resolved.status === 'resolved'
-        ? { status: 'booked', at: resolved.at, confirmed: settings.auto_confirm_appointments, changed: true }
+        ? {
+            status: 'booked',
+            at: resolved.at,
+            // As the widget would: only a time code checked against opening hours is confirmed
+            confirmed: confirmsItself(settings.auto_confirm_appointments, resolved.validated, appointment?.needs_team_check === true),
+            changed: true,
+          }
         : resolved,
-      replyLanguage(settings.language, messages.findLast((m) => m.role === 'user')?.content ?? '')
-    )
+    })
     // The reply reads as a booking: the caller has to say it's a rehearsal
     const simulated = resolved.status === 'resolved' ? { simulatedAppointment: resolved.at } : {}
     // Counted like a widget reply. consume_client_message is service-role

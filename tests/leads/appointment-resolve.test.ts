@@ -18,7 +18,8 @@ const hours = (from: string, to: string): Hours => ({
   ) as NonNullable<Hours>['days'],
 })
 
-const at = (iso: string, approximate = false) => ({ status: 'resolved', at: iso, approximate })
+// `validated`: the time was checked against opening hours (there were some)
+const at = (iso: string, approximate = false, validated = false) => ({ status: 'resolved', at: iso, approximate, validated })
 const NONE = { status: 'none' }
 
 describe('resolveAppointment: components → one Cairo instant', () => {
@@ -56,16 +57,16 @@ describe('resolveAppointment: components → one Cairo instant', () => {
     const ASK = { status: 'ask_period', hour: 9 }
 
     it('is the evening for a business open 4 PM to 10 PM', () => {
-      expect(resolve(nine, null, hours('16:00', '22:00'))).toEqual(at('2026-10-06T18:00:00.000Z'))
+      expect(resolve(nine, null, hours('16:00', '22:00'))).toEqual(at('2026-10-06T18:00:00.000Z', false, true))
     })
 
     it('is the morning for a business open 8 AM to 4 PM', () => {
-      expect(resolve(nine, null, hours('08:00', '16:00'))).toEqual(at('2026-10-06T06:00:00.000Z'))
+      expect(resolve(nine, null, hours('08:00', '16:00'))).toEqual(at('2026-10-06T06:00:00.000Z', false, true))
     })
 
     it('follows opening hours that run past midnight, but asks about the small hours', () => {
       const lateNight = hours('18:00', '02:00')
-      expect(resolve(nine, null, lateNight)).toEqual(at('2026-10-06T18:00:00.000Z'))
+      expect(resolve(nine, null, lateNight)).toEqual(at('2026-10-06T18:00:00.000Z', false, true))
       // 1 AM at the start of tomorrow, or after tomorrow's evening?
       expect(resolve({ day_type: 'tomorrow', hour: 1 }, null, lateNight)).toEqual({ status: 'ask_period', hour: 1 })
     })
@@ -94,12 +95,64 @@ describe('resolveAppointment: components → one Cairo instant', () => {
     ['no day and nothing on record', { day_type: 'none', hour: 17 }],
     ['a day with no time at all', { day_type: 'tomorrow' }],
     ['a weekday type without the weekday', { day_type: 'weekday', hour: 17 }],
-    ['a time already gone today', { day_type: 'today', hour: 9, period: 'morning' }],
     ['a date that does not exist', { day_type: 'date', day_of_month: 31, month: 11, hour: 17 }],
     ['more than six months ahead', { day_type: 'date', day_of_month: 1, month: 9, hour: 17 }],
     ['values out of range', { day_type: 'tomorrow', hour: 40 }],
   ])('returns nothing rather than guess: %s', (_name, request) => {
     expect(resolve(request)).toEqual(NONE)
+  })
+
+  it('says a time already gone today is past, rather than guess another day', () => {
+    expect(resolve({ day_type: 'today', hour: 9, period: 'morning' })).toEqual({ status: 'past' })
+  })
+
+  describe('a date with the year the visitor stated', () => {
+    it('is taken as said', () => {
+      expect(resolve({ day_type: 'date', day_of_month: 25, month: 1, year: 2027, hour: 5, period: 'afternoon' })).toEqual(
+        at('2027-01-25T15:00:00.000Z')
+      )
+    })
+
+    // Seen on the demo widget (12 October 2026): "25 يناير 2026" was booked for 25 January 2027
+    it('is refused when it has gone, never moved to next year', () => {
+      expect(resolve({ day_type: 'date', day_of_month: 25, month: 1, year: 2026, hour: 5, period: 'afternoon' })).toEqual({
+        status: 'past',
+      })
+      // Without a year the same words mean the next 25 January
+      expect(resolve({ day_type: 'date', day_of_month: 25, month: 1, hour: 5, period: 'afternoon' })).toEqual(
+        at('2027-01-25T15:00:00.000Z')
+      )
+    })
+  })
+
+  describe('a time the business is closed at', () => {
+    // The demo clinic's main branch: noon to 10 PM
+    const clinic = hours('12:00', '22:00')
+
+    // Seen on the demo widget (12 October 2026): "بكرة الساعة 5 الفجر" was booked and confirmed
+    it('is refused with that day\'s hours: 5 in the morning at a clinic that opens at noon', () => {
+      expect(resolve({ day_type: 'tomorrow', hour: 5, period: 'morning' }, null, clinic)).toEqual({
+        status: 'outside_hours',
+        hours: { weekday: 2, open: true, from: '12:00', to: '22:00' },
+      })
+    })
+
+    it('is refused at closing time and after it, accepted up to it', () => {
+      expect(resolve({ day_type: 'tomorrow', hour: 22 }, null, clinic)).toMatchObject({ status: 'outside_hours' })
+      expect(resolve({ day_type: 'tomorrow', hour: 21, minute: 30 }, null, clinic)).toEqual(at('2026-10-06T18:30:00.000Z', false, true))
+    })
+
+    it('is refused on a day the business is closed', () => {
+      // Friday 9 October
+      expect(resolve({ day_type: 'weekday', weekday: 'friday', hour: 6, period: 'evening' }, null, clinic)).toEqual({
+        status: 'outside_hours',
+        hours: { weekday: 5, open: false },
+      })
+    })
+
+    it('is not judged at all without opening hours: accepted, and not validated', () => {
+      expect(resolve({ day_type: 'tomorrow', hour: 5, period: 'morning' })).toEqual(at('2026-10-06T02:00:00.000Z'))
+    })
   })
 
   it('follows the Cairo offset across the end of summer time', () => {
@@ -113,6 +166,35 @@ describe('resolveAppointment: components → one Cairo instant', () => {
     expect(formatAppointment('2026-10-08T15:00:00.000Z', 'ar')).toBe('الخميس 8 أكتوبر الساعة 6:00 مساءً')
     expect(formatAppointment('2026-10-08T15:00:00.000Z', 'en')).toBe('Thursday 8 October at 6:00 PM')
     expect(formatAppointment('2026-10-10T08:00:00.000Z', 'ar')).toBe('السبت 10 أكتوبر الساعة 11:00 صباحاً')
+  })
+})
+
+describe('a reply about a time that did not become an appointment', () => {
+  const T = ar.botReplies.appointment
+
+  it('says the hours of that day, and drops what the model wrote about the booking', () => {
+    const outcome = { status: 'outside_hours', hours: { weekday: 2, open: true, from: '12:00', to: '22:00' } } as const
+    expect(renderReply('تمام، هسجل طلبك {{appointment}}. محتاج حاجة تانية؟', outcome, 'ar')).toBe(
+      'محتاج حاجة تانية؟\nالميعاد ده برّه مواعيد العمل: يوم الثلاثاء بنشتغل من 12:00 ظهراً لـ 10:00 مساءً. تحب ساعة تانية؟'
+    )
+    expect(renderReply('حجزتلك {{appointment}}.', { status: 'outside_hours', hours: { weekday: 5, open: false } }, 'ar')).toBe(
+      T.closedDay.replace('{day}', 'الجمعة')
+    )
+  })
+
+  it('says what is missing when the name or the number is not on record', () => {
+    const at = '2026-10-08T15:00:00.000Z'
+    const time = 'الخميس 8 أكتوبر الساعة 6:00 مساءً'
+    expect(renderReply('حجزتلك {{appointment}}.', { status: 'needs_details', at, missing: ['name', 'phone'], handoff: false }, 'ar')).toBe(
+      `عشان أثبّت الحجز يوم ${time} محتاج اسمك بالكامل ورقم موبايلك.`
+    )
+    expect(renderReply('حجزتلك {{appointment}}.', { status: 'needs_details', at, missing: ['phone'], handoff: true }, 'ar')).toBe(
+      T.needDetailsHandoff.replace('{time}', time)
+    )
+  })
+
+  it('says a time that has gone is past', () => {
+    expect(renderReply('حجزتلك {{appointment}}.', { status: 'past' }, 'ar')).toBe(T.past)
   })
 })
 

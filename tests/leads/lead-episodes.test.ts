@@ -31,6 +31,7 @@ describe('a lead is one sales episode', () => {
   it("leaves lead #1's appointment and attendance untouched when lead #2 is created", async () => {
     mockGemini(geminiWorks)
     const conversation = await startConversation()
+    const atCreation = (await conversation.leads()).map((lead) => lead.id)
     const first = await conversation.attendFirstVisit()
     expect(first).toMatchObject({ showed_up: true })
     expect(first.appointment_at).not.toBeNull()
@@ -39,10 +40,12 @@ describe('a lead is one sales episode', () => {
     await conversation.send('عايز أحجز تاني بكرة الساعة 5 العصر')
 
     const [after, second] = await conversation.leads()
-    expect(after).toEqual(first)
-    expect(second).toMatchObject({ status: 'appointment_booked', showed_up: null })
-    expect(second.appointment_at).not.toBeNull()
-    expect(second.appointment_at).not.toBe(first.appointment_at)
+    await conversation.dumpLeadsOnFailure({ leadsAtCreation: atCreation.join(', '), firstAfterVisit: first.id }, () => {
+      expect(after).toEqual(first)
+      expect(second).toMatchObject({ status: 'appointment_booked', showed_up: null })
+      expect(second.appointment_at).not.toBeNull()
+      expect(second.appointment_at).not.toBe(first.appointment_at)
+    })
   })
 
   // SKIPPED: not runnable on this harness. pglite-socket answers a failed
@@ -77,7 +80,7 @@ describe('a lead is one sales episode', () => {
     expect(responses.map((response) => response.status)).toEqual([200, 200, 200])
     expect(geminiCalls.filter((call) => call.kind === 'analysis')).toHaveLength(3)
     const { data: leads } = await supabase.from('leads').select('name, phone').eq('conversation_id', conversation!.id)
-    expect(leads).toEqual([{ name: 'كريم مصطفى', phone: '01012345678' }])
+    expect(leads).toEqual([{ name: 'كريم مصطفى', phone: '+201012345678' }])
   })
 
   it('enriches the lead a concurrent analysis opened first when its own insert hits 23505', async () => {
@@ -104,9 +107,9 @@ describe('a lead is one sales episode', () => {
     expect(leads).toHaveLength(1)
     expect(leads![0]).toMatchObject({
       name: 'كريم مصطفى',
-      phone: '01012345678',
+      phone: '+201012345678',
       service_requested: 'تنظيف أسنان',
-      ai_extracted_data: { is_lead: true, phone: '01012345678' },
+      ai_extracted_data: { is_lead: true, phone: '+201012345678' },
     })
   })
 
@@ -119,7 +122,7 @@ describe('a lead is one sales episode', () => {
 
     const leads = await conversation.leads()
     expect(leads).toHaveLength(2)
-    expect(leads[1]).toMatchObject({ status: 'new', name: 'كريم مصطفى', phone: '01012345678' })
+    expect(leads[1]).toMatchObject({ status: 'new', name: 'كريم مصطفى', phone: '+201012345678' })
     // What the model itself read stays visible: it found neither
     expect(leads[1].ai_extracted_data).toMatchObject({ is_lead: true, name: null, phone: null })
   })
@@ -128,7 +131,7 @@ describe('a lead is one sales episode', () => {
     mockGemini(geminiWorks)
     const conversation = await startConversation()
     const [before] = await conversation.leads()
-    expect(before.ai_extracted_data).toMatchObject({ is_lead: true, phone: '01012345678' })
+    expect(before.ai_extracted_data).toMatchObject({ is_lead: true, phone: '+201012345678' })
 
     // The assistant's reply joins the transcript; nothing new for the lead itself
     mockGemini((call) =>

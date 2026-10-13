@@ -8,7 +8,7 @@ const LEAD_ANALYSIS = JSON.stringify({
   is_lead: true,
   confidence: 0.95,
   name: 'كريم مصطفى',
-  phone: '01012345678',
+  phone: '+201012345678',
   service_requested: 'تنظيف أسنان',
   summary: 'العميل عايز يحجز تنظيف أسنان',
 })
@@ -32,7 +32,7 @@ describe('website webhook: lead detection', () => {
       .select('name, phone, status, conversation_id')
       .eq('client_id', clientId)
     expect(leads).toEqual([
-      { name: 'كريم مصطفى', phone: '01012345678', status: 'new', conversation_id: body.conversationId },
+      { name: 'كريم مصطفى', phone: '+201012345678', status: 'new', conversation_id: body.conversationId },
     ])
   })
 

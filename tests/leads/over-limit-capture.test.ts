@@ -32,7 +32,7 @@ async function state({ supabase, clientId }: Seeded) {
 }
 
 const calls = (kind: 'reply' | 'analysis') => geminiCalls.filter((call) => call.kind === kind).length
-const LEAD = [{ name: 'كريم مصطفى', phone: '01012345678' }]
+const LEAD = [{ name: 'كريم مصطفى', phone: '+201012345678' }]
 
 describe('past the message limit', () => {
   it('stops replying but still captures the lead, counted apart from the plan\'s messages', async () => {

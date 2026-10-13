@@ -13,7 +13,7 @@ import { AppointmentStateBadge } from '@/components/appointments/appointment-sta
 import { NoShowDialog } from '@/components/appointments/no-show-dialog'
 import { confirmArrival, markNoShow } from '@/lib/actions/appointments'
 import { cairoParts } from '@/lib/cairo-time'
-import { telHref, whatsappHref } from '@/lib/phone'
+import { displayPhone, telHref, whatsappHref } from '@/lib/phone'
 import {
   APPOINTMENT_RANGES,
   appointmentState,
@@ -126,7 +126,7 @@ export function AppointmentsView({
                             )}
                           </div>
                           <p className="truncate text-sm text-muted-foreground">
-                            {appointment.phone && <span dir="ltr">{appointment.phone}</span>}
+                            {appointment.phone && <span dir="ltr">{displayPhone(appointment.phone)}</span>}
                             {appointment.phone && appointment.service_requested && ' · '}
                             {appointment.service_requested}
                             {showClient && ` · ${appointment.client.name}`}

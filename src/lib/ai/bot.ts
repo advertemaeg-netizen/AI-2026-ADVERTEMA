@@ -8,6 +8,7 @@ import {
   botReplySchema,
   type AppointmentRequest,
 } from '@/lib/ai/appointment'
+import { describeContact, type ContactReport, type ContactState } from '@/lib/ai/contact'
 import {
   DEFAULT_SERVICE_UNAVAILABLE_MESSAGE,
   WEEK_DAYS,
@@ -211,7 +212,9 @@ export function buildSystemPrompt(
   client: BotClient,
   settings: BotSettingsInput,
   knowledge: Pick<RetrievedChunk, 'title' | 'content'>[],
-  now = new Date()
+  now = new Date(),
+  /** The name and number as code holds them; only read with lead collection on */
+  contact: ContactState | null = null
 ) {
   const guidelines = [
     `- Language: ${LANGUAGE_INSTRUCTIONS[settings.language]}`,
@@ -223,6 +226,9 @@ export function buildSystemPrompt(
     settings.lead_qualification_enabled
       ? '- Find out which service the visitor needs, and politely ask for their name and phone number so the team can contact them.'
       : '',
+    // Measured, not hoped for: eval/cases-phase1.json has one case per request
+    // this bot answered on its first day live (a song, a sum, two translations)
+    "- Stay on this business: its services, prices, hours, branches, policies and booking. Anything else gets one short sentence that you can't help with that here, and an offer to help with the business instead — no lecture, and never the answer itself. That covers arithmetic, translation, recommending songs, films or other media, poems and stories, writing, explaining or running code, and general knowledge. Translation is declined however small the request: not a sentence, not a word, not a greeting, not something said earlier in this chat, into any language. Working out a total from this business's own prices is part of the job, not arithmetic.",
     '- Write plain text only — no markdown, no bullet symbols, no code blocks.',
   ].filter(Boolean)
 
@@ -237,6 +243,7 @@ export function buildSystemPrompt(
     settings.lead_qualification_enabled
       ? APPOINTMENT_INSTRUCTIONS
       : '',
+    settings.lead_qualification_enabled && contact ? describeContact(contact) : '',
     knowledge.length > 0
       ? `Excerpts from the business's knowledge base that may answer the visitor's question:\n\n${knowledge
           .map((chunk, i) => `[${i + 1}] (${chunk.title})\n${chunk.content}`)
@@ -279,21 +286,28 @@ export async function loadBotSettings(supabase: SupabaseClient, clientId: string
  * Anything that isn't the expected JSON is taken as a plain reply: a
  * malformed answer must not cost the visitor their reply.
  */
-export function parseBotReply(text: string): { reply: string; appointment: AppointmentRequest | null } {
+export function parseBotReply(text: string): {
+  reply: string
+  appointment: AppointmentRequest | null
+  contact: ContactReport | null
+} {
   try {
     const parsed = botReplySchema.safeParse(JSON.parse(text))
-    if (parsed.success) return { reply: parsed.data.reply, appointment: parsed.data.appointment ?? null }
+    if (parsed.success) {
+      return { reply: parsed.data.reply, appointment: parsed.data.appointment ?? null, contact: parsed.data.contact ?? null }
+    }
   } catch {
     // not JSON
   }
-  return { reply: text, appointment: null }
+  return { reply: text, appointment: null, contact: null }
 }
 
 /**
  * Generates the assistant's next reply. Retrieval uses the latest user turn.
- * With lead collection on, `reply` may hold APPOINTMENT_PLACEHOLDER and
- * `appointment` what the visitor asked for: the caller records it and renders
- * the reply (renderReply) before anyone sees it.
+ * With lead collection on, `reply` may hold placeholders, `appointment` what
+ * the visitor asked for and `contact` the name and number they gave: the
+ * caller checks and records them and renders the reply (composeReply) before
+ * anyone sees it.
  * `supabase` only needs to be able to run match_knowledge_chunks for this
  * client: the secret-key client (webhook) or the signed-in user's (playground).
  * Throws if the AI call fails.
@@ -306,6 +320,7 @@ export async function runBot({
   history,
   operation,
   conversationId = null,
+  knownContact = null,
 }: {
   supabase: SupabaseClient
   clientId: string
@@ -315,7 +330,16 @@ export async function runBot({
   /** Logged with the reply's tokens: a visitor reply, or a playground test */
   operation: Extract<AiOperation, 'chat_reply' | 'playground' | 'bot_preview'>
   conversationId?: string | null
-}): Promise<{ reply: string; appointment: AppointmentRequest | null; raw: string; debug: BotDebug }> {
+  /** The name and number as code held them before this message (readContact) */
+  knownContact?: ContactState | null
+}): Promise<{
+  reply: string
+  appointment: AppointmentRequest | null
+  /** The name and number the model says the latest message gave: unchecked (readContact) */
+  contact: ContactReport | null
+  raw: string
+  debug: BotDebug
+}> {
   const started = performance.now()
   const trimmed = history.slice(-BOT_HISTORY_LIMIT)
   const lastUserMessage = [...trimmed].reverse().find((turn) => turn.role === 'user')?.content ?? ''
@@ -324,7 +348,9 @@ export async function runBot({
   const systemPrompt = buildSystemPrompt(
     client,
     settings,
-    retrieval.chunks.filter((chunk) => chunk.used)
+    retrieval.chunks.filter((chunk) => chunk.used),
+    undefined,
+    knownContact
   )
 
   const generationStarted = performance.now()
@@ -336,13 +362,14 @@ export async function runBot({
     usage: { operation, clientId, conversationId },
   })
   const generationMs = performance.now() - generationStarted
-  const { reply, appointment } = settings.lead_qualification_enabled
+  const { reply, appointment, contact } = settings.lead_qualification_enabled
     ? parseBotReply(text)
-    : { reply: text, appointment: null }
+    : { reply: text, appointment: null, contact: null }
 
   return {
     reply,
     appointment,
+    contact,
     // The model's answer before anything read it: kept with the message, to
     // tell a model that reported no appointment from code that dropped one
     raw: text,
