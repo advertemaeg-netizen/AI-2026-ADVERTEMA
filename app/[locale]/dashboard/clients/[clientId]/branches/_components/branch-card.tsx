@@ -90,8 +90,8 @@ export function BranchCard({
 
       <CardContent className="grid gap-4">
         {!branch.is_active && branch.upcomingCount > 0 && (
-          <p className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-            <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-600" />
+          <p className="flex items-start gap-2 rounded-lg border border-warning-solid/40 bg-warning-solid/10 p-3 text-sm">
+            <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warning" />
             {t('inactiveUpcoming', { count: branch.upcomingCount })}
           </p>
         )}
@@ -101,8 +101,8 @@ export function BranchCard({
           {branch.business_hours === null ? (
             // Not a quiet grey line: a branch without hours confirms nothing,
             // and every new client starts with one
-            <div className="flex flex-wrap items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-              <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-600" />
+            <div className="flex flex-wrap items-start gap-3 rounded-lg border border-warning-solid/40 bg-warning-solid/10 p-3 text-sm">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warning" />
               <p className="min-w-0 flex-1">{t('hours.needed')}</p>
               <Button size="sm" onClick={() => setEditOpen(true)}>
                 {t('hours.setNow')}

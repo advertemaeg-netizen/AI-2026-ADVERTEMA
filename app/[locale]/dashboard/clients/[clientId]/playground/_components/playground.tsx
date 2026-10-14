@@ -92,7 +92,7 @@ export function Playground({
         compact ? 'h-[calc(100vh-10rem)]' : 'h-[calc(100vh-18rem)]'
       )}
     >
-      <div className="flex items-center justify-between gap-3 bg-gradient-to-br from-purple-500 to-orange-500 px-4 py-3 text-white">
+      <div className="flex items-center justify-between gap-3 bg-primary px-4 py-3 text-primary-foreground">
         <div className="flex min-w-0 items-center gap-2">
           <Sparkles className="size-4 shrink-0" />
           <div className="min-w-0">
@@ -138,7 +138,7 @@ export function Playground({
                 <Bubble role="assistant">{item.content}</Bubble>
                 {/* The reply reads as a booking; nothing was booked */}
                 {item.simulatedAppointment && (
-                  <p className="max-w-[85%] self-start rounded-md border border-dashed border-amber-500/60 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-800 dark:text-amber-200">
+                  <p className="max-w-[85%] self-start rounded-md border border-dashed border-warning-solid/60 bg-warning-solid/10 px-3 py-1.5 text-xs text-warning">
                     {t('simulatedAppointment', {
                       time: format.dateTime(new Date(item.simulatedAppointment), {
                         dateStyle: 'full',
@@ -194,7 +194,7 @@ function Bubble({ role, children }: { role: 'user' | 'assistant'; children: Reac
       className={cn(
         'max-w-[80%] whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-sm text-start',
         role === 'user'
-          ? 'self-end rounded-se-sm bg-gradient-to-br from-purple-500 to-orange-500 text-white'
+          ? 'self-end rounded-se-sm bg-primary text-primary-foreground'
           : 'self-start rounded-ss-sm border bg-background'
       )}
     >

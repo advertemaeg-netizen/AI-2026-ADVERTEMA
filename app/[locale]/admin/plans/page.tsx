@@ -22,9 +22,9 @@ export default async function AdminPlansPage({ params }: PageProps<'/[locale]/ad
   }
 
   return (
-    <div className="p-8 grid gap-6">
+    <div className="page animate-enter grid gap-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+        <h1 className="page-title">{t('title')}</h1>
         <p className="text-muted-foreground mt-1">{t('description')}</p>
       </div>
       <Card>

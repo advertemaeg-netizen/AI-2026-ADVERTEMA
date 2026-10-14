@@ -1,7 +1,7 @@
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import { RelativeTime } from '@/components/relative-time'
-import { Badge } from '@/components/ui/badge'
+import { StateBadge } from '@/components/ui/badge'
 import { DEFAULT_NEEDS_HUMAN_REASON, type ConversationListItem } from '@/lib/types/conversations'
 import { ContactAvatar, StatusBadge, useContactLabel } from './conversation-bits'
 
@@ -19,7 +19,7 @@ export function ConversationRow({ conversation }: { conversation: ConversationLi
   return (
     <Link
       href={`/dashboard/conversations/${conversation.id}`}
-      className="flex gap-3 px-4 py-3 transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
+      className="flex gap-3 px-4 py-3 transition-colors duration-fast hover:bg-accent/60 focus-visible:bg-accent/60 focus-visible:outline-none"
     >
       <ContactAvatar name={conversation.contact_name} channelType={conversation.channel.type} />
 
@@ -47,9 +47,9 @@ export function ConversationRow({ conversation }: { conversation: ConversationLi
           </p>
           <div className="flex shrink-0 items-center gap-1.5">
             {conversation.needs_human_since && (
-              <Badge variant="secondary" className="bg-destructive/15 text-destructive">
+              <StateBadge state={conversation.needs_human_reason ?? DEFAULT_NEEDS_HUMAN_REASON} variant="destructive">
                 {t(`needsHuman.badge.${conversation.needs_human_reason ?? DEFAULT_NEEDS_HUMAN_REASON}`)}
-              </Badge>
+              </StateBadge>
             )}
             <StatusBadge status={conversation.status} />
           </div>

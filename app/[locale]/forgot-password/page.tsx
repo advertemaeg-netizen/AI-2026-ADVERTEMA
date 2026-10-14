@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { MailCheck, Sparkles } from 'lucide-react'
+import { MailCheck } from 'lucide-react'
+import { AuthFrame, authLinkClass } from '@/components/auth-frame'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -48,19 +49,15 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <Card className="w-full max-w-md">
+    <AuthFrame>
+      <Card className="w-full shadow-raised">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            {sent ? (
-              <MailCheck className="w-12 h-12 text-green-500" />
-            ) : (
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-orange-500 flex items-center justify-center">
-                <Sparkles className="w-6 h-6 text-white" />
-              </div>
-            )}
-          </div>
-          <CardTitle className="text-2xl">{sent ? t('resetLinkSent') : t('forgotPasswordTitle')}</CardTitle>
+          {sent && (
+            <div className="flex justify-center mb-4">
+              <MailCheck className="size-12 animate-pop text-positive" />
+            </div>
+          )}
+          <CardTitle className="text-2xl font-bold">{sent ? t('resetLinkSent') : t('forgotPasswordTitle')}</CardTitle>
           <CardDescription>{sent ? t('resetLinkSentDesc') : t('forgotPasswordDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
@@ -89,12 +86,12 @@ export default function ForgotPasswordPage() {
           )}
 
           <p className="text-sm text-muted-foreground mt-4 text-center">
-            <Link href="/login" className="text-foreground font-medium hover:underline">
+            <Link href="/login" className={authLinkClass}>
               {t('backToLogin')}
             </Link>
           </p>
         </CardContent>
       </Card>
-    </div>
+    </AuthFrame>
   )
 }

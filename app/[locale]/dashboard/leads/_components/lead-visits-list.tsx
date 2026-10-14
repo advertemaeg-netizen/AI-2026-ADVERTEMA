@@ -21,7 +21,7 @@ export function LeadVisitsList({ visits }: { visits: { visit: LeadVisit; number:
         <li key={visit.id}>
           <Link
             href={`/dashboard/leads/${visit.id}`}
-            className="grid gap-1 rounded-md border p-3 text-sm transition-colors hover:bg-muted/50 max-md:min-h-11"
+            className="lift grid gap-1 rounded-md border bg-card p-3 text-sm hover:bg-accent/60 max-md:min-h-11"
           >
             <span className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-medium">{t('visit', { number })}</span>

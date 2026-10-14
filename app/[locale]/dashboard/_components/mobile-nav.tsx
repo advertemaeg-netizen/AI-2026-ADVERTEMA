@@ -1,7 +1,8 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { CalendarDays, LayoutDashboard, Menu, MessagesSquare, Sparkles, Users, type LucideIcon } from 'lucide-react'
+import { CalendarDays, LayoutDashboard, Menu, MessagesSquare, Users, type LucideIcon } from 'lucide-react'
+import { BrandMark } from '@/components/brand'
 import { Link, usePathname } from '@/i18n/navigation'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { Button } from '@/components/ui/button'
@@ -43,11 +44,9 @@ export function MobileTopBar({
       </Sheet>
 
       <Link href="/dashboard" className="flex min-h-11 min-w-0 flex-1 items-center gap-2 px-1">
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-orange-500">
-          <Sparkles className="size-3.5 text-white" />
-        </span>
+        <BrandMark className="text-brand" />
         <span className="min-w-0">
-          <span className="block text-sm leading-tight font-semibold">Mudrik AI</span>
+          <span className="block text-sm leading-tight font-bold">Mudrik AI</span>
           {title && <span className="block truncate text-xs leading-tight text-muted-foreground">{title}</span>}
         </span>
       </Link>
@@ -91,11 +90,16 @@ export function BottomNav() {
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors',
-                  active ? 'text-foreground' : 'text-muted-foreground'
+                  'flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors duration-fast',
+                  active ? 'text-primary' : 'text-muted-foreground'
                 )}
               >
-                <span className={cn('flex h-7 w-12 items-center justify-center rounded-full transition-colors', active && 'bg-accent')}>
+                <span
+                  className={cn(
+                    'flex h-7 w-12 items-center justify-center rounded-full transition-[background-color,transform] duration-base ease-spring',
+                    active ? 'scale-100 bg-accent' : 'scale-95'
+                  )}
+                >
                   <item.icon className="size-5" />
                 </span>
                 {t(item.key)}

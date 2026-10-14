@@ -33,7 +33,7 @@ export function TodayAppointmentsCard({ appointments }: { appointments: Appointm
               <li key={appointment.id}>
                 <Link
                   href={`/dashboard/leads/${appointment.id}`}
-                  className="flex items-center gap-2 rounded-md text-sm hover:bg-muted/50 max-md:min-h-11"
+                  className="flex items-center gap-2 rounded-md text-sm transition-colors duration-fast hover:bg-accent/60 max-md:min-h-11"
                 >
                   <span className="w-14 shrink-0 font-medium tabular-nums">
                     {format.dateTime(new Date(appointment.appointment_at), { timeStyle: 'short' })}
@@ -128,7 +128,7 @@ export function JourneyFunnel({ conversations, stats }: { conversations: number;
                   <span className="w-24 shrink-0 text-sm">{t(`funnel.steps.${step.key}`)}</span>
                   <div className="h-6 flex-1 overflow-hidden rounded-md bg-muted">
                     <div
-                      className="h-full rounded-md bg-gradient-to-r from-purple-500 to-orange-500 rtl:bg-gradient-to-l"
+                      className="h-full rounded-md bg-brand"
                       style={{ width: `${Math.max((step.value / top) * 100, step.value > 0 ? 2 : 0)}%` }}
                     />
                   </div>

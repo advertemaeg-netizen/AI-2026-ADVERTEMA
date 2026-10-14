@@ -53,13 +53,13 @@ export function KpiCards({ current, previous }: { current: Kpis; previous: Kpis 
 
   return (
     <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
-      {ORDER.map(({ key, label }) => {
+      {ORDER.map(({ key, label }, i) => {
         const d = delta(key)
         const flat = !d || Math.abs(d.change) < 0.0005
         const good = d && !flat && (LOWER_IS_BETTER.includes(key) ? d.change < 0 : d.change > 0)
         const Icon = flat ? Minus : d!.change > 0 ? ArrowUpRight : ArrowDownRight
         return (
-          <Card key={key} size="sm" className="break-inside-avoid">
+          <Card key={key} size="sm" className="animate-enter stagger break-inside-avoid" style={{ '--i': i } as React.CSSProperties}>
             <CardHeader>
               <CardTitle className="text-sm font-medium text-muted-foreground">{t(`kpis.${label}`)}</CardTitle>
             </CardHeader>
@@ -68,7 +68,7 @@ export function KpiCards({ current, previous }: { current: Kpis; previous: Kpis 
               <p
                 className={cn(
                   'flex items-center gap-1 text-xs',
-                  !d || flat ? 'text-muted-foreground' : good ? 'text-emerald-700 dark:text-emerald-400' : 'text-destructive'
+                  !d || flat ? 'text-muted-foreground' : good ? 'text-positive' : 'text-destructive'
                 )}
               >
                 {d ? (

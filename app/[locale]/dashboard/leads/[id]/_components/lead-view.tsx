@@ -140,7 +140,7 @@ export function LeadView({
     .filter(({ visits }) => visits.length > 0)
 
   return (
-    <div className="p-8 max-md:p-4">
+    <div className="page animate-enter">
       <Link
         href="/dashboard/leads"
         className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground max-md:mb-2 max-md:min-h-11"
@@ -152,7 +152,7 @@ export function LeadView({
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4 max-md:mb-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="truncate text-3xl font-bold tracking-tight max-md:text-2xl max-md:whitespace-normal">{lead.name || t('unnamed')}</h1>
+            <h1 className="page-title truncate max-md:whitespace-normal">{lead.name || t('unnamed')}</h1>
             <LeadStatusBadge status={lead.status} />
             {lead.visit_number > 1 && (
               <Badge variant="outline">{t('visits.returning', { number: lead.visit_number })}</Badge>
@@ -181,7 +181,7 @@ export function LeadView({
                   {t('actions.call')}
                 </a>
               </Button>
-              <Button asChild className="bg-emerald-600 text-white hover:bg-emerald-700 max-md:h-12 max-md:text-base max-md:[&_svg]:size-5">
+              <Button asChild className="bg-positive-fill text-positive-fill-foreground hover:bg-positive-fill/85 max-md:h-12 max-md:text-base max-md:[&_svg]:size-5">
                 <a href={whatsappHref(lead.phone)} target="_blank" rel="noopener noreferrer" onClick={recordContact}>
                   <MessageCircle data-icon="inline-start" />
                   {t('actions.whatsapp')}

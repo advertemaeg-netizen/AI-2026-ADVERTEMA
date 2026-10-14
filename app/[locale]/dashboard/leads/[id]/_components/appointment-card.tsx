@@ -84,10 +84,10 @@ export function AppointmentCard({ lead }: { lead: LeadDetail }) {
             onClear={() => run(() => setAppointment(lead.id, null), t('toast.appointmentCleared'))}
           />
           {approximate && (
-            <p className="text-xs text-amber-700 dark:text-amber-300">{t('section.approximate')}</p>
+            <p className="text-xs text-warning">{t('section.approximate')}</p>
           )}
           {fromAnalysis && (
-            <p className="text-xs text-amber-700 dark:text-amber-300">{t('section.fromAnalysis')}</p>
+            <p className="text-xs text-warning">{t('section.fromAnalysis')}</p>
           )}
           {ai?.preferred_time && !lead.appointment_at && (
             <p className="text-xs text-muted-foreground">{t('section.requested', { time: ai.preferred_time })}</p>

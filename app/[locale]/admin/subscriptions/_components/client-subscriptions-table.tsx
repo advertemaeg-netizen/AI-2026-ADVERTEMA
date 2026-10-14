@@ -126,7 +126,7 @@ export function ClientSubscriptionsTable({
                       <div className="flex items-center justify-end gap-1 font-medium">
                         {row.has_custom_pricing && (
                           <Tag
-                            className="size-3.5 text-emerald-600"
+                            className="size-3.5 text-positive"
                             aria-label={row.custom_pricing_reason ?? t('customPrice')}
                           />
                         )}

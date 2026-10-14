@@ -50,7 +50,7 @@ export async function PlatformKpis({ stats }: { stats: PlatformStats }) {
               <p
                 className={cn(
                   'flex items-center gap-1 text-xs',
-                  g.change > 0 ? 'text-emerald-700 dark:text-emerald-400' : g.change < 0 ? 'text-destructive' : 'text-muted-foreground'
+                  g.change > 0 ? 'text-positive' : g.change < 0 ? 'text-destructive' : 'text-muted-foreground'
                 )}
               >
                 <Trend className="size-3.5 shrink-0" aria-hidden />

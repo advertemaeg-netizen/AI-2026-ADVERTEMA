@@ -12,7 +12,6 @@ import {
   Building2,
   Settings,
   LogOut,
-  Sparkles,
   UsersRound,
   CalendarDays,
   BarChart3,
@@ -31,6 +30,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { BrandMark } from '@/components/brand'
+import { navIconClass, navItemClass } from '@/components/nav-item'
 import { clientSections } from '@/components/client-sections'
 import { ClientSwitcher } from '@/components/client-switcher'
 import { canManageClient, isOrgAdmin } from '@/lib/auth/permissions'
@@ -162,11 +163,9 @@ export function DashboardShell({
     return (
       <>
         <div className={cn('p-6 border-b flex items-center justify-between', inSheet && 'p-4 pe-14')}>
-          <Link href="/dashboard" className="flex items-center gap-2" onClick={closeMenu}>
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-orange-500 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-semibold text-lg">Mudrik AI</span>
+          <Link href="/dashboard" className="group flex items-center gap-2.5" onClick={closeMenu}>
+            <BrandMark className="text-brand transition-transform duration-base ease-spring group-hover:scale-105" />
+            <span className="text-lg font-bold tracking-tight">Mudrik AI</span>
           </Link>
           {/* Phones have it in the top bar */}
           {!inSheet && <LanguageSwitcher />}
@@ -196,15 +195,9 @@ export function DashboardShell({
                 href={item.href}
                 aria-current={isActive ? 'page' : undefined}
                 onClick={closeMenu}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
-                  inSheet && 'min-h-11',
-                  isActive
-                    ? 'bg-accent text-accent-foreground font-medium'
-                    : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-                )}
+                className={navItemClass(isActive, inSheet)}
               >
-                <item.icon className="w-4 h-4" />
+                <item.icon className={navIconClass} />
                 {item.name}
               </Link>
             )
@@ -256,7 +249,7 @@ export function DashboardShell({
         <div className="flex min-h-0 flex-1 flex-col">{sidebar(true)}</div>
       </MobileTopBar>
       <div className="flex min-h-0 flex-1 print:block">
-        <aside className="w-64 border-e bg-card flex flex-col print:hidden max-md:hidden">
+        <aside className="w-64 border-e bg-sidebar flex flex-col print:hidden max-md:hidden">
           {sidebar(false)}
         </aside>
 

@@ -39,7 +39,7 @@ export function PlanCard({
     <div
       className={cn(
         'relative flex h-full flex-col rounded-xl border bg-card p-6 text-card-foreground shadow-sm transition-shadow',
-        current && 'border-2 border-emerald-500 shadow-md shadow-emerald-500/10',
+        current && 'border-2 border-positive-solid shadow-raised',
         popular && !current && 'border-2 border-primary shadow-md',
         inactive && 'opacity-60'
       )}
@@ -48,7 +48,7 @@ export function PlanCard({
         <Badge
           className={cn(
             'absolute inset-x-0 -top-3 mx-auto w-fit px-3',
-            current && 'bg-emerald-600 text-white hover:bg-emerald-600'
+            current && 'bg-positive-fill text-positive-fill-foreground hover:bg-positive-fill'
           )}
         >
           {current ? t('current') : t('popular')}
@@ -68,7 +68,7 @@ export function PlanCard({
           <span className="text-sm text-muted-foreground">{t('perMonth')}</span>
         </div>
         {discounted && (
-          <Badge variant="secondary" className="mt-2 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
+          <Badge variant="positive" className="mt-2">
             {t('specialPrice')}
           </Badge>
         )}
@@ -77,7 +77,7 @@ export function PlanCard({
       <ul className="mt-6 grid gap-3 text-sm">
         {features.map((feature, index) => (
           <li key={index} className="flex items-start gap-2.5">
-            <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+            <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-positive-fill/40 text-positive">
               <Check className="size-3.5" strokeWidth={3} aria-hidden />
             </span>
             <span>{feature}</span>

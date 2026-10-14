@@ -39,7 +39,7 @@ export default async function ClientSubscriptionPage({
     <>
       <BackToClients label={t('backToClients')} />
       <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight max-md:text-2xl">{t('title', { client: client.name })}</h1>
+        <h1 className="page-title">{t('title', { client: client.name })}</h1>
         <p className="text-muted-foreground mt-1">{t(canManageBilling ? 'description' : 'descriptionReadOnly')}</p>
       </div>
       <ClientTabs clientId={clientId} />
@@ -48,7 +48,7 @@ export default async function ClientSubscriptionPage({
 
   if (!details) {
     return (
-      <div className="p-8 max-md:p-4">
+      <div className="page animate-enter">
         {header}
         <p className="text-muted-foreground">{t('none')}</p>
       </div>
@@ -59,7 +59,7 @@ export default async function ClientSubscriptionPage({
   const { subscription, plan, custom_pricing: custom } = details
 
   return (
-    <div className="p-8 max-md:p-4">
+    <div className="page animate-enter">
       {header}
 
       <div className="grid gap-6">
@@ -90,7 +90,7 @@ export default async function ClientSubscriptionPage({
             inactiveNotice={t(canManageBilling ? 'inactive' : 'inactiveClient')}
           />
           {custom && !custom.applies && canManageBilling && (
-            <p className="text-sm text-amber-700 dark:text-amber-400">{t('pricing.notApplied')}</p>
+            <p className="text-sm text-warning">{t('pricing.notApplied')}</p>
           )}
         </div>
 

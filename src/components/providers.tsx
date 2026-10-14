@@ -5,12 +5,8 @@ import { Toaster } from '@/components/ui/sonner'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="dark"
-      enableSystem
-      disableTransitionOnChange
-    >
+    // White mode only: the palette is built and measured on the cream background
+    <ThemeProvider attribute="class" forcedTheme="light" disableTransitionOnChange>
       {children}
       <Toaster />
     </ThemeProvider>

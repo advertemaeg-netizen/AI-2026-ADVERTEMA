@@ -21,9 +21,9 @@ export default async function AdminOverviewPage({ params, searchParams }: PagePr
   ])
 
   return (
-    <div className="p-8 grid gap-8">
+    <div className="page animate-enter grid gap-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">{t('overview.title')}</h1>
+        <h1 className="page-title">{t('overview.title')}</h1>
         <p className="text-muted-foreground mt-1">{t('overview.description')}</p>
       </div>
 

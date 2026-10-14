@@ -1,5 +1,6 @@
 import { getTranslations } from 'next-intl/server'
-import { CheckCircle2, Sparkles, XCircle } from 'lucide-react'
+import { CheckCircle2, XCircle } from 'lucide-react'
+import { AuthFrame, authLinkClass } from '@/components/auth-frame'
 import { Link } from '@/i18n/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/server'
@@ -35,19 +36,15 @@ export default async function InvitePage({ params }: PageProps<'/[locale]/invite
   const problem = !invite ? 'notFound' : invite.accepted ? 'accepted' : invite.expired ? 'expired' : null
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <Card className="w-full max-w-md">
+    <AuthFrame>
+      <Card className="w-full shadow-raised">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            {problem ? (
-              <XCircle className="size-12 text-muted-foreground" />
-            ) : (
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-orange-500 flex items-center justify-center">
-                <Sparkles className="w-6 h-6 text-white" />
-              </div>
-            )}
-          </div>
-          <CardTitle className="text-2xl">{problem ? t(`problems.${problem}.title`) : t('title')}</CardTitle>
+          {problem && (
+            <div className="flex justify-center mb-4">
+              <XCircle className="size-12 animate-pop text-muted-foreground" />
+            </div>
+          )}
+          <CardTitle className="text-2xl font-bold">{problem ? t(`problems.${problem}.title`) : t('title')}</CardTitle>
           <CardDescription className="text-base">
             {problem || !invite
               ? t(`problems.${problem ?? 'notFound'}.description`)
@@ -66,7 +63,7 @@ export default async function InvitePage({ params }: PageProps<'/[locale]/invite
         <CardContent>
           {problem || !invite ? (
             <div className="text-center">
-              <Link href={auth.user ? '/dashboard' : '/login'} className="text-sm text-muted-foreground hover:underline">
+              <Link href={auth.user ? '/dashboard' : '/login'} className={`text-sm ${authLinkClass}`}>
                 {auth.user ? t('goToDashboard') : t('goToLogin')}
               </Link>
             </div>
@@ -86,6 +83,6 @@ export default async function InvitePage({ params }: PageProps<'/[locale]/invite
           )}
         </CardContent>
       </Card>
-    </div>
+    </AuthFrame>
   )
 }

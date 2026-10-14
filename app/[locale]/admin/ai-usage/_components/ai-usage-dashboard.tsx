@@ -161,9 +161,9 @@ export function AiUsageDashboard({ overview, range }: { overview: AiUsageOvervie
         {overview.unpriced.length > 0 && (
           <div
             role="status"
-            className="flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm"
+            className="flex items-start gap-3 rounded-lg border border-warning-solid/40 bg-warning-solid/10 p-4 text-sm"
           >
-            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden />
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
             <div className="grid gap-1">
               <p className="font-medium">{t('unpriced.title')}</p>
               <p className="text-muted-foreground">{t('unpriced.description')}</p>
@@ -317,7 +317,7 @@ function ClientsCard({
                     key={c.client_id}
                     className={cn(
                       c.flag === 'negative' && 'bg-destructive/5 hover:bg-destructive/10',
-                      c.flag === 'low' && 'bg-amber-500/5 hover:bg-amber-500/10'
+                      c.flag === 'low' && 'bg-warning-solid/5 hover:bg-warning-solid/10'
                     )}
                   >
                     <TableCell>
@@ -336,7 +336,7 @@ function ClientsCard({
                           <span
                             className={cn(
                               'inline-flex items-center gap-1',
-                              c.flag === 'negative' ? 'text-destructive' : 'text-amber-700 dark:text-amber-400'
+                              c.flag === 'negative' ? 'text-destructive' : 'text-warning'
                             )}
                           >
                             <AlertTriangle className="size-3" aria-hidden />
@@ -351,7 +351,7 @@ function ClientsCard({
                     <TableCell className="text-end tabular-nums">
                       {usd(c.cost_usd)}
                       {c.unpriced_requests > 0 && (
-                        <span className="block text-xs text-amber-700 dark:text-amber-400">
+                        <span className="block text-xs text-warning">
                           {t('clients.unpriced', { count: c.unpriced_requests })}
                         </span>
                       )}
@@ -372,7 +372,7 @@ function ClientsCard({
                       className={cn(
                         'text-end tabular-nums',
                         c.flag === 'negative' && 'text-destructive',
-                        c.flag === 'low' && 'text-amber-700 dark:text-amber-400'
+                        c.flag === 'low' && 'text-warning'
                       )}
                     >
                       {c.margin_pct === null

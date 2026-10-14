@@ -49,7 +49,7 @@ export function CurrentPlanCard({
           <SubscriptionStatusBadge status={subscription.status} usable={subscription.usable} />
           <Badge variant="outline">{tTypes(plan.plan_type)}</Badge>
           {custom?.applies && (
-            <Badge className="gap-1 bg-emerald-600 text-white hover:bg-emerald-600">
+            <Badge variant="positive" className="gap-1">
               <Tag className="size-3" />
               {tCard('specialPrice')}
             </Badge>

@@ -26,9 +26,9 @@ export default async function SettingsPage({ params }: PageProps<'/[locale]/dash
   const readOnly = impersonation !== null
 
   return (
-    <div className="grid max-w-3xl gap-6 p-8 max-md:p-4">
+    <div className="page animate-enter grid max-w-3xl gap-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight max-md:text-2xl">{t('title')}</h1>
+        <h1 className="page-title">{t('title')}</h1>
         <p className="mt-1 text-muted-foreground">{t('description')}</p>
       </div>
 

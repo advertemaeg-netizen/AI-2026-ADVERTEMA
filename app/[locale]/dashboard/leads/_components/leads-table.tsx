@@ -181,7 +181,7 @@ export function LeadsTable({
                         <Phone className="size-5" />
                       </a>
                     </Button>
-                    <Button asChild size="icon" className="size-11 bg-emerald-600 text-white hover:bg-emerald-700">
+                    <Button asChild size="icon" className="size-11 bg-positive-fill text-positive-fill-foreground hover:bg-positive-fill/85">
                       <a
                         href={whatsappHref(lead.phone)}
                         target="_blank"

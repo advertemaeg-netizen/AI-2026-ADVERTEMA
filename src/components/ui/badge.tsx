@@ -4,20 +4,28 @@ import { cn } from "cn"
 import { Slot } from "radix-ui"
 
 const badgeVariants = cva(
-  "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-4xl border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 has-data-[icon=inline-end]:pe-1.5 has-data-[icon=inline-start]:ps-1.5 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3!",
+  "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-4xl border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-[color,background-color,box-shadow] duration-base ease-out focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 has-data-[icon=inline-end]:pe-1.5 has-data-[icon=inline-start]:ps-1.5 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3!",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
+        default: "bg-primary text-primary-foreground [a]:hover:bg-primary-strong",
         secondary:
-          "bg-secondary text-secondary-foreground [a]:hover:bg-secondary/80",
+          "bg-secondary text-secondary-foreground [a]:hover:bg-accent",
         destructive:
-          "bg-destructive/10 text-destructive focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:focus-visible:ring-destructive/40 [a]:hover:bg-destructive/20",
+          "bg-destructive-fill text-destructive-fill-foreground focus-visible:ring-destructive/20 [a]:hover:bg-destructive/20",
         outline:
           "border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground",
         ghost:
-          "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
+          "hover:bg-muted hover:text-muted-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        // State tones (see the state tokens in app/globals.css)
+        info: "bg-info-fill text-info-fill-foreground",
+        progress: "border-border bg-muted text-foreground",
+        scheduled: "bg-primary text-primary-foreground",
+        positive: "bg-positive-fill text-positive-fill-foreground",
+        warning: "bg-warning-fill text-warning-fill-foreground",
+        critical: "bg-critical-fill text-critical-fill-foreground",
+        quiet: "bg-muted text-muted-foreground",
       },
     },
     defaultVariants: {
@@ -25,6 +33,8 @@ const badgeVariants = cva(
     },
   }
 )
+
+type BadgeVariant = NonNullable<VariantProps<typeof badgeVariants>["variant"]>
 
 function Badge({
   className,
@@ -45,4 +55,26 @@ function Badge({
   )
 }
 
-export { Badge, badgeVariants }
+/**
+ * A badge that shows a record's state: it pops in when it appears and again
+ * whenever the state changes (the key remounts it).
+ */
+function StateBadge({
+  state,
+  variant,
+  className,
+  children,
+}: {
+  state: string
+  variant: BadgeVariant
+  className?: string
+  children: React.ReactNode
+}) {
+  return (
+    <Badge key={state} variant={variant} className={cn("animate-pop", className)}>
+      {children}
+    </Badge>
+  )
+}
+
+export { Badge, StateBadge, badgeVariants, type BadgeVariant }

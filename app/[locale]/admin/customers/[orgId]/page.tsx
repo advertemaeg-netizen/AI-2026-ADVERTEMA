@@ -69,7 +69,7 @@ export default async function AdminCustomerPage({ params }: PageProps<'/[locale]
   ]
 
   return (
-    <div className="p-8 grid gap-6">
+    <div className="page animate-enter grid gap-6">
       <Link
         href="/admin/customers"
         className="flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
@@ -81,7 +81,7 @@ export default async function AdminCustomerPage({ params }: PageProps<'/[locale]
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight">{org.name}</h1>
+            <h1 className="page-title">{org.name}</h1>
             <Badge variant={org.is_active ? 'default' : 'destructive'}>
               {t(org.is_active ? 'active' : 'disabled')}
             </Badge>
@@ -155,7 +155,7 @@ export default async function AdminCustomerPage({ params }: PageProps<'/[locale]
           </div>
           <CurrentPlanCard details={billing.details} title={tBilling('plan')} />
           {billing.details.custom_pricing && !billing.details.custom_pricing.applies && (
-            <p className="text-sm text-amber-700 dark:text-amber-400">{tBilling('pricingNotApplied')}</p>
+            <p className="text-sm text-warning">{tBilling('pricingNotApplied')}</p>
           )}
           {billing.details.subscription.notes && (
             <p className="text-sm text-muted-foreground">{tBilling('notes', { notes: billing.details.subscription.notes })}</p>
@@ -348,7 +348,7 @@ async function DirectBilling({
         />
       </div>
       <CurrentPlanCard details={details} title={tBilling('plan')} />
-      {custom && !custom.applies && <p className="text-sm text-amber-700 dark:text-amber-400">{tBilling('pricingNotApplied')}</p>}
+      {custom && !custom.applies && <p className="text-sm text-warning">{tBilling('pricingNotApplied')}</p>}
       <Card>
         <CardHeader>
           <CardTitle>{tBilling('usage')}</CardTitle>

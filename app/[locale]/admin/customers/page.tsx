@@ -18,9 +18,9 @@ export default async function AdminCustomersPage({ params, searchParams }: PageP
   )
 
   return (
-    <div className="p-8">
+    <div className="page animate-enter">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+        <h1 className="page-title">{t('title')}</h1>
         <p className="text-muted-foreground mt-1">{t('description')}</p>
       </div>
 

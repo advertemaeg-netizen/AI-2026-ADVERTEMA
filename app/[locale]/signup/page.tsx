@@ -9,8 +9,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Sparkles, CheckCircle2, Building2, Store } from 'lucide-react'
+import { CheckCircle2, Building2, Store } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { AuthFrame, authLinkClass } from '@/components/auth-frame'
 
 type OrgType = 'agency' | 'direct'
 
@@ -65,36 +66,30 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-        <Card className="w-full max-w-md">
+      <AuthFrame>
+        <Card className="w-full shadow-raised">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
-              <CheckCircle2 className="w-12 h-12 text-green-500" />
+              <CheckCircle2 className="size-12 animate-pop text-positive" />
             </div>
-            <CardTitle>{t('checkEmail')}</CardTitle>
+            <CardTitle className="text-xl font-bold">{t('checkEmail')}</CardTitle>
             <CardDescription>{t('checkEmailDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="text-center">
-            <Link href="/login" className="text-sm text-muted-foreground hover:underline">
+            <Link href="/login" className={authLinkClass}>
               {t('backToLogin')}
             </Link>
           </CardContent>
         </Card>
-      </div>
+      </AuthFrame>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <Card className="w-full max-w-md">
+    <AuthFrame>
+      <Card className="w-full shadow-raised">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-orange-500 flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-white" />
-            </div>
-          </div>
-          <CardTitle className="text-2xl">{t('signupTitle')}</CardTitle>
-          <CardDescription>Mudrik AI</CardDescription>
+          <CardTitle className="text-2xl font-bold">{t('signupTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignup} className="space-y-4">
@@ -110,9 +105,9 @@ export default function SignupPage() {
                   <label
                     key={value}
                     className={cn(
-                      'flex cursor-pointer flex-col gap-1.5 rounded-lg border p-3 text-start transition-colors hover:bg-muted/50',
+                      'lift flex cursor-pointer flex-col gap-1.5 rounded-lg border bg-card p-3 text-start hover:bg-accent/60',
                       'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring',
-                      orgType === value && 'border-primary bg-primary/5 hover:bg-primary/5'
+                      orgType === value && 'border-primary bg-accent hover:bg-accent'
                     )}
                   >
                     <input
@@ -183,12 +178,12 @@ export default function SignupPage() {
 
           <p className="text-sm text-muted-foreground mt-4 text-center">
             {t('haveAccount')}{' '}
-            <Link href="/login" className="text-foreground font-medium hover:underline">
+            <Link href="/login" className={authLinkClass}>
               {tCommon('login')}
             </Link>
           </p>
         </CardContent>
       </Card>
-    </div>
+    </AuthFrame>
   )
 }

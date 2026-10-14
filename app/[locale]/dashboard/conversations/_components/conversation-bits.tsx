@@ -1,25 +1,25 @@
 import { useTranslations } from 'next-intl'
 import { UserRound } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
+import { StateBadge, type BadgeVariant } from '@/components/ui/badge'
 import { ChannelIcon } from '@/components/channel-icon'
 import { cn } from '@/lib/utils'
 import type { ChannelType } from '@/lib/types/channels'
 import type { ConversationStatus } from '@/lib/types/conversations'
 
-const STATUS_STYLES: Record<ConversationStatus, string> = {
-  new: 'bg-blue-500/15 text-blue-700 dark:text-blue-300',
-  in_progress: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
-  converted: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
-  closed: 'bg-muted text-muted-foreground',
+const STATUS_VARIANT: Record<ConversationStatus, BadgeVariant> = {
+  new: 'info',
+  in_progress: 'progress',
+  converted: 'positive',
+  closed: 'quiet',
 }
 
 export function StatusBadge({ status }: { status: ConversationStatus }) {
   const t = useTranslations('conversations')
   return (
-    <Badge variant="secondary" className={STATUS_STYLES[status]}>
+    <StateBadge state={status} variant={STATUS_VARIANT[status]}>
       {t(`status.${status}`)}
-    </Badge>
+    </StateBadge>
   )
 }
 

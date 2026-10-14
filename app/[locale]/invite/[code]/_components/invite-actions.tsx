@@ -91,7 +91,7 @@ export function InviteActions({
   if (checkEmail) {
     return (
       <div className="grid gap-2 text-center">
-        <CheckCircle2 className="mx-auto size-10 text-green-500" />
+        <CheckCircle2 className="mx-auto size-10 text-positive" />
         <p className="font-medium">{t('checkEmailTitle')}</p>
         <p className="text-sm text-muted-foreground">{t('checkEmailDescription', { email: inviteEmail })}</p>
       </div>

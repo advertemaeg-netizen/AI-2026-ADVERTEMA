@@ -8,8 +8,8 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Sparkles } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { AuthFrame, authLinkClass } from '@/components/auth-frame'
 
 export default function LoginPage({ searchParams }: PageProps<'/[locale]/login'>) {
   const t = useTranslations('auth')
@@ -54,16 +54,10 @@ export default function LoginPage({ searchParams }: PageProps<'/[locale]/login'>
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <Card className="w-full max-w-md">
+    <AuthFrame>
+      <Card className="w-full shadow-raised">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-orange-500 flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-white" />
-            </div>
-          </div>
-          <CardTitle className="text-2xl">{t('loginTitle')}</CardTitle>
-          <CardDescription>Mudrik AI</CardDescription>
+          <CardTitle className="text-2xl font-bold">{t('loginTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
@@ -87,7 +81,7 @@ export default function LoginPage({ searchParams }: PageProps<'/[locale]/login'>
                 required
               />
               <div className="flex justify-end">
-                <Link href="/forgot-password" className="text-xs text-muted-foreground hover:text-foreground hover:underline">
+                <Link href="/forgot-password" className={`text-xs ${authLinkClass}`}>
                   {t('forgotPassword')}
                 </Link>
               </div>
@@ -102,12 +96,12 @@ export default function LoginPage({ searchParams }: PageProps<'/[locale]/login'>
 
           <p className="text-sm text-muted-foreground mt-4 text-center">
             {t('noAccount')}{' '}
-            <Link href="/signup" className="text-foreground font-medium hover:underline">
+            <Link href="/signup" className={authLinkClass}>
               {tCommon('signup')}
             </Link>
           </p>
         </CardContent>
       </Card>
-    </div>
+    </AuthFrame>
   )
 }

@@ -80,7 +80,7 @@ function QuotaNotice({ quota }: { quota: KnowledgeQuota }) {
       role="status"
       className={cn(
         'flex items-center gap-2 rounded-lg px-3 py-2 text-sm',
-        full ? 'bg-destructive/10 text-destructive' : 'bg-amber-500/10 text-amber-800 dark:text-amber-200'
+        full ? 'bg-destructive-fill text-destructive-fill-foreground' : 'bg-warning-solid/10 text-warning'
       )}
     >
       <AlertTriangle className="size-4 shrink-0" />

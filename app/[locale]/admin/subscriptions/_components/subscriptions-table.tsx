@@ -25,8 +25,8 @@ const ALL = 'all'
 
 export const LEVEL_CLASS = {
   ok: '',
-  warning: '[&_[data-slot=progress-indicator]]:bg-amber-500',
-  critical: '[&_[data-slot=progress-indicator]]:bg-orange-600',
+  warning: '[&_[data-slot=progress-indicator]]:bg-warning-solid',
+  critical: '[&_[data-slot=progress-indicator]]:bg-critical-solid',
   full: '[&_[data-slot=progress-indicator]]:bg-destructive',
 }
 
@@ -127,7 +127,7 @@ export function SubscriptionsTable({
                       )}
                       <div className="flex items-center justify-end gap-1 font-medium">
                         {row.has_custom_pricing && (
-                          <Tag className="size-3.5 text-emerald-600" aria-label={t('customPrice')} />
+                          <Tag className="size-3.5 text-positive" aria-label={t('customPrice')} />
                         )}
                         {money.withCurrency(row.effective_price)}
                       </div>

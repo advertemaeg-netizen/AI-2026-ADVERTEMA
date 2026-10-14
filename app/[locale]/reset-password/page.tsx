@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { KeyRound, Loader2, XCircle } from 'lucide-react'
+import { AuthFrame, authLinkClass } from '@/components/auth-frame'
 
 const MIN_LENGTH = 6
 
@@ -79,20 +80,20 @@ export default function ResetPasswordPage() {
   const invalid = linkState === 'invalid'
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <Card className="w-full max-w-md">
+    <AuthFrame>
+      <Card className="w-full shadow-raised">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             {invalid ? (
-              <XCircle className="w-12 h-12 text-muted-foreground" />
+              <XCircle className="size-12 animate-pop text-muted-foreground" />
             ) : (
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-orange-500 flex items-center justify-center">
-                <KeyRound className="w-6 h-6 text-white" />
+              <div className="flex size-12 items-center justify-center rounded-xl bg-accent text-primary">
+                <KeyRound className="size-6" />
               </div>
             )}
           </div>
-          <CardTitle className="text-2xl">{invalid ? t('invalidResetLink') : t('resetPasswordTitle')}</CardTitle>
-          <CardDescription>{invalid ? t('invalidResetLinkDesc') : 'Mudrik AI'}</CardDescription>
+          <CardTitle className="text-2xl font-bold">{invalid ? t('invalidResetLink') : t('resetPasswordTitle')}</CardTitle>
+          {invalid && <CardDescription>{t('invalidResetLinkDesc')}</CardDescription>}
         </CardHeader>
         <CardContent>
           {linkState === 'checking' && (
@@ -107,7 +108,7 @@ export default function ResetPasswordPage() {
               <Button asChild className="w-full">
                 <Link href="/forgot-password">{t('requestNewLink')}</Link>
               </Button>
-              <Link href="/login" className="text-sm text-muted-foreground hover:underline">
+              <Link href="/login" className={`text-sm ${authLinkClass}`}>
                 {t('backToLogin')}
               </Link>
             </div>
@@ -155,6 +156,6 @@ export default function ResetPasswordPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </AuthFrame>
   )
 }

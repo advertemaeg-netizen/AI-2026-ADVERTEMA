@@ -2,7 +2,9 @@
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { BrainCircuit, Building2, CreditCard, LayoutDashboard, LogOut, Menu, Package, Receipt, Settings, ShieldCheck, Sparkles, type LucideIcon } from 'lucide-react'
+import { BrainCircuit, Building2, CreditCard, LayoutDashboard, LogOut, Menu, Package, Receipt, Settings, ShieldCheck, type LucideIcon } from 'lucide-react'
+import { BrandMark } from '@/components/brand'
+import { navIconClass, navItemClass } from '@/components/nav-item'
 import { Link, usePathname, useRouter } from '@/i18n/navigation'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { createClient } from '@/lib/supabase/client'
@@ -18,7 +20,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-import { cn } from '@/lib/utils'
 
 type NavItem = { name: string; href: string; icon: LucideIcon; exact?: boolean }
 
@@ -65,11 +66,9 @@ export function AdminShell({
     return (
       <>
         <div className="p-6 border-b flex items-center justify-between">
-          <Link href="/admin" className="flex items-center gap-2" onClick={() => setMenuOpen(false)}>
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-orange-500 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-semibold text-lg">Mudrik AI</span>
+          <Link href="/admin" className="group flex items-center gap-2.5" onClick={() => setMenuOpen(false)}>
+            <BrandMark className="text-brand transition-transform duration-base ease-spring group-hover:scale-105" />
+            <span className="text-lg font-bold tracking-tight">Mudrik AI</span>
           </Link>
           {!inSheet && <LanguageSwitcher />}
         </div>
@@ -85,15 +84,9 @@ export function AdminShell({
                 href={item.href}
                 aria-current={isActive ? 'page' : undefined}
                 onClick={() => setMenuOpen(false)}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
-                  inSheet && 'min-h-11',
-                  isActive
-                    ? 'bg-accent text-accent-foreground font-medium'
-                    : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-                )}
+                className={navItemClass(isActive, inSheet)}
               >
-                <item.icon className="w-4 h-4" />
+                <item.icon className={navIconClass} />
                 {item.name}
               </Link>
             )
@@ -154,7 +147,7 @@ export function AdminShell({
         </div>
       </header>
 
-      <aside className="w-64 border-e bg-card flex flex-col max-md:hidden">
+      <aside className="w-64 border-e bg-sidebar flex flex-col max-md:hidden">
         {sidebar(false)}
       </aside>
 

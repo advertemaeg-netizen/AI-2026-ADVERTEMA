@@ -23,8 +23,8 @@ import { deleteKnowledgeDocument } from '@/lib/actions/knowledge'
 import type { KnowledgeDocument, KnowledgeStatus } from '@/lib/types/knowledge'
 
 const STATUS_STYLES: Record<KnowledgeStatus, string> = {
-  processing: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
-  ready: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+  processing: 'bg-warning-fill text-warning-fill-foreground',
+  ready: 'bg-positive-fill text-positive-fill-foreground',
   failed: 'bg-destructive/10 text-destructive',
 }
 

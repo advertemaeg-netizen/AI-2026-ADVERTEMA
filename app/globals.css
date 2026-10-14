@@ -4,25 +4,91 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * DESIGN TOKENS — the only place a colour, radius, shadow or motion value is
+ * written. Components use the semantic names below (bg-primary, text-brand,
+ * duration-base…), never a literal. White mode only.
+ *
+ * Palette sampled from the logo; contrast measured against the cream
+ * background (WCAG 2.x):
+ *   ink    #000     on cream 19.9:1
+ *   action #933703  on cream 7.1:1, white on it 7.5:1 — buttons, links, active
+ *   brand  #E85002  on cream 3.6:1 → LARGE TEXT AND THE LOGO ONLY; never body
+ *                   or small text, never under white text (black on it 5.6:1)
+ *   sage   #97A87A  positive fills and indicators (black on it 8.2:1)
+ *   tint   #DB9558  pale surface washes only
+ */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  /* Palette */
+  --palette-cream: #fcf9ea;
+  --palette-ink: #000000;
+  --palette-action: #933703;
+  --palette-action-strong: #7a2d02; /* hover/pressed; white on it 9.5:1 */
+  --palette-brand: #e85002;
+  --palette-sage: #97a87a;
+  --palette-tint: #db9558;
+
+  /* Surfaces */
+  --background: var(--palette-cream);
+  --foreground: var(--palette-ink);
+  --card: #ffffff;
+  --card-foreground: var(--palette-ink);
+  --popover: #ffffff;
+  --popover-foreground: var(--palette-ink);
+  --muted: #f6f0dc;
+  --muted-foreground: #6b6050; /* ≥4.6:1 on every surface here */
+  --secondary: #f6f0dc;
+  --secondary-foreground: var(--palette-ink);
+  /* The tint wash: hover rows, active nav, selected things */
+  --accent: #f7e6cf;
+  --accent-foreground: var(--palette-ink);
+  --border: #e8dfc7;
+  --input: #b3a584;
+  --ring: var(--palette-action);
+
+  /* Roles */
+  --primary: var(--palette-action);
+  --primary-strong: var(--palette-action-strong);
+  --primary-foreground: #ffffff;
+  --brand: var(--palette-brand);
+  --brand-foreground: var(--palette-ink);
+
+  /*
+   * State tones. Each has an ink (text and icons on cream), a solid (bars,
+   * borders, washes) and a fill + fill-foreground pair (badges).
+   */
+  /* Good: sage. Sage itself is 2.4:1 on cream, so text uses the darker ink */
+  --positive: #56653d; /* 6.0:1 on cream */
+  --positive-solid: var(--palette-sage);
+  --positive-fill: var(--palette-sage);
+  --positive-fill-foreground: var(--palette-ink); /* 8.2:1 */
+  /* Informational (new, upcoming, sent): the action colour on the tint wash */
+  --info: var(--palette-action);
+  --info-fill: var(--accent);
+  --info-fill-foreground: var(--palette-action); /* 6.2:1 */
+  /*
+   * PROVISIONAL — warning, critical and destructive still hold the colours the
+   * app used before (amber, orange, red). The proposed ochre and dusty rose
+   * are NOT approved. Approving them means changing these values only:
+   *   warning:  ink #6e5310 · solid #c9a23f · fill #c9a23f · fill-fg #000
+   *   critical + destructive: ink #8e2f45 · solid #cf8a94 · fill #cf8a94 · fill-fg #000
+   */
+  --warning: #b45309;
+  --warning-solid: #f59e0b;
+  --warning-fill: rgb(245 158 11 / 0.15);
+  --warning-fill-foreground: #b45309;
+  --critical: #c2410c;
+  --critical-solid: #ea580c;
+  --critical-fill: rgb(249 115 22 / 0.15);
+  --critical-fill-foreground: #c2410c;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --destructive-foreground: #ffffff;
+  --destructive-fill: oklch(0.577 0.245 27.325 / 0.12);
+  --destructive-fill-foreground: oklch(0.577 0.245 27.325);
+
+  /* Dialog and sheet backdrops */
+  --overlay: rgb(0 0 0 / 0.25);
+
   /* Categorical series (fixed order — CVD-validated against the card
      surface: blue, orange, aqua, yellow, magenta). Aqua/yellow sit below 3:1
      on white, so charts always carry labels or a table view. */
@@ -36,15 +102,35 @@
   --chart-seq-2: #5598e7;
   --chart-seq-3: #2a78d6;
   --chart-seq-4: #1c5cab;
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+
+  /* Sidebar */
+  --sidebar: #ffffff;
+  --sidebar-foreground: var(--palette-ink);
+  --sidebar-primary: var(--palette-action);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--palette-ink);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--palette-action);
+
+  /* Shape */
+  --radius: 0.75rem;
+  --shadow-card: 0 1px 2px rgb(147 55 3 / 0.05), 0 1px 1px rgb(0 0 0 / 0.03);
+  --shadow-raised: 0 12px 28px -14px rgb(147 55 3 / 0.28), 0 2px 6px -2px rgb(0 0 0 / 0.06);
+
+  /* Motion. Reduced motion collapses every duration (see the end of the file) */
+  --motion-fast: 140ms;
+  --motion-base: 220ms;
+  --motion-slow: 420ms;
+  --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --motion-enter-distance: 10px;
+  --motion-stagger: 50ms;
+
+  /* Layout */
+  --page-padding: calc(var(--spacing) * 8);
+  --page-padding-compact: calc(var(--spacing) * 4);
+  --brand-mark-min: 28px; /* the mark is illegible below this — never smaller */
 }
 
 @theme inline {
@@ -77,7 +163,29 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-strong: var(--primary-strong);
   --color-primary: var(--primary);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-positive: var(--positive);
+  --color-positive-solid: var(--positive-solid);
+  --color-positive-fill: var(--positive-fill);
+  --color-positive-fill-foreground: var(--positive-fill-foreground);
+  --color-info: var(--info);
+  --color-info-fill: var(--info-fill);
+  --color-info-fill-foreground: var(--info-fill-foreground);
+  --color-warning: var(--warning);
+  --color-warning-solid: var(--warning-solid);
+  --color-warning-fill: var(--warning-fill);
+  --color-warning-fill-foreground: var(--warning-fill-foreground);
+  --color-critical: var(--critical);
+  --color-critical-solid: var(--critical-solid);
+  --color-critical-fill: var(--critical-fill);
+  --color-critical-fill-foreground: var(--critical-fill-foreground);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-fill: var(--destructive-fill);
+  --color-destructive-fill-foreground: var(--destructive-fill-foreground);
+  --color-overlay: var(--overlay);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -89,57 +197,88 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  --shadow-card: var(--shadow-card);
+  --shadow-raised: var(--shadow-raised);
+  --ease-out: var(--motion-ease-out);
+  --ease-spring: var(--motion-ease-spring);
+
+  /* Entry: content rises into place. State change: a badge pops in. */
+  --animate-enter: enter var(--motion-slow) var(--motion-ease-out) both;
+  --animate-pop: pop var(--motion-base) var(--motion-ease-spring) both;
+  --animate-fade: fade var(--motion-base) var(--motion-ease-out) both;
+
+  @keyframes enter {
+    from {
+      opacity: 0;
+      transform: translateY(var(--motion-enter-distance));
+    }
+  }
+  @keyframes pop {
+    from {
+      opacity: 0;
+      transform: scale(0.82);
+    }
+  }
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+  }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Durations as utilities: duration-fast / duration-base / duration-slow */
+@utility duration-fast {
+  transition-duration: var(--motion-fast);
+}
+@utility duration-base {
+  transition-duration: var(--motion-base);
+}
+@utility duration-slow {
+  transition-duration: var(--motion-slow);
+}
+
+/* Staggered entry: set --i on each item (0, 1, 2…) */
+@utility stagger {
+  animation-delay: calc(var(--i, 0) * var(--motion-stagger));
+}
+
+/* Something you can click on a surface: lifts and casts the warm shadow */
+@utility lift {
+  transition-property: transform, box-shadow, background-color, border-color;
+  transition-duration: var(--motion-base);
+  transition-timing-function: var(--motion-ease-out);
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-raised);
+  }
+}
+
+/* A page's title: the brand colour, which passes (3.6:1) only as large
+   text, so this never drops below 24px bold */
+@utility page-title {
+  font-size: var(--text-3xl);
+  line-height: var(--text-3xl--line-height);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--brand);
+  text-wrap: balance;
+  @media (width < 48rem) {
+    font-size: var(--text-2xl);
+    line-height: var(--text-2xl--line-height);
+  }
+}
+
+/* The standard page frame */
+@utility page {
+  padding: var(--page-padding);
+  @media (width < 48rem) {
+    padding: var(--page-padding-compact);
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  /* Same hues, stepped for the dark card surface */
-  --chart-1: #3987e5;
-  --chart-2: #d95926;
-  --chart-3: #199e70;
-  --chart-4: #c98500;
-  --chart-5: #d55181;
-  --chart-seq-1: #184f95;
-  --chart-seq-2: #256abf;
-  --chart-seq-3: #3987e5;
-  --chart-seq-4: #6da7ec;
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
 }
 
 @layer base {
@@ -151,33 +290,38 @@ body {
   }
   html {
     @apply font-sans;
+    color-scheme: light;
+  }
+  ::selection {
+    background: var(--accent);
+    color: var(--palette-ink);
   }
 }
-/* Printing (analytics → "Export PDF"): paper is white, so always print the
-   light palette — even from dark mode — and let content flow across pages. */
-@media print {
-  .dark {
-    color-scheme: light;
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --border: oklch(0.922 0 0);
-    --chart-1: #2a78d6;
-    --chart-2: #eb6834;
-    --chart-3: #1baf7a;
-    --chart-4: #eda100;
-    --chart-5: #e87ba4;
-    --chart-seq-1: #86b6ef;
-    --chart-seq-2: #5598e7;
-    --chart-seq-3: #2a78d6;
-    --chart-seq-4: #1c5cab;
-  }
 
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0.01ms;
+    --motion-base: 0.01ms;
+    --motion-slow: 0.01ms;
+    --motion-stagger: 0ms;
+    --motion-enter-distance: 0px;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .lift:hover {
+    transform: none;
+  }
+}
+
+/* Printing (analytics → "Export PDF"): paper is white; let content flow. */
+@media print {
   @page {
     margin: 12mm;
   }

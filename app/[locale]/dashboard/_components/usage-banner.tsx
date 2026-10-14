@@ -38,8 +38,8 @@ export function UsageBanner({
     inactive || worst >= 100
       ? 'border-destructive/40 bg-destructive/10 text-destructive'
       : worst >= 90
-        ? 'border-orange-500/40 bg-orange-500/10 text-orange-800 dark:text-orange-300'
-        : 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-300'
+        ? 'border-critical-solid/40 bg-critical-solid/10 text-critical'
+        : 'border-warning-solid/40 bg-warning-solid/10 text-warning'
 
   return (
     <div role="status" className={cn('flex items-start gap-3 border-b px-8 py-3 text-sm print:hidden max-md:px-4 max-md:py-2', inThread && 'max-md:hidden', tone)}>
@@ -76,7 +76,7 @@ export function UsageBanner({
         <Button
           variant="ghost"
           size="icon-sm"
-          className="text-current hover:bg-black/5 dark:hover:bg-white/10 max-md:-my-2 max-md:-me-2 max-md:size-11"
+          className="text-current hover:bg-foreground/5 max-md:-my-2 max-md:-me-2 max-md:size-11"
           aria-label={t('dismiss')}
           disabled={isPending}
           onClick={() => startTransition(async () => void (await dismissUsageAlerts()))}

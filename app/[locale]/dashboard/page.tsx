@@ -78,25 +78,27 @@ export default async function DashboardPage() {
   ]
 
   return (
-    <div className="p-8 max-md:p-4">
+    <div className="page animate-enter">
       <div className="mb-8 max-md:mb-4">
-        <h1 className="text-3xl font-bold tracking-tight max-md:text-2xl">{t('overview')}</h1>
+        <h1 className="page-title">{t('overview')}</h1>
         <p className="text-muted-foreground mt-1">
           {selectedClient ? t('scopedTo', { client: selectedClient.name }) : t('welcomeBack')}
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 max-md:grid-cols-2 max-md:gap-3 max-md:mb-4">
-        {stats.map((stat) => (
-          <Card key={stat.name}>
+        {stats.map((stat, i) => (
+          <Card key={stat.name} className="animate-enter stagger" style={{ '--i': i + 1 } as React.CSSProperties}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 max-md:items-start max-md:gap-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {stat.name}
               </CardTitle>
-              <stat.icon className="w-4 h-4 text-muted-foreground" />
+              <span className="flex size-8 items-center justify-center rounded-lg bg-accent text-primary">
+                <stat.icon className="size-4" />
+              </span>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold tabular-nums">{stat.value}</div>
+              <div className="text-3xl font-bold tabular-nums">{stat.value}</div>
               <p className="text-xs text-muted-foreground mt-1">{stat.hint}</p>
             </CardContent>
           </Card>
@@ -127,9 +129,9 @@ export default async function DashboardPage() {
                 <li key={`${item.kind}:${item.id}`}>
                   <Link
                     href={item.kind === 'lead' ? `/dashboard/leads/${item.id}` : `/dashboard/conversations/${item.id}`}
-                    className="flex items-center gap-3 py-3 hover:bg-muted/50 -mx-2 px-2 rounded-md"
+                    className="flex items-center gap-3 py-3 transition-colors duration-fast hover:bg-accent/60 -mx-2 px-2 rounded-md"
                   >
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-primary">
                       {item.kind === 'lead' ? <Users className="size-4" /> : <MessagesSquare className="size-4" />}
                     </div>
                     <div className="min-w-0 flex-1">

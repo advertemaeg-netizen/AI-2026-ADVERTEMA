@@ -309,7 +309,7 @@ function WeekEditor({
             {ranges
               .filter(([from, to]) => to < from)
               .map(([from, to]) => (
-                <p key={`${from}-${to}`} className="text-xs text-amber-700 dark:text-amber-400">
+                <p key={`${from}-${to}`} className="text-xs text-warning">
                   {t('hours.overnightRange', { from, to })}
                 </p>
               ))}

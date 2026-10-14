@@ -14,9 +14,9 @@ export default async function AnalyticsPage({ searchParams }: PageProps<'/[local
   const data = await getAnalytics(clientId, range)
 
   return (
-    <div className="p-8 print:p-0">
+    <div className="animate-enter p-8 print:p-0 max-md:p-4">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight max-md:text-2xl">{t('title')}</h1>
+        <h1 className="page-title">{t('title')}</h1>
         <p className="text-muted-foreground mt-1 print:hidden">{t('description')}</p>
       </div>
 

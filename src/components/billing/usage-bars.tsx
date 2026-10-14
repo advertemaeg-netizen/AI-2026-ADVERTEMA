@@ -16,8 +16,8 @@ export function usageLevel(percentage: number | null) {
 
 const INDICATOR = {
   ok: '',
-  warning: '[&_[data-slot=progress-indicator]]:bg-amber-500',
-  critical: '[&_[data-slot=progress-indicator]]:bg-orange-600',
+  warning: '[&_[data-slot=progress-indicator]]:bg-warning-solid',
+  critical: '[&_[data-slot=progress-indicator]]:bg-critical-solid',
   full: '[&_[data-slot=progress-indicator]]:bg-destructive',
 }
 
@@ -75,7 +75,7 @@ export function UsageBars({
               <p
                 className={cn(
                   'flex items-center gap-1.5 text-xs',
-                  level === 'warning' ? 'text-amber-700 dark:text-amber-400' : 'text-destructive'
+                  level === 'warning' ? 'text-warning' : 'text-destructive'
                 )}
               >
                 <AlertTriangle className="size-3.5 shrink-0" aria-hidden />

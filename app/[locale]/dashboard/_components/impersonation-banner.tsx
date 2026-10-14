@@ -28,7 +28,7 @@ export function ImpersonationBanner({ organizationName }: { organizationName: st
   return (
     <div
       role="status"
-      className="flex shrink-0 flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-destructive px-4 py-2 text-sm font-medium text-white print:hidden"
+      className="flex shrink-0 flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground print:hidden"
     >
       <Eye className="size-4 shrink-0" aria-hidden />
       <span>

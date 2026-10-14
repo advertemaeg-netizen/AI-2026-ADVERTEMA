@@ -141,7 +141,7 @@ export function CustomPricingDialog({
             <p className="text-xs text-muted-foreground">{t('validUntilHint')}</p>
           </div>
           {hasCustomPricing && (
-            <p className="text-xs text-amber-700 dark:text-amber-400">{t(client ? 'replacesClient' : 'replaces')}</p>
+            <p className="text-xs text-warning">{t(client ? 'replacesClient' : 'replaces')}</p>
           )}
 
           <DialogFooter>
