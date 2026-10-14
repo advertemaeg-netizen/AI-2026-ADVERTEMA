@@ -9,6 +9,9 @@ const TEXT = ar.botReplies.appointment
 const NOW = '2026-10-05T09:00:00.000Z'
 const THURSDAY_6PM = '2026-10-08T15:00:00.000Z'
 const THURSDAY_6PM_TEXT = 'الخميس 8 أكتوبر الساعة 6:00 مساءً'
+// What the visitor is told of an appointment the model reported: the system's sentence, never the model's
+const CONFIRMED = TEXT.bookedConfirmed.replace('{time}', THURSDAY_6PM_TEXT)
+const REQUESTED = TEXT.bookedRequest.replace('{time}', THURSDAY_6PM_TEXT)
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] })
@@ -37,7 +40,13 @@ async function seedOpenClient() {
   return seeded
 }
 
-type Booked = { status: string; appointment_at: string | null; appointment_confirmed: boolean; name: string | null }
+type Booked = {
+  status: string
+  appointment_at: string | null
+  appointment_confirmed: boolean
+  name: string | null
+  ai_appointment: Record<string, unknown> | null
+}
 
 async function book(
   seeded: Awaited<ReturnType<typeof seedClient>>,
@@ -49,7 +58,7 @@ async function book(
   const conversationId = body.conversationId as string
   const { data: leads } = await seeded.supabase
     .from('leads')
-    .select('status, appointment_at, appointment_confirmed, name')
+    .select('status, appointment_at, appointment_confirmed, name, ai_appointment')
     .eq('conversation_id', conversationId)
     .returns<Booked[]>()
   const { data: messages } = await seeded.supabase
@@ -80,8 +89,9 @@ describe('one appointment parser: the reply quotes the stored appointment', () =
     expect(leads).toHaveLength(1)
     expect(instant(leads[0].appointment_at)).toBe(THURSDAY_6PM)
     expect(leads[0]).toMatchObject({ status: 'appointment_booked', name: 'كريم مصطفى' })
-    // The visitor is told the time that is on record, and nothing else
-    expect(reply).toContain(`حجزتلك ${THURSDAY_6PM_TEXT} لتنظيف الأسنان.`)
+    // The visitor is told the time that is on record, in the system's words: nothing the model wrote about it is sent
+    expect(reply).toBe(CONFIRMED)
+    expect(reply).not.toContain('حجزتلك')
     expect(reply).not.toContain('{{')
     expect(stored).toBe(reply)
     // One reading of the sentence: the analysis no longer has its own
@@ -141,7 +151,7 @@ describe('one appointment parser: the reply quotes the stored appointment', () =
     expect(stored).toBe(reply)
     expect(leads.map((lead) => lead.appointment_at).filter(Boolean)).toEqual([])
     // What the model actually answered, and that nothing was booked, stay on record
-    expect(JSON.parse(metadata.raw)).toEqual({ contact: REPORTED_CONTACT, appointment: null, reply: `${answer} حجزتلك {{appointment}}.` })
+    expect(JSON.parse(metadata.raw)).toEqual({ contact: REPORTED_CONTACT, appointment: null, other_answer: null, reply: `${answer} حجزتلك {{appointment}}.` })
     expect(metadata.booking).toBe('none')
   })
 
@@ -185,7 +195,12 @@ describe('one appointment parser: the reply quotes the stored appointment', () =
     chatModel(() => botReply('حجزتلك {{appointment}}.', THURSDAY_6_EVENING))
     const { metadata } = await book(await seedOpenClient())
 
-    expect(JSON.parse(metadata.raw)).toEqual({ contact: REPORTED_CONTACT, appointment: THURSDAY_6_EVENING, reply: 'حجزتلك {{appointment}}.' })
+    expect(JSON.parse(metadata.raw)).toEqual({
+      contact: REPORTED_CONTACT,
+      appointment: THURSDAY_6_EVENING,
+      other_answer: null,
+      reply: 'حجزتلك {{appointment}}.',
+    })
     expect(metadata.booking).toBe('booked')
   })
 
@@ -197,7 +212,7 @@ describe('one appointment parser: the reply quotes the stored appointment', () =
 
     expect(leads[0]).toMatchObject({ appointment_confirmed: true })
     expect(instant(leads[0].appointment_at)).toBe(THURSDAY_6PM)
-    expect(reply).toBe(`حجزتلك ${THURSDAY_6PM_TEXT}.\n${TEXT.confirmed}`)
+    expect(reply).toBe(CONFIRMED)
   })
 
   it('never confirms by itself a time it could not check: no opening hours, so the team confirms', async () => {
@@ -206,35 +221,75 @@ describe('one appointment parser: the reply quotes the stored appointment', () =
     const { reply, leads } = await book(await seedClient())
 
     expect(leads[0]).toMatchObject({ status: 'appointment_booked', appointment_confirmed: false })
-    expect(reply).toBe(`حجزتلك ${THURSDAY_6PM_TEXT}.\n${TEXT.pending}`)
-    expect(reply).not.toContain(TEXT.confirmed)
+    expect(reply).toBe(REQUESTED)
+    expect(reply).not.toContain('✅')
   })
 
-  // Seen on the demo widget (12 October 2026): the model's text refused a day
-  // it believed was a holiday, and the system confirmed the booking under it.
-  // What the model wrote under that belief is not kept: the record speaks.
-  it('never confirms by itself a time the model flagged for the team', async () => {
+  // The model's needs_team_check is its report about itself, and the eval of
+  // 13 October 2026 found it wrong both ways: absent on a refusal it wrote
+  // (GT07), set on a time inside opening hours (GT08). Code's own check
+  // decides what the visitor reads; the flag is kept for the team.
+  it('lets code, not the model\'s flag, decide whether the visitor is told it is confirmed', async () => {
     chatModel(() => botReply('حجزتلك {{appointment}}.', { ...THURSDAY_6_EVENING, needs_team_check: true }))
     const { reply, leads } = await book(await seedOpenClient())
 
-    expect(leads[0]).toMatchObject({ status: 'appointment_booked', appointment_confirmed: false })
-    expect(reply).toBe(`${TEXT.noted.replace('{time}', THURSDAY_6PM_TEXT)}\n${TEXT.pending}`)
+    expect(leads[0]).toMatchObject({ status: 'appointment_booked', appointment_confirmed: true })
+    expect(leads[0].ai_appointment).toMatchObject({ needs_team_check: true })
+    expect(reply).toBe(CONFIRMED)
   })
 
-  // The frozen eval, case BK04, 13 October 2026: one reply said the time was
-  // outside opening hours and then that it was recorded
+  // The eval, 13 October 2026. BK04: a refusal of a time that was fine, ended on
+  // the placeholder and flagged for the team. GT07: the same refusal with no
+  // flag, sent as "…خارج مواعيد العمل… موعدك مؤكَّد ✅". Whatever the model
+  // reports about its own text, none of it is sent with an appointment.
   it('does not put a refusal the model wrote next to the booking the system made', async () => {
-    chatModel(() =>
-      botReply('ميعاد الساعة 6 خارج مواعيد فرع المعادي، لأنه بيفتح من 12 ظهرًا لحد 10 مساءً. {{appointment}}', {
-        ...THURSDAY_6_EVENING,
-        needs_team_check: true,
-      })
-    )
-    const { reply, leads } = await book(await seedOpenClient())
+    const refusal = 'ميعاد الساعة 6 خارج مواعيد العمل؛ الفرع بيفتح من 12 الضهر. تحبي تختاري وقت تاني؟ {{appointment}}'
+    for (const flagged of [true, false]) {
+      chatModel(() => botReply(refusal, { ...THURSDAY_6_EVENING, needs_team_check: flagged }))
+      const { reply, leads } = await book(await seedOpenClient())
 
-    expect(leads[0]).toMatchObject({ status: 'appointment_booked', appointment_confirmed: false })
-    expect(reply).toBe(`${TEXT.noted.replace('{time}', THURSDAY_6PM_TEXT)}\n${TEXT.pending}`)
-    expect(reply).not.toContain('خارج مواعيد')
+      expect(leads[0]).toMatchObject({ status: 'appointment_booked', appointment_confirmed: true })
+      expect(reply).toBe(CONFIRMED)
+      expect(reply).not.toContain('خارج مواعيد')
+    }
+  })
+
+  // The eval, 13 October 2026: told its reply is not sent with an appointment,
+  // the model left it empty every time — and a parser that demanded a reply
+  // fell back to sending the visitor the model's JSON
+  it('books, and sends the system\'s sentence, when the model leaves its reply empty', async () => {
+    chatModel(() => botReply('', THURSDAY_6_EVENING))
+    const { reply, stored, leads } = await book(await seedOpenClient())
+
+    expect(instant(leads[0].appointment_at)).toBe(THURSDAY_6PM)
+    expect(reply).toBe(CONFIRMED)
+    expect(stored).toBe(reply)
+  })
+
+  it('never sends the model\'s JSON as the reply when it holds no reply and no appointment', async () => {
+    chatModel(() => botReply('', null))
+    const { status, body } = await sendVisitorMessage((await seedOpenClient()).channelId, 'أهلاً')
+
+    expect(status).toBe(200)
+    expect(String(body.reply ?? '')).not.toContain('"appointment"')
+    expect(String(body.reply ?? '')).not.toContain('{')
+  })
+
+  it('keeps the model\'s answer to something else the same message asked, before the system\'s sentence', async () => {
+    const answer = 'تنظيف الجير بـ800 جنيه.'
+    chatModel(() => botReply('حجزتلك {{appointment}}. والتنظيف بـ800.', THURSDAY_6_EVENING, REPORTED_CONTACT, answer))
+    const { reply } = await book(await seedOpenClient())
+
+    expect(reply).toBe(`${answer}\n${CONFIRMED}`)
+  })
+
+  it('does not let that answer state the appointment either', async () => {
+    chatModel(() =>
+      botReply('حجزتلك.', THURSDAY_6_EVENING, REPORTED_CONTACT, 'تنظيف الجير بـ800 جنيه. وميعادك {{appointment}} مش متاح.')
+    )
+    const { reply } = await book(await seedOpenClient())
+
+    expect(reply).toBe(`تنظيف الجير بـ800 جنيه.\n${CONFIRMED}`)
   })
 
   it('leaves the appointment for the team to confirm when auto-confirm is off, and says it will be confirmed', async () => {
@@ -250,8 +305,8 @@ describe('one appointment parser: the reply quotes the stored appointment', () =
 
     expect(leads[0]).toMatchObject({ appointment_confirmed: false })
     expect(instant(leads[0].appointment_at)).toBe(THURSDAY_6PM)
-    expect(reply).toBe(`حجزتلك ${THURSDAY_6PM_TEXT}.\n${TEXT.pending}`)
-    expect(reply).not.toContain(TEXT.confirmed)
+    expect(reply).toBe(REQUESTED)
+    expect(reply).not.toContain('✅')
   })
 
   it('moves its own appointment when the visitor changes the time, and keeps one the team set', async () => {
@@ -265,7 +320,7 @@ describe('one appointment parser: the reply quotes the stored appointment', () =
     const moved = await book(seeded, 'خليها 7 بالليل', { visitorId, conversationId })
     expect(instant(moved.leads[0].appointment_at)).toBe('2026-10-08T16:00:00.000Z')
     expect(moved.leads[0]).toMatchObject({ appointment_confirmed: true })
-    expect(moved.reply).toBe(`تمام، خليناها الخميس 8 أكتوبر الساعة 7:00 مساءً.\n${TEXT.confirmed}`)
+    expect(moved.reply).toBe(TEXT.bookedConfirmed.replace('{time}', 'الخميس 8 أكتوبر الساعة 7:00 مساءً'))
 
     // The team reschedules by hand: from now on the time is theirs
     const teamTime = '2026-10-10T08:00:00.000Z'

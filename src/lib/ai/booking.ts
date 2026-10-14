@@ -168,13 +168,14 @@ export async function recordAppointment({
   const name = open?.name ?? contact?.name ?? returningFrom?.name ?? null
   const phone = open?.phone ?? contact?.phone ?? returningFrom?.phone ?? null
   const missing = missingDetails(name, phone)
-  const confirmed = confirmsItself(autoConfirm, resolved.validated, request.needs_team_check === true)
+  const confirmed = confirmsItself(autoConfirm, resolved.validated)
   const aiAppointment: AiAppointment = {
     at: resolved.at,
     approximate: resolved.approximate,
     confirmed,
     source,
     ...(missing.length > 0 ? { pending: true as const } : {}),
+    ...(request.needs_team_check === true ? { needs_team_check: true as const } : {}),
   }
   const needsDetails: BookingOutcome = {
     status: 'needs_details',
@@ -288,7 +289,19 @@ export async function confirmPending({
     approximate: pending.approximate,
     confirmed: pending.confirmed,
     source: pending.source,
+    ...(pending.needs_team_check ? { needs_team_check: true as const } : {}),
   })
+}
+
+/**
+ * Whether the open lead holds a time asked for earlier that this message
+ * could turn into the appointment (confirmPending): the model is told so
+ * before it answers, because then code may decide about the appointment
+ * without the model reporting one. Throws on a database error.
+ */
+export async function heldRequest(supabase: SupabaseClient, conversationId: string): Promise<boolean> {
+  const open = (await loadLeads(supabase, conversationId)).find((lead) => !isClosed(lead)) ?? null
+  return Boolean(open?.ai_appointment?.pending && !open.appointment_at)
 }
 
 /**

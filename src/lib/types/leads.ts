@@ -98,6 +98,12 @@ export type AiAppointment = {
    * becomes the appointment once both are on record (confirmPending).
    */
   pending?: true
+  /**
+   * The model reported that it believed the time might not be honoured (a
+   * holiday, a doctor away, or it could not tell). For the team only: it
+   * never decides whether the visitor is told the appointment is confirmed.
+   */
+  needs_team_check?: true
 }
 
 export type LeadDetail = LeadListItem & {

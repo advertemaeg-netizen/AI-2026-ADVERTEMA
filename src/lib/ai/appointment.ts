@@ -83,13 +83,19 @@ export const BOT_REPLY_SCHEMA: JsonSchema = {
     // September 2026).
     contact: CONTACT_REPORT_SCHEMA,
     appointment: APPOINTMENT_REQUEST_SCHEMA,
+    // With an appointment reported, the only text of the model's that is
+    // sent: its answer to something else the same message asked
+    other_answer: { type: ['string', 'null'] },
     reply: { type: 'string' },
   },
   required: ['reply'],
 }
 
 export const botReplySchema = z.object({
-  reply: z.string().trim().min(1),
+  // Empty is expected with an appointment: the model is told its reply is not
+  // sent on that turn, and leaves it out (parseBotReply)
+  reply: z.string().nullish().catch(null),
+  other_answer: z.string().nullish().catch(null),
   appointment: appointmentRequestSchema.nullish().catch(null),
   contact: z
     .object({ name: z.string().nullish().catch(null), phone: z.string().nullish().catch(null) })
@@ -110,7 +116,7 @@ export const SAVED_PHONE_PLACEHOLDER = '{{saved_phone}}'
 export const SAVED_NAME_PLACEHOLDER = '{{saved_name}}'
 
 /** The instructions that go with BOT_REPLY_SCHEMA in the system prompt */
-export const APPOINTMENT_INSTRUCTIONS = `Answer as JSON with "contact", "appointment" and "reply" (your message to the visitor).
+export const APPOINTMENT_INSTRUCTIONS = `Answer as JSON with "contact", "appointment", "other_answer" and "reply" (your message to the visitor).
 
 The visitor's details ("contact", null when the latest message gives none):
 - name: the name the visitor gave for themselves in their LATEST message, copied exactly as they wrote it. phone: the phone number they gave in their LATEST message, every digit as written, even if it looks wrong or incomplete. Report, don't judge and don't correct: the system checks them and tells the visitor itself when one is not usable.
@@ -118,9 +124,20 @@ The visitor's details ("contact", null when the latest message gives none):
 
 Appointments ("appointment"):
 ${APPOINTMENT_COMPONENTS}
-- In "reply", write ${APPOINTMENT_PLACEHOLDER} exactly where the appointment's day and time belong, and never write the day or the time yourself: the system replaces it with the appointment it recorded, and adds whether it is confirmed. Don't say that it is booked, confirmed or that someone will confirm it: an appointment is only recorded once the system has the visitor's name and phone number and the time is one the business works at, and the system says so itself.
+- Whenever "appointment" is not null, the SYSTEM writes everything the visitor is told about it: whether it is recorded, confirmed, refused, outside working hours, or still needs their name or number. Your "reply" is NOT shown to the visitor on that turn, so nothing you think about the time — that it is fine, that it is not possible, that another time would be better — reaches them or should be written anywhere else.
+- "other_answer": when the same message ALSO asked about something that is not the appointment (a price, insurance, an address, a doctor), answer that here, and only that. Nothing about the appointment, its day or time, opening hours as a reason, or whether it can be booked. Null when the message asked nothing else, and null whenever "appointment" is null, unless you are told below that a time the visitor asked for earlier is held.
+- When "appointment" is null and you mention an appointment the visitor already has, write ${APPOINTMENT_PLACEHOLDER} in "reply" exactly where its day and time belong, and never write the day or the time yourself: the system replaces it with the appointment on record. Never say that something is booked or confirmed yourself.
 - With no specific day ("next week", "soon", "any time") or no time at all, "appointment" is null: don't use ${APPOINTMENT_PLACEHOLDER}, and ask for the missing day or time.
 - "appointment" is null whenever the latest message isn't about scheduling.`
+
+/**
+ * Added to the prompt while a time the visitor asked for earlier is held on
+ * the lead for their name or number (confirmPending): the system may book or
+ * refuse it on this message without the model reporting anything, and then
+ * the reply is not sent either, so the rest of the answer has to be in
+ * "other_answer" already.
+ */
+export const HELD_REQUEST_INSTRUCTIONS = `A day and time the visitor asked for earlier is held until their name and phone number are both on record. The system may book or refuse it on this message, and then your "reply" is NOT shown to the visitor: the system says what became of it. So whenever "appointment" is null, also write in "other_answer" your answer to everything in the latest message that is not about that appointment (a greeting, a question, what you still need from them), with nothing about the appointment, its day or time, or whether it can be booked; null when there is nothing else to say. "reply" is written as usual.`
 
 // With only a part of the day, a usual hour for it (flagged as approximate)
 const PERIOD_DEFAULT_HOUR: Record<Exclude<Period, 'unspecified'>, number> = {
@@ -336,12 +353,17 @@ export function resolveAppointment(
 
 /**
  * Whether the assistant confirms an appointment itself: only when the client
- * lets it (auto-confirm), code checked the time against opening hours, and
- * the model saw no reason for a person to look at it. Anything else is a
- * request the team confirms — the reply then says so, and never "confirmed".
+ * lets it (auto-confirm) and code checked the time against opening hours.
+ * Anything else is a request the team confirms — the reply then says so, and
+ * never "confirmed".
+ *
+ * Code's decision alone. The model's needs_team_check is its report about
+ * itself, and that has been wrong both ways: no flag on a refusal it wrote
+ * (GT07), the flag on a time inside opening hours (GT08, 13 October 2026).
+ * It is kept on the lead for the team (ai_appointment.needs_team_check) and
+ * never decides what the visitor reads.
  */
-export const confirmsItself = (autoConfirm: boolean, validated: boolean, needsTeamCheck: boolean) =>
-  autoConfirm && validated && !needsTeamCheck
+export const confirmsItself = (autoConfirm: boolean, validated: boolean) => autoConfirm && validated
 
 /** Same instant? (Postgres and JS format timestamps differently) */
 export function sameInstant(a: string | null | undefined, b: string | null | undefined) {
@@ -430,6 +452,50 @@ function withoutAppointmentSentences(template: string) {
     .trim()
 }
 
+/** The appointment on record, in the system's own words: confirmed, or a request the team confirms */
+function bookedLine(outcome: Extract<BookingOutcome, { status: 'booked' }>, language: ReplyLanguage) {
+  const t = TEXTS[language]
+  return (outcome.confirmed ? t.bookedConfirmed : t.bookedRequest).replace('{time}', formatAppointment(outcome.at, language))
+}
+
+/**
+ * Everything the visitor is told about the appointment they asked for, in
+ * the system's words, whatever became of it. Used alone on a turn where the
+ * model reported an appointment: nothing the model wrote about it is sent.
+ *
+ * The model can't be asked what its own text says. In the eval of 13 October
+ * 2026 it refused a time that was fine, ended the refusal on the appointment
+ * placeholder and reported no doubt about the time, so one reply said the
+ * time was outside working hours and then "موعدك مؤكَّد ✅" (GT07). The
+ * decision is code's, so the sentence is code's, in both directions.
+ */
+export function appointmentLine(outcome: BookingOutcome, language: ReplyLanguage): string {
+  const t = TEXTS[language]
+  switch (outcome.status) {
+    case 'booked':
+      return bookedLine(outcome, language)
+    case 'kept':
+      return t.kept.replace('{time}', formatAppointment(outcome.at, language))
+    case 'ask_period':
+      return t.askPeriod.replace('{hour}', String(outcome.hour))
+    case 'outside_hours':
+      return describeOpening(outcome.hours, language)
+    case 'past':
+      return t.past
+    case 'needs_details': {
+      const time = formatAppointment(outcome.at, language)
+      return outcome.handoff
+        ? t.needDetailsHandoff.replace('{time}', time)
+        : t.needDetails
+            .replace('{time}', time)
+            .replace('{missing}', outcome.missing.map((field) => (field === 'name' ? t.missingName : t.missingPhone)).join(t.and))
+    }
+    case 'none':
+      // No usable day and time in what was reported, or the booking failed
+      return t.askTime
+  }
+}
+
 /**
  * The reply as the visitor gets it. The model's text never states the time:
  * the placeholder is filled with the appointment that is actually on record,
@@ -453,24 +519,16 @@ export function renderReply(template: string, outcome: BookingOutcome, language:
   // booking goes, the rest of its answer stays, and code says why
   if (outcome.status === 'outside_hours' || outcome.status === 'past' || outcome.status === 'needs_details') {
     const rest = withoutAppointmentSentences(template)
-    let said: string
-    if (outcome.status === 'outside_hours') said = describeOpening(outcome.hours, language)
-    else if (outcome.status === 'past') said = t.past
-    else {
-      const time = formatAppointment(outcome.at, language)
-      said = outcome.handoff
-        ? t.needDetailsHandoff.replace('{time}', time)
-        : t.needDetails
-            .replace('{time}', time)
-            .replace('{missing}', outcome.missing.map((field) => (field === 'name' ? t.missingName : t.missingPhone)).join(t.and))
-    }
+    const said = appointmentLine(outcome, language)
     return rest ? `${rest}\n${said}` : said
   }
 
   const time = formatAppointment(outcome.at, language)
   if (!outcome.changed && !hasPlaceholder) return template
   const status = outcome.confirmed ? t.confirmed : t.pending
-  if (!hasPlaceholder) return `${template}\n${t.noted.replace('{time}', time)}\n${status}`
+  // A time asked for earlier became the appointment on this message, which
+  // was about something else: the model's answer, then the system's sentence
+  if (!hasPlaceholder) return [template, bookedLine(outcome, language)].filter(Boolean).join('\n')
 
   // Whether it is confirmed goes right after the sentence that states the
   // appointment, before anything the reply goes on to ask: "…6:00 مساءً.

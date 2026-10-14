@@ -48,9 +48,9 @@ const ask = (schema = false) =>
 describe('the reply schema as OpenAI strict structured output', () => {
   const schema = toOpenAiSchema(BOT_REPLY_SCHEMA)
 
-  it('keeps "contact" and "appointment" before "reply"', () => {
-    expect(Object.keys(schema.properties!)).toEqual(['contact', 'appointment', 'reply'])
-    expect(schema.required).toEqual(['contact', 'appointment', 'reply'])
+  it('keeps "contact", "appointment" and "other_answer" before "reply"', () => {
+    expect(Object.keys(schema.properties!)).toEqual(['contact', 'appointment', 'other_answer', 'reply'])
+    expect(schema.required).toEqual(['contact', 'appointment', 'other_answer', 'reply'])
   })
 
   it('closes every object and requires every property, optional ones as nullable', () => {
@@ -105,7 +105,7 @@ describe('replies and analyses through OpenAI', () => {
     })
     const sent = (bodies[0].response_format as { json_schema: { schema: { properties: object } } }).json_schema.schema
     // As it travels: JSON keeps the order the keys were written in
-    expect(Object.keys(sent.properties)).toEqual(['contact', 'appointment', 'reply'])
+    expect(Object.keys(sent.properties)).toEqual(['contact', 'appointment', 'other_answer', 'reply'])
   })
 
   it('sends no response_format for a plain reply', async () => {

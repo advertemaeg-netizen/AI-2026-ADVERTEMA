@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ar from '../../messages/ar.json'
+import { HELD_REQUEST_INSTRUCTIONS } from '@/lib/ai/appointment'
 import { geminiText, mockGemini, seedClient, type GeminiCall } from '../harness/helpers'
 import { analyseTranscript, botReply, lastVisitorMessage, newVisitorId, openEveryDay, sendVisitorMessage } from './webhook'
 
@@ -27,15 +28,19 @@ afterEach(() => {
 })
 
 /** The chat model answers each visitor message with what `script` holds for it */
-function chatModel(script: Record<string, Response | (() => Response)>) {
+function chatModel(script: Record<string, Response | ((call: GeminiCall) => Response)>) {
   mockGemini((call: GeminiCall) => {
     if (call.kind === 'embedding') return Response.json({ error: { message: 'no embeddings in tests' } }, { status: 503 })
     if (call.kind === 'analysis') return geminiText(JSON.stringify(analyseTranscript(call)))
     const answer = script[lastVisitorMessage(call)]
     if (!answer) throw new Error(`The test's chat model has no answer for "${lastVisitorMessage(call)}"`)
-    return typeof answer === 'function' ? answer() : answer.clone()
+    return typeof answer === 'function' ? answer(call) : answer.clone()
   })
 }
+
+/** Whether the model was told a time from earlier is held and may be booked on this message */
+const toldHeld = (call: GeminiCall) =>
+  ((call.body.systemInstruction as { parts?: { text?: string }[] }).parts?.[0]?.text ?? '').includes(HELD_REQUEST_INSTRUCTIONS)
 
 type Lead = {
   name: string | null
@@ -208,14 +213,26 @@ describe('no appointment without a name and a valid phone number', () => {
     expect(instant(lead.ai_appointment!.at)).toBe(TOMORROW_7PM)
   })
 
-  // eval case LC02: the booking and a one-word name in one message, then another question
+  // eval case LC02: the booking and a one-word name in one message, then
+  // another question. Code books the held time on that message with nothing
+  // reported, so code decides, and the model's reply — written without
+  // knowing — is not sent: only its answer to the question is.
   it('books the requested time on the next message, whatever it is about, once the details are there', async () => {
+    const told: boolean[] = []
     chatModel({
-      'عايز أحجز زراعة بكرة 7 مساءً، أنا سامح والرقم 01554108276': botReply('تمام يا سامح، حجزتلك {{appointment}}.', AT_7_TOMORROW, {
-        name: 'سامح',
-        phone: '01554108276',
-      }),
-      'والتأمين بيغطي؟': botReply('ابعت صورة الكارنيه والفريق هيرد عليك بالتغطية.', null, null),
+      'عايز أحجز زراعة بكرة 7 مساءً، أنا سامح والرقم 01554108276': (call) => {
+        told.push(toldHeld(call))
+        return botReply('تمام يا سامح، حجزتلك {{appointment}}.', AT_7_TOMORROW, { name: 'سامح', phone: '01554108276' })
+      },
+      'والتأمين بيغطي؟': (call) => {
+        told.push(toldHeld(call))
+        return botReply(
+          'ابعت صورة الكارنيه والفريق هيرد عليك بالتغطية. والميعاد اللي طلبته مش متاح، تحب وقت تاني؟',
+          null,
+          null,
+          'ابعت صورة الكارنيه والفريق هيرد عليك بالتغطية.'
+        )
+      },
     })
     const { say, leads } = await visitor()
 
@@ -224,15 +241,38 @@ describe('no appointment without a name and a valid phone number', () => {
     expect((await leads())[0]).toMatchObject({ appointment_at: null, phone: '+201554108276', name: null })
 
     const second = await say('والتأمين بيغطي؟')
+    // Told before it answered that the held time may be booked on this message
+    expect(told).toEqual([false, true])
     // The question is answered, and the appointment is stated from the record
     expect(second).toBe(
-      `ابعت صورة الكارنيه والفريق هيرد عليك بالتغطية.\n${APPOINTMENT.noted.replace('{time}', TOMORROW_7PM_TEXT)}\n${APPOINTMENT.confirmed}`
+      `ابعت صورة الكارنيه والفريق هيرد عليك بالتغطية.\n${APPOINTMENT.bookedConfirmed.replace('{time}', TOMORROW_7PM_TEXT)}`
     )
+    expect(second).not.toContain('مش متاح')
     const [lead] = await leads()
     expect(lead).toMatchObject({ name: 'سامح', status: 'appointment_booked', appointment_confirmed: true })
     expect(instant(lead.appointment_at)).toBe(TOMORROW_7PM)
     expect(lead.ai_appointment).not.toHaveProperty('pending')
     expect(lead.ai_extracted_data).toMatchObject({ name_incomplete: true })
+  })
+
+  // The other direction of the same turn: code refuses the held time, and the
+  // model, which reported nothing, wrote that it was booked
+  it('does not send the model\'s booking when code drops the held time on the next message', async () => {
+    chatModel({
+      'عايز أحجز بكرة الساعة 7 مساءً، رقمي 01002847901': botReply('تمام، حجزتلك {{appointment}}.', AT_7_TOMORROW, { phone: '01002847901' }),
+      'أنا كريم سامي': botReply('تمام يا كريم، اتسجل الميعاد ✅', null, { name: 'كريم سامي' }, null),
+    })
+    const { say, leads } = await visitor()
+    await say('عايز أحجز بكرة الساعة 7 مساءً، رقمي 01002847901')
+    expect((await leads())[0].ai_appointment).toMatchObject({ pending: true })
+
+    // The visitor comes back after the time has gone
+    vi.setSystemTime(new Date('2026-10-07T09:00:00.000Z'))
+    const reply = await say('أنا كريم سامي')
+
+    expect(reply).toBe(APPOINTMENT.past)
+    expect(reply).not.toContain('اتسجل')
+    expect((await leads())[0]).toMatchObject({ appointment_at: null, ai_appointment: null })
   })
 
   it('books at once when the name and the number come first', async () => {
@@ -243,7 +283,7 @@ describe('no appointment without a name and a valid phone number', () => {
     const { say, leads } = await visitor()
     await say('كريم سامي، 01002847901')
 
-    expect(await say('بكرة الساعة 7 مساءً')).toBe(`حجزتلك ${TOMORROW_7PM_TEXT}.\n${APPOINTMENT.confirmed}`)
+    expect(await say('بكرة الساعة 7 مساءً')).toBe(APPOINTMENT.bookedConfirmed.replace('{time}', TOMORROW_7PM_TEXT))
     const [lead] = await leads()
     expect(lead).toMatchObject({ name: 'كريم سامي', phone: '+201002847901', status: 'appointment_booked' })
     expect(lead.ai_extracted_data).toMatchObject({ name_incomplete: false })
@@ -259,7 +299,7 @@ describe('no appointment without a name and a valid phone number', () => {
     const { say, leads } = await visitor()
     await say('كريم سامي، 01002847901')
 
-    expect(await say('بكرة الساعة 7 مساءً')).toBe(`${APPOINTMENT.noted.replace('{time}', TOMORROW_7PM_TEXT)}\n${APPOINTMENT.confirmed}`)
+    expect(await say('بكرة الساعة 7 مساءً')).toBe(APPOINTMENT.bookedConfirmed.replace('{time}', TOMORROW_7PM_TEXT))
     expect(instant((await leads())[0].appointment_at)).toBe(TOMORROW_7PM)
   })
 

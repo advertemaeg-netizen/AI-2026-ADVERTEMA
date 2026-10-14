@@ -311,9 +311,8 @@ describe('a name code has accepted is not asked for again', () => {
   it('lets what code says of the booking be the way forward', () => {
     const at = '2026-10-06T16:00:00.000Z'
     const reply = compose({ template: 'محتاج اسمك بالكامل لو سمحت.', outcome: { status: 'booked', at, confirmed: true, changed: true } })
-    expect(reply.startsWith(hello('م'))).toBe(true)
-    expect(reply).toContain(A.confirmed)
-    expect(reply).not.toContain(A.askTime)
+    // The appointment's sentence opens with "تمام" itself
+    expect(reply).toBe(A.bookedConfirmed.replace('{time}', 'الثلاثاء 6 أكتوبر الساعة 7:00 مساءً'))
   })
 
   it('leaves alone a reply that is not about the visitor\'s name', () => {

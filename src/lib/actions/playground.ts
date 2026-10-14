@@ -92,7 +92,7 @@ export async function testBot(
 
   try {
     const settings = override ?? (await loadBotSettings(supabase, clientId))
-    const { reply: template, appointment } = await runBot({
+    const { reply: template, appointment, otherAnswer } = await runBot({
       supabase,
       clientId,
       client,
@@ -115,15 +115,15 @@ export async function testBot(
       record: { name: null, phone: null },
       visitorMessages,
       language: replyLanguage(settings.language, visitorMessages.at(-1) ?? ''),
-      appointmentReported: Boolean(appointment),
-      flaggedForTeam: appointment?.needs_team_check === true,
+      appointmentDecided: Boolean(appointment),
+      otherAnswer,
       outcome:
       resolved.status === 'resolved'
         ? {
             status: 'booked',
             at: resolved.at,
             // As the widget would: only a time code checked against opening hours is confirmed
-            confirmed: confirmsItself(settings.auto_confirm_appointments, resolved.validated, appointment?.needs_team_check === true),
+            confirmed: confirmsItself(settings.auto_confirm_appointments, resolved.validated),
             changed: true,
           }
         : resolved,

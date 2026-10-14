@@ -2,6 +2,7 @@ import {
   APPOINTMENT_PLACEHOLDER,
   SAVED_NAME_PLACEHOLDER,
   SAVED_PHONE_PLACEHOLDER,
+  appointmentLine,
   renderReply,
   type BookingOutcome,
   type ReplyLanguage,
@@ -119,8 +120,8 @@ export function composeReply({
   record,
   visitorMessages,
   language,
-  appointmentReported = false,
-  flaggedForTeam = false,
+  appointmentDecided = false,
+  otherAnswer = null,
   known,
 }: {
   /** The model's reply, placeholders included */
@@ -132,10 +133,14 @@ export function composeReply({
   /** Every message the visitor wrote in this conversation, this one included */
   visitorMessages: string[]
   language: ReplyLanguage
-  /** The model reported an appointment for this message (the outcome is what became of it) */
-  appointmentReported?: boolean
-  /** The model reported it with needs_team_check: it did not believe the time could be honoured */
-  flaggedForTeam?: boolean
+  /**
+   * Code decided something about the appointment on this message (the
+   * outcome is what): the model reported one, or a time held from earlier was
+   * booked or refused (confirmPending) with nothing reported
+   */
+  appointmentDecided?: boolean
+  /** The model's answer to whatever the message asked besides the appointment: all of its text that is sent when code decided */
+  otherAnswer?: string | null
   /** Without it the model's questions are not checked against what code holds */
   known?: Known
 }): string {
@@ -152,25 +157,20 @@ export function composeReply({
     return [...refusals, booking || (events.name === 'ask_again' ? t.nameAsk : '')].filter(Boolean).join('\n')
   }
 
-  // The model reported an appointment, code recorded it, and the model's
-  // text never states it: that text was written against the booking ("محتاج
-  // اسمك الرباعي الأول", or a refusal of a time that is in fact fine — both
-  // seen in the eval of 12 October 2026, each followed by the system's own
-  // "موعدك مؤكَّد ✅"). Two voices that disagree are worse than one: the record
-  // speaks alone.
+  // ONE RULE, in both directions: on any turn where code decides something
+  // about the appointment, code writes everything the visitor is told about
+  // it (appointmentLine) and the model's reply is not sent. What the model
+  // may add is its answer to something else the same message asked, which it
+  // writes in a field of its own. That covers the turn where the model
+  // reported nothing and a time held from earlier was booked or refused: the
+  // model's reply on that turn was written without knowing either.
   //
-  // The placeholder alone does not show the text agrees with the booking.
-  // In the frozen eval, case BK04, 13 October 2026, the model refused a time
-  // that was fine and ended on the placeholder: "ميعاد الساعة 1 الضهر خارج
-  // مواعيد فرع المعادي… {{appointment}}", which came out as the refusal and
-  // then "سجّلنا الموعد". It had reported the request with needs_team_check,
-  // its own statement that it did not believe the time could be honoured, so
-  // a text written under that belief is not kept either.
-  const contradicted =
-    appointmentReported &&
-    outcome.status === 'booked' &&
-    outcome.changed &&
-    (flaggedForTeam || !template.includes(APPOINTMENT_PLACEHOLDER))
+  // Two narrower rules came first and both failed, because both asked the
+  // model's output what the model's text meant: that a reply without the
+  // placeholder was written against the booking, and that a request flagged
+  // needs_team_check was. GT07, 13 October 2026: a refusal that ended on the
+  // placeholder, with no flag, sent as "…خارج مواعيد العمل… موعدك مؤكَّد ✅".
+  const said = appointmentDecided ? (otherAnswer ?? '') : template
 
   // Code has the visitor's name, as given, and is not asking for it again;
   // the model, told so, asks all the same when the business's own prompt
@@ -181,19 +181,31 @@ export function composeReply({
   // visitor is greeted by the name they gave and asked for the next thing the
   // booking needs. They are never told the name was short of a full one: the
   // flag is for the team.
-  // (Not when the record already speaks alone: none of the text is kept then.)
-  const nameSettled = !contradicted && Boolean(known?.name) && mentionsName(template)
+  const nameSettled = Boolean(known?.name) && mentionsName(said)
+  const sentences = said.split(SENTENCE_END)
   const text = nameSettled
-    ? template
-        .split(SENTENCE_END)
+    ? sentences
         .filter((sentence) => !isAboutName(sentence))
         .join('')
         .trim()
-    : template
+    : said
 
-  const rendered = renderReply(contradicted ? '' : text, outcome, language).trim()
+  const rendered = appointmentDecided
+    ? [
+        // The answer to the other question; a sentence that quotes the appointment is the system's to write
+        text
+          .split(SENTENCE_END)
+          .filter((sentence) => !sentence.includes(APPOINTMENT_PLACEHOLDER))
+          .join('')
+          .trim(),
+        appointmentLine(outcome, language),
+      ]
+        .filter(Boolean)
+        .join('\n')
+    : renderReply(text, outcome, language).trim()
   const reply = withoutUnsavedNumbers(renderSaved(rendered, record, language), record, visitorMessages, language)
-  if (!nameSettled || !known?.name) return reply
+  // The appointment's own sentence opens with "تمام": no second one before it
+  if (!nameSettled || !known?.name || outcome.status === 'booked') return reply
 
   const greeting = t.nameAck.replace('{name}', known.name.split(' ')[0])
   // A question the model asked about something else, or what code says of

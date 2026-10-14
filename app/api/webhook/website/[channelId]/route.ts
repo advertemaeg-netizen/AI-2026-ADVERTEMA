@@ -4,7 +4,7 @@ import { aiFailureReason, replyModel, type ChatTurn } from '@/lib/ai/provider'
 import { BOT_HISTORY_LIMIT, loadBotSettings, runBot } from '@/lib/ai/bot'
 import { detectLead } from '@/lib/ai/lead-detection'
 import { APPOINTMENT_PLACEHOLDER, replyLanguage, type BookingOutcome } from '@/lib/ai/appointment'
-import { appointmentOnRecord, confirmPending, recordAppointment, saveContact, savedRecord } from '@/lib/ai/booking'
+import { appointmentOnRecord, confirmPending, heldRequest, recordAppointment, saveContact, savedRecord } from '@/lib/ai/booking'
 import { composeReply, mentionsName, type SavedRecord } from '@/lib/ai/compose'
 import {
   EMPTY_CONTACT,
@@ -375,6 +375,16 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
     }
     let contact: ContactState | null = null
     try {
+      // A time held from earlier may become the appointment on this message
+      // without the model reporting one: it is told so before it answers
+      let held = false
+      if (settings.lead_qualification_enabled) {
+        try {
+          held = await heldRequest(supabase, conversationId)
+        } catch (error) {
+          console.error('[webhook/website] reading the held appointment request failed', error)
+        }
+      }
       const result = await runBot({
         supabase,
         clientId: channel.client_id,
@@ -384,6 +394,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
         operation: 'chat_reply',
         conversationId,
         knownContact: previousContact,
+        heldRequest: held,
       })
 
       // The model reported; code decides. The name and the number are
@@ -392,6 +403,9 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       let events: ContactEvents = { name: 'none', phone: 'none' }
       let booking: BookingOutcome = { status: 'none' }
       let bookingFailed = false
+      // Code decided something about the appointment on this message: then
+      // code alone speaks about it (composeReply)
+      let decided = result.appointment !== null
       if (settings.lead_qualification_enabled) {
         const read = readContact(previousContact, result.contact, message, visitorMessages)
         contact = read.state
@@ -435,7 +449,11 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
         // both are on record it becomes the appointment, whatever this
         // message is about
         try {
-          booking = (await confirmPending({ supabase, conversationId, businessHours: settings.business_hours })) ?? booking
+          const promoted = await confirmPending({ supabase, conversationId, businessHours: settings.business_hours })
+          if (promoted) {
+            booking = promoted
+            decided = true
+          }
         } catch (error) {
           console.error('[webhook/website] confirming the requested appointment failed', error)
           bookingFailed = true
@@ -463,7 +481,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       // Only when the reply talks about the visitor's name and code may have
       // to ask the next question itself: is a day and time on record already?
       let timeOnRecord = booking.status !== 'none'
-      if (!timeOnRecord && contact?.name && mentionsName(result.reply)) {
+      if (!timeOnRecord && contact?.name && mentionsName(decided ? (result.otherAnswer ?? '') : result.reply)) {
         try {
           timeOnRecord = (await appointmentOnRecord({ supabase, conversationId })).status === 'booked'
         } catch (error) {
@@ -483,8 +501,8 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
         record,
         visitorMessages,
         language: replyLanguage(settings.language, message),
-        appointmentReported: result.appointment !== null,
-        flaggedForTeam: result.appointment?.needs_team_check === true,
+        appointmentDecided: decided,
+        otherAnswer: result.otherAnswer,
         ...(contact
           ? {
               known: {

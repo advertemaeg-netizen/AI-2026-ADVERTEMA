@@ -5,6 +5,7 @@ import type { AiOperation } from '@/lib/ai/usage'
 import {
   APPOINTMENT_INSTRUCTIONS,
   BOT_REPLY_SCHEMA,
+  HELD_REQUEST_INSTRUCTIONS,
   botReplySchema,
   type AppointmentRequest,
 } from '@/lib/ai/appointment'
@@ -214,7 +215,9 @@ export function buildSystemPrompt(
   knowledge: Pick<RetrievedChunk, 'title' | 'content'>[],
   now = new Date(),
   /** The name and number as code holds them; only read with lead collection on */
-  contact: ContactState | null = null
+  contact: ContactState | null = null,
+  /** A time asked for earlier is held for the visitor's details; only read with lead collection on */
+  heldRequest = false
 ) {
   const guidelines = [
     `- Language: ${LANGUAGE_INSTRUCTIONS[settings.language]}`,
@@ -243,6 +246,7 @@ export function buildSystemPrompt(
     settings.lead_qualification_enabled
       ? APPOINTMENT_INSTRUCTIONS
       : '',
+    settings.lead_qualification_enabled && heldRequest ? HELD_REQUEST_INSTRUCTIONS : '',
     settings.lead_qualification_enabled && contact ? describeContact(contact) : '',
     knowledge.length > 0
       ? `Excerpts from the business's knowledge base that may answer the visitor's question:\n\n${knowledge
@@ -290,16 +294,32 @@ export function parseBotReply(text: string): {
   reply: string
   appointment: AppointmentRequest | null
   contact: ContactReport | null
+  otherAnswer: string | null
 } {
+  let json: unknown
   try {
-    const parsed = botReplySchema.safeParse(JSON.parse(text))
-    if (parsed.success) {
-      return { reply: parsed.data.reply, appointment: parsed.data.appointment ?? null, contact: parsed.data.contact ?? null }
-    }
+    json = JSON.parse(text)
   } catch {
-    // not JSON
+    // Not JSON: the model answered in plain text
+    return { reply: text, appointment: null, contact: null, otherAnswer: null }
   }
-  return { reply: text, appointment: null, contact: null }
+  const parsed = json !== null && typeof json === 'object' && !Array.isArray(json) ? botReplySchema.safeParse(json) : null
+  if (!parsed?.success) return { reply: text, appointment: null, contact: null, otherAnswer: null }
+
+  const reply = parsed.data.reply?.trim() ?? ''
+  const appointment = parsed.data.appointment ?? null
+  // With an appointment the reply is not sent, and the model leaves it empty.
+  // Without one an empty reply is no answer at all: failing here lets the
+  // caller's own fallback speak, where returning `text` would send the
+  // visitor the model's JSON.
+  if (!reply && !appointment) throw new Error('The model returned no reply')
+  return {
+    reply,
+    appointment,
+    contact: parsed.data.contact ?? null,
+    // Used only on a turn where code decides about the appointment (composeReply)
+    otherAnswer: parsed.data.other_answer?.trim() || null,
+  }
 }
 
 /**
@@ -321,6 +341,7 @@ export async function runBot({
   operation,
   conversationId = null,
   knownContact = null,
+  heldRequest = false,
 }: {
   supabase: SupabaseClient
   clientId: string
@@ -332,11 +353,15 @@ export async function runBot({
   conversationId?: string | null
   /** The name and number as code held them before this message (readContact) */
   knownContact?: ContactState | null
+  /** A time asked for earlier is held on the lead, and this message may book it (heldRequest) */
+  heldRequest?: boolean
 }): Promise<{
   reply: string
   appointment: AppointmentRequest | null
   /** The name and number the model says the latest message gave: unchecked (readContact) */
   contact: ContactReport | null
+  /** The model's answer to whatever the message asked besides the appointment: sent instead of `reply` when code decides about it (composeReply) */
+  otherAnswer: string | null
   raw: string
   debug: BotDebug
 }> {
@@ -350,7 +375,8 @@ export async function runBot({
     settings,
     retrieval.chunks.filter((chunk) => chunk.used),
     undefined,
-    knownContact
+    knownContact,
+    heldRequest
   )
 
   const generationStarted = performance.now()
@@ -362,14 +388,15 @@ export async function runBot({
     usage: { operation, clientId, conversationId },
   })
   const generationMs = performance.now() - generationStarted
-  const { reply, appointment, contact } = settings.lead_qualification_enabled
+  const { reply, appointment, contact, otherAnswer } = settings.lead_qualification_enabled
     ? parseBotReply(text)
-    : { reply: text, appointment: null, contact: null }
+    : { reply: text, appointment: null, contact: null, otherAnswer: null }
 
   return {
     reply,
     appointment,
     contact,
+    otherAnswer,
     // The model's answer before anything read it: kept with the message, to
     // tell a model that reported no appointment from code that dropped one
     raw: text,

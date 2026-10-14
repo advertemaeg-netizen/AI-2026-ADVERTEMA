@@ -132,7 +132,7 @@ describe('an hour with no part of the day', () => {
 
     const [lead] = await leadsOf(seeded)
     expect(instant(lead.appointment_at)).toBe('2026-10-06T18:00:00.000Z')
-    expect(body.reply).toBe(`حجزتلك الثلاثاء 6 أكتوبر الساعة 9:00 مساءً.\n${TEXT.confirmed}`)
+    expect(body.reply).toBe(TEXT.bookedConfirmed.replace('{time}', 'الثلاثاء 6 أكتوبر الساعة 9:00 مساءً'))
   })
 
   it.each([
@@ -161,7 +161,7 @@ describe('the playground', () => {
 
     expect(result).toEqual({
       ok: true,
-      reply: `حجزتلك الخميس 8 أكتوبر الساعة 6:00 مساءً.\n${TEXT.confirmed}`,
+      reply: TEXT.bookedConfirmed.replace('{time}', 'الخميس 8 أكتوبر الساعة 6:00 مساءً'),
       simulatedAppointment: THURSDAY_6PM,
     })
     expect(await leadsOf(seeded)).toEqual([])

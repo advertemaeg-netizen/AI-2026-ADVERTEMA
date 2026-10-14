@@ -228,7 +228,7 @@ describe('where the reply says the appointment is confirmed', () => {
 
   it('after the line the system adds when the reply never stated the appointment', () => {
     expect(renderReply('تمام يا أحمد. ممكن رقم موبايلك؟', booked(true), 'ar')).toBe(
-      `تمام يا أحمد. ممكن رقم موبايلك؟\n${T.noted.replace('{time}', TIME)}\n${T.confirmed}`
+      `تمام يا أحمد. ممكن رقم موبايلك؟\n${T.bookedConfirmed.replace('{time}', TIME)}`
     )
   })
 })

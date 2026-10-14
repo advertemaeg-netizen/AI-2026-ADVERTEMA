@@ -86,6 +86,14 @@ type Expect = {
   no_cjk?: boolean
   /** The last reply steers back to the business (declining alone is not enough) */
   redirects?: boolean
+  /**
+   * The model's "other_answer" on the last turn, the only text of its own
+   * that is sent with an appointment: whether it wrote one, and what it must
+   * not hold. Read from the model's field, not from the reply: this measures
+   * whether the model keeps what it thinks of the appointment out of it.
+   */
+  other_answer?: 'present' | 'absent'
+  other_answer_not_contains?: string[]
 }
 type Case = {
   id: string
@@ -260,6 +268,8 @@ type TurnRecord = {
   contact: ContactEvents
   /** What the visitor would have been sent */
   reply: string
+  /** The model's answer to something else the message asked, as it wrote it */
+  otherAnswer: string | null
   /** The appointment on record once this turn was answered */
   appointmentAt: string | null
   retrievalError: boolean
@@ -291,6 +301,7 @@ async function converse(bot: Bot, turns: string[]) {
       history,
       operation: 'playground',
       knownContact: contact,
+      heldRequest: pending !== null && !appointmentAt,
     })
 
     // saveContact: the name and number code accepts go on the open lead; a
@@ -306,6 +317,7 @@ async function converse(bot: Bot, turns: string[]) {
     // recordAppointment without the lead row: the assistant's own time, moved freely
     let booking: BookingOutcome = { status: 'none' }
     let confirmedOnRecord = false
+    let decided = result.appointment !== null
     if (result.appointment) {
       const resolved = resolveAppointment(result.appointment, { keepDayOf: appointmentAt ?? pending?.at ?? null, businessHours: hours })
       if (resolved.status === 'resolved') {
@@ -313,7 +325,7 @@ async function converse(bot: Bot, turns: string[]) {
         leadOpen = true
         fill()
         const missing = missingDetails(record.name, record.phone)
-        const confirmed = confirmsItself(settings.auto_confirm_appointments, resolved.validated, result.appointment.needs_team_check === true)
+        const confirmed = confirmsItself(settings.auto_confirm_appointments, resolved.validated)
         if (missing.length > 0) {
           if (!appointmentAt) pending = { at: resolved.at, confirmed }
           booking = {
@@ -336,6 +348,7 @@ async function converse(bot: Bot, turns: string[]) {
       // confirmPending: the time asked for earlier becomes the appointment
       const waiting = pending
       pending = null
+      decided = true
       const opening = hours?.enabled ? openingAt(hours, waiting.at) : null
       if (new Date(waiting.at).getTime() < Date.now()) booking = { status: 'past' }
       else if (opening && !opening.open) booking = { status: 'outside_hours', hours: opening.day }
@@ -356,8 +369,8 @@ async function converse(bot: Bot, turns: string[]) {
       record,
       visitorMessages: said,
       language: replyLanguage(settings.language, user),
-      appointmentReported: result.appointment !== null,
-      flaggedForTeam: result.appointment?.needs_team_check === true,
+      appointmentDecided: decided,
+      otherAnswer: result.otherAnswer,
       known: {
         name: contact.name,
         phone: contact.phone ?? record.phone,
@@ -374,6 +387,7 @@ async function converse(bot: Bot, turns: string[]) {
       contact: read.events,
       reply,
       appointmentAt,
+      otherAnswer: result.otherAnswer,
       retrievalError: result.debug.retrievalError,
     })
   }
@@ -516,6 +530,19 @@ function check(
       'name_incomplete',
       name !== null && nameIncomplete === expect.name_incomplete,
       name === null ? 'no name was accepted at all' : `name "${name}" ${nameIncomplete ? 'flagged incomplete' : 'not flagged'}`
+    )
+  }
+  const side = records[records.length - 1].otherAnswer
+  if (expect.other_answer) {
+    const ok = expect.other_answer === 'present' ? side !== null : side === null
+    add(`other_answer: ${expect.other_answer}`, ok, side === null ? 'the model wrote none' : `the model wrote: ${side}`)
+  }
+  if (expect.other_answer_not_contains) {
+    const found = expect.other_answer_not_contains.filter((needle) => contains(side ?? '', needle))
+    add(
+      'other_answer_not_contains',
+      found.length === 0,
+      found.length === 0 ? `none appears in: ${side ?? '(no other_answer)'}` : `appears in the model's other_answer: ${found.join(', ')} — ${side}`
     )
   }
   if (expect.no_cjk) {

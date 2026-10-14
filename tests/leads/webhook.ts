@@ -73,8 +73,10 @@ export const REPORTED_CONTACT = { name: 'كريم مصطفى', phone: null }
 export const botReply = (
   reply: string,
   appointment: Record<string, unknown> | null = null,
-  contact: { name?: string | null; phone?: string | null } | null = REPORTED_CONTACT
-) => geminiText(JSON.stringify({ contact, appointment, reply }))
+  contact: { name?: string | null; phone?: string | null } | null = REPORTED_CONTACT,
+  /** Its answer to something else the same message asked: the only text of its own sent with an appointment */
+  otherAnswer: string | null = null
+) => geminiText(JSON.stringify({ contact, appointment, other_answer: otherAnswer, reply }))
 
 /** Opening hours on the client: the assistant only confirms a time it could check against them */
 export async function openEveryDay(
