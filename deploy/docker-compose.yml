@@ -32,7 +32,25 @@ services:
       - TZ=Africa/Cairo
     labels:
       - traefik.enable=true
+      - traefik.http.services.advertema.loadbalancer.server.port=3000
+      # The app's host
+      - traefik.http.routers.advertema-mudrik.rule=Host(`app.mudrik-ai.com`)
+      - traefik.http.routers.advertema-mudrik.entrypoints=websecure
+      - traefik.http.routers.advertema-mudrik.tls.certresolver=letsencrypt
+      - traefik.http.routers.advertema-mudrik.service=advertema
+      # The old host, kept while clients' pasted widget snippets still name it
       - traefik.http.routers.advertema.rule=Host(`app.srv1995277.hstgr.cloud`)
       - traefik.http.routers.advertema.entrypoints=websecure
       - traefik.http.routers.advertema.tls.certresolver=letsencrypt
-      - traefik.http.services.advertema.loadbalancer.server.port=3000
+      - traefik.http.routers.advertema.service=advertema
+      # mudrik-ai.com and www → the app, with a real certificate, until a
+      # marketing site takes the apex over. Temporary (302), so browsers don't
+      # cache it. $$ is compose's escape for the regex's $.
+      - traefik.http.routers.advertema-apex.rule=Host(`mudrik-ai.com`) || Host(`www.mudrik-ai.com`)
+      - traefik.http.routers.advertema-apex.entrypoints=websecure
+      - traefik.http.routers.advertema-apex.tls.certresolver=letsencrypt
+      - traefik.http.routers.advertema-apex.service=advertema
+      - traefik.http.routers.advertema-apex.middlewares=advertema-to-app
+      - traefik.http.middlewares.advertema-to-app.redirectregex.regex=^https?://[^/]+/?(.*)$$
+      - traefik.http.middlewares.advertema-to-app.redirectregex.replacement=https://app.mudrik-ai.com/$${1}
+      - traefik.http.middlewares.advertema-to-app.redirectregex.permanent=false

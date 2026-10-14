@@ -6,7 +6,7 @@ instance that already serves n8n.
 | | |
 |---|---|
 | Server | Ubuntu 24.04 · `186.240.149.99` |
-| App URL | https://app.srv1995277.hstgr.cloud |
+| App URL | https://app.mudrik-ai.com (the old host `app.srv1995277.hstgr.cloud` still routes to the app during the move; `mudrik-ai.com` and `www` redirect to it) |
 | Reverse proxy | Traefik v3 (Docker provider, `exposedbydefault=false`, Let's Encrypt HTTP challenge, HTTP→HTTPS redirect) |
 | Image | `Dockerfile` — Node 22 alpine, Next.js `standalone` output, non-root user |
 | Compose | `deploy/docker-compose.yml` |
@@ -43,15 +43,17 @@ Secrets are never build args, so they're not stored in the image.
 
 ### DNS
 
-`app.srv1995277.hstgr.cloud` must resolve to the server, or Let's Encrypt can't
-issue the certificate:
+Every host in a router rule (`deploy/docker-compose.yml`) must resolve to the
+server, or Let's Encrypt can't issue its certificate:
 
 ```bash
-dig +short app.srv1995277.hstgr.cloud      # must print 186.240.149.99
+for h in app.mudrik-ai.com mudrik-ai.com www.mudrik-ai.com app.srv1995277.hstgr.cloud; do
+  echo "$h $(dig +short $h | tail -1)"     # each must print 186.240.149.99
+done
 ```
 
-If it doesn't, add an `A` record for `app` → `186.240.149.99` in the Hostinger
-DNS panel and wait for it to resolve.
+If one doesn't, add the record (an `A` record → `186.240.149.99`, or for `www` a
+`CNAME` to `mudrik-ai.com`) and wait for it to resolve.
 
 ### Certificate resolver
 
@@ -64,8 +66,10 @@ docker inspect <n8n-container> --format '{{json .Config.Labels}}' | tr ',' '\n' 
 ### Supabase
 
 1. **Auth → URL Configuration**
-   - Site URL: `https://app.srv1995277.hstgr.cloud`
-   - Redirect URLs: add `https://app.srv1995277.hstgr.cloud/**`
+   - Site URL: `https://app.mudrik-ai.com`
+   - Redirect URLs: `https://app.mudrik-ai.com/**`, and every other host that
+     still serves the app (now `https://app.srv1995277.hstgr.cloud/**`).
+     Add a host here **before** the app serves from it, or login there fails.
 
    Without this, sign-up confirmation and invite emails send people to
    `localhost`.
@@ -101,7 +105,7 @@ docker compose --env-file .env.production up -d --build
 # Check it
 docker compose --env-file .env.production ps     # STATUS should become "healthy"
 docker logs -f advertema                          # Ctrl+C to stop following
-curl -s https://app.srv1995277.hstgr.cloud/api/health   # {"ok":true}
+curl -s https://app.mudrik-ai.com/api/health   # {"ok":true}
 ```
 
 The first HTTPS request can take a few seconds while Traefik obtains the
@@ -199,7 +203,7 @@ Or rebuild from an older commit: `git checkout <commit>` then
 | Changed a `NEXT_PUBLIC_*` value but nothing changed | Those are compiled in — rebuild (`./deploy/update.sh` or `up -d --build`). |
 | Sign-up / invite emails link to `localhost` | Supabase **Site URL / Redirect URLs** still point at localhost — see *Supabase* above. |
 | `Failed to find Server Action` in logs right after an update | Browsers still have the previous release open; harmless, fixed by reloading the page. |
-| Widget doesn't appear on a client's site | The site still has an old (localhost) snippet — re-copy the embed code. Check the browser console on that site; `https://app.srv1995277.hstgr.cloud/widget.js` must load. |
+| Widget doesn't appear on a client's site | The site still has an old (localhost) snippet — re-copy the embed code. Check the browser console on that site; `https://app.mudrik-ai.com/widget.js` must load (or the old host's, for a snippet copied before the move). |
 | Widget shows "Chat is unavailable" / AI never answers | `GOOGLE_GEMINI_API_KEY` missing or quota exhausted (Gemini `429` in logs — the free tier is very small); channel paused; client not active. |
 | Agent replies don't reach the widget live | Supabase Realtime: the `20260927110000_widget_agent_broadcast` migration must be applied, and Realtime must allow public channels. |
 | Knowledge-base PDF upload fails with `Setting up fake worker failed` | The pdf.js worker wasn't copied into the image — `outputFileTracingIncludes` in `next.config.ts` must still list `pdfjs-dist/legacy/build/pdf.worker.mjs`. |
