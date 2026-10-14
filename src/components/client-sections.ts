@@ -1,9 +1,10 @@
-import { BookOpen, Bot, FlaskConical, Radio, Receipt } from 'lucide-react'
+import { BookOpen, Bot, FlaskConical, MapPin, Radio, Receipt } from 'lucide-react'
 
 /** Per-client sub-pages, shared by the client tabs and the sidebar. */
 export function clientSections(clientId: string) {
   return [
     { key: 'channels', href: `/dashboard/clients/${clientId}/channels`, icon: Radio },
+    { key: 'branches', href: `/dashboard/clients/${clientId}/branches`, icon: MapPin },
     { key: 'knowledge', href: `/dashboard/clients/${clientId}/knowledge`, icon: BookOpen },
     { key: 'botSettings', href: `/dashboard/clients/${clientId}/bot-settings`, icon: Bot },
     { key: 'playground', href: `/dashboard/clients/${clientId}/playground`, icon: FlaskConical },

@@ -438,10 +438,109 @@
   "clientNav": {
     "label": "Client pages",
     "channels": "Channels",
+    "branches": "Branches",
     "knowledge": "Knowledge base",
     "playground": "Try the bot",
     "botSettings": "Bot settings",
     "subscription": "Subscription"
+  },
+  "branches": {
+    "title": "{client} branches",
+    "description": "Each branch's opening hours, the days it is closed, and how many visitors one slot takes.",
+    "notInUse": "The assistant still books against the opening hours in bot settings. Branch hours and closures apply to booking in the next update.",
+    "empty": "No branches yet. Add this client's first branch.",
+    "add": "Add branch",
+    "addTitle": "Add a branch",
+    "editTitle": "Edit {name}",
+    "formDescription": "The name as visitors write it, and the hours appointments are booked against.",
+    "create": "Add branch",
+    "save": "Save changes",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteTitle": "Delete {name}?",
+    "deleteDescription": "The branch and its closures will be deleted. This can't be undone.",
+    "deleteBlocked": "It has {count} leads, so it can't be deleted. Deactivate it instead to keep its booking history.",
+    "fields": {
+      "name": "Branch name",
+      "timezone": "Time zone",
+      "capacity": "Visitors per slot",
+      "slotMinutes": "Slot length",
+      "hoursSet": "Opening hours set",
+      "active": "Branch is open for booking"
+    },
+    "placeholders": {
+      "name": "e.g. Maadi"
+    },
+    "hints": {
+      "capacity": "How many bookings the same slot can take.",
+      "hoursNotSet": "Without opening hours, any time is recorded as a request the team confirms; the assistant never confirms it.",
+      "overnight": "A closing time earlier than the opening time means it closes after midnight.",
+      "inactive": "A deactivated branch takes no bookings and keeps its booking history."
+    },
+    "slot": "{minutes} minutes",
+    "hours": {
+      "title": "Opening hours",
+      "closed": "Closed",
+      "notSet": "Not set",
+      "from": "From",
+      "to": "To",
+      "addRange": "Another range",
+      "removeRange": "Remove range",
+      "openDay": "Open"
+    },
+    "status": {
+      "active": "Open",
+      "inactive": "Deactivated"
+    },
+    "leads": "{count, plural, =0 {No leads} one {1 lead} other {# leads}}",
+    "inactiveUpcoming": "This branch is deactivated and has {count, plural, one {1 upcoming appointment} other {# upcoming appointments}}.",
+    "closures": {
+      "title": "Closed days",
+      "empty": "No closed days coming up.",
+      "add": "Add closed days",
+      "addTitle": "Close the branch",
+      "addDescription": "One day or several in a row, such as Eid. No bookings are taken on them.",
+      "from": "From",
+      "to": "To",
+      "reason": "Reason",
+      "reasonPlaceholder": "e.g. Eid al-Adha",
+      "branches": "Branches",
+      "allBranches": "All branches",
+      "create": "Add",
+      "delete": "Remove closed day",
+      "past": "Past"
+    },
+    "toast": {
+      "created": "Branch added.",
+      "saved": "Branch saved.",
+      "linked": "{count, plural, one {1 lead that named this branch was linked to it.} other {# leads that named this branch were linked to it.}}",
+      "deleted": "Branch deleted.",
+      "closuresAdded": "{count, plural, =0 {Those days are already closed.} one {1 closed day added.} other {# closed days added.}}",
+      "closureDeleted": "Closed day removed."
+    },
+    "errors": {
+      "unauthorized": "Sign in again.",
+      "forbidden": "You don't have permission to edit branches.",
+      "notFound": "Branch not found.",
+      "validation": "Check the highlighted fields.",
+      "impersonating": "Changes are disabled while viewing as a client.",
+      "duplicateName": "Another branch has the same name.",
+      "hasLeads": "This branch has leads, so it can't be deleted. Deactivate it instead.",
+      "unknown": "Something went wrong. Try again."
+    },
+    "fieldErrors": {
+      "required": "Required.",
+      "tooLong": "Too long.",
+      "duplicateName": "Another branch has the same name.",
+      "capacity": "From 1 to 50.",
+      "invalidTime": "Invalid time.",
+      "emptyRange": "Opening and closing times are the same.",
+      "overlap": "The ranges overlap.",
+      "tooManyRanges": "Three ranges at most.",
+      "invalidDate": "Invalid date.",
+      "endBeforeStart": "The end is before the start.",
+      "spanTooLong": "31 days at most at a time."
+    }
   },
   "botSettings": {
     "title": "{client} bot settings",
