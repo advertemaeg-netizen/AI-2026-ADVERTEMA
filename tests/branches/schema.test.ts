@@ -123,11 +123,21 @@ describe('today\'s opening hours become the first branch\'s', () => {
 })
 
 describe('branches of a client', () => {
-  it('takes defaults that never confirm: hours not set, one visitor per 30-minute slot', async () => {
+  // The user's decision, 2026-10-14: a client is never silently without a
+  // branch. The one it starts with confirms nothing until its hours are set.
+  it('gives every new client one branch, with defaults that never confirm: hours not set, one visitor per 30-minute slot', async () => {
     const { clientId } = await seedClient()
-    await addBranch(clientId, 'المعادي')
-    const { data } = await serviceClient().from('branches').select('*').eq('client_id', clientId).single()
-    expect(data).toMatchObject({ business_hours: null, capacity_per_slot: 1, slot_minutes: 30, is_active: true, timezone: 'Africa/Cairo' })
+    const { data } = await serviceClient().from('branches').select('*').eq('client_id', clientId)
+    expect(data).toEqual([
+      expect.objectContaining({
+        name: 'الفرع الرئيسي',
+        business_hours: null,
+        capacity_per_slot: 1,
+        slot_minutes: 30,
+        is_active: true,
+        timezone: 'Africa/Cairo',
+      }),
+    ])
   })
 
   it('refuses a second branch whose name reads the same, and a shape of hours it cannot read', async () => {
@@ -213,8 +223,8 @@ describe('who sees and manages branches', () => {
 
     const { error } = await userClient(admin.id).from('branches').insert({ client_id: clientId, name: 'المعادي' })
     expect(error).toBeNull()
-    const seen = await userClient(admin.id).from('branches').select('name').eq('client_id', clientId)
-    expect(seen.data).toEqual([{ name: 'المعادي' }])
+    const seen = await userClient(admin.id).from('branches').select('name').eq('client_id', clientId).order('created_at')
+    expect(seen.data).toEqual([{ name: 'الفرع الرئيسي' }, { name: 'المعادي' }])
 
     const hidden = await userClient(stranger.id).from('branches').select('name').eq('client_id', clientId)
     expect(hidden.data).toEqual([])

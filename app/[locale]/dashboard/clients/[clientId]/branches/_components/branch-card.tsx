@@ -99,9 +99,15 @@ export function BranchCard({
         <div className="grid gap-1.5">
           <p className="text-sm font-medium">{t('hours.title')}</p>
           {branch.business_hours === null ? (
-            <p className="text-sm text-muted-foreground">
-              {t('hours.notSet')} — {t('hints.hoursNotSet')}
-            </p>
+            // Not a quiet grey line: a branch without hours confirms nothing,
+            // and every new client starts with one
+            <div className="flex flex-wrap items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-600" />
+              <p className="min-w-0 flex-1">{t('hours.needed')}</p>
+              <Button size="sm" onClick={() => setEditOpen(true)}>
+                {t('hours.setNow')}
+              </Button>
+            </div>
           ) : (
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
               {WEEK_DAYS.map((day) => {

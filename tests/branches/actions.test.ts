@@ -29,6 +29,9 @@ vi.mock('next/cache', () => ({ revalidatePath: () => {} }))
 
 const admin = serviceClient()
 
+/** The branch every client starts with (create_default_branch), hours not set */
+const DEFAULT_NAME = 'الفرع الرئيسي'
+
 // The demo clinic's two branches, as its knowledge base describes them
 const MAADI: BranchInput = { ...DEFAULT_BRANCH_INPUT, name: 'المعادي', business_hours: { ...uniformWeek('12:00', '22:00'), fri: [['15:00', '22:00']] } }
 const TAGAMMU: BranchInput = { ...DEFAULT_BRANCH_INPUT, name: 'التجمع الخامس', business_hours: uniformWeek('13:00', '22:00', ['fri']) }
@@ -53,6 +56,12 @@ async function branchesInDb() {
   return data!
 }
 
+async function branchId(name: string) {
+  const branch = (await branchesInDb()).find((b) => b.name === name)
+  if (!branch) throw new Error(`no branch named ${name}`)
+  return branch.id as string
+}
+
 async function addLead(fields: Record<string, unknown>) {
   const { data, error } = await admin.from('leads').insert({ client_id: world.clientId, ...fields }).select('id').single<{ id: string }>()
   if (error) throw new Error(error.message)
@@ -64,20 +73,22 @@ describe('adding and editing a branch', () => {
     const named = await addLead({ branch: 'فرع المعادى' })
     signInAs(world.orgAdmin)
 
+    expect(await createBranchAction(world.clientId, TAGAMMU)).toEqual({ ok: true, linkedLeads: 0 })
     expect(await createBranchAction(world.clientId, MAADI)).toEqual({ ok: true, linkedLeads: 1 })
-    const [saved] = await branchesInDb()
-    expect(saved).toMatchObject({ name: 'المعادي', business_hours: MAADI.business_hours })
+    const branches = await branchesInDb()
+    expect(branches.map((b) => b.name)).toEqual([DEFAULT_NAME, 'التجمع الخامس', 'المعادي'])
+    expect(branches[2].business_hours).toEqual(MAADI.business_hours)
     const { data: lead } = await admin.from('leads').select('branch_id').eq('id', named).single()
-    expect(lead!.branch_id).toBe(saved.id)
+    expect(lead!.branch_id).toBe(branches[2].id)
   })
 
-  it('links the leads that named a branch once it is renamed to that name', async () => {
-    signInAs(world.orgAdmin)
-    await createBranchAction(world.clientId, { ...DEFAULT_BRANCH_INPUT, name: 'الفرع الرئيسي' })
-    const [branch] = await branchesInDb()
+  // What Ahmed does first on the demo: the branch the migration made becomes المعادي
+  it('links the leads that named a branch once the starting branch is renamed to that name', async () => {
     await addLead({ branch: 'المعادي' })
+    signInAs(world.orgAdmin)
 
-    expect(await updateBranchAction(branch.id, MAADI)).toEqual({ ok: true, linkedLeads: 1 })
+    expect(await updateBranchAction(await branchId(DEFAULT_NAME), MAADI)).toEqual({ ok: true, linkedLeads: 1 })
+    expect((await branchesInDb()).map((b) => b.name)).toEqual(['المعادي'])
   })
 
   it('refuses hours that overlap, or open and close at the same minute, and says which day', async () => {
@@ -90,7 +101,7 @@ describe('adding and editing a branch', () => {
     })
     const empty = { ...MAADI, business_hours: { ...MAADI.business_hours!, sun: [['12:00', '12:00']] as [string, string][] } }
     expect(await createBranchAction(world.clientId, empty)).toMatchObject({ ok: false, fieldErrors: { 'business_hours.sun.0': 'emptyRange' } })
-    expect(await branchesInDb()).toEqual([])
+    expect((await branchesInDb()).map((b) => b.name)).toEqual([DEFAULT_NAME])
   })
 
   it('accepts a split day and a range past midnight, as Ramadan hours are', async () => {
@@ -113,39 +124,36 @@ describe('adding and editing a branch', () => {
     expect(await createBranchAction(world.clientId, MAADI)).toEqual({ ok: false, error: 'notFound' })
     signInAs(world.orgAdmin, true)
     expect(await createBranchAction(world.clientId, MAADI)).toEqual({ ok: false, error: 'impersonating' })
-    expect(await branchesInDb()).toEqual([])
+    expect((await branchesInDb()).map((b) => b.name)).toEqual([DEFAULT_NAME])
   })
 
   it('does not let an admin of another organization edit a branch it cannot see', async () => {
-    signInAs(world.orgAdmin)
-    await createBranchAction(world.clientId, MAADI)
-    const [branch] = await branchesInDb()
+    const id = await branchId(DEFAULT_NAME)
     signInAs(world.outsider)
-    expect(await updateBranchAction(branch.id, { ...MAADI, name: 'تم الاختراق' })).toEqual({ ok: false, error: 'notFound' })
-    expect((await branchesInDb())[0].name).toBe('المعادي')
+    expect(await updateBranchAction(id, { ...MAADI, name: 'تم الاختراق' })).toEqual({ ok: false, error: 'notFound' })
+    expect((await branchesInDb()).map((b) => b.name)).toEqual([DEFAULT_NAME])
   })
 })
 
 describe('deleting a branch', () => {
   it('deletes a branch nobody was booked at, and keeps one with leads, which is deactivated instead', async () => {
     signInAs(world.orgAdmin)
-    await createBranchAction(world.clientId, MAADI)
     await createBranchAction(world.clientId, TAGAMMU)
-    const [maadi, tagammu] = await branchesInDb()
-    await addLead({ branch_id: maadi.id })
+    const main = await branchId(DEFAULT_NAME)
+    await addLead({ branch_id: main })
 
-    expect(await deleteBranchAction(maadi.id)).toEqual({ ok: false, error: 'hasLeads' })
-    expect(await deleteBranchAction(tagammu.id)).toEqual({ ok: true })
-    expect((await branchesInDb()).map((b) => b.name)).toEqual(['المعادي'])
+    expect(await deleteBranchAction(main)).toEqual({ ok: false, error: 'hasLeads' })
+    expect(await deleteBranchAction(await branchId('التجمع الخامس'))).toEqual({ ok: true })
+    expect((await branchesInDb()).map((b) => b.name)).toEqual([DEFAULT_NAME])
   })
 })
 
 describe('closed days', () => {
   it('closes every chosen branch on every day of the span, and a day already closed stays as it was', async () => {
     signInAs(world.orgAdmin)
-    await createBranchAction(world.clientId, MAADI)
+    await updateBranchAction(await branchId(DEFAULT_NAME), MAADI)
     await createBranchAction(world.clientId, TAGAMMU)
-    const ids = (await branchesInDb()).map((b) => b.id)
+    const ids = [await branchId('المعادي'), await branchId('التجمع الخامس')]
 
     // Eid al-Adha 2027, both branches
     const eid = { from: '2027-05-16', to: '2027-05-17', reason: 'عيد الأضحى', branchIds: ids }
@@ -159,34 +167,38 @@ describe('closed days', () => {
 
   it('refuses a span that ends before it starts, or runs past 31 days', async () => {
     signInAs(world.orgAdmin)
-    await createBranchAction(world.clientId, MAADI)
-    const [branch] = await branchesInDb()
-    expect(await addClosuresAction(world.clientId, { from: '2027-05-17', to: '2027-05-16', reason: '', branchIds: [branch.id] })).toMatchObject({
+    const id = await branchId(DEFAULT_NAME)
+    expect(await addClosuresAction(world.clientId, { from: '2027-05-17', to: '2027-05-16', reason: '', branchIds: [id] })).toMatchObject({
       ok: false,
       fieldErrors: { to: 'endBeforeStart' },
     })
-    expect(await addClosuresAction(world.clientId, { from: '2027-01-01', to: '2027-02-15', reason: '', branchIds: [branch.id] })).toMatchObject({
+    expect(await addClosuresAction(world.clientId, { from: '2027-01-01', to: '2027-02-15', reason: '', branchIds: [id] })).toMatchObject({
       ok: false,
       fieldErrors: { to: 'spanTooLong' },
     })
   })
 
+  // UNPROVEN NEGATIVE (2026-10-14): this test has not been seen to go red.
+  // Disabling the check it covers, to watch it fail, was refused by the
+  // permission classifier as weakening a security check. The check is in
+  // place; the test's power to catch its removal is not demonstrated.
   it('will not close another client\'s branch through this client', async () => {
     const other = await seedClient()
-    const { data: theirs } = await admin.from('branches').insert({ client_id: other.clientId, name: 'المعادي' }).select('id').single()
+    const { data: theirs } = await admin.from('branches').select('id').eq('client_id', other.clientId).single()
     signInAs(world.orgAdmin)
     expect(await addClosuresAction(world.clientId, { from: '2027-05-16', to: '2027-05-16', reason: '', branchIds: [theirs!.id] })).toEqual({
       ok: false,
       error: 'notFound',
     })
+    const { count } = await admin.from('branch_closures').select('id', { count: 'exact', head: true }).eq('branch_id', theirs!.id)
+    expect(count).toBe(0)
   })
 
   it('removes one closed day', async () => {
     signInAs(world.orgAdmin)
-    await createBranchAction(world.clientId, MAADI)
-    const [branch] = await branchesInDb()
-    await addClosuresAction(world.clientId, { from: '2027-05-16', to: '2027-05-16', reason: '', branchIds: [branch.id] })
-    const { data: closure } = await admin.from('branch_closures').select('id').eq('branch_id', branch.id).single()
+    const id = await branchId(DEFAULT_NAME)
+    await addClosuresAction(world.clientId, { from: '2027-05-16', to: '2027-05-16', reason: '', branchIds: [id] })
+    const { data: closure } = await admin.from('branch_closures').select('id').eq('branch_id', id).single()
     expect(await deleteClosureAction(closure!.id)).toEqual({ ok: true })
   })
 })
@@ -194,12 +206,13 @@ describe('closed days', () => {
 describe('the page\'s list', () => {
   it('shows each branch with its upcoming closed days, its leads and its upcoming appointments', async () => {
     signInAs(world.orgAdmin)
-    await createBranchAction(world.clientId, MAADI)
+    await updateBranchAction(await branchId(DEFAULT_NAME), MAADI)
     await createBranchAction(world.clientId, { ...TAGAMMU, is_active: false })
-    const [maadi, tagammu] = await branchesInDb()
-    await addClosuresAction(world.clientId, { from: '2099-05-16', to: '2099-05-16', reason: 'عيد', branchIds: [maadi.id] })
-    await addLead({ branch_id: tagammu.id, appointment_at: '2099-01-01T10:00:00Z' })
-    await addLead({ branch_id: tagammu.id, appointment_at: '2020-01-01T10:00:00Z' })
+    const maadi = await branchId('المعادي')
+    const tagammu = await branchId('التجمع الخامس')
+    await addClosuresAction(world.clientId, { from: '2099-05-16', to: '2099-05-16', reason: 'عيد', branchIds: [maadi] })
+    await addLead({ branch_id: tagammu, appointment_at: '2099-01-01T10:00:00Z' })
+    await addLead({ branch_id: tagammu, appointment_at: '2020-01-01T10:00:00Z' })
 
     const branches = await getBranches(world.clientId)
     expect(branches.map((b) => [b.name, b.closures.length, b.leadCount, b.upcomingCount])).toEqual([

@@ -10,7 +10,8 @@
 --
 -- What this migration does, in order:
 --   1. branches and branch_closures, with RLS like every client table
---   2. one branch per client, carrying the hours bot_settings holds today
+--   2. one branch per client, carrying the hours bot_settings holds today,
+--      and one with hours not set for every client created from now on
 --   3. leads.branch_id, and a backfill by normalised branch name
 -- Nothing reads these yet: the bot still reads bot_settings.business_hours
 -- until the booking gate moves to branches, and that column is dropped later
@@ -218,6 +219,30 @@ begin
    where not exists (select 1 from public.branches b where b.client_id = c.id);
 end;
 $$;
+
+-- Every client made from here on gets one branch too, with hours NOT set.
+-- It books exactly like having none (requests only, nothing confirmed), but
+-- it is there on the الفروع page asking to be filled in, instead of a
+-- client nobody noticed has no branch (the user's decision, 2026-10-14).
+create function public.create_default_branch()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.branches (client_id, name)
+  select new.id, 'الفرع الرئيسي'
+   where not exists (select 1 from public.branches b where b.client_id = new.id);
+  return new;
+end;
+$$;
+
+revoke execute on function public.create_default_branch() from public, anon, authenticated;
+
+create trigger clients_default_branch
+  after insert on public.clients
+  for each row execute function public.create_default_branch();
 
 -- --------------------------------------------
 -- 3. Which branch a lead is for. Nullable: a lead with no branch is a lead

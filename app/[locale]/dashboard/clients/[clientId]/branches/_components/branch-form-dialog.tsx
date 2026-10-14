@@ -305,6 +305,14 @@ function WeekEditor({
                 </div>
               )}
             </div>
+            {/* Said out loud: "22:00 to 13:00" is a valid range, open all night */}
+            {ranges
+              .filter(([from, to]) => to < from)
+              .map(([from, to]) => (
+                <p key={`${from}-${to}`} className="text-xs text-amber-700 dark:text-amber-400">
+                  {t('hours.overnightRange', { from, to })}
+                </p>
+              ))}
             {errorKey && <p className="text-xs text-destructive">{t(`fieldErrors.${errors[errorKey]}`)}</p>}
           </div>
         )
