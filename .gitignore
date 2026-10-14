@@ -45,3 +45,7 @@ supabase/.temp/
 
 # eval run outputs (npm run eval)
 eval/eval-results-*.json
+
+# working files: probe scripts, diffs, intermediate output. Never committed;
+# backups and anything carrying client data go to $HOME/db-backups instead
+/.scratch/

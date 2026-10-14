@@ -273,6 +273,8 @@ type TurnRecord = {
   /** The appointment on record once this turn was answered */
   appointmentAt: string | null
   retrievalError: boolean
+  /** The knowledge chunks that reached the prompt on this turn, best first */
+  chunks: { title: string; chunk_index: number; similarity: number }[]
 }
 
 async function converse(bot: Bot, turns: string[]) {
@@ -389,6 +391,9 @@ async function converse(bot: Bot, turns: string[]) {
       appointmentAt,
       otherAnswer: result.otherAnswer,
       retrievalError: result.debug.retrievalError,
+      chunks: result.debug.chunks
+        .filter((chunk) => chunk.used)
+        .map(({ title, chunk_index, similarity }) => ({ title, chunk_index, similarity: Math.round(similarity * 1000) / 1000 })),
     })
   }
   return { history, records, appointmentAt, contact, record, leadOpen }
@@ -655,6 +660,34 @@ function fingerprint(systemPrompt: string) {
   return { sha256: createHash('sha256').update(systemPrompt).digest('hex').slice(0, 12), chars: systemPrompt.length }
 }
 
+/**
+ * Which knowledge base a run was measured on: a hash of every stored chunk
+ * (document title, chunk index, content and the model that embedded it),
+ * the set retrieval chooses from. The prompt hash alone left half the input
+ * unrecorded: on 13 October 2026 the demo's hours document was replaced at
+ * 11:42 UTC, between the 11:21 run and the next, and nothing in the results
+ * said so.
+ */
+async function knowledgeFingerprint(admin: Admin, clientId: string) {
+  const { data, error } = await admin
+    .from('knowledge_documents')
+    .select('title, chunk_index, content, embedding_model, source_document_id, created_at')
+    .eq('client_id', clientId)
+    .not('source_document_id', 'is', null)
+    .order('title')
+    .order('chunk_index')
+    .returns<{ title: string; chunk_index: number; content: string; embedding_model: string | null; source_document_id: string; created_at: string }[]>()
+  if (error) throw new Error(`loading the knowledge base: ${error.message}`)
+  const hash = createHash('sha256')
+  for (const chunk of data) hash.update(JSON.stringify([chunk.title, chunk.chunk_index, chunk.content, chunk.embedding_model]) + '\n')
+  return {
+    sha256: hash.digest('hex').slice(0, 12),
+    documents: new Set(data.map((chunk) => chunk.source_document_id)).size,
+    chunks: data.length,
+    latestUpload: data.reduce<string | null>((latest, chunk) => (!latest || chunk.created_at > latest ? chunk.created_at : latest), null),
+  }
+}
+
 async function promptSavedAt(admin: Admin, clientId: string) {
   const { data } = await admin.from('bot_settings').select('updated_at').eq('client_id', clientId).maybeSingle<{ updated_at: string }>()
   return data?.updated_at ?? null
@@ -755,10 +788,12 @@ async function main() {
   const since = await usageWatermark(admin, demo.clientId)
   // The run uses the settings loaded above; the fingerprint says which prompt that was
   const prompt = { ...fingerprint(settings.system_prompt), savedAt: await promptSavedAt(admin, demo.clientId) }
+  const knowledge = await knowledgeFingerprint(admin, demo.clientId)
   console.log(
     `provider ${provider} · model ${model} · temperature ${settings.temperature} · eval/${casesFile}: ${cases.length} cases × ${repeats}\n` +
       `database ${new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).host} · demo client ${demo.clientId} · ${chunks ?? '?'} knowledge chunks\n` +
-      `system prompt ${prompt.sha256} · ${prompt.chars} chars · saved ${prompt.savedAt ?? '?'}\n`
+      `system prompt ${prompt.sha256} · ${prompt.chars} chars · saved ${prompt.savedAt ?? '?'}\n` +
+      `knowledge base ${knowledge.sha256} · ${knowledge.documents} documents · ${knowledge.chunks} chunks · latest upload ${knowledge.latestUpload ?? '?'}\n`
   )
 
   const results = []
@@ -793,13 +828,15 @@ async function main() {
   // Edited in the dashboard while the run was in flight: the run itself kept
   // the prompt it started with, but whoever compares it should know
   const promptNow = fingerprint((await loadBotSettings(admin, demo.clientId)).system_prompt)
+  const knowledgeNow = await knowledgeFingerprint(admin, demo.clientId)
   const summary = {
     provider,
     model,
     set: casesFile,
     temperature: settings.temperature,
-    // Two runs are comparable only when this is the same in both (RUNNER.md)
+    // Two runs are comparable only when BOTH of these are the same in both (RUNNER.md)
     prompt: { ...prompt, editedDuringRun: promptNow.sha256 !== prompt.sha256 },
+    knowledge: { ...knowledge, editedDuringRun: knowledgeNow.sha256 !== knowledge.sha256 },
     knowledgeChunks: chunks ?? null,
     startedAt: startedAt.toISOString(),
     finishedAt: new Date().toISOString(),
@@ -827,6 +864,9 @@ async function main() {
   for (const c of critical) console.log(`CRITICAL ${c.case} run ${c.run}: ${c.assertion} — ${c.detail}`)
   if (summary.prompt.editedDuringRun) {
     console.log(`the demo bot's system prompt was edited during the run (now ${promptNow.sha256}): later runs are not comparable to this one`)
+  }
+  if (summary.knowledge.editedDuringRun) {
+    console.log(`the demo's knowledge base changed during the run (now ${knowledgeNow.sha256}): later runs are not comparable to this one`)
   }
   if (summary.usage.unpricedRows) console.log(`${summary.usage.unpricedRows} ai_usage rows have no price: the cost below is too low`)
   if (summary.usage.runsWithIncompleteUsage) {
