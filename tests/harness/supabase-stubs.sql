@@ -79,3 +79,25 @@ $$;
 
 revoke execute on function public.test_create_auth_user(text) from public, anon, authenticated;
 grant execute on function public.test_create_auth_user(text) to service_role;
+
+-- Test-only: runs one statement and returns the SQLSTATE it failed with, or
+-- null when it succeeded (rolled back either way is NOT promised: a success
+-- stays). A refusal the database makes cannot be asserted over REST here: a
+-- failed statement drops PostgREST's one connection (pglite#958, see
+-- tests/harness/helpers.ts) and the caller sees PGRST001 instead of the
+-- code. Caught inside this function, the statement fails in a subtransaction
+-- and the connection never sees an error.
+create function public.test_sqlstate(statement text)
+returns text
+language plpgsql
+as $$
+begin
+  execute statement;
+  return null;
+exception when others then
+  return sqlstate;
+end;
+$$;
+
+revoke execute on function public.test_sqlstate(text) from public, anon, authenticated;
+grant execute on function public.test_sqlstate(text) to service_role;
