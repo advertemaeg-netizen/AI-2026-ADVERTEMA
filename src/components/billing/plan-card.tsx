@@ -38,7 +38,7 @@ export function PlanCard({
   return (
     <div
       className={cn(
-        'relative flex h-full flex-col rounded-xl border bg-card p-6 text-card-foreground shadow-sm transition-shadow',
+        'relative flex h-full flex-col rounded-xl border bg-card p-6 text-card-foreground shadow-sm',
         current && 'border-2 border-positive-solid shadow-raised',
         popular && !current && 'border-2 border-primary shadow-md',
         inactive && 'opacity-60'

@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import { CalendarDays, LayoutDashboard, Menu, MessagesSquare, Users, type LucideIcon } from 'lucide-react'
-import { BrandMark } from '@/components/brand'
+import { BrandMark, markSeen } from '@/components/brand'
 import { Link, usePathname } from '@/i18n/navigation'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { Button } from '@/components/ui/button'
@@ -30,21 +30,21 @@ export function MobileTopBar({
   const t = useTranslations('mobileNav')
 
   return (
-    <header className="flex shrink-0 items-center gap-1 border-b bg-card px-1 pt-[env(safe-area-inset-top)] md:hidden print:hidden">
+    <header className="glass glass-page flex shrink-0 items-center gap-1 border-b px-1 pt-[env(safe-area-inset-top)] md:hidden print:hidden">
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetTrigger asChild>
           <Button variant="ghost" size="icon" className="size-11" aria-label={t('openMenu')}>
             <Menu className="size-5" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="start" className="gap-0 bg-card p-0" closeLabel={t('closeMenu')}>
+        <SheetContent side="start" className="gap-0 p-0" closeLabel={t('closeMenu')}>
           <SheetTitle className="sr-only">{t('menu')}</SheetTitle>
           {children}
         </SheetContent>
       </Sheet>
 
-      <Link href="/dashboard" className="flex min-h-11 min-w-0 flex-1 items-center gap-2 px-1">
-        <BrandMark className="text-brand" />
+      <Link href="/dashboard" className="flex min-h-11 min-w-0 flex-1 items-center gap-2 px-1" onAnimationEnd={markSeen}>
+        <BrandMark className="mark-entrance text-brand" />
         <span className="min-w-0">
           <span className="block text-sm leading-tight font-bold">Mudrik AI</span>
           {title && <span className="block truncate text-xs leading-tight text-muted-foreground">{title}</span>}
@@ -90,14 +90,15 @@ export function BottomNav() {
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors duration-fast',
+                  'flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium',
                   active ? 'text-primary' : 'text-muted-foreground'
                 )}
               >
                 <span
                   className={cn(
-                    'flex h-7 w-12 items-center justify-center rounded-full transition-[background-color,transform] duration-base ease-spring',
-                    active ? 'scale-100 bg-accent' : 'scale-95'
+                    // The pill is a ::before that fades and springs in: only opacity and transform move
+                    'relative isolate flex h-7 w-12 items-center justify-center before:absolute before:inset-0 before:-z-10 before:rounded-full before:bg-accent before:transition-[opacity,transform] before:duration-(--motion-spring-duration) before:ease-spring',
+                    active ? 'before:scale-100 before:opacity-100' : 'before:scale-75 before:opacity-0'
                   )}
                 >
                   <item.icon className="size-5" />

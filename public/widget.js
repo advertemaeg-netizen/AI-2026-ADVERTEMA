@@ -98,10 +98,15 @@
   var TOKENS =
     '--accent:' + color + ';--on-accent:#fff;' +
     '--surface:#fff;--canvas:#fcf9ea;--ink:#000;--muted:#6b6050;--border:#e8dfc7;--input:#b3a584;' +
-    // Provisional, like the dashboard's: the previous red until the error tone is approved
-    '--notice-bg:#fef2f2;--notice-ink:#991b1b;--unread:#ef4444;' +
-    '--shadow:0 12px 32px -12px rgba(147,55,3,.3),0 2px 8px rgba(0,0,0,.08);' +
-    '--fast:140ms;--base:220ms;--slow:360ms;--ease:cubic-bezier(.22,1,.36,1);--spring:cubic-bezier(.34,1.56,.64,1)'
+    // The error tone: dusty rose ink on a rose wash (6.6:1)
+    '--notice-bg:#f5e4e7;--notice-ink:#8e2f45;--unread:#8e2f45;' +
+    '--shadow:0 12px 32px -12px rgba(147,55,3,.3),0 2px 8px rgba(122,45,2,.1);' +
+    // Glass: the panel sits on any client's site, so its fill is set for the
+    // worst backdrop (pure black): 0.9 keeps muted text at 4.8:1
+    '--glass:rgba(255,252,242,.9);--glass-solid:#fffcf2;--glass-border:rgba(255,255,255,.95);' +
+    '--glass-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 0 0 1px rgba(147,55,3,.08),0 24px 48px -20px rgba(147,55,3,.36),0 4px 12px -6px rgba(122,45,2,.14);' +
+    '--fast:160ms;--base:280ms;--slow:480ms;--spring-d:700ms;--slide:28px;' +
+    '--ease:cubic-bezier(.22,1,.36,1);--spring:cubic-bezier(.34,1.56,.64,1)'
 
   var CSS =
     ':host{all:initial}' +
@@ -114,37 +119,46 @@
     '.bubble.unread::after{content:"";position:absolute;top:2px;inset-inline-end:2px;width:12px;height:12px;border-radius:50%;background:var(--unread);border:2px solid var(--surface);animation:pop var(--base) var(--spring) both}' +
     '.bubble:focus-visible,.icon-btn:focus-visible,.send:focus-visible{outline:2px solid var(--accent);outline-offset:2px}' +
     '.bubble svg{width:26px;height:26px}' +
-    '.panel{position:absolute;bottom:72px;' + side + ':0;width:370px;max-width:calc(100vw - 40px);height:540px;max-height:calc(100vh - 110px);background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;transform-origin:bottom ' + side + ';animation:open var(--slow) var(--ease) both}' +
+    '.panel{position:absolute;bottom:72px;' + side + ':0;width:370px;max-width:calc(100vw - 40px);height:540px;max-height:calc(100vh - 110px);background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;box-shadow:var(--glass-shadow);-webkit-backdrop-filter:blur(20px) saturate(1.7);backdrop-filter:blur(20px) saturate(1.7);display:flex;flex-direction:column;overflow:hidden;transform-origin:bottom ' + side + ';animation:open var(--spring-d) var(--spring) both,fade var(--base) var(--ease) both}' +
+    '@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.panel{background:var(--glass-solid)}}' +
     '.panel[hidden]{display:none}' +
     '.header{background:var(--accent);color:var(--on-accent);padding:12px 16px;display:flex;align-items:center;gap:10px}' +
     '.mark{display:block;height:28px;width:46px;flex-shrink:0}' +
     '.head-text{flex:1;min-width:0}' +
     '.title{font-weight:700;font-size:15px;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
     '.status{font-size:12px;opacity:.85;margin:0}' +
-    '.icon-btn{background:transparent;border:0;color:inherit;cursor:pointer;padding:4px;border-radius:6px;display:flex;transition:background-color var(--fast)}' +
+    '.icon-btn{background:transparent;border:0;color:inherit;cursor:pointer;padding:4px;border-radius:6px;display:flex}' +
     '.icon-btn:hover{background:rgba(255,255,255,.15)}' +
     '.icon-btn svg{width:20px;height:20px}' +
-    '.messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px;background:var(--canvas)}' +
-    '.msg{max-width:82%;padding:9px 12px;border-radius:14px;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere;animation:rise var(--base) var(--ease) both}' +
-    '.msg.user{align-self:flex-end;background:var(--accent);color:var(--on-accent);border-end-end-radius:4px}' +
-    '.msg.assistant,.msg.agent{align-self:flex-start;background:var(--surface);border:1px solid var(--border);border-end-start-radius:4px}' +
+    '.messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px}' +
+    '.msg{max-width:82%;padding:9px 12px;border-radius:14px;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere}' +
+    // Each message springs in from its own side (mirrored in Arabic); a long history animates only its last few
+    '.msg:nth-last-child(-n+9){animation:slide var(--spring-d) var(--spring) both,fade var(--base) var(--ease) both}' +
+    '.msg.user{align-self:flex-end;background:var(--accent);color:var(--on-accent);border-end-end-radius:4px;--from:var(--slide);transform-origin:right bottom}' +
+    '.msg.assistant,.msg.agent{align-self:flex-start;background:var(--surface);border:1px solid var(--border);border-end-start-radius:4px;--from:calc(var(--slide) * -1);transform-origin:left bottom}' +
+    '[dir=rtl] .msg.user{--from:calc(var(--slide) * -1);transform-origin:left bottom}' +
+    '[dir=rtl] .msg.assistant,[dir=rtl] .msg.agent{--from:var(--slide);transform-origin:right bottom}' +
     '.msg.notice{align-self:center;background:var(--notice-bg);color:var(--notice-ink);font-size:13px;text-align:center}' +
     '.typing{align-self:flex-start;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;gap:4px;animation:rise var(--base) var(--ease) both}' +
     '.typing span{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:blink 1.2s infinite}' +
     '.typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}' +
     '@keyframes blink{0%,80%,100%{opacity:.3}40%{opacity:1}}' +
-    '@keyframes open{from{opacity:0;transform:translateY(12px) scale(.96)}}' +
+    '@keyframes open{from{transform:translateY(16px) scale(.92)}}' +
+    '@keyframes fade{from{opacity:0}}' +
     '@keyframes rise{from{opacity:0;transform:translateY(6px)}}' +
+    '@keyframes slide{from{transform:translateX(var(--from)) scale(.94)}}' +
     '@keyframes pop{from{opacity:0;transform:scale(.6)}}' +
-    '.form{display:flex;gap:8px;padding:10px;border-top:1px solid var(--border);background:var(--surface)}' +
-    '.input{flex:1;resize:none;border:1px solid var(--input);border-radius:10px;padding:9px 12px;font-size:14px;max-height:110px;outline:none;color:var(--ink);background:var(--surface);transition:border-color var(--fast)}' +
+    // A damped spring (the dashboard's --motion-spring) where linear() exists
+    '@supports (animation-timing-function:linear(0,1)){.root{--spring:linear(0,0.061,0.211,0.403,0.602,0.782,0.929,1.037,1.106,1.14,1.147,1.135,1.111,1.082,1.053,1.028,1.007,0.992,0.983,0.979,0.978,0.981,0.984,0.989,0.993,0.997,0.999,1.001,1)}}' +
+    '.form{display:flex;gap:8px;padding:10px;border-top:1px solid var(--border)}' +
+    '.input{flex:1;resize:none;border:1px solid var(--input);border-radius:10px;padding:9px 12px;font-size:14px;max-height:110px;outline:none;color:var(--ink);background:var(--surface)}' +
     '.input:focus{border-color:var(--accent)}' +
     '.send{border:0;border-radius:10px;background:var(--accent);color:var(--on-accent);padding:0 14px;cursor:pointer;display:flex;align-items:center;transition:transform var(--fast) var(--ease),opacity var(--fast)}' +
     '.send:not(:disabled):active{transform:scale(.94)}' +
     '.send:disabled{opacity:.5;cursor:default}' +
     '.send svg{width:18px;height:18px}' +
     '[dir=rtl] .send svg{transform:scaleX(-1)}' +
-    '.footer{text-align:center;font-size:11px;color:var(--muted);padding:0 0 8px;background:var(--surface)}' +
+    '.footer{text-align:center;font-size:11px;color:var(--muted);padding:0 0 8px}' +
     '@media (max-width:480px){.root{bottom:12px;' + side + ':12px}.panel{width:calc(100vw - 24px);max-width:none;height:calc(100vh - 100px)}}' +
     '@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}'
 

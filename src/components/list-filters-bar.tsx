@@ -85,7 +85,7 @@ export function ListFiltersBar({
         value={filters.status ?? ALL}
         onValueChange={(value) => update('status', value === ALL ? undefined : value)}
       >
-        <TabsList className="max-w-full overflow-x-auto max-md:h-auto! max-md:justify-start max-md:*:min-h-11 max-md:*:min-w-11">
+        <TabsList className="max-w-full overflow-x-auto max-md:h-auto! max-md:justify-start max-md:*:min-h-11 max-md:*:min-w-11 max-md:*:flex-none">
           <TabsTrigger value={ALL}>{t('status.all')}</TabsTrigger>
           {statuses.map((status) => (
             <TabsTrigger key={status} value={status}>

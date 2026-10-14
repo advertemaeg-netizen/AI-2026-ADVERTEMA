@@ -143,7 +143,7 @@ export function UploadCard({ clientId, quota }: { clientId: string; quota: Knowl
             handleFile(e.dataTransfer.files[0])
           }}
           className={cn(
-            'flex flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors',
+            'flex flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-10 text-center',
             dragging ? 'border-primary bg-primary/5' : 'border-border'
           )}
         >

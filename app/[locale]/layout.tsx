@@ -3,6 +3,7 @@ import { NextIntlClientProvider, hasLocale } from 'next-intl'
 import { notFound } from 'next/navigation'
 import { Cairo } from 'next/font/google'
 import { Providers } from '@/components/providers'
+import { MARK_SEEN_SCRIPT } from '@/components/brand'
 import { routing } from '@/i18n/routing'
 import '../globals.css'
 
@@ -45,6 +46,9 @@ export default async function LocaleLayout({
       dir={locale === 'ar' ? 'rtl' : 'ltr'}
       suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: MARK_SEEN_SCRIPT }} />
+      </head>
       <body className={`${cairo.variable} font-sans antialiased`} suppressHydrationWarning>
         <NextIntlClientProvider>
           <Providers>{children}</Providers>

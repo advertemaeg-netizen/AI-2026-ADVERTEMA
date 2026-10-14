@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { StatPanel, type Stat } from './_components/stat-panel'
 import { MessagesSquare, Users, Building2, TrendingUp, Radio } from 'lucide-react'
 import { getFormatter, getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
@@ -43,36 +44,37 @@ export default async function DashboardPage() {
           )}`,
         })
 
-  const stats = [
+  const stats: Stat[] = [
     {
       name: t('totalConversations'),
-      value: format.number(data.conversations.value),
-      icon: MessagesSquare,
+      value: data.conversations.value,
+      icon: <MessagesSquare />,
       hint: percentChange(data.conversations.value, data.conversations.previous),
     },
     {
       name: t('activeLeads'),
-      value: format.number(data.activeLeads.value),
-      icon: Users,
+      value: data.activeLeads.value,
+      icon: <Users />,
       hint: t('newLeads', { count: data.activeLeads.newThisPeriod }),
     },
     data.scope.kind === 'channels'
       ? {
           name: t('activeChannels'),
-          value: format.number(data.scope.value),
-          icon: Radio,
+          value: data.scope.value,
+          icon: <Radio />,
           hint: t('activeChannelsHint'),
         }
       : {
           name: t('clients'),
-          value: format.number(data.scope.value),
-          icon: Building2,
+          value: data.scope.value,
+          icon: <Building2 />,
           hint: t('clientsHint'),
         },
     {
       name: t('conversionRate'),
-      value: format.number(data.conversionRate.value, { style: 'percent', maximumFractionDigits: 1 }),
-      icon: TrendingUp,
+      value: data.conversionRate.value,
+      options: { style: 'percent', maximumFractionDigits: 1 },
+      icon: <TrendingUp />,
       hint: conversionPoints,
     },
   ]
@@ -86,33 +88,23 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 max-md:grid-cols-2 max-md:gap-3 max-md:mb-4">
-        {stats.map((stat, i) => (
-          <Card key={stat.name} className="animate-enter stagger" style={{ '--i': i + 1 } as React.CSSProperties}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 max-md:items-start max-md:gap-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {stat.name}
-              </CardTitle>
-              <span className="flex size-8 items-center justify-center rounded-lg bg-accent text-primary">
-                <stat.icon className="size-4" />
-              </span>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold tabular-nums">{stat.value}</div>
-              <p className="text-xs text-muted-foreground mt-1">{stat.hint}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <StatPanel stats={stats} />
 
-      <div className="mb-8 max-md:mb-4">
+      {/* The cards lift on hover; the wrapper carries the bloom so the card's own overflow does not clip it */}
+      <div className="lift mb-8 rounded-xl max-md:mb-4">
         <ConversationTrendCard data={trend} />
       </div>
 
       <div className="mb-8 grid gap-4 lg:grid-cols-3 max-md:mb-4">
-        <TodayAppointmentsCard appointments={todayAppointments} />
-        <AttendanceCard current={journey.current} previous={journey.previous} />
-        <JourneyFunnel conversations={data.conversations.value} stats={journey.current} />
+        <div className="lift rounded-xl *:h-full">
+          <TodayAppointmentsCard appointments={todayAppointments} />
+        </div>
+        <div className="lift rounded-xl *:h-full">
+          <AttendanceCard current={journey.current} previous={journey.previous} />
+        </div>
+        <div className="lift rounded-xl *:h-full">
+          <JourneyFunnel conversations={data.conversations.value} stats={journey.current} />
+        </div>
       </div>
 
       <Card>
@@ -129,7 +121,7 @@ export default async function DashboardPage() {
                 <li key={`${item.kind}:${item.id}`}>
                   <Link
                     href={item.kind === 'lead' ? `/dashboard/leads/${item.id}` : `/dashboard/conversations/${item.id}`}
-                    className="flex items-center gap-3 py-3 transition-colors duration-fast hover:bg-accent/60 -mx-2 px-2 rounded-md"
+                    className="lift-row flex items-center gap-3 py-3 -mx-2 px-2 rounded-md"
                   >
                     <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-primary">
                       {item.kind === 'lead' ? <Users className="size-4" /> : <MessagesSquare className="size-4" />}

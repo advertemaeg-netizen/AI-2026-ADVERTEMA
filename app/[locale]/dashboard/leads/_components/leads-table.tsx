@@ -157,7 +157,7 @@ export function LeadsTable({
           {/* Phones: one card per lead, calling and WhatsApp a tap away */}
           <ul className="divide-y md:hidden">
             {leads.map((lead) => (
-              <li key={lead.id} className="flex items-center gap-2 px-4 py-3">
+              <li key={lead.id} className="lift-row flex items-center gap-2 px-4 py-3">
                 <Link href={`/dashboard/leads/${lead.id}`} className="grid min-w-0 flex-1 gap-1">
                   <span className="flex min-w-0 items-center gap-1.5 font-medium">
                     {lead.conversation?.channel && (

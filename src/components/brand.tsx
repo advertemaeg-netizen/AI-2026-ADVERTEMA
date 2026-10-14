@@ -27,6 +27,18 @@ export function BrandMark({ height = MARK_MIN_HEIGHT, className }: { height?: nu
   )
 }
 
+/**
+ * The mark's entrance plays once per browser session (see mark-entrance in
+ * app/globals.css). Call this when it ends, so a shell mounted later in the
+ * same page load does not play it again.
+ */
+export function markSeen() {
+  document.documentElement.setAttribute('data-mark-seen', '')
+}
+
+/** For the root layout's <head>: every page load after the first in a session skips the entrance */
+export const MARK_SEEN_SCRIPT = `(function(){try{var k="mudrik-mark-seen";if(sessionStorage.getItem(k))document.documentElement.setAttribute("data-mark-seen","");else sessionStorage.setItem(k,"1")}catch(e){document.documentElement.setAttribute("data-mark-seen","")}})()`
+
 /** Mark + wordmark in the two brand colours (login, emails) */
 export function BrandLockup({ height = 36, className }: { height?: number; className?: string }) {
   return (

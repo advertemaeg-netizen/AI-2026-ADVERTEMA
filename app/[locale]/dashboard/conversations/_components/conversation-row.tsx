@@ -19,7 +19,7 @@ export function ConversationRow({ conversation }: { conversation: ConversationLi
   return (
     <Link
       href={`/dashboard/conversations/${conversation.id}`}
-      className="flex gap-3 px-4 py-3 transition-colors duration-fast hover:bg-accent/60 focus-visible:bg-accent/60 focus-visible:outline-none"
+      className="lift-row flex gap-3 px-4 py-3 focus-visible:outline-none"
     >
       <ContactAvatar name={conversation.contact_name} channelType={conversation.channel.type} />
 
@@ -34,8 +34,9 @@ export function ConversationRow({ conversation }: { conversation: ConversationLi
         <p className="truncate text-xs text-muted-foreground">
           {conversation.client.name} · {conversation.channel.name}
         </p>
-        <div className="mt-1 flex items-center justify-between gap-2">
-          <p className="truncate text-sm text-muted-foreground">
+        {/* On a narrow phone the badges drop below the preview rather than clip */}
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+          <p className="min-w-0 flex-1 basis-40 truncate text-sm text-muted-foreground">
             {conversation.last_message_preview ? (
               <>
                 {prefix}
@@ -45,7 +46,7 @@ export function ConversationRow({ conversation }: { conversation: ConversationLi
               t('noMessages')
             )}
           </p>
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
             {conversation.needs_human_since && (
               <StateBadge state={conversation.needs_human_reason ?? DEFAULT_NEEDS_HUMAN_REASON} variant="destructive">
                 {t(`needsHuman.badge.${conversation.needs_human_reason ?? DEFAULT_NEEDS_HUMAN_REASON}`)}

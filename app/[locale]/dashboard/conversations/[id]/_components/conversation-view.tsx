@@ -482,7 +482,13 @@ function MessageBubble({
   const fromVisitor = message.role === 'user'
 
   return (
-    <div className={cn('flex max-w-[80%] flex-col gap-1 max-md:max-w-[88%]', fromVisitor ? 'self-start' : 'self-end items-end')}>
+    <div
+      className={cn(
+        'flex max-w-[80%] flex-col gap-1 max-md:max-w-[88%]',
+        // Each message springs in from its own side
+        fromVisitor ? 'msg-in-start self-start' : 'msg-in-end self-end items-end'
+      )}
+    >
       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
         {message.role === 'assistant' && <Bot className="size-3.5" />}
         {senderLabel} · {time}

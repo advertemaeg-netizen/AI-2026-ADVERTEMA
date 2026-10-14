@@ -30,8 +30,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
-import { BrandMark } from '@/components/brand'
-import { navIconClass, navItemClass } from '@/components/nav-item'
+import { BrandMark, markSeen } from '@/components/brand'
+import { navClass, navIconClass, navItemClass } from '@/components/nav-item'
+import { NavIndicator } from '@/components/nav-indicator'
 import { clientSections } from '@/components/client-sections'
 import { ClientSwitcher } from '@/components/client-switcher'
 import { canManageClient, isOrgAdmin } from '@/lib/auth/permissions'
@@ -163,8 +164,8 @@ export function DashboardShell({
     return (
       <>
         <div className={cn('p-6 border-b flex items-center justify-between', inSheet && 'p-4 pe-14')}>
-          <Link href="/dashboard" className="group flex items-center gap-2.5" onClick={closeMenu}>
-            <BrandMark className="text-brand transition-transform duration-base ease-spring group-hover:scale-105" />
+          <Link href="/dashboard" className="group flex items-center gap-2.5" onClick={closeMenu} onAnimationEnd={markSeen}>
+            <BrandMark className="mark-entrance text-brand transition-transform duration-base ease-spring group-hover:scale-105" />
             <span className="text-lg font-bold tracking-tight">Mudrik AI</span>
           </Link>
           {/* Phones have it in the top bar */}
@@ -184,7 +185,8 @@ export function DashboardShell({
           </div>
         )}
 
-        <nav className="flex-1 space-y-1 overflow-y-auto p-4">
+        <nav className={navClass}>
+          <NavIndicator active={pathname} />
           {navigation.map((item) => {
             const isActive = item.exact
               ? pathname === item.href
@@ -243,13 +245,13 @@ export function DashboardShell({
   }
 
   return (
-    <div className="flex h-screen flex-col bg-background print:block print:h-auto max-md:h-dvh">
+    <div className="flex h-screen flex-col print:block print:h-auto max-md:h-dvh">
       {banner}
       <MobileTopBar title={selectedClient?.name} open={menuOpen} onOpenChange={setMenuOpen}>
         <div className="flex min-h-0 flex-1 flex-col">{sidebar(true)}</div>
       </MobileTopBar>
       <div className="flex min-h-0 flex-1 print:block">
-        <aside className="w-64 border-e bg-sidebar flex flex-col print:hidden max-md:hidden">
+        <aside className="glass-solid w-64 border-e flex flex-col print:hidden max-md:hidden">
           {sidebar(false)}
         </aside>
 

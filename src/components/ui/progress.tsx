@@ -18,7 +18,7 @@ function Progress({
     >
       <ProgressPrimitive.Indicator
         data-slot="progress-indicator"
-        className="size-full flex-1 bg-primary transition-all"
+        className="size-full flex-1 bg-primary transition-transform duration-slow ease-out"
         // translateX is physical, so mirror the offset in RTL to fill from the start side
         style={{ transform: `translateX(calc(-${100 - (value || 0)}% * var(--progress-dir, 1)))` }}
       />

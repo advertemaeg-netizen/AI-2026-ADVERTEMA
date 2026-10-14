@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { BrainCircuit, Building2, CreditCard, LayoutDashboard, LogOut, Menu, Package, Receipt, Settings, ShieldCheck, type LucideIcon } from 'lucide-react'
-import { BrandMark } from '@/components/brand'
-import { navIconClass, navItemClass } from '@/components/nav-item'
+import { BrandMark, markSeen } from '@/components/brand'
+import { navClass, navIconClass, navItemClass } from '@/components/nav-item'
+import { NavIndicator } from '@/components/nav-indicator'
 import { Link, usePathname, useRouter } from '@/i18n/navigation'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { createClient } from '@/lib/supabase/client'
@@ -66,14 +67,15 @@ export function AdminShell({
     return (
       <>
         <div className="p-6 border-b flex items-center justify-between">
-          <Link href="/admin" className="group flex items-center gap-2.5" onClick={() => setMenuOpen(false)}>
-            <BrandMark className="text-brand transition-transform duration-base ease-spring group-hover:scale-105" />
+          <Link href="/admin" className="group flex items-center gap-2.5" onClick={() => setMenuOpen(false)} onAnimationEnd={markSeen}>
+            <BrandMark className="mark-entrance text-brand transition-transform duration-base ease-spring group-hover:scale-105" />
             <span className="text-lg font-bold tracking-tight">Mudrik AI</span>
           </Link>
           {!inSheet && <LanguageSwitcher />}
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto p-4">
+        <nav className={navClass}>
+          <NavIndicator active={pathname} />
           {navigation.map((item) => {
             const isActive = item.exact
               ? pathname === item.href
@@ -126,15 +128,15 @@ export function AdminShell({
   }
 
   return (
-    <div className="flex h-screen bg-background max-md:h-dvh max-md:flex-col">
-      <header className="flex shrink-0 items-center gap-1 border-b bg-card px-1 pt-[env(safe-area-inset-top)] md:hidden">
+    <div className="flex h-screen max-md:h-dvh max-md:flex-col">
+      <header className="glass glass-page flex shrink-0 items-center gap-1 border-b px-1 pt-[env(safe-area-inset-top)] md:hidden">
         <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="size-11" aria-label={tMobile('openMenu')}>
               <Menu className="size-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="start" className="gap-0 bg-card p-0" closeLabel={tMobile('closeMenu')}>
+          <SheetContent side="start" className="gap-0 p-0" closeLabel={tMobile('closeMenu')}>
             <SheetTitle className="sr-only">{tMobile('menu')}</SheetTitle>
             <div className="flex min-h-0 flex-1 flex-col">{sidebar(true)}</div>
           </SheetContent>
@@ -147,13 +149,13 @@ export function AdminShell({
         </div>
       </header>
 
-      <aside className="w-64 border-e bg-sidebar flex flex-col max-md:hidden">
+      <aside className="glass-solid w-64 border-e flex flex-col max-md:hidden">
         {sidebar(false)}
       </aside>
 
       <main className="flex-1 overflow-y-auto">
-        <header className="sticky top-0 z-10 flex items-center gap-3 border-b bg-background/95 px-8 py-3 backdrop-blur max-md:flex-wrap max-md:gap-x-2 max-md:gap-y-1 max-md:px-4 max-md:py-2">
-          <Badge variant="destructive" className="gap-1.5 px-3 py-1 text-sm">
+        <header className="glass glass-page sticky top-0 z-10 flex items-center gap-3 border-b px-8 py-3 max-md:flex-wrap max-md:gap-x-2 max-md:gap-y-1 max-md:px-4 max-md:py-2">
+          <Badge variant="destructive" glyph={false} className="gap-1.5 px-3 py-1 text-sm">
             <ShieldCheck />
             {t('badge')}
           </Badge>

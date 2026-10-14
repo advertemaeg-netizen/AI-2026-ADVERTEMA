@@ -44,7 +44,7 @@ export default async function AdminSubscriptionsPage({ params, searchParams }: P
             href={key === 'agencies' ? '/admin/subscriptions' : '/admin/subscriptions?tab=clients'}
             aria-current={tab === key ? 'page' : undefined}
             className={cn(
-              'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+              'rounded-md px-3 py-1.5 text-sm font-medium',
               tab === key ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
             )}
           >

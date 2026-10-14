@@ -87,7 +87,8 @@ export function ChannelCard({
   }
 
   return (
-    <Card>
+    // Lifts on hover; overflow-visible so the bloom (a pseudo-element) is not clipped
+    <Card className="lift overflow-visible">
       <CardHeader>
         <div className="flex items-center gap-3">
           <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">

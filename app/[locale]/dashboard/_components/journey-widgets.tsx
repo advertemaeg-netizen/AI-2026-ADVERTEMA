@@ -33,7 +33,7 @@ export function TodayAppointmentsCard({ appointments }: { appointments: Appointm
               <li key={appointment.id}>
                 <Link
                   href={`/dashboard/leads/${appointment.id}`}
-                  className="flex items-center gap-2 rounded-md text-sm transition-colors duration-fast hover:bg-accent/60 max-md:min-h-11"
+                  className="flex items-center gap-2 rounded-md text-sm hover:bg-accent/60 max-md:min-h-11"
                 >
                   <span className="w-14 shrink-0 font-medium tabular-nums">
                     {format.dateTime(new Date(appointment.appointment_at), { timeStyle: 'short' })}

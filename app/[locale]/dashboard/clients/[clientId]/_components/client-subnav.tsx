@@ -20,7 +20,7 @@ export function ClientSubnav({ clientId }: { clientId: string }) {
             href={section.href}
             aria-current={active ? 'page' : undefined}
             className={cn(
-              '-mb-px inline-flex items-center gap-2 border-b-2 px-3 py-2 text-sm whitespace-nowrap transition-colors',
+              '-mb-px inline-flex items-center gap-2 border-b-2 px-3 py-2 text-sm whitespace-nowrap',
               active
                 ? 'border-primary font-medium text-foreground'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
