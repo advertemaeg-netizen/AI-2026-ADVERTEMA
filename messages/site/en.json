@@ -1,35 +1,45 @@
 {
   "meta": {
-    "siteName": "meta.siteName",
-    "ogAlt": "meta.ogAlt"
+    "home": {
+      "title": "Mudrik — a bot that answers your customers and books their appointments",
+      "description": "Answers WhatsApp, Facebook, Instagram and your website using your own information, books appointments and records every lead. Free for 14 days."
+    }
   },
   "nav": {
-    "home": "nav.home",
-    "forBusinesses": "nav.forBusinesses",
-    "forAgencies": "nav.forAgencies",
-    "pricing": "nav.pricing",
-    "contact": "nav.contact",
-    "privacy": "nav.privacy",
-    "terms": "nav.terms",
-    "signIn": "nav.signIn",
-    "signUp": "nav.signUp",
-    "languageSwitch": "nav.languageSwitch",
-    "languageSwitchLabel": "nav.languageSwitchLabel",
-    "menuLabel": "nav.menuLabel",
-    "legalLabel": "nav.legalLabel"
+    "forBusinesses": "For businesses",
+    "forAgencies": "For agencies",
+    "pricing": "Plans",
+    "contact": "Contact",
+    "signIn": "Sign in",
+    "signUp": "Start free",
+    "languageSwitch": "العربية",
+    "menu": "Menu",
+    "menuClose": "Close"
   },
   "footer": {
-    "tagline": "footer.tagline",
-    "rights": "footer.rights"
+    "tagline": "Answers your customers, books them in, records them.",
+    "product": "Product",
+    "company": "Company",
+    "legal": "Legal",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "rights": "© 2026 Mudrik. All rights reserved."
   },
   "home": {
     "hero": {
       "demo": {
-        "visitor": [
-          "home.hero.demo.visitor.0",
-          "home.hero.demo.visitor.1",
-          "home.hero.demo.visitor.2"
-        ]
+        "label": "A real Mudrik conversation",
+        "messages": {
+          "0": {
+            "text": "I want to book Thursday at 7pm"
+          },
+          "2": {
+            "text": "Mohamed El-Sayed"
+          },
+          "4": {
+            "text": "01000000000"
+          }
+        }
       },
       "title": "Every message you don't answer is an ad you paid for.",
       "subtitle": "Mudrik answers your customers in a second — on WhatsApp, Facebook, Instagram and your site — using your own information, books their appointments, and records every lead in one place.",
@@ -211,7 +221,6 @@
       "metaDescription": "Privacy Policy",
       "title": "Privacy Policy",
       "updated": "Last updated: [[date]]",
-      "draftNotice": "THIS IS A DRAFT FOR A LAWYER TO REVIEW. IT IS NOT READY TO PUBLISH.",
       "sections": [
         {
           "heading": "1. Who we are",
@@ -276,7 +285,6 @@
       "metaDescription": "Terms of Service",
       "title": "Terms of Service",
       "updated": "Last updated: [[date]]",
-      "draftNotice": "THIS IS A DRAFT FOR A LAWYER TO REVIEW. IT IS NOT READY TO PUBLISH.",
       "sections": [
         {
           "heading": "1. The parties and acceptance",
@@ -339,6 +347,7 @@
           "body": "[[email]] — [[address]]"
         }
       ]
-    }
+    },
+    "draftNotice": "Draft — this page is under legal review and has not been approved."
   }
 }

@@ -1,35 +1,45 @@
 {
   "meta": {
-    "siteName": "meta.siteName",
-    "ogAlt": "meta.ogAlt"
+    "home": {
+      "title": "مُدرك — بوت بيرد على عملاءك ويحجزلهم مواعيد",
+      "description": "بيرد على واتساب وفيسبوك وإنستجرام وموقعك بمعلومات شغلك انت، ويحجز المواعيد ويسجّل كل ليد. جرّبه مجانًا ١٤ يوم."
+    }
   },
   "nav": {
-    "home": "nav.home",
-    "forBusinesses": "nav.forBusinesses",
-    "forAgencies": "nav.forAgencies",
-    "pricing": "nav.pricing",
-    "contact": "nav.contact",
-    "privacy": "nav.privacy",
-    "terms": "nav.terms",
-    "signIn": "nav.signIn",
-    "signUp": "nav.signUp",
-    "languageSwitch": "nav.languageSwitch",
-    "languageSwitchLabel": "nav.languageSwitchLabel",
-    "menuLabel": "nav.menuLabel",
-    "legalLabel": "nav.legalLabel"
+    "forBusinesses": "لأصحاب الأنشطة",
+    "forAgencies": "للوكالات",
+    "pricing": "الباقات",
+    "contact": "تواصل معنا",
+    "signIn": "دخول",
+    "signUp": "ابدأ مجانًا",
+    "languageSwitch": "English",
+    "menu": "القائمة",
+    "menuClose": "إغلاق"
   },
   "footer": {
-    "tagline": "footer.tagline",
-    "rights": "footer.rights"
+    "tagline": "بيرد على عملاءك، ويحجزلهم، ويسجّلهم.",
+    "product": "المنتج",
+    "company": "الشركة",
+    "legal": "قانوني",
+    "privacy": "سياسة الخصوصية",
+    "terms": "الشروط والأحكام",
+    "rights": "© ٢٠٢٦ مُدرك. كل الحقوق محفوظة."
   },
   "home": {
     "hero": {
       "demo": {
-        "visitor": [
-          "home.hero.demo.visitor.0",
-          "home.hero.demo.visitor.1",
-          "home.hero.demo.visitor.2"
-        ]
+        "label": "محادثة حقيقية من مُدرك",
+        "messages": {
+          "0": {
+            "text": "عايز أحجز الخميس ٧ بالليل"
+          },
+          "2": {
+            "text": "محمد السيد"
+          },
+          "4": {
+            "text": "٠١٠٠٠٠٠٠٠٠٠"
+          }
+        }
       },
       "title": "كل رسالة متردش عليها، إعلان دفعت تمنه.",
       "subtitle": "مُدرك بيرد على عملاءك في ثانية — على واتساب وفيسبوك وإنستجرام وموقعك — بمعلومات شغلك انت، ويحجزلهم المواعيد ويسجّل كل ليد في مكان واحد.",
@@ -211,7 +221,6 @@
       "metaDescription": "سياسة الخصوصية",
       "title": "سياسة الخصوصية",
       "updated": "آخر تحديث: [[التاريخ]]",
-      "draftNotice": "THIS IS A DRAFT FOR A LAWYER TO REVIEW. IT IS NOT READY TO PUBLISH.",
       "sections": [
         {
           "heading": "1. من نحن",
@@ -276,7 +285,6 @@
       "metaDescription": "شروط الخدمة",
       "title": "شروط الخدمة",
       "updated": "آخر تحديث: [[التاريخ]]",
-      "draftNotice": "THIS IS A DRAFT FOR A LAWYER TO REVIEW. IT IS NOT READY TO PUBLISH.",
       "sections": [
         {
           "heading": "1. الأطراف وقبول الشروط",
@@ -339,6 +347,7 @@
           "body": "[[البريد الإلكتروني]] — [[العنوان]]"
         }
       ]
-    }
+    },
+    "draftNotice": "مسودة — هذه الصفحة قيد المراجعة القانونية ولم تُعتمد بعد."
   }
 }

@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
 import { SITE_INDEXABLE, SITE_ORIGIN, type SitePage } from '@/site/config'
-import { siteCopy } from '@/site/copy'
 import { alternatesFor, sitePath } from '@/site/paths'
+
+/** The share image is the brand lockup alone: its alt is the lockup's (src/components/brand.tsx) */
+export const OG_ALT = 'Mudrik AI'
 
 /**
  * The head of one site page: its title and description from the copy file,
@@ -10,20 +12,17 @@ import { alternatesFor, sitePath } from '@/site/paths'
  * image included, so only the home page (in the image's own segment) had one.
  */
 export function siteMetadata(locale: string, page: SitePage, meta: { metaTitle: string; metaDescription: string }): Metadata {
-  const copy = siteCopy(locale)
-  // app/[locale]/site/opengraph-image.tsx, id "og"
-  const image = { url: `/${locale}/site/opengraph-image/og`, width: 1200, height: 630, alt: copy.meta.ogAlt }
+  // app/[locale]/site/opengraph-image.tsx, id "og": the lockup, so its alt is the lockup's own
+  const image = { url: `/${locale}/site/opengraph-image/og`, width: 1200, height: 630, alt: OG_ALT }
   return {
     metadataBase: new URL(SITE_ORIGIN),
     title: meta.metaTitle,
     description: meta.metaDescription,
-    applicationName: copy.meta.siteName,
     alternates: alternatesFor(locale, page),
     robots: SITE_INDEXABLE ? { index: true, follow: true } : { index: false, follow: false },
     icons: { icon: '/brand/mudrik-mark.svg' },
     openGraph: {
       type: 'website',
-      siteName: copy.meta.siteName,
       title: meta.metaTitle,
       description: meta.metaDescription,
       url: `${SITE_ORIGIN}${sitePath(locale, page)}`,

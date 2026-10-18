@@ -37,11 +37,15 @@ const TYPING_AT = [1300, 4600, 7800]
 
 export function HeroConversation({
   language,
+  label,
   visitor,
   bot,
   builtAt,
 }: {
   language: 'ar' | 'en'
+  /** The caption, «محادثة حقيقية من مُدرك» */
+  label: string
+  /** The visitor's three lines, in order (the copy's messages 0, 2 and 4) */
   visitor: string[]
   bot: BotTemplates
   /** The build's time: what the HTML shows before the page has loaded */
@@ -61,8 +65,9 @@ export function HeroConversation({
   let botIndex = -1
   return (
     <figure className="site-phone site-convo mx-auto w-full max-w-md p-5">
-      <figcaption className="mb-4 flex items-center border-b border-border pb-3">
+      <figcaption className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
         <BrandLockup height={22} />
+        <span className="text-sm">{label}</span>
       </figcaption>
       <ol className="flex flex-col gap-3 text-[0.95rem]">
         {lines.map((line, i) => {

@@ -1,13 +1,13 @@
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { ImageResponse } from 'next/og'
-import { siteCopy } from '@/site/copy'
+import { OG_ALT } from '@/site/metadata'
 
 /**
  * The site's share image, one per locale, built at build time from the brand
  * lockup (public/brand/mudrik-lockup.svg, the one source) on the cream field.
- * No words: those are the copy owner's, and the alt text comes from the copy
- * file. Every page under the segment uses it.
+ * No words: those are the copy owner's. Every page names it in its head
+ * (src/site/metadata.ts).
  */
 
 const SIZE = { width: 1200, height: 630 }
@@ -15,9 +15,8 @@ const SIZE = { width: 1200, height: 630 }
 const LOCKUP_WIDTH = 760
 const LOCKUP_HEIGHT = Math.round((LOCKUP_WIDTH * 1962) / 13389)
 
-export async function generateImageMetadata({ params }: { params: Promise<{ locale: string }> | { locale: string } }) {
-  const { locale } = await params
-  return [{ id: 'og', alt: siteCopy(locale).meta.ogAlt, size: SIZE, contentType: 'image/png' }]
+export function generateImageMetadata() {
+  return [{ id: 'og', alt: OG_ALT, size: SIZE, contentType: 'image/png' }]
 }
 
 export default async function OpenGraphImage() {

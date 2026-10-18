@@ -10,18 +10,21 @@ import { SitePage } from '@/site/components/site-page'
 export function LegalPage({
   locale,
   page,
+  notice,
   copy,
 }: {
   locale: string
   page: Page
-  copy: { title: string; updated: string; draftNotice: string; sections: { heading: string; body: string }[] }
+  /** «مسودة — هذه الصفحة قيد المراجعة القانونية ولم تُعتمد بعد.» until the review is done */
+  notice: string
+  copy: { title: string; updated: string; sections: { heading: string; body: string }[] }
 }) {
   return (
     <SitePage locale={locale} page={page}>
       <article className="site-panel-quiet mx-auto flex w-full max-w-3xl flex-col gap-8 p-6 md:p-10">
         <header className="flex flex-col gap-3">
-          <p role="note" lang="en" dir="ltr" className="rounded-lg border border-warning-solid bg-warning-solid/15 px-3 py-2 text-sm font-semibold">
-            {copy.draftNotice}
+          <p role="note" className="rounded-lg border border-warning-solid bg-warning-solid/15 px-3 py-2 text-sm font-semibold">
+            {notice}
           </p>
           <h1 className="site-h2">{copy.title}</h1>
           <p className="text-sm">{copy.updated}</p>

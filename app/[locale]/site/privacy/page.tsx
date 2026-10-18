@@ -14,5 +14,6 @@ export async function generateMetadata({ params }: Props) {
 export default async function PrivacyPage({ params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
-  return <LegalPage locale={locale} page="/privacy" copy={siteCopy(locale).legal.privacy} />
+  const { legal } = siteCopy(locale)
+  return <LegalPage locale={locale} page="/privacy" notice={legal.draftNotice} copy={legal.privacy} />
 }

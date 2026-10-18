@@ -24,9 +24,9 @@ const BUILT_AT = new Date().toISOString()
 
 export async function generateMetadata({ params }: Props) {
   const { locale } = await params
-  // The home page's head carries its own headline and subtitle: the copy has no separate meta lines
-  const { hero } = siteCopy(locale).home
-  return siteMetadata(locale, '', { metaTitle: hero.title, metaDescription: hero.subtitle })
+  // Its own lines, not the hero's: a search result and a shared link say what the product is
+  const { home } = siteCopy(locale).meta
+  return siteMetadata(locale, '', { metaTitle: home.title, metaDescription: home.description })
 }
 
 export default async function HomePage({ params }: Props) {
@@ -49,7 +49,9 @@ export default async function HomePage({ params }: Props) {
         sectors={home.hero.sectors}
         demo={{
           language,
-          visitor: home.hero.demo.visitor,
+          label: home.hero.demo.label,
+          // The copy numbers the visitor's lines 0, 2, 4: the bot's 1, 3, 5 are the product's
+          visitor: [home.hero.demo.messages['0'].text, home.hero.demo.messages['2'].text, home.hero.demo.messages['4'].text],
           bot: {
             needDetails: product.appointment.needDetails,
             missingName: product.appointment.missingName,

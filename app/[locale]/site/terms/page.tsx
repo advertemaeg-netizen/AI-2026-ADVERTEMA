@@ -14,5 +14,6 @@ export async function generateMetadata({ params }: Props) {
 export default async function TermsPage({ params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
-  return <LegalPage locale={locale} page="/terms" copy={siteCopy(locale).legal.terms} />
+  const { legal } = siteCopy(locale)
+  return <LegalPage locale={locale} page="/terms" notice={legal.draftNotice} copy={legal.terms} />
 }

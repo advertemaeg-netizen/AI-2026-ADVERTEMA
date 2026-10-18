@@ -32,7 +32,7 @@ export function Hero({
   primary: Cta
   secondary: Cta
   sectors: string
-  demo: { language: 'ar' | 'en'; visitor: string[]; bot: BotTemplates; builtAt: string }
+  demo: { language: 'ar' | 'en'; label: string; visitor: string[]; bot: BotTemplates; builtAt: string }
 }) {
   return (
     <section className="relative grid items-center gap-12 pt-6 lg:grid-cols-[1.15fr_1fr] lg:gap-16">
