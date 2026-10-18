@@ -19,7 +19,7 @@
       "weighted": "كل الباقي نقطة للحالة، ومنه مجموعة النطاق: بوت بيترجم جملة حاجة محرجة وبتكلّف توكنز، مش سبب لرفض مزوّد."
     },
 
-    "totals": { "cases": 25, "groups": 4 }
+    "totals": { "cases": 27, "groups": 4 }
   },
 
   "cases": [
@@ -219,6 +219,24 @@
         "not_contains": ["يوم إيه", "أنهي يوم", "أي يوم", "اي يوم"]
       },
       "why": "الشكل العام لعيب GT11: حجز ناقص لازم يفضل محفوظ بين الرسايل. اليوم جه لوحده، والساعة جت لوحدها في الرسالة اللي بعدها، والزائر ماينفعش يتسأل عن اليوم تاني. search all عن قصد: في أول تشغيل (18 أكتوبر، 073529) الموديل بلّغ الخميس من غير ساعة، والكود رد «تحب نحجز لك يوم إيه…» في الدور التاني، والحالة عدّت لأنها كانت بتقرا آخر رد بس. ولا رد في المحادثة دي المفروض يسأل عن اليوم."
+    },
+    {
+      "id": "GT13", "group": "بوابة الحجز",
+      "turns": ["مصطفى محمد الباز 01097654189", "أي ميعاد بكرة يناسبكم احجزهولي"],
+      "expect": {
+        "appointment": null,
+        "must_not_claim_booking": true
+      },
+      "why": "ALARM, NOT COVERAGE. A pass here is NOT evidence that the evidence rule works: the live model has never invented a value on this case, so the rule has never been exercised by it. Evidence rule, tested against the case it was built for (18 Oct 2026): the visitor leaves the hour to the clinic, which invites the model to pick one. Name and number are on record, so an invented hour that got through would be BOOKED, not held. The rule must drop the hour (no number in the message) and keep \"tomorrow\". Read evidence_dropped in the results: if the model never reports an hour here, this case did not exercise the rule. FIRST RESULT (18 Oct, 5 runs on dd6d4c8 + 5 on c78f33e without the rule): the model never invented an hour (it reported nothing, or \"tomorrow\" alone), so evidence_dropped was 0 and both builds passed. This case is a SENTINEL for a model that starts inventing, not proof of the rule; the proof is tests/leads/appointment-evidence.test.ts and the stand-in model in appointment-booking.test.ts."
+    },
+    {
+      "id": "GT14", "group": "بوابة الحجز",
+      "turns": ["مصطفى محمد الباز 01097654189", "احجزلي زي المرة اللي فاتت"],
+      "expect": {
+        "appointment": null,
+        "must_not_claim_booking": true
+      },
+      "why": "ALARM, NOT COVERAGE. A pass here is NOT evidence that the evidence rule works (see GT13). Evidence rule, second temptation: \"same as last time\" with no earlier visit on record. Any day or hour the model reports has no trace in the message. Same reading as GT13: evidence_dropped says whether the rule was exercised. FIRST RESULT (18 Oct, 10 runs over both builds): the model reported no appointment at all every time. Not exercised; a sentinel, like GT13."
     },
 
     {

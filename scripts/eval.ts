@@ -226,6 +226,23 @@ export function bookingClaimIn(reply: string) {
 }
 // A question about the day or the time
 const TIME_QUESTION = /الساعة|ساعة كام|[إا]مت[ىي]|[أا]ي يوم|[أا]نهي يوم|يوم [إا]يه|وقت|ميعاد|معاد|موعد|الصبح|بالليل|what time|which day|when/i
+// Asking, in words: an Egyptian question often carries no "؟" ("محتاج أعرف اليوم والوقت المناسب"),
+// so the mark is one way of asking among these, not the test. Read on foldArabic() text.
+const ASKING = /[?؟]|تحب|يناسب|محتاج[ةه]? اعرف|محتاجين نعرف|قول[يل]|ابعتل[يى]|اختار|حدد|ممكن تقول|عايز[ةه]? تيج[يى]|let me know|would you like|which|what time/i
+
+/**
+ * Whether the last turn asks the visitor for the time, as behaviour: code
+ * asked (morning or evening; a booking short of its hour), or the reply asks
+ * about the day or the time in words, with or without a question mark.
+ * Seen 18 October 2026 (AM05, LC01): a reply asking for the time without a
+ * "؟" was scored as not asking.
+ */
+export function asksForTime(booking: BookingOutcome, reply: string) {
+  if (booking.status === 'ask_period') return true
+  if (booking.status === 'incomplete' && booking.missing.includes('time')) return true
+  // TIME_QUESTION is spelled as written (الساعة), ASKING as folded (اعرف for أعرف)
+  return TIME_QUESTION.test(reply) && ASKING.test(foldArabic(reply))
+}
 const DEFERS_TO_TEAM = /الفريق|فريقنا|هنرد|هيرد|هنتواصل|هيتواصل|هنتأكد|خدمة العملاء/
 // Han, kana and hangul
 const CJK = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uf900-\ufaff]/
@@ -523,8 +540,7 @@ function check(
   if (expect.appointment === null) {
     add('appointment: null', appointmentAt === null, appointmentAt ? `recorded ${slotOf(appointmentAt)}` : 'none recorded')
   } else if (expect.appointment === 'asks_for_time') {
-    const asks =
-      records[records.length - 1].booking.status === 'ask_period' || (/[?؟]/.test(last) && TIME_QUESTION.test(last))
+    const asks = asksForTime(records[records.length - 1].booking, last)
     add(
       'appointment: asks_for_time',
       appointmentAt === null && asks,
