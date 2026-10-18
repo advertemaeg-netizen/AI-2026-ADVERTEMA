@@ -16,8 +16,9 @@
  * What production would have recorded is worked out the way production does
  * it, in memory: the name and number through readContact, the appointment
  * through resolveAppointment and the booking gate (as recordAppointment would
- * store it: a time-only change keeping the day, and no appointment without a
- * name and a valid phone number), the reply through composeReply, the rest of
+ * store it: a time-only change keeping the day, what earlier messages gave of
+ * a booking kept as the webhook keeps it (mergeDraft / narrowDraft), and no
+ * appointment without a name and a valid phone number), the reply through composeReply, the rest of
  * the lead through analyzeConversation (as detectLead would read it). The only
  * rows written are the calls' own ai_usage rows, which is where the tokens
  * and the cost in the results come from.
@@ -34,14 +35,21 @@ import path from 'node:path'
 import { loadBotSettings, runBot, type BotClient } from '@/lib/ai/bot'
 import {
   APPOINTMENT_PLACEHOLDER,
+  ASK_DAY_AND_TIME,
   confirmsItself,
+  mergeDraft,
+  narrowDraft,
   openingAt,
   replyLanguage,
   resolveAppointment,
   sameInstant,
+  saysNothing,
   type AppointmentRequest,
+  type AppointmentResolution,
+  type BookingDraft,
   type BookingOutcome,
 } from '@/lib/ai/appointment'
+import { withEvidence, type EvidencedPart } from '@/lib/ai/evidence'
 import { composeReply, type SavedRecord } from '@/lib/ai/compose'
 import { EMPTY_CONTACT, MAX_PHONE_REJECTIONS, missingDetails, readContact, type ContactEvents } from '@/lib/ai/contact'
 import { LEAD_CONFIDENCE_THRESHOLD, analyzeConversation } from '@/lib/ai/lead-detection'
@@ -263,7 +271,11 @@ type TurnRecord = {
   /** The model's answer before anything read it */
   raw: string
   appointmentRequest: AppointmentRequest | null
+  /** What the model reported that the visitor's message gave no trace of (withEvidence) */
+  evidenceDropped: EvidencedPart[]
   booking: BookingOutcome
+  /** The partial booking after this turn, as the webhook would store it with the reply */
+  draft: BookingDraft | null
   /** What became of the name and number in this message */
   contact: ContactEvents
   /** What the visitor would have been sent */
@@ -289,6 +301,8 @@ async function converse(bot: Bot, turns: string[]) {
   let leadOpen = false
   /** A time asked for while the name or the number was missing (ai_appointment.pending) */
   let pending: { at: string; confirmed: boolean } | null = null
+  /** What the visitor has said toward an appointment that is not one yet (the reply's metadata.draft) */
+  let draft: BookingDraft | null = null
   const said: string[] = []
   const hours = settings.business_hours
 
@@ -320,9 +334,42 @@ async function converse(bot: Bot, turns: string[]) {
     let booking: BookingOutcome = { status: 'none' }
     let confirmedOnRecord = false
     let decided = result.appointment !== null
+    let evidenceDropped: EvidencedPart[] = []
+    // confirmPending: the time asked for earlier becomes the appointment, once the details are there
+    const promotePending = (): BookingOutcome | null => {
+      if (!pending || appointmentAt || missingDetails(record.name, record.phone).length > 0) return null
+      const waiting = pending
+      pending = null
+      draft = null
+      const opening = hours?.enabled ? openingAt(hours, waiting.at) : null
+      if (new Date(waiting.at).getTime() < Date.now()) return { status: 'past' }
+      if (opening && !opening.open) return { status: 'outside_hours', hours: opening.day }
+      appointmentAt = waiting.at
+      confirmedOnRecord = waiting.confirmed
+      return { status: 'booked', at: waiting.at, confirmed: waiting.confirmed, changed: true }
+    }
     if (result.appointment) {
-      const resolved = resolveAppointment(result.appointment, { keepDayOf: appointmentAt ?? pending?.at ?? null, businessHours: hours })
-      if (resolved.status === 'resolved') {
+      // withEvidence, then the draft, as the webhook does
+      const evidenced = withEvidence(result.appointment, user)
+      evidenceDropped = evidenced.dropped
+      const request = mergeDraft(draft, evidenced.request)
+      // Reported, but none of it was said and nothing is held: as the webhook does
+      const unsaid: BookingOutcome | null = saysNothing(request)
+        ? (promotePending() ??
+          (appointmentAt ? { status: 'booked', at: appointmentAt, confirmed: confirmedOnRecord, changed: false } : ASK_DAY_AND_TIME))
+        : null
+      // Read through a cast: TypeScript can't see that promotePending() may have cleared it
+      const held = pending as { at: string } | null
+      const resolved: AppointmentResolution = unsaid
+        ? { status: 'none' }
+        : resolveAppointment(request, {
+            keepDayOf: appointmentAt ?? held?.at ?? null,
+            businessHours: hours,
+            hourFromPartOfDay: false,
+          })
+      if (unsaid) {
+        booking = unsaid
+      } else if (resolved.status === 'resolved') {
         // A booking opens the lead, with what is known of the visitor
         leadOpen = true
         fill()
@@ -346,19 +393,10 @@ async function converse(bot: Bot, turns: string[]) {
       } else {
         booking = resolved
       }
+      draft = narrowDraft(draft, request, booking)
     } else if (pending && !appointmentAt && missingDetails(record.name, record.phone).length === 0) {
-      // confirmPending: the time asked for earlier becomes the appointment
-      const waiting = pending
-      pending = null
+      booking = promotePending()!
       decided = true
-      const opening = hours?.enabled ? openingAt(hours, waiting.at) : null
-      if (new Date(waiting.at).getTime() < Date.now()) booking = { status: 'past' }
-      else if (opening && !opening.open) booking = { status: 'outside_hours', hours: opening.day }
-      else {
-        appointmentAt = waiting.at
-        confirmedOnRecord = waiting.confirmed
-        booking = { status: 'booked', at: waiting.at, confirmed: waiting.confirmed, changed: true }
-      }
     } else if (appointmentAt && result.reply.includes(APPOINTMENT_PLACEHOLDER)) {
       // appointmentOnRecord: a reply that quotes the appointment without
       // reporting it again is answered from the record, as the webhook does
@@ -377,7 +415,7 @@ async function converse(bot: Bot, turns: string[]) {
         name: contact.name,
         phone: contact.phone ?? record.phone,
         phoneGivenUp: contact.phoneRejections >= MAX_PHONE_REJECTIONS,
-        time: booking.status !== 'none' || appointmentAt !== null || pending !== null,
+        time: (booking.status !== 'none' && booking.status !== 'incomplete') || appointmentAt !== null || pending !== null,
       },
     })
     history.push({ role: 'assistant', content: reply })
@@ -385,7 +423,9 @@ async function converse(bot: Bot, turns: string[]) {
       user,
       raw: result.raw,
       appointmentRequest: result.appointment,
+      evidenceDropped,
       booking,
+      draft,
       contact: read.events,
       reply,
       appointmentAt,

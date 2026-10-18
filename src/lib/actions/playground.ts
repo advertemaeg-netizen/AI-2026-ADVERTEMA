@@ -2,6 +2,7 @@
 
 import { loadBotSettings, runBot, type BotClient } from '@/lib/ai/bot'
 import { confirmsItself, replyLanguage, resolveAppointment } from '@/lib/ai/appointment'
+import { withEvidence } from '@/lib/ai/evidence'
 import { composeReply } from '@/lib/ai/compose'
 import { canManage, getSession, isImpersonating } from '@/lib/auth/session'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -103,10 +104,13 @@ export async function testBot(
     })
     // Nothing is booked from a test chat: the reply shows what a visitor
     // would get if the requested time were recorded
-    const resolved = appointment
-      ? resolveAppointment(appointment, { businessHours: settings.business_hours })
-      : ({ status: 'none' } as const)
     const visitorMessages = messages.filter((m) => m.role === 'user').map((m) => m.content)
+    // Only what the latest message shows a trace of, as the widget takes it.
+    // No draft here: a test chat keeps nothing between messages.
+    const evidenced = appointment ? withEvidence(appointment, visitorMessages.at(-1) ?? '').request : null
+    const resolved = evidenced
+      ? resolveAppointment(evidenced, { businessHours: settings.business_hours, hourFromPartOfDay: false })
+      : ({ status: 'none' } as const)
     // Nothing is saved from a test chat either: a reply that states what is
     // on record says there is nothing, as it would to a visitor with no lead
     const reply = composeReply({

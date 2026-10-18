@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import ar from '../../messages/ar.json'
-import { appointmentRequestSchema, formatAppointment, renderReply, resolveAppointment } from '@/lib/ai/appointment'
+import {
+  appointmentLine,
+  appointmentRequestSchema,
+  formatAppointment,
+  mergeDraft,
+  narrowDraft,
+  parseBookingDraft,
+  renderReply,
+  resolveAppointment,
+} from '@/lib/ai/appointment'
 
 // Monday 5 October 2026, 12:00 in Cairo (UTC+3)
 const now = new Date('2026-10-05T09:00:00.000Z')
@@ -92,12 +101,28 @@ describe('resolveAppointment: components → one Cairo instant', () => {
   })
 
   it.each([
-    ['no day and nothing on record', { day_type: 'none', hour: 17 }],
-    ['a day with no time at all', { day_type: 'tomorrow' }],
-    ['a weekday type without the weekday', { day_type: 'weekday', hour: 17 }],
+    // Whether an hour like this one was said at all is withEvidence's to decide, before this
+    ['no day and nothing on record', { day_type: 'none', hour: 17 }, { status: 'incomplete', missing: ['day'], day: null, time: { hour: 17, minute: null, period: 'unspecified' } }],
+    ['a day with no time at all', { day_type: 'tomorrow' }, { status: 'incomplete', missing: ['time'], day: '2026-10-06', time: null }],
+    ['a weekday type without the weekday', { day_type: 'weekday', hour: 17 }, { status: 'incomplete', missing: ['day'], day: null, time: { hour: 17, minute: null, period: 'unspecified' } }],
+    ['neither a day nor a time', { day_type: 'none' }, { status: 'incomplete', missing: ['day', 'time'], day: null, time: null }],
+    // An hour of 40 is no hour (the schema drops it); whether the day was said is withEvidence's to decide
+    ['an hour out of range', { day_type: 'tomorrow', hour: 40 }, { status: 'incomplete', missing: ['time'], day: '2026-10-06', time: null }],
+  ])('says what is still missing rather than guess: %s', (_name, request, expected) => {
+    expect(resolve(request)).toEqual(expected)
+  })
+
+  it('refuses a day the business is closed even before the time is given', () => {
+    // Friday 9 October
+    expect(resolve({ day_type: 'weekday', weekday: 'friday' }, null, hours('12:00', '22:00'))).toEqual({
+      status: 'outside_hours',
+      hours: { weekday: 5, open: false },
+    })
+  })
+
+  it.each([
     ['a date that does not exist', { day_type: 'date', day_of_month: 31, month: 11, hour: 17 }],
     ['more than six months ahead', { day_type: 'date', day_of_month: 1, month: 9, hour: 17 }],
-    ['values out of range', { day_type: 'tomorrow', hour: 40 }],
   ])('returns nothing rather than guess: %s', (_name, request) => {
     expect(resolve(request)).toEqual(NONE)
   })
@@ -166,6 +191,75 @@ describe('resolveAppointment: components → one Cairo instant', () => {
     expect(formatAppointment('2026-10-08T15:00:00.000Z', 'ar')).toBe('الخميس 8 أكتوبر الساعة 6:00 مساءً')
     expect(formatAppointment('2026-10-08T15:00:00.000Z', 'en')).toBe('Thursday 8 October at 6:00 PM')
     expect(formatAppointment('2026-10-10T08:00:00.000Z', 'ar')).toBe('السبت 10 أكتوبر الساعة 11:00 صباحاً')
+  })
+})
+
+describe('the partial booking kept between messages (the draft)', () => {
+  const request = (fields: Record<string, unknown>) => appointmentRequestSchema.parse({ period: 'unspecified', ...fields })
+  const thursday = (hour: number | null, period = 'unspecified') => request({ day_type: 'weekday', weekday: 'thursday', hour, period })
+  const outside = { status: 'outside_hours', hours: { weekday: 4, open: true, from: '12:00', to: '22:00' } } as const
+  const closed = { status: 'outside_hours', hours: { weekday: 5, open: false } } as const
+
+  // Conversation 0c6b8d64, 18 October 2026: two refused times, then "7 بالليل" without the day
+  it('keeps the day when the time on it is refused, and completes a day-less time with it', () => {
+    let draft = narrowDraft(null, thursday(11, 'morning'), outside, now)
+    expect(draft).toEqual({ day: { day_type: 'weekday', weekday: 'thursday', day_of_month: null, month: null, year: null }, time: null, branch: null })
+    draft = narrowDraft(draft, mergeDraft(draft, thursday(11, 'night')), outside, now)
+    const seven = mergeDraft(draft, request({ day_type: 'none', hour: 7, period: 'night' }))
+    expect(resolveAppointment(seven, { now })).toEqual(at('2026-10-08T16:00:00.000Z'))
+  })
+
+  it('keeps the time and takes back the day when the day is the one that is closed', () => {
+    const draft = narrowDraft(null, request({ day_type: 'weekday', weekday: 'friday', hour: 7, period: 'night' }), closed, now)
+    expect(draft?.day).toBeNull()
+    expect(mergeDraft(draft, request({ day_type: 'weekday', weekday: 'saturday' }))).toMatchObject({ weekday: 'saturday', hour: 7, period: 'night' })
+  })
+
+  it('answers "morning or evening?" about the hour it holds', () => {
+    const draft = narrowDraft(null, thursday(11), { status: 'ask_period', hour: 11 }, now)
+    expect(mergeDraft(draft, request({ day_type: 'none', period: 'morning' }))).toMatchObject({ weekday: 'thursday', hour: 11, period: 'morning' })
+  })
+
+  it('keeps the branch through a refusal, like the day', () => {
+    const previous = { day: null, time: null, branch: 'التجمع' }
+    expect(narrowDraft(previous, thursday(11, 'morning'), outside, now)?.branch).toBe('التجمع')
+  })
+
+  it('fixes "tomorrow" to its date, so a reply after midnight does not move it', () => {
+    const draft = narrowDraft(null, request({ day_type: 'tomorrow', hour: 5, period: 'morning' }), outside, now)
+    expect(draft?.day).toEqual({ day_type: 'date', weekday: null, day_of_month: 6, month: 10, year: 2026 })
+  })
+
+  it('ends once the time is an appointment or a held request', () => {
+    const booked = { status: 'booked', at: '2026-10-08T16:00:00.000Z', confirmed: true, changed: true } as const
+    expect(narrowDraft(null, thursday(7, 'night'), booked, now)).toBeNull()
+    expect(narrowDraft(null, thursday(7, 'night'), { status: 'needs_details', at: booked.at, missing: ['phone'], handoff: false }, now)).toBeNull()
+  })
+
+  it('reads back only what it wrote', () => {
+    expect(parseBookingDraft(undefined)).toBeNull()
+    expect(parseBookingDraft({ day: null, time: { hour: 7, minute: null, period: 'night' }, branch: null })).toEqual({
+      day: null,
+      time: { hour: 7, minute: null, period: 'night' },
+      branch: null,
+    })
+  })
+
+  it('asks only for what is missing, naming what it already holds', () => {
+    const T = ar.botReplies.appointment
+    expect(appointmentLine({ status: 'incomplete', missing: ['time'], day: '2026-10-22', time: null }, 'ar')).toBe(
+      T.askHour.replace('{day}', 'الخميس 22 أكتوبر')
+    )
+    const at5 = (period: 'afternoon' | 'unspecified') => ({ hour: 5, minute: null, period })
+    expect(appointmentLine({ status: 'incomplete', missing: ['day'], day: null, time: at5('afternoon') }, 'ar')).toBe(
+      T.askDayAt.replace('{time}', '5:00 مساءً')
+    )
+    // Morning or evening not said: the hour as said
+    expect(appointmentLine({ status: 'incomplete', missing: ['day'], day: null, time: at5('unspecified') }, 'ar')).toBe(
+      T.askDayAt.replace('{time}', '5')
+    )
+    expect(appointmentLine({ status: 'incomplete', missing: ['day'], day: null, time: null }, 'ar')).toBe(T.askDay)
+    expect(appointmentLine({ status: 'incomplete', missing: ['day', 'time'], day: null, time: null }, 'ar')).toBe(T.askTime)
   })
 })
 

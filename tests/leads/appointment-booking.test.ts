@@ -129,12 +129,20 @@ describe('one appointment parser: the reply quotes the stored appointment', () =
     expect(asked.reply).toBe('تمام يا أستاذ كريم، تحب يوم إيه والساعة كام؟')
     expect(asked.leads.map((lead) => lead.appointment_at)).toEqual([null])
 
-    // The model misbehaves: an hour with no day, and a reply that claims a booking
+    // The model misbehaves: an hour with no day, and a reply that claims a booking.
+    // Nobody said 5: it never enters the booking, and day and time are both asked for
     chatModel(() => botReply('تمام، حجزتلك {{appointment}}.', { day_type: 'none', hour: 5, period: 'afternoon' }))
-    const invented = await book(seeded, 'أنا كريم مصطفى ورقمي 01012345678، عايز أحجز الأسبوع الجاي')
+    const visitorId = newVisitorId()
+    const invented = await book(seeded, 'أنا كريم مصطفى ورقمي 01012345678، عايز أحجز الأسبوع الجاي', { visitorId })
     expect(invented.reply).toBe(TEXT.askTime)
     expect(invented.stored).toBe(TEXT.askTime)
     expect(invented.leads.map((lead) => lead.appointment_at)).toEqual([null])
+
+    // And the invented 5 is not waiting for a day: "الثلاثاء" alone books nothing, and only the hour is asked for
+    chatModel(() => botReply('', { day_type: 'weekday', weekday: 'tuesday' }))
+    const tuesday = await book(seeded, 'الثلاثاء', { visitorId, conversationId: invented.conversationId })
+    expect(tuesday.reply).toBe(TEXT.askHour.replace('{day}', 'الثلاثاء 6 أكتوبر'))
+    expect(tuesday.leads.map((lead) => lead.appointment_at)).toEqual([null])
   })
 
   it('keeps the answer to another question when the model claims a booking that was not recorded', async () => {

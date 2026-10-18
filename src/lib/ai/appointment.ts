@@ -104,10 +104,10 @@ export const botReplySchema = z.object({
 })
 
 /** How to report an appointment as components: shared by every prompt that reads one */
-export const APPOINTMENT_COMPONENTS = `- When the visitor's latest message asks for, agrees to or changes an appointment with a specific day and time, fill "appointment" with what THEY said, as components. Report, don't calculate: no dates worked out from "tomorrow" or a weekday, no 24-hour conversion, and no guessing a part of the day they didn't say.
+export const APPOINTMENT_COMPONENTS = `- When the visitor's latest message asks for, agrees to or changes an appointment and names a specific day, a specific time, or both, fill "appointment" with what THEY said, as components. Report, don't calculate: no dates worked out from "tomorrow" or a weekday, no 24-hour conversion, and no guessing a part of the day they didn't say.
   day_type: today (النهارده), tomorrow (بكرة), day_after_tomorrow (بعد بكرة), weekday (a named day: set "weekday"), date (a calendar date: set "day_of_month", "month" if stated, and "year" only if they said a year), or none.
   hour and minute exactly as said ("الساعة 6" → 6; "11 ونص" → 11 and 30). period: morning (الصبح), noon (الضهر), afternoon (العصر), evening (المغرب), night (بالليل / العشا), or unspecified when they didn't say.
-- A new time without a day ("خليها 7") is day_type none with the new hour: the day they already chose is kept. Always the visitor's latest choice.
+- A new time without a day ("خليها 7") is day_type none with the new hour, and a new day without a time is the day with no hour: the system keeps what they already chose of the rest, also after a time was refused. Always the visitor's latest choice.
 - When the latest message only completes what they asked before (answering which part of the day, or which hour), report the whole request: the day and hour from earlier with what they just added.
 - needs_team_check: true when the information you were given says the business is closed or unavailable at that time (a holiday, a doctor who is away), or you cannot tell whether it can be honoured. Report the request all the same: the system decides what becomes of it.`
 
@@ -127,7 +127,7 @@ ${APPOINTMENT_COMPONENTS}
 - Whenever "appointment" is not null, the SYSTEM writes everything the visitor is told about it: whether it is recorded, confirmed, refused, outside working hours, or still needs their name or number. Your "reply" is NOT shown to the visitor on that turn, so nothing you think about the time — that it is fine, that it is not possible, that another time would be better — reaches them or should be written anywhere else.
 - "other_answer": when the same message ALSO asked about something that is not the appointment (a price, insurance, an address, a doctor), answer that here, and only that. Nothing about the appointment, its day or time, opening hours as a reason, or whether it can be booked. Null when the message asked nothing else, and null whenever "appointment" is null, unless you are told below that a time the visitor asked for earlier is held.
 - When "appointment" is null and you mention an appointment the visitor already has, write ${APPOINTMENT_PLACEHOLDER} in "reply" exactly where its day and time belong, and never write the day or the time yourself: the system replaces it with the appointment on record. Never say that something is booked or confirmed yourself.
-- With no specific day ("next week", "soon", "any time") or no time at all, "appointment" is null: don't use ${APPOINTMENT_PLACEHOLDER}, and ask for the missing day or time.
+- With neither a specific day nor a time ("next week", "soon", "any time"), "appointment" is null: don't use ${APPOINTMENT_PLACEHOLDER}, and ask for the day and time. A specific day without a time ("الخميس"), or a time without a day, is reported: the system keeps it and asks for the rest.
 - "appointment" is null whenever the latest message isn't about scheduling.`
 
 /**
@@ -201,6 +201,13 @@ const weekdayOf = ({ year, month, day }: CalendarDay) => new Date(Date.UTC(year,
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
+type Incomplete = {
+  status: 'incomplete'
+  missing: ('day' | 'time')[]
+  day: string | null
+  time: Pick<AppointmentRequest, 'hour' | 'minute' | 'period'> | null
+}
+
 /** A day of the business's week: closed, or open between two wall-clock times */
 export type OpeningDay = { weekday: number; open: false } | { weekday: number; open: true; from: string; to: string }
 
@@ -224,6 +231,12 @@ export type AppointmentResolution =
   | { status: 'outside_hours'; hours: OpeningDay }
   /** A real day and time that has already gone */
   | { status: 'past' }
+  /**
+   * Part of a booking: the day or the time is still to come. `day`: the
+   * calendar day ("2026-10-22") when it is the time that is missing; `time`:
+   * the hour held when it is the day. The question names what is held.
+   */
+  | Incomplete
   /** No usable day and time, or an implausible one */
   | { status: 'none' }
 
@@ -253,7 +266,8 @@ export function openingAt(hours: BusinessHours, at: string | Date): { open: bool
 
 /**
  * Components → the instant in Cairo time. Nothing is ever guessed to fill a
- * gap: without a day and a time there is no appointment ('none'), and an hour
+ * gap: without a day or a time there is no appointment yet ('incomplete',
+ * which says which one is missing), and an hour
  * that could be morning or evening is settled only by the business's opening
  * hours — when exactly one of the two falls inside them. Otherwise
  * ('ask_period') the visitor is asked.
@@ -266,7 +280,19 @@ export function resolveAppointment(
     now = new Date(),
     keepDayOf = null,
     businessHours = null,
-  }: { now?: Date; keepDayOf?: string | null; businessHours?: BusinessHours | null } = {}
+    hourFromPartOfDay = true,
+  }: {
+    now?: Date
+    keepDayOf?: string | null
+    businessHours?: BusinessHours | null
+    /**
+     * A part of the day alone ("Thursday morning") gets a usual hour for it,
+     * flagged approximate. False where the visitor can be asked instead (the
+     * reply): "بكرة بالليل" is then kept and the hour asked for, not booked
+     * at 9 PM (frozen eval, AM03, 18 October 2026).
+     */
+    hourFromPartOfDay?: boolean
+  } = {}
 ): AppointmentResolution {
   const today: CalendarDay = cairoParts(now)
 
@@ -312,7 +338,11 @@ export function resolveAppointment(
       if (keepDayOf && request.hour !== null) day = cairoParts(keepDayOf)
       break
   }
-  if (!day) return NONE
+  const hasTime = request.hour !== null || request.period !== 'unspecified'
+  if (!day) {
+    const time = request.hour !== null ? { hour: request.hour, minute: request.minute, period: request.period } : null
+    return { status: 'incomplete', missing: hasTime ? ['day'] : ['day', 'time'], day: null, time }
+  }
 
   let hour: number
   let approximate = false
@@ -326,11 +356,18 @@ export function resolveAppointment(
     hour = open[0]
   } else if (request.hour !== null) {
     hour = to24Hour(request.hour, request.period)
-  } else if (request.period !== 'unspecified') {
+  } else if (request.period !== 'unspecified' && hourFromPartOfDay) {
     hour = PERIOD_DEFAULT_HOUR[request.period]
     approximate = true
   } else {
-    return NONE
+    // A day and no time: refused now if the business is closed that day,
+    // otherwise kept while the time is asked for
+    if (Date.UTC(day.year, day.month, day.day) > now.getTime() + MAX_DAYS_AHEAD * DAY_MS) return NONE
+    const weekday = weekdayOf(day)
+    if (businessHours?.enabled && !businessHours.days[HOURS_DAY[weekday]].open) {
+      return { status: 'outside_hours', hours: { weekday, open: false } }
+    }
+    return { status: 'incomplete', missing: ['time'], day: `${day.year}-${pad(day.month + 1)}-${pad(day.day)}`, time: null }
   }
 
   const instant = (d: CalendarDay) => {
@@ -349,6 +386,140 @@ export function resolveAppointment(
     if (!opening.open) return { status: 'outside_hours', hours: opening.day }
   }
   return { status: 'resolved', at: at.toISOString(), approximate, validated: businessHours?.enabled === true }
+}
+
+type DayPart = Pick<AppointmentRequest, 'day_type' | 'weekday' | 'day_of_month' | 'month' | 'year'>
+type TimePart = Pick<AppointmentRequest, 'hour' | 'minute' | 'period'>
+
+/**
+ * What the visitor has said so far toward one appointment that is not one
+ * yet: kept with each reply (the message's metadata) and read back on the
+ * next message, so that code, not the model, remembers it.
+ *
+ * Seen on the demo widget, 18 October 2026 (conversation 0c6b8d64): Thursday
+ * at 11 in the morning and at 11 at night were both refused, then "7 بالليل"
+ * came in. The model reported it without the day, as it is told it may
+ * ("خليها 7"), but code only kept a day that had become an appointment or a
+ * held request, and a refused time is neither: the visitor was asked "يوم
+ * إيه" and booked one message later, after complaining.
+ *
+ * A refusal narrows the draft rather than emptying it: a time refused on
+ * Thursday takes back the time, not Thursday; a day the business is closed
+ * takes back the day, not the time. Once the time becomes an appointment or
+ * a held request the lead holds it, and the draft ends.
+ */
+export type BookingDraft = {
+  day: DayPart | null
+  time: TimePart | null
+  /** The branch the visitor chose: kept like the day and the time, filled once the model reports one (the branches step) */
+  branch: string | null
+}
+
+const bookingDraftSchema = z.object({
+  day: appointmentRequestSchema
+    .pick({ day_type: true, weekday: true, day_of_month: true, month: true, year: true })
+    .nullable()
+    .catch(null),
+  time: appointmentRequestSchema.pick({ hour: true, minute: true, period: true }).nullable().catch(null),
+  branch: z.string().nullable().catch(null),
+})
+
+/** The draft a reply left, from its metadata; null when there is none or it is not one */
+export function parseBookingDraft(value: unknown): BookingDraft | null {
+  const parsed = bookingDraftSchema.safeParse(value)
+  return parsed.success ? parsed.data : null
+}
+
+/**
+ * What the latest message reported, completed from the draft: a part it
+ * gives replaces the draft's, a part it leaves out is the draft's. A part of
+ * the day alone ("الصبح") answers "morning or evening?" about the hour in the
+ * draft; otherwise it is a new time.
+ */
+export function mergeDraft(draft: BookingDraft | null, request: AppointmentRequest): AppointmentRequest {
+  if (!draft) return request
+  const day: DayPart = request.day_type !== 'none' ? request : (draft.day ?? request)
+  const held = draft.time
+  const time: TimePart =
+    request.hour !== null
+      ? // "الساعة 9" after "بالليل": the part of the day already given
+        request.period === 'unspecified' && held && held.hour === null && held.period !== 'unspecified'
+        ? { ...request, period: held.period }
+        : request
+      : request.period !== 'unspecified'
+        ? held && held.hour !== null && held.period === 'unspecified'
+          ? { ...held, period: request.period }
+          : request
+        : (held ?? request)
+  return {
+    ...request,
+    day_type: day.day_type,
+    weekday: day.weekday,
+    day_of_month: day.day_of_month,
+    month: day.month,
+    year: day.year,
+    hour: time.hour,
+    minute: time.minute,
+    period: time.period,
+  }
+}
+
+/** No day, no hour, no part of the day: nothing about the booking at all */
+export const saysNothing = (request: AppointmentRequest) =>
+  request.day_type === 'none' && request.hour === null && request.period === 'unspecified'
+
+/** What the visitor is asked when nothing of a booking is known yet */
+export const ASK_DAY_AND_TIME: BookingOutcome = { status: 'incomplete', missing: ['day', 'time'], day: null, time: null }
+
+const RELATIVE_DAYS: Partial<Record<DayPart['day_type'], number>> = { today: 0, tomorrow: 1, day_after_tomorrow: 2 }
+
+/** "بكرة" said today is a date: it must not move if the next message comes after midnight */
+function fixedDay(request: DayPart, now: Date): DayPart {
+  const offset = RELATIVE_DAYS[request.day_type]
+  const { day_type, weekday, day_of_month, month, year } = request
+  if (offset === undefined) return { day_type, weekday, day_of_month, month, year }
+  const d = addDays(cairoParts(now), offset)
+  return { day_type: 'date', weekday: null, day_of_month: d.day, month: d.month + 1, year: d.year }
+}
+
+/** A date with its year that is before today: refused as a day, whatever the time */
+function dayHasGone(day: DayPart, now: Date) {
+  if (day.day_type !== 'date' || !day.day_of_month || !day.year) return false
+  const today = cairoParts(now)
+  return Date.UTC(day.year, (day.month ?? today.month + 1) - 1, day.day_of_month) < Date.UTC(today.year, today.month, today.day)
+}
+
+/**
+ * The draft after this message: what `request` (already merged) held, less
+ * the part the outcome refused. Null once the lead holds the time, or when
+ * nothing is left.
+ */
+export function narrowDraft(
+  previous: BookingDraft | null,
+  request: AppointmentRequest,
+  outcome: BookingOutcome,
+  now = new Date()
+): BookingDraft | null {
+  const day = request.day_type === 'none' ? null : fixedDay(request, now)
+  const time = request.hour === null && request.period === 'unspecified' ? null : { hour: request.hour, minute: request.minute, period: request.period }
+  const branch = previous?.branch ?? null
+  const keep = (d: DayPart | null, t: TimePart | null) => (d || t || branch ? { day: d, time: t, branch } : null)
+  switch (outcome.status) {
+    case 'booked':
+    case 'kept':
+    case 'needs_details':
+      return null
+    case 'outside_hours':
+      return outcome.hours.open ? keep(day, null) : keep(null, time)
+    case 'past':
+      return keep(day && dayHasGone(day, now) ? null : day, null)
+    case 'none':
+      // Unusable is a day that doesn't exist or is too far ahead
+      return keep(null, time)
+    case 'ask_period':
+    case 'incomplete':
+      return keep(day, time)
+  }
 }
 
 /**
@@ -415,6 +586,24 @@ export function formatAppointment(at: string, language: ReplyLanguage): string {
   return `${part({ weekday: 'long' })} ${part({ day: 'numeric' })} ${part({ month: 'long' })} ${t.at} ${time}`
 }
 
+/** "الخميس 22 أكتوبر" / "Thursday 22 October" from a calendar day ("2026-10-22") */
+function formatDay(dateKey: string, language: ReplyLanguage) {
+  const [year, month, day] = dateKey.split('-').map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day, 12))
+  const part = (options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(LOCALES[language], { timeZone: 'UTC', ...options }).format(date)
+  return `${part({ weekday: 'long' })} ${part({ day: 'numeric' })} ${part({ month: 'long' })}`
+}
+
+/**
+ * A time held without its day, as the visitor said it: "5:00 مساءً" once the
+ * part of the day settles it, the bare "5" while it doesn't
+ */
+function formatHeldTime({ hour, minute, period }: Pick<AppointmentRequest, 'hour' | 'minute' | 'period'>, language: ReplyLanguage) {
+  if (hour === null) return ''
+  if (period === 'unspecified' && hour >= 1 && hour <= 12) return minute ? `${hour}:${pad(minute)}` : String(hour)
+  return formatClock(`${pad(to24Hour(hour, period) % 24)}:${pad(minute ?? 0)}`, language)
+}
+
 /** What happened to the appointment the visitor asked for */
 export type BookingOutcome =
   /** On record at `at`. `changed`: this message set or moved it */
@@ -433,6 +622,8 @@ export type BookingOutcome =
   | { status: 'outside_hours'; hours: OpeningDay }
   /** Nothing recorded: that day and time have gone */
   | { status: 'past' }
+  /** Nothing recorded yet: the day or the time is still to come (kept in the draft meanwhile) */
+  | Incomplete
   /** Nothing recorded: no usable day and time, or the booking failed */
   | { status: 'none' }
 
@@ -482,6 +673,12 @@ export function appointmentLine(outcome: BookingOutcome, language: ReplyLanguage
       return describeOpening(outcome.hours, language)
     case 'past':
       return t.past
+    case 'incomplete':
+      // Only what is still missing is asked for, and what is held is named in the
+      // question: a visitor who answers "الثلاثاء" sees the 5 o'clock it goes with
+      if (!outcome.missing.includes('day') && outcome.day) return t.askHour.replace('{day}', formatDay(outcome.day, language))
+      if (outcome.missing.includes('time')) return t.askTime
+      return outcome.time ? t.askDayAt.replace('{time}', formatHeldTime(outcome.time, language)) : t.askDay
     case 'needs_details': {
       const time = formatAppointment(outcome.at, language)
       return outcome.handoff
@@ -517,7 +714,12 @@ export function renderReply(template: string, outcome: BookingOutcome, language:
   }
   // Refused, or not an appointment yet: what the model wrote about the
   // booking goes, the rest of its answer stays, and code says why
-  if (outcome.status === 'outside_hours' || outcome.status === 'past' || outcome.status === 'needs_details') {
+  if (
+    outcome.status === 'outside_hours' ||
+    outcome.status === 'past' ||
+    outcome.status === 'needs_details' ||
+    outcome.status === 'incomplete'
+  ) {
     const rest = withoutAppointmentSentences(template)
     const said = appointmentLine(outcome, language)
     return rest ? `${rest}\n${said}` : said

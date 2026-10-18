@@ -135,6 +135,7 @@ export async function recordAppointment({
   businessHours,
   source,
   contact,
+  hourFromPartOfDay = true,
   now = new Date(),
 }: {
   supabase: SupabaseClient
@@ -154,6 +155,8 @@ export async function recordAppointment({
   source: 'reply' | 'analysis'
   /** The name and number code has accepted in this conversation, for a lead opened here */
   contact: ContactState | null
+  /** resolveAppointment's: false where the visitor can be asked for the hour (the reply) */
+  hourFromPartOfDay?: boolean
   now?: Date
 }): Promise<BookingOutcome> {
   const leads = await loadLeads(supabase, conversationId)
@@ -161,7 +164,7 @@ export async function recordAppointment({
 
   // A time-only change ("make it 7") keeps the day already on record, or asked for
   const keepDayOf = open?.appointment_at ?? (open?.ai_appointment?.pending ? open.ai_appointment.at : null)
-  const resolved = resolveAppointment(request, { now, keepDayOf, businessHours })
+  const resolved = resolveAppointment(request, { now, keepDayOf, businessHours, hourFromPartOfDay })
   if (resolved.status !== 'resolved') return resolved
 
   const returningFrom = leads.findLast(isClosed) ?? null

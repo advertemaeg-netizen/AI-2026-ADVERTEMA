@@ -3,7 +3,18 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { aiFailureReason, replyModel, type ChatTurn } from '@/lib/ai/provider'
 import { BOT_HISTORY_LIMIT, loadBotSettings, runBot } from '@/lib/ai/bot'
 import { detectLead } from '@/lib/ai/lead-detection'
-import { APPOINTMENT_PLACEHOLDER, replyLanguage, type BookingOutcome } from '@/lib/ai/appointment'
+import {
+  APPOINTMENT_PLACEHOLDER,
+  ASK_DAY_AND_TIME,
+  mergeDraft,
+  narrowDraft,
+  parseBookingDraft,
+  replyLanguage,
+  saysNothing,
+  type BookingDraft,
+  type BookingOutcome,
+} from '@/lib/ai/appointment'
+import { withEvidence, type EvidencedPart } from '@/lib/ai/evidence'
 import { appointmentOnRecord, confirmPending, heldRequest, recordAppointment, saveContact, savedRecord } from '@/lib/ai/booking'
 import { composeReply, mentionsName, type SavedRecord } from '@/lib/ai/compose'
 import {
@@ -270,12 +281,17 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       .in('role', ['user', 'assistant', 'agent'])
       .order('created_at', { ascending: false })
       .limit(BOT_HISTORY_LIMIT)
-      .returns<{ role: string; content: string; metadata: { contact?: unknown } | null }[]>()
+      .returns<{ role: string; content: string; metadata: { contact?: unknown; booking?: unknown; draft?: unknown } | null }[]>()
     if (historyError) throw historyError
 
     // Newest first here: the name and number as the latest reply left them
     const previousContact =
       recent.map((m) => (m.role === 'assistant' ? parseContactState(m.metadata?.contact) : null)).find(Boolean) ?? EMPTY_CONTACT
+    // The partial booking as the latest bot reply left it (one with a booking
+    // trace: a fallback message says nothing about it). No draft on that reply
+    // means there was none: an older one ended there.
+    const lastReplyTrace = recent.find((m) => m.role === 'assistant' && m.metadata?.booking !== undefined)?.metadata
+    const previousDraft = parseBookingDraft(lastReplyTrace?.draft)
     const history: ChatTurn[] = recent
       .reverse()
       .map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }))
@@ -369,6 +385,9 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       raw: string
       booking: BookingOutcome['status']
       booking_error?: true
+      evidence_dropped?: EvidencedPart[]
+      /** What the visitor has said toward an appointment that is not one yet; the next message starts from here */
+      draft: BookingDraft | null
       /** The name and number as code holds them after this message; the next message starts from here */
       contact?: ContactState
       contact_events?: ContactEvents
@@ -403,6 +422,10 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       let events: ContactEvents = { name: 'none', phone: 'none' }
       let booking: BookingOutcome = { status: 'none' }
       let bookingFailed = false
+      // Kept as it was unless this message reported something about the appointment
+      let draft = previousDraft
+      // What the model reported that the message gave no trace of
+      let evidenceDropped: EvidencedPart[] = []
       // Code decided something about the appointment on this message: then
       // code alone speaks about it (composeReply)
       let decided = result.appointment !== null
@@ -428,18 +451,38 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       // The appointment is recorded before the reply goes out, and the reply
       // quotes the record: it can't promise a time that isn't stored
       if (result.appointment) {
+        // Only what this message shows a trace of (withEvidence), completed
+        // with what earlier ones gave (the draft)
+        const evidenced = withEvidence(result.appointment, message)
+        evidenceDropped = evidenced.dropped
+        const request = mergeDraft(previousDraft, evidenced.request)
         try {
-          booking = await recordAppointment({
-            supabase,
-            clientId: channel.client_id,
-            conversationId,
-            sourceMessageId: userMessage.id,
-            request: result.appointment,
-            autoConfirm: settings.auto_confirm_appointments,
-            businessHours: settings.business_hours,
-            source: 'reply',
-            contact,
-          })
+          if (saysNothing(request)) {
+            // Reported, but none of it was said and nothing is held: as if
+            // nothing was reported. The model's reply was written for the
+            // appointment it reported, so code still speaks: a held time is
+            // booked once it can be, one on record is restated, and otherwise
+            // the visitor is asked for the day and time.
+            booking =
+              (await confirmPending({ supabase, conversationId, businessHours: settings.business_hours })) ??
+              (await appointmentOnRecord({ supabase, conversationId }))
+            if (booking.status === 'none') booking = ASK_DAY_AND_TIME
+          } else {
+            booking = await recordAppointment({
+              supabase,
+              clientId: channel.client_id,
+              conversationId,
+              sourceMessageId: userMessage.id,
+              request,
+              autoConfirm: settings.auto_confirm_appointments,
+              businessHours: settings.business_hours,
+              source: 'reply',
+              contact,
+              // The visitor is here to be asked the hour rather than given a guess at one
+              hourFromPartOfDay: false,
+            })
+          }
+          draft = narrowDraft(previousDraft, request, booking)
         } catch (error) {
           console.error('[webhook/website] recording the appointment failed', error)
           bookingFailed = true
@@ -453,6 +496,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
           if (promoted) {
             booking = promoted
             decided = true
+            draft = null
           }
         } catch (error) {
           console.error('[webhook/website] confirming the requested appointment failed', error)
@@ -480,7 +524,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       }
       // Only when the reply talks about the visitor's name and code may have
       // to ask the next question itself: is a day and time on record already?
-      let timeOnRecord = booking.status !== 'none'
+      let timeOnRecord = booking.status !== 'none' && booking.status !== 'incomplete'
       if (!timeOnRecord && contact?.name && mentionsName(decided ? (result.otherAnswer ?? '') : result.reply)) {
         try {
           timeOnRecord = (await appointmentOnRecord({ supabase, conversationId })).status === 'booked'
@@ -492,6 +536,9 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
         raw: result.raw,
         booking: booking.status,
         ...(bookingFailed ? { booking_error: true } : {}),
+        // Kept so a real time the detector missed can be found and counted
+        ...(evidenceDropped.length > 0 ? { evidence_dropped: evidenceDropped } : {}),
+        draft,
         ...(contact ? { contact, contact_events: events } : {}),
       }
       reply = composeReply({
