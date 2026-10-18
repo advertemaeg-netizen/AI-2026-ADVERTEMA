@@ -1,0 +1,344 @@
+{
+  "meta": {
+    "siteName": "meta.siteName",
+    "ogAlt": "meta.ogAlt"
+  },
+  "nav": {
+    "home": "nav.home",
+    "forBusinesses": "nav.forBusinesses",
+    "forAgencies": "nav.forAgencies",
+    "pricing": "nav.pricing",
+    "contact": "nav.contact",
+    "privacy": "nav.privacy",
+    "terms": "nav.terms",
+    "signIn": "nav.signIn",
+    "signUp": "nav.signUp",
+    "languageSwitch": "nav.languageSwitch",
+    "languageSwitchLabel": "nav.languageSwitchLabel",
+    "menuLabel": "nav.menuLabel",
+    "legalLabel": "nav.legalLabel"
+  },
+  "footer": {
+    "tagline": "footer.tagline",
+    "rights": "footer.rights"
+  },
+  "home": {
+    "hero": {
+      "demo": {
+        "visitor": [
+          "home.hero.demo.visitor.0",
+          "home.hero.demo.visitor.1",
+          "home.hero.demo.visitor.2"
+        ]
+      },
+      "title": "Every message you don't answer is an ad you paid for.",
+      "subtitle": "Mudrik answers your customers in a second — on WhatsApp, Facebook, Instagram and your site — using your own information, books their appointments, and records every lead in one place.",
+      "cta_primary": "Start free for 14 days",
+      "cta_secondary": "Have us set it up",
+      "sectors": "Clinics · Beauty centres · Gyms · Tutoring centres · Labs · Workshops · and more"
+    },
+    "problem": {
+      "title": "The problem isn't that you don't answer. It's that you can't see what you lost.",
+      "items": [
+        {
+          "label": "The messages come at night",
+          "body": "A customer asks at 11pm and the answer comes in the morning. By then they've usually gone somewhere else."
+        },
+        {
+          "label": "Everyone answers differently",
+          "body": "The price is right once and wrong the next time. What one person knows, the next one doesn't."
+        },
+        {
+          "label": "Leads get lost in the inbox",
+          "body": "Nobody knows how many asked today, who got booked, or who was forgotten."
+        }
+      ]
+    },
+    "how": {
+      "title": "Three steps and Mudrik is working",
+      "steps": [
+        {
+          "label": "Tell it about your business",
+          "body": "Your hours, branches, services, prices. Write them once, or we'll write them for you."
+        },
+        {
+          "label": "Connect your channels",
+          "body": "WhatsApp, Facebook, Instagram, and a widget on your site. The same bot across all four."
+        },
+        {
+          "label": "Let it answer",
+          "body": "It answers from your information, not from its own head, books appointments, and leaves you every conversation to read."
+        }
+      ]
+    },
+    "features": {
+      "title": "Not a chatbot that answers in generalities",
+      "items": [
+        {
+          "label": "It knows your business",
+          "body": "Every answer comes from the information you entered. It doesn't invent, and when it doesn't know, it says so."
+        },
+        {
+          "label": "It books appointments",
+          "body": "It knows each branch's hours, and won't book on a closed day or outside working hours."
+        },
+        {
+          "label": "It captures every lead",
+          "body": "Name, number, service and appointment, in one list you can follow and export."
+        },
+        {
+          "label": "It speaks Egyptian",
+          "body": "Not a translation. It understands the dialect and answers in it, and reads a phone number however it's written."
+        }
+      ]
+    },
+    "try": {
+      "title": "The bot in that corner is Mudrik.",
+      "body": "Not a video, not screenshots. Ask it about pricing, the plans, or how it works, and see for yourself."
+    },
+    "paths": {
+      "title": "Set it up yourself, or have us do it?",
+      "self": {
+        "label": "Set it up yourself",
+        "body": "Sign up, enter your information, connect your channels. Right if you have the time, or if you manage more than one account.",
+        "cta": "Start free for 14 days"
+      },
+      "done_for_you": {
+        "label": "We set it up for you",
+        "body": "We write the knowledge base, configure the settings, and test it on real conversations until it answers the way you want. A one-time setup fee.",
+        "cta": "See what's involved"
+      },
+      "agencies_link": "Managing accounts for clients? There's a page for you."
+    },
+    "pricing": {
+      "title": "Plans that match your size",
+      "body": "The plans differ in channels, conversations and branches. We talk about price based on your size.",
+      "cta": "See the plans"
+    },
+    "closing": {
+      "title": "Try it on your real customers",
+      "body": "No credit card. If it isn't right for you, switch it off.",
+      "cta_primary": "Start free for 14 days",
+      "cta_secondary": "Talk to us"
+    }
+  },
+  "pages": {
+    "forBusinesses": {
+      "metaTitle": "pages.forBusinesses.metaTitle",
+      "metaDescription": "pages.forBusinesses.metaDescription",
+      "title": "pages.forBusinesses.title",
+      "intro": "pages.forBusinesses.intro",
+      "sections": [
+        {
+          "heading": "pages.forBusinesses.sections.0.heading",
+          "body": "pages.forBusinesses.sections.0.body"
+        },
+        {
+          "heading": "pages.forBusinesses.sections.1.heading",
+          "body": "pages.forBusinesses.sections.1.body"
+        },
+        {
+          "heading": "pages.forBusinesses.sections.2.heading",
+          "body": "pages.forBusinesses.sections.2.body"
+        }
+      ],
+      "cta": "pages.forBusinesses.cta"
+    },
+    "forAgencies": {
+      "metaTitle": "pages.forAgencies.metaTitle",
+      "metaDescription": "pages.forAgencies.metaDescription",
+      "title": "pages.forAgencies.title",
+      "intro": "pages.forAgencies.intro",
+      "sections": [
+        {
+          "heading": "pages.forAgencies.sections.0.heading",
+          "body": "pages.forAgencies.sections.0.body"
+        },
+        {
+          "heading": "pages.forAgencies.sections.1.heading",
+          "body": "pages.forAgencies.sections.1.body"
+        },
+        {
+          "heading": "pages.forAgencies.sections.2.heading",
+          "body": "pages.forAgencies.sections.2.body"
+        }
+      ],
+      "cta": "pages.forAgencies.cta"
+    },
+    "pricing": {
+      "metaTitle": "pages.pricing.metaTitle",
+      "metaDescription": "pages.pricing.metaDescription",
+      "title": "pages.pricing.title",
+      "intro": "pages.pricing.intro",
+      "tiers": [
+        {
+          "name": "pages.pricing.tiers.0.name",
+          "summary": "pages.pricing.tiers.0.summary",
+          "cta": "pages.pricing.tiers.0.cta"
+        },
+        {
+          "name": "pages.pricing.tiers.1.name",
+          "summary": "pages.pricing.tiers.1.summary",
+          "cta": "pages.pricing.tiers.1.cta"
+        },
+        {
+          "name": "pages.pricing.tiers.2.name",
+          "summary": "pages.pricing.tiers.2.summary",
+          "cta": "pages.pricing.tiers.2.cta"
+        }
+      ]
+    },
+    "contact": {
+      "metaTitle": "pages.contact.metaTitle",
+      "metaDescription": "pages.contact.metaDescription",
+      "title": "pages.contact.title",
+      "intro": "pages.contact.intro",
+      "channels": [
+        {
+          "label": "pages.contact.channels.0.label",
+          "value": "pages.contact.channels.0.value"
+        },
+        {
+          "label": "pages.contact.channels.1.label",
+          "value": "pages.contact.channels.1.value"
+        }
+      ]
+    }
+  },
+  "legal": {
+    "privacy": {
+      "metaTitle": "Privacy Policy",
+      "metaDescription": "Privacy Policy",
+      "title": "Privacy Policy",
+      "updated": "Last updated: [[date]]",
+      "draftNotice": "THIS IS A DRAFT FOR A LAWYER TO REVIEW. IT IS NOT READY TO PUBLISH.",
+      "sections": [
+        {
+          "heading": "1. Who we are",
+          "body": "Mudrik is a product of [[entity name]], commercial register [[number]], registered at\n[[address]]. For anything concerning personal data: [[DPO email]]."
+        },
+        {
+          "heading": "2. Our two roles",
+          "body": "We hold two different roles and the difference matters:\n\n- **When you are our customer** — an account holder on Mudrik — we control your account\n  data and decide how it is used.\n- **When your own customers talk to the bot** — we process their data on your behalf and\n  on your instructions. You are responsible for that data; we carry out what you ask.\n  That relationship is governed by the data processing agreement attached to the Terms."
+        },
+        {
+          "heading": "3. What we collect",
+          "body": "**Account data:** name, email, phone number, business name, subscription details.\n\n**Conversation content:** the messages exchanged between the bot and your customers,\nincluding any names, phone numbers, appointments and requested services in them.\n\n**What you enter:** your knowledge base — hours, branches, services, prices and so on.\n\n**Technical data:** IP address, browser and device type, usage times, error logs."
+        },
+        {
+          "heading": "4. Sensitive data",
+          "body": "Conversations may contain data that is sensitive by nature. If your business is a\nclinic, for example, a patient may mention their condition or the medical service they\nwant.\n\nSuch data carries heightened protection under the law. Because it is you who collects it\nfrom your customers through the bot, obtaining their written consent to collect and\nprocess it is your obligation, not ours. We process it only on your instructions and use\nit for nothing else."
+        },
+        {
+          "heading": "5. Why we use it",
+          "body": "- To run the service: answering your customers, booking appointments, and recording who\n  contacted you.\n- To manage your account and subscription.\n- To improve the service and fix faults.\n- To contact you about the service.\n- To meet legal obligations.\n\nWe do not sell your data or your customers' data to anyone. We do not use your\nconversation content to train general-purpose AI models."
+        },
+        {
+          "heading": "6. Who sees the data",
+          "body": "We rely on service providers to run Mudrik. They see only what their work requires:\n\n- **Hosting and database:** [[provider]] — data storage.\n- **AI model providers:** [[provider]] — generating replies.\n- **Messaging platforms:** WhatsApp, Facebook and Instagram, depending on the channels\n  you connect, each under its own privacy policy.\n- **Payments:** [[provider]]."
+        },
+        {
+          "heading": "7. Transfers outside Egypt",
+          "body": "Some of the providers above run their servers outside Egypt, which means data is\nprocessed and stored abroad.\n\nWe handle these transfers in line with Personal Data Protection Law No. 151 of 2020 and\nits Executive Regulations, and we bind our providers contractually to a level of\nprotection no lower than Egyptian law requires.\n\n[[Note for legal review: this section describes the position and does NOT claim a\ncross-border transfer permit has been obtained. Do not add such a claim until one has.]]"
+        },
+        {
+          "heading": "8. How long we keep it",
+          "body": "We keep your account data for as long as your subscription runs. We keep conversation\ncontent and lead data for [[period]] from the date of the conversation, unless you ask\nus to delete it sooner.\n\nWhen your account closes, data is deleted within [[period]], except what the law\nrequires us to keep and what relates to invoices and financial records."
+        },
+        {
+          "heading": "9. Your rights",
+          "body": "You, and your customers in respect of their own data, have the right to:\n\n- know what data we hold and receive a copy of it;\n- have incorrect data corrected;\n- ask for your data to be deleted;\n- withdraw consent at any time;\n- object to or restrict processing.\n\nTo exercise any of these, write to [[email]]. We respond within [[period]].\n\nIf you are a customer of a business that uses Mudrik and want to exercise your rights,\ncontact that business directly — it controls your data. You may also write to us and we\nwill pass your request on to them."
+        },
+        {
+          "heading": "10. Security",
+          "body": "We encrypt data in transit and at rest, separate each customer's data from every other\ncustomer's at the database level, and limit access to those who need it for their work.\nNo system can promise absolute security.\n\nIf a breach affects your data, we will notify you and the competent authority as the law\nrequires."
+        },
+        {
+          "heading": "11. Children",
+          "body": "Mudrik is not aimed at anyone under 18 and we do not knowingly collect their data. If we\nlearn we hold a minor's data without a guardian's consent, we delete it."
+        },
+        {
+          "heading": "12. Cookies",
+          "body": "We use cookies that are necessary to run the site and keep you signed in, and cookies\nthat measure usage. You can control them in your browser settings. [[To be completed once\nthe analytics tools are decided.]]"
+        },
+        {
+          "heading": "13. Changes to this policy",
+          "body": "We may amend this policy. Where an amendment is material, we will tell you by email or\ninside the platform before it takes effect."
+        },
+        {
+          "heading": "14. Contact and complaints",
+          "body": "Questions or complaints: [[email]].\n\nYou also have the right to complain to Egypt's Personal Data Protection Centre if you\nbelieve we have not met our obligations."
+        }
+      ]
+    },
+    "terms": {
+      "metaTitle": "Terms of Service",
+      "metaDescription": "Terms of Service",
+      "title": "Terms of Service",
+      "updated": "Last updated: [[date]]",
+      "draftNotice": "THIS IS A DRAFT FOR A LAWYER TO REVIEW. IT IS NOT READY TO PUBLISH.",
+      "sections": [
+        {
+          "heading": "1. The parties and acceptance",
+          "body": "These Terms are an agreement between you and [[entity name]] about your use of the\nMudrik platform. By using the service or creating an account you accept them. If you are\nusing it on behalf of a company or business, you confirm you are authorised to do so."
+        },
+        {
+          "heading": "2. The service",
+          "body": "Mudrik answers your customers' messages on WhatsApp, Facebook, Instagram and your\nwebsite, based on the information you provide, books appointments and records who\ncontacted you.\n\nWe develop the service continuously and may add, change or discontinue features. If we\ndiscontinue a material feature you rely on, we will give you reasonable notice first."
+        },
+        {
+          "heading": "3. Your account",
+          "body": "You are responsible for keeping your credentials confidential and for everything that\nhappens through your account. Tell us immediately about any unauthorised use.\n\nYou agree that the information you give us on registration is accurate and current."
+        },
+        {
+          "heading": "4. Acceptable use",
+          "body": "You agree not to use Mudrik to:\n\n- break the law or infringe anyone's rights;\n- send marketing messages to people who have not agreed to receive them;\n- impersonate another person or organisation, or present the bot as a human when a\n  customer asks directly;\n- attempt to breach, disrupt, or access other customers' data;\n- resell the service or make it available to third parties without a written agreement\n  with us.\n\nYou also agree to the terms of the platforms you connect, in particular the WhatsApp\nBusiness and Meta terms. Breaching those may get your channel suspended by them, and we\nare not responsible for that."
+        },
+        {
+          "heading": "5. Your customers' data and your responsibility for it",
+          "body": "When your customers talk to the bot, you are the controller of their data and we are the\nprocessor acting on your instructions. It follows that:\n\n- You are responsible for telling your customers that their conversations are recorded\n  and processed, and for obtaining their consent.\n- Where conversations may contain sensitive data — health data in the case of a clinic,\n  for example — you are responsible for obtaining their explicit written consent as the\n  law requires.\n- You are responsible for the lawfulness of any data you upload to the platform.\n- You are responsible for responding to your customers' requests about their own data,\n  and we will help you carry them out.\n\nThe detail of this relationship is governed by the attached data processing agreement,\nwhich forms part of these Terms."
+        },
+        {
+          "heading": "6. The limits of what the bot does",
+          "body": "The bot generates replies from the information you provide. It can be wrong or\nmisunderstand.\n\n**The bot's replies are not professional advice.** They are not medical, legal or\nfinancial advice and must not be presented as such. If your business is a medical one,\nyou are responsible for controlling what the bot says and for routing anything that\nneeds a professional opinion to a professional.\n\nWe do not review the content of replies before they are sent, and you are responsible for\nwhat the bot says in your business's name."
+        },
+        {
+          "heading": "7. Appointments",
+          "body": "When the bot confirms an appointment, it records it for you based on the settings and\nhours you configured. Honouring that appointment with the customer is yours alone.\n\nWe do not guarantee the slot is free in your actual calendar, and we are not responsible\nfor an appointment that is not kept."
+        },
+        {
+          "heading": "8. Subscription and payment",
+          "body": "Plans and their prices are set out on our site or in the quote sent to you. The\nsubscription is [[monthly / annual]] and renews automatically unless cancelled [[period]]\nbefore the renewal date.\n\nSetup fees, where they apply, are payable once and are non-refundable after work begins.\n\nWe may change prices and will give you [[period]] notice before a change takes effect."
+        },
+        {
+          "heading": "9. Suspension and termination",
+          "body": "You may end your subscription at any time from inside the platform; it takes effect at\nthe end of the current cycle.\n\nWe may suspend or close your account if you breach these Terms, fall behind on payment,\nor if your account is used in a way that harms the platform or others. We will warn you\nfirst unless the breach is serious or ongoing.\n\nAfter termination you may request a copy of your data within [[period]]."
+        },
+        {
+          "heading": "10. Intellectual property",
+          "body": "The platform, its software and its brand are ours. This agreement gives you no rights in\nthem beyond the right to use the service for the term of your subscription.\n\nThe information you upload and your conversation content remain yours."
+        },
+        {
+          "heading": "11. Limitation of liability",
+          "body": "The service is provided as available, and we do not promise it will run without\ninterruption or error.\n\nWe are not liable for lost profits, lost opportunities or indirect damages. In any event\nour total liability will not exceed what you paid in the [[period]] before the event\ngiving rise to the claim.\n\nThis limit does not apply to anything that cannot lawfully be limited."
+        },
+        {
+          "heading": "12. Indemnity",
+          "body": "You agree to indemnify us against any claim brought against us because of your breach of\nthese Terms, because of content you uploaded, or because of your use of the service in\nbreach of the law or of the messaging platforms' terms."
+        },
+        {
+          "heading": "13. Governing law",
+          "body": "These Terms are governed by Egyptian law, and the courts of [[court]] have jurisdiction\nover any dispute arising from them."
+        },
+        {
+          "heading": "14. Changes to these Terms",
+          "body": "We may amend these Terms and will give you [[period]] notice of any material change.\nContinuing to use the service after it takes effect is acceptance of it."
+        },
+        {
+          "heading": "15. Contact",
+          "body": "[[email]] — [[address]]"
+        }
+      ]
+    }
+  }
+}

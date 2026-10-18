@@ -1,0 +1,265 @@
+/*
+ * The marketing site's own layer, on top of the product's tokens
+ * (app/globals.css). The dashboard's restraint (the 15:1 field floor, the
+ * blur budget) is NOT applied here: this page is seen for thirty seconds.
+ * What IS kept:
+ *   - body text clears AAA (7:1). All text here is the ink (#000). The
+ *     darkest point of the field is cream with 40% brand at most (#f4b68d,
+ *     L≈0.53): black on it is 11.6:1. The brand orange is never under text.
+ *   - 60fps on a mid-range Android. Only transform and opacity animate, the
+ *     field is gradients with no filter, and two surfaces blur at most (the
+ *     header and the hero conversation).
+ *   - Reduced motion zeroes everything: every animation below sits inside
+ *     `no-preference`, so with reduce the page is simply its final state.
+ */
+
+/* The field, at full strength: fixed behind the whole site */
+.site-field {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(48rem 34rem at var(--field-start) -6rem, color-mix(in srgb, var(--palette-brand) 40%, transparent), transparent 70%),
+    radial-gradient(44rem 36rem at var(--field-end) 30%, color-mix(in srgb, var(--palette-tint) 45%, transparent), transparent 72%),
+    radial-gradient(56rem 40rem at 30% 105%, color-mix(in srgb, var(--palette-sage) 32%, transparent), transparent 70%),
+    radial-gradient(40rem 28rem at 55% 45%, rgb(255 255 255 / 0.7), transparent 70%),
+    var(--palette-cream);
+}
+
+/* Type: generous, and fluid between a phone and a wide screen */
+.site-display {
+  font-size: clamp(2.6rem, 1.6rem + 4.6vw, 5.75rem);
+  line-height: 1.05;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.site-h2 {
+  font-size: clamp(1.85rem, 1.3rem + 2.2vw, 3.25rem);
+  line-height: 1.12;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+.site-lead {
+  font-size: clamp(1.1rem, 1rem + 0.5vw, 1.375rem);
+  line-height: 1.6;
+}
+
+/* Surfaces with real depth and no blur (cheap on a phone) */
+.site-panel {
+  background: rgb(255 252 242 / 0.94);
+  border: 1px solid rgb(255 255 255 / 0.95);
+  border-radius: 1.5rem;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 0 0 1px rgb(147 55 3 / 0.06),
+    0 30px 60px -32px rgb(147 55 3 / 0.45),
+    0 10px 22px -14px rgb(122 45 2 / 0.22);
+}
+.site-panel-solid {
+  background: var(--glass-fill-solid);
+}
+.site-panel-quiet {
+  background: rgb(255 252 242 / 0.8);
+  border: 1px solid rgb(232 223 199 / 0.9);
+  border-radius: 1.25rem;
+}
+
+/* The hero conversation: one of the two blurred surfaces */
+.site-phone {
+  background: rgb(255 252 242 / 0.82);
+  border: 1px solid rgb(255 255 255 / 0.95);
+  border-radius: 2rem;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.95),
+    0 40px 80px -36px rgb(147 55 3 / 0.55),
+    0 12px 30px -16px rgb(122 45 2 / 0.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  backdrop-filter: blur(18px) saturate(1.6);
+}
+.site-bubble {
+  max-width: 85%;
+  border-radius: 1.25rem;
+  padding: 0.65rem 0.95rem;
+  line-height: 1.55;
+}
+.site-bubble[data-from='visitor'] {
+  align-self: flex-end;
+  background: var(--palette-action);
+  color: #fff; /* white on the action brown: 7.5:1 */
+  border-end-end-radius: 0.35rem;
+}
+.site-bubble[data-from='bot'] {
+  align-self: flex-start;
+  background: #fff;
+  color: var(--palette-ink);
+  border: 1px solid var(--border);
+  border-end-start-radius: 0.35rem;
+}
+
+/* The typing dots exist only as motion: in the final state (and with reduced motion) they are gone */
+.site-convo [data-typing] {
+  display: none;
+}
+
+/* The sequence line through the three steps */
+.site-steps-track {
+  position: absolute;
+  background: rgb(147 55 3 / 0.14);
+  border-radius: 999px;
+}
+.site-steps-fill {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(var(--site-steps-dir, to bottom), var(--palette-brand), var(--palette-action));
+  border-radius: 999px;
+  transform-origin: var(--site-steps-origin, top);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* ---- The hero conversation: one cycle, then it stays ---- */
+  .site-convo [data-step] {
+    opacity: 0;
+    animation: site-message-in 520ms var(--motion-spring) both;
+    animation-delay: calc(var(--at) * 1ms);
+  }
+  .site-convo [data-typing] {
+    display: flex;
+    opacity: 0;
+    animation: site-typing 1100ms ease-out both;
+    animation-delay: calc(var(--at) * 1ms);
+  }
+  .site-convo [data-typing] span {
+    animation: site-dot 900ms ease-in-out 2 both;
+    animation-delay: calc(var(--at) * 1ms + var(--i) * 120ms);
+  }
+  .site-convo [data-confirm] {
+    animation: site-message-in 520ms var(--motion-spring) both, site-pop 640ms var(--motion-spring) both;
+    animation-delay: calc(var(--at) * 1ms), calc(var(--at) * 1ms + 160ms);
+  }
+
+  /* ---- Entry of the hero itself ---- */
+  .site-rise {
+    animation: site-rise 900ms var(--motion-ease-out) both;
+    animation-delay: calc(var(--i, 0) * 90ms);
+  }
+
+  /* ---- Scroll-driven: only where the browser can, otherwise the content just stands ---- */
+  @supports (animation-timeline: view()) {
+    .site-reveal {
+      animation: site-reveal linear both;
+      animation-timeline: view();
+      animation-range: entry calc(var(--i, 0) * 12%) cover calc(28% + var(--i, 0) * 12%);
+    }
+    .site-steps-fill {
+      animation: site-grow linear both;
+      animation-timeline: --site-steps;
+      animation-range: entry 40% cover 62%;
+    }
+    .site-steps {
+      view-timeline: --site-steps block;
+    }
+    .site-step-dot {
+      animation: site-pop linear both;
+      animation-timeline: --site-steps;
+      animation-range: cover calc(18% + var(--i) * 14%) cover calc(26% + var(--i) * 14%);
+    }
+    .site-drift {
+      animation: site-drift linear both;
+      animation-timeline: scroll(root);
+    }
+  }
+
+  /* ---- Section 5: the pointer at the widget, three nudges then still ---- */
+  .site-pointer {
+    animation: site-nudge 1400ms var(--motion-ease-out) 3 both;
+    animation-delay: 600ms;
+  }
+}
+
+@keyframes site-message-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes site-typing {
+  0% {
+    opacity: 0;
+  }
+  15%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes site-dot {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+@keyframes site-pop {
+  from {
+    transform: scale(0.6);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+@keyframes site-rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes site-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(48px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes site-grow {
+  from {
+    transform: scale(var(--site-steps-from-x, 1), var(--site-steps-from-y, 0));
+  }
+  to {
+    transform: scale(1, 1);
+  }
+}
+@keyframes site-drift {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-18vh);
+  }
+}
+@keyframes site-nudge {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(var(--site-nudge-x, 10px), 10px);
+  }
+}

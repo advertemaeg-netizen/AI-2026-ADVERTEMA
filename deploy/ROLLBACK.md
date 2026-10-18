@@ -1,3 +1,131 @@
+# The marketing site takes over the apex — NOT APPLIED
+
+Written 2026-10-18 with the site scaffold (`app/[locale]/site`, `src/site`,
+`messages/site`). Apply it **in the same deploy that ships the site**, never
+before: until then the apex 302s to the app, as it does today.
+
+## LAUNCH BLOCKER: the legal pages
+
+**The site must not be deployed publicly until Ahmed confirms the legal
+review of /privacy and /terms is done.** Their text is a DRAFT pending a
+lawyer (decided 2026-10-18). This is a blocker, not a nice-to-have: do not
+apply the apex change below, and do not flip `SITE_INDEXABLE`
+(src/site/config.ts), until that confirmation is written here, with its date
+and who gave it:
+
+- Legal review confirmed by: _(not yet)_
+
+## LAUNCH BLOCKER: the booking-order fix
+
+**The home page's hero conversation shows the booking order AFTER the
+booking-order fix**: the bot takes the day and time first, then asks for the
+name, then the number, one thing per message
+(src/site/components/hero-conversation.tsx). Today the bot asks for the name
+and phone together, and the live prompt orders the name first. The site must
+not go public before that fix is deployed, or its first demo is of
+behaviour the product doesn't have. The fix is the next bot task (the
+handover note, "NEXT BOT TASK").
+
+- Booking-order fix deployed: _(not yet)_
+
+## What changes, and why
+
+Today `mudrik-ai.com` and `www` hit the app container through the
+`advertema-apex` router, whose `advertema-to-app` middleware 302s every request
+to `app.mudrik-ai.com`. The site needs the apex requests to reach the container
+instead: `proxy.ts` (`src/site/host-routing.ts`) then serves the marketing
+pages there, and 302s every other path to the same path on the app's host
+(307 for `/api`). One host per concern: auth cookies are per host, so the
+product is never served from the apex.
+
+`www` stops being served directly and 302s to the apex, so the site has one
+canonical host.
+
+## The change, in `deploy/docker-compose.yml` (labels of the `advertema` service)
+
+Replace these lines:
+
+```yaml
+      # mudrik-ai.com and www → the app, with a real certificate, until a
+      # marketing site takes the apex over. Temporary (302), so browsers don't
+      # cache it. $$ is compose's escape for the regex's $.
+      - traefik.http.routers.advertema-apex.rule=Host(`mudrik-ai.com`) || Host(`www.mudrik-ai.com`)
+      - traefik.http.routers.advertema-apex.entrypoints=websecure
+      - traefik.http.routers.advertema-apex.tls.certresolver=letsencrypt
+      - traefik.http.routers.advertema-apex.service=advertema
+      - traefik.http.routers.advertema-apex.middlewares=advertema-to-app
+      - traefik.http.middlewares.advertema-to-app.redirectregex.regex=^https?://[^/]+/?(.*)$$
+      - traefik.http.middlewares.advertema-to-app.redirectregex.replacement=https://app.mudrik-ai.com/$${1}
+      - traefik.http.middlewares.advertema-to-app.redirectregex.permanent=false
+```
+
+with:
+
+```yaml
+      # The marketing site: the apex reaches the app, whose proxy serves the
+      # site's pages there and sends every other path to app.mudrik-ai.com
+      - traefik.http.routers.advertema-apex.rule=Host(`mudrik-ai.com`)
+      - traefik.http.routers.advertema-apex.entrypoints=websecure
+      - traefik.http.routers.advertema-apex.tls.certresolver=letsencrypt
+      - traefik.http.routers.advertema-apex.service=advertema
+      # www → the apex, same path. Temporary (302) while things still move.
+      # $$ is compose's escape for the regex's $.
+      - traefik.http.routers.advertema-www.rule=Host(`www.mudrik-ai.com`)
+      - traefik.http.routers.advertema-www.entrypoints=websecure
+      - traefik.http.routers.advertema-www.tls.certresolver=letsencrypt
+      - traefik.http.routers.advertema-www.service=advertema
+      - traefik.http.routers.advertema-www.middlewares=advertema-to-apex
+      - traefik.http.middlewares.advertema-to-apex.redirectregex.regex=^https?://[^/]+/?(.*)$$
+      - traefik.http.middlewares.advertema-to-apex.redirectregex.replacement=https://mudrik-ai.com/$${1}
+      - traefik.http.middlewares.advertema-to-apex.redirectregex.permanent=false
+```
+
+The `www` router is new, so Let's Encrypt is asked for its certificate on the
+first request (the apex and www already have one from the current router; the
+name on the router changes, the hostnames don't).
+
+Deploy as usual (`./deploy/update.sh`): the labels are read when the container
+is recreated.
+
+## Check after it
+
+```bash
+curl -sI https://mudrik-ai.com/ar            # 200, the site's home
+curl -sI https://mudrik-ai.com/ar/pricing    # 200
+curl -sI https://mudrik-ai.com/ar/login      # 302 → https://app.mudrik-ai.com/ar/login
+curl -sI https://mudrik-ai.com/              # 307/302 → /ar (the locale)
+curl -sI https://www.mudrik-ai.com/ar        # 302 → https://mudrik-ai.com/ar
+curl -sI https://app.mudrik-ai.com/ar/site   # 404: the app's host never shows the site
+curl -sI https://app.mudrik-ai.com/ar/dashboard  # unchanged (302 to login when signed out)
+```
+
+## Rollback
+
+Put the eight original lines back (above), remove the `advertema-www` router
+and `advertema-to-apex` middleware lines, and recreate the container:
+
+```bash
+cd /opt/advertema/deploy
+docker compose --env-file .env.production up -d --no-build --force-recreate
+```
+
+`--no-build` keeps the image: only the routing goes back, and the apex 302s to
+the app again. The site's code stays in the image, unreachable, because only
+the site's hosts are rewritten into it. If the image itself has to go back,
+`./deploy/update.sh rollback`.
+
+## When the site leaves this container
+
+**Trigger: the first real client going live.** Decided 2026-10-18. Until then
+a copy change redeploys this container, which serves `widget.js` and the
+webhook for every client's website, so each site deploy is a few seconds in
+which every client's widget can't answer. That's acceptable while all traffic
+is test, and not once a real client depends on it. The split stays cheap
+because the site lives apart: `app/[locale]/site`, `src/site`, `messages/site`
+(plus the shared `app/globals.css` tokens and `src/components/brand.tsx`).
+
+---
+
 # Rolling back the 1536-d embeddings release
 
 The release that moved the knowledge base to `text-embedding-3-large` at 1536

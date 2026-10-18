@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { NextIntlClientProvider, hasLocale } from 'next-intl'
+import { setRequestLocale } from 'next-intl/server'
 import { notFound } from 'next/navigation'
 import { Cairo } from 'next/font/google'
 import { Providers } from '@/components/providers'
@@ -39,6 +40,9 @@ export default async function LocaleLayout({
   if (!hasLocale(routing.locales, locale)) {
     notFound()
   }
+  // Without it next-intl reads the locale from the request, and the
+  // marketing site under ./site could not be rendered at build time
+  setRequestLocale(locale)
 
   return (
     <html
