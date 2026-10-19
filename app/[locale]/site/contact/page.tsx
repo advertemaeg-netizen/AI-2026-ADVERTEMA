@@ -10,9 +10,8 @@ type Props = { params: Promise<{ locale: string }> }
 
 export async function generateMetadata({ params }: Props) {
   const { locale } = await params
-  // No meta lines in the copy for this page: its own headline and lead
-  const { hero } = siteCopy(locale).contact
-  return siteMetadata(locale, '/contact', { metaTitle: hero.title, metaDescription: hero.body })
+  const meta = siteCopy(locale).meta.contact
+  return siteMetadata(locale, '/contact', { metaTitle: meta.title, metaDescription: meta.description })
 }
 
 /** "+20 101 049 1850": the international form, for visitors outside Egypt too */
@@ -23,7 +22,8 @@ export default async function ContactPage({ params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
   const copy = siteCopy(locale).contact
-  const whatsapp = `https://wa.me/${SITE_WHATSAPP.replace(/\D/g, '')}`
+  // Opens the chat with a line saying where the visitor came from, in the page's language
+  const whatsapp = `https://wa.me/${SITE_WHATSAPP.replace(/\D/g, '')}?text=${encodeURIComponent(copy.whatsappPrefill)}`
   return (
     <SitePage locale={locale} page="/contact" wide>
       <PageHero title={copy.hero.title} body={copy.hero.body} />

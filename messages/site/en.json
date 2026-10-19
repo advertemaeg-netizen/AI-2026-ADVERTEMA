@@ -3,6 +3,22 @@
     "home": {
       "title": "Mudrik — a bot that answers your customers and books their appointments",
       "description": "Answers WhatsApp, Facebook, Instagram and your website using your own information, books appointments and records every lead. Free for 14 days."
+    },
+    "business": {
+      "title": "Mudrik for business owners — a bot that answers and books for you",
+      "description": "It knows your hours, services, prices and branches, and answers with them on WhatsApp, Facebook, Instagram and your site. Free for 14 days."
+    },
+    "agency": {
+      "title": "Mudrik for agencies — all your clients in one place",
+      "description": "Each client with its own knowledge base, channels and team, and numbers for the monthly report instead of estimates."
+    },
+    "pricing": {
+      "title": "Mudrik plans",
+      "description": "The plans differ in channels, branches, conversations and accounts. Everyone starts with 14 days free, no credit card."
+    },
+    "contact": {
+      "title": "Talk to Mudrik",
+      "description": "Want a price, want us to set it up for you, or have a question before you try it? Message us on WhatsApp or by email."
     }
   },
   "nav": {
@@ -246,7 +262,8 @@
       "title": "Or directly",
       "whatsapp": "WhatsApp",
       "email": "Email"
-    }
+    },
+    "whatsappPrefill": "Hello — I'm coming from the Mudrik site and I'd like to know more."
   },
   "legal": {
     "privacy": {

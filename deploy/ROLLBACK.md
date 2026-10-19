@@ -28,6 +28,19 @@ handover note, "NEXT BOT TASK").
 
 - Booking-order fix deployed: _(not yet)_
 
+## LAUNCH BLOCKER: the contact form sends to a mailbox someone reads
+
+**The contact page promises a reply within one working day.** Its form sends
+by SMTP to contact@mudrik-ai.com (src/site/contact-mail.ts), and without the
+`CONTACT_SMTP_*` settings (.env.example) every send fails: the visitor is told
+it didn't send and pointed at WhatsApp. That is the right failure, never a
+fake success, but a site whose contact form always fails must not go public.
+Before the apex change below, all three must be true and written here:
+
+- `CONTACT_SMTP_*` set on the server: _(not yet)_
+- A form sent from the deployed site arrived in the mailbox: _(not yet)_
+- Someone reads contact@mudrik-ai.com every working day (who): _(not yet)_
+
 ## What changes, and why
 
 Today `mudrik-ai.com` and `www` hit the app container through the

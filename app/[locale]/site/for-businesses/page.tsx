@@ -10,9 +10,8 @@ type Props = { params: Promise<{ locale: string }> }
 
 export async function generateMetadata({ params }: Props) {
   const { locale } = await params
-  // No meta lines in the copy for this page: its own headline and lead
-  const { hero } = siteCopy(locale).business
-  return siteMetadata(locale, '/for-businesses', { metaTitle: hero.title, metaDescription: hero.body })
+  const meta = siteCopy(locale).meta.business
+  return siteMetadata(locale, '/for-businesses', { metaTitle: meta.title, metaDescription: meta.description })
 }
 
 /** Business owners: the trial is self-serve, so both calls are the product's own signup */
