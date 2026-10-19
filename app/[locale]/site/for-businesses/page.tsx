@@ -1,29 +1,33 @@
-import Link from 'next/link'
 import { setRequestLocale } from 'next-intl/server'
-import { SiteHero, SitePage, SiteSections } from '@/site/components/site-page'
+import { APP_ORIGIN } from '@/site/config'
+import { Closing } from '@/site/components/home-sections'
+import { DayTimeline, NotePanel, PageHero } from '@/site/components/page-sections'
+import { SitePage } from '@/site/components/site-page'
 import { siteCopy } from '@/site/copy'
 import { siteMetadata } from '@/site/metadata'
-import { sitePath } from '@/site/paths'
 
 type Props = { params: Promise<{ locale: string }> }
 
 export async function generateMetadata({ params }: Props) {
   const { locale } = await params
-  return siteMetadata(locale, '/for-businesses', siteCopy(locale).pages.forBusinesses)
+  // No meta lines in the copy for this page: its own headline and lead
+  const { hero } = siteCopy(locale).business
+  return siteMetadata(locale, '/for-businesses', { metaTitle: hero.title, metaDescription: hero.body })
 }
 
-/** Business owners (any service business): Mudrik is set up for them, as a paid package, so the way in is a conversation */
+/** Business owners: the trial is self-serve, so both calls are the product's own signup */
 export default async function ForBusinessesPage({ params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
-  const copy = siteCopy(locale).pages.forBusinesses
+  const copy = siteCopy(locale).business
+  const signup = { label: copy.hero.cta, href: `${APP_ORIGIN}/${locale}/signup` }
   return (
-    <SitePage locale={locale} page="/for-businesses">
-      <SiteHero title={copy.title} intro={copy.intro} />
-      <SiteSections sections={copy.sections} />
-      <Link href={sitePath(locale, '/contact')} className="self-start rounded-md bg-primary px-4 py-2 text-primary-foreground">
-        {copy.cta}
-      </Link>
+    <SitePage locale={locale} page="/for-businesses" wide>
+      <PageHero title={copy.hero.title} body={copy.hero.body} cta={signup} />
+      <DayTimeline title={copy.day.title} items={copy.day.items} />
+      <NotePanel title={copy.whatYouGive.title} body={copy.whatYouGive.body} note={copy.whatYouGive.note} />
+      <NotePanel title={copy.limits.title} body={copy.limits.body} note={copy.limits.note} emphasis />
+      <Closing title={copy.closing.title} body={copy.closing.body} primary={signup} />
     </SitePage>
   )
 }

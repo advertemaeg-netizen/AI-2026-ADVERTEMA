@@ -10,12 +10,12 @@ import { HeroConversation, type BotTemplates } from '@/site/components/hero-conv
  * with reduced motion every section is simply its final state.
  */
 
-type Item = { label: string; body: string }
-type Cta = { label: string; href: string }
-const ctaPrimary =
+export type Item = { label: string; body: string }
+export type Cta = { label: string; href: string }
+export const ctaPrimary =
   'inline-flex min-h-12 items-center justify-center rounded-full bg-primary px-6 text-base font-semibold text-primary-foreground shadow-raised'
 // bg-white/90, not less: the action brown on it stays ≥7:1 over the field's darkest point
-const ctaSecondary =
+export const ctaSecondary =
   'inline-flex min-h-12 items-center justify-center rounded-full border border-primary/30 bg-white/90 px-6 text-base font-semibold text-primary'
 
 /* 1 — the hero: the headline, the calls, the breadth line, and the product answering for itself */
@@ -205,8 +205,8 @@ export function PricingTeaser({ title, body, cta }: { title: string; body: strin
   )
 }
 
-/* 8 — the page ends on the call */
-export function Closing({ title, body, primary, secondary }: { title: string; body: string; primary: Cta; secondary: Cta }) {
+/* 8 — the page ends on the call (the other pages end on one call, without the second) */
+export function Closing({ title, body, primary, secondary }: { title: string; body: string; primary: Cta; secondary?: Cta }) {
   return (
     <section className="site-reveal mx-auto flex max-w-3xl flex-col items-center gap-6 py-10 text-center">
       <h2 className="site-h2">{title}</h2>
@@ -215,9 +215,11 @@ export function Closing({ title, body, primary, secondary }: { title: string; bo
         <a href={primary.href} className={ctaPrimary}>
           {primary.label}
         </a>
-        <Link href={secondary.href} className={ctaSecondary}>
-          {secondary.label}
-        </Link>
+        {secondary && (
+          <Link href={secondary.href} className={ctaSecondary}>
+            {secondary.label}
+          </Link>
+        )}
       </div>
     </section>
   )

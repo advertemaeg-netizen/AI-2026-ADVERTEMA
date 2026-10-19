@@ -36,3 +36,11 @@ export const SITE_INDEXABLE = false
  * put the channel id here then. Null: the embed slot renders nothing.
  */
 export const SITE_WIDGET_CHANNEL_ID: string | null = null
+
+/**
+ * Where a visitor reaches Mudrik directly, and where the contact form's
+ * messages go. Decided by Ahmed, 19 October 2026. The mailbox has to be read:
+ * the contact page promises a reply within one working day.
+ */
+export const SITE_WHATSAPP = '+201010491850'
+export const SITE_EMAIL = 'contact@mudrik-ai.com'

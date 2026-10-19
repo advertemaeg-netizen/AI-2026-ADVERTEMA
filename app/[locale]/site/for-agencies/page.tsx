@@ -1,6 +1,8 @@
 import { setRequestLocale } from 'next-intl/server'
 import { APP_ORIGIN } from '@/site/config'
-import { SiteHero, SitePage, SiteSections } from '@/site/components/site-page'
+import { Closing, Problem } from '@/site/components/home-sections'
+import { PageHero, Upfront } from '@/site/components/page-sections'
+import { SitePage } from '@/site/components/site-page'
 import { siteCopy } from '@/site/copy'
 import { siteMetadata } from '@/site/metadata'
 
@@ -8,21 +10,28 @@ type Props = { params: Promise<{ locale: string }> }
 
 export async function generateMetadata({ params }: Props) {
   const { locale } = await params
-  return siteMetadata(locale, '/for-agencies', siteCopy(locale).pages.forAgencies)
+  // No meta lines in the copy for this page: its own headline and lead
+  const { hero } = siteCopy(locale).agency
+  return siteMetadata(locale, '/for-agencies', { metaTitle: hero.title, metaDescription: hero.body })
 }
 
-/** Agencies: self-serve, so the way in is the product's own signup */
+/**
+ * Agencies: self-serve, so the way in is the product's own signup. The
+ * upfront section says Mudrik runs under its own name, not the agency's: on
+ * purpose, at full size (no white-label is built, and promising it costs a
+ * refund later).
+ */
 export default async function ForAgenciesPage({ params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
-  const copy = siteCopy(locale).pages.forAgencies
+  const copy = siteCopy(locale).agency
+  const signup = { label: copy.hero.cta, href: `${APP_ORIGIN}/${locale}/signup` }
   return (
-    <SitePage locale={locale} page="/for-agencies">
-      <SiteHero title={copy.title} intro={copy.intro} />
-      <SiteSections sections={copy.sections} />
-      <a href={`${APP_ORIGIN}/${locale}/signup`} className="self-start rounded-md bg-primary px-4 py-2 text-primary-foreground">
-        {copy.cta}
-      </a>
+    <SitePage locale={locale} page="/for-agencies" wide>
+      <PageHero title={copy.hero.title} body={copy.hero.body} cta={signup} />
+      <Problem title={copy.why.title} items={copy.why.items} />
+      <Upfront title={copy.honest.title} body={copy.honest.body} />
+      <Closing title={copy.closing.title} body={copy.closing.body} primary={signup} />
     </SitePage>
   )
 }

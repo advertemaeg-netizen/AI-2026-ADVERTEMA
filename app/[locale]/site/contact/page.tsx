@@ -1,5 +1,8 @@
 import { setRequestLocale } from 'next-intl/server'
-import { SiteHero, SitePage } from '@/site/components/site-page'
+import { SITE_EMAIL, SITE_WHATSAPP } from '@/site/config'
+import { ContactForm } from '@/site/components/contact-form'
+import { PageHero } from '@/site/components/page-sections'
+import { SitePage } from '@/site/components/site-page'
 import { siteCopy } from '@/site/copy'
 import { siteMetadata } from '@/site/metadata'
 
@@ -7,25 +10,47 @@ type Props = { params: Promise<{ locale: string }> }
 
 export async function generateMetadata({ params }: Props) {
   const { locale } = await params
-  return siteMetadata(locale, '/contact', siteCopy(locale).pages.contact)
+  // No meta lines in the copy for this page: its own headline and lead
+  const { hero } = siteCopy(locale).contact
+  return siteMetadata(locale, '/contact', { metaTitle: hero.title, metaDescription: hero.body })
 }
 
-/** Where every tier and the business owners' page lead. Channels are copy (label and value), not a form: there is no backend for one yet. */
+/** "+20 101 049 1850": the international form, for visitors outside Egypt too */
+const whatsappDisplay = SITE_WHATSAPP.replace(/^\+20(\d{3})(\d{3})(\d{4})$/, '+20 $1 $2 $3')
+
+/** Where every plan and the business owners' page lead: the form (sent by mail), WhatsApp and the address */
 export default async function ContactPage({ params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
-  const copy = siteCopy(locale).pages.contact
+  const copy = siteCopy(locale).contact
+  const whatsapp = `https://wa.me/${SITE_WHATSAPP.replace(/\D/g, '')}`
   return (
-    <SitePage locale={locale} page="/contact">
-      <SiteHero title={copy.title} intro={copy.intro} />
-      <dl className="grid gap-4 sm:grid-cols-2">
-        {copy.channels.map((channel, i) => (
-          <div key={i} className="flex flex-col gap-1">
-            <dt className="text-sm">{channel.label}</dt>
-            <dd className="text-lg font-semibold">{channel.value}</dd>
-          </div>
-        ))}
-      </dl>
+    <SitePage locale={locale} page="/contact" wide>
+      <PageHero title={copy.hero.title} body={copy.hero.body} />
+      <div className="grid gap-10 lg:grid-cols-[1.6fr_1fr] lg:items-start">
+        <ContactForm locale={locale} labels={copy.form} whatsapp={{ label: copy.direct.whatsapp, href: whatsapp }} />
+        <section className="site-panel-quiet flex flex-col gap-5 p-7 md:p-8">
+          <h2 className="text-2xl font-bold">{copy.direct.title}</h2>
+          <dl className="flex flex-col gap-5">
+            <div className="flex flex-col gap-1">
+              <dt className="text-sm font-semibold">{copy.direct.whatsapp}</dt>
+              <dd>
+                <a href={whatsapp} target="_blank" rel="noopener" dir="ltr" className="text-xl font-bold underline underline-offset-4">
+                  {whatsappDisplay}
+                </a>
+              </dd>
+            </div>
+            <div className="flex flex-col gap-1">
+              <dt className="text-sm font-semibold">{copy.direct.email}</dt>
+              <dd>
+                <a href={`mailto:${SITE_EMAIL}`} dir="ltr" className="text-xl font-bold underline underline-offset-4">
+                  {SITE_EMAIL}
+                </a>
+              </dd>
+            </div>
+          </dl>
+        </section>
+      </div>
     </SitePage>
   )
 }

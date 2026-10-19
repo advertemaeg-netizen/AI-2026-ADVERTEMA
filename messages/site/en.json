@@ -132,87 +132,120 @@
       "cta_secondary": "Talk to us"
     }
   },
-  "pages": {
-    "forBusinesses": {
-      "metaTitle": "pages.forBusinesses.metaTitle",
-      "metaDescription": "pages.forBusinesses.metaDescription",
-      "title": "pages.forBusinesses.title",
-      "intro": "pages.forBusinesses.intro",
-      "sections": [
-        {
-          "heading": "pages.forBusinesses.sections.0.heading",
-          "body": "pages.forBusinesses.sections.0.body"
-        },
-        {
-          "heading": "pages.forBusinesses.sections.1.heading",
-          "body": "pages.forBusinesses.sections.1.body"
-        },
-        {
-          "heading": "pages.forBusinesses.sections.2.heading",
-          "body": "pages.forBusinesses.sections.2.body"
-        }
-      ],
-      "cta": "pages.forBusinesses.cta"
+  "business": {
+    "hero": {
+      "title": "Your business answers for itself, while you sleep",
+      "body": "Mudrik knows your hours, services, prices and branches, and answers everyone who asks — on WhatsApp, Facebook, Instagram and your site.",
+      "cta": "Start free for 14 days"
     },
-    "forAgencies": {
-      "metaTitle": "pages.forAgencies.metaTitle",
-      "metaDescription": "pages.forAgencies.metaDescription",
-      "title": "pages.forAgencies.title",
-      "intro": "pages.forAgencies.intro",
-      "sections": [
-        {
-          "heading": "pages.forAgencies.sections.0.heading",
-          "body": "pages.forAgencies.sections.0.body"
-        },
-        {
-          "heading": "pages.forAgencies.sections.1.heading",
-          "body": "pages.forAgencies.sections.1.body"
-        },
-        {
-          "heading": "pages.forAgencies.sections.2.heading",
-          "body": "pages.forAgencies.sections.2.body"
-        }
-      ],
-      "cta": "pages.forAgencies.cta"
+    "day": {
+      "title": "An ordinary day with Mudrik",
+      "items": [
+        "8am — someone asked about prices last night. The answer was waiting for them.",
+        "Midday — three people booked without anyone answering by hand.",
+        "At night — someone asked something unusual. Mudrik didn't invent an answer; it said the team would get back to them, and passed it to you.",
+        "End of day — everyone who asked is in one list, with their names, numbers and what they wanted."
+      ]
     },
-    "pricing": {
-      "metaTitle": "pages.pricing.metaTitle",
-      "metaDescription": "pages.pricing.metaDescription",
-      "title": "pages.pricing.title",
-      "intro": "pages.pricing.intro",
-      "tiers": [
+    "whatYouGive": {
+      "title": "What you enter once",
+      "body": "Working hours, branches, services, prices, and the questions you get over and over. Write them in plain language; there's no format to learn.",
+      "note": "No time? We'll write them, configure them and test them, for a one-time setup fee."
+    },
+    "limits": {
+      "title": "What Mudrik doesn't do",
+      "body": "It doesn't invent. If the information isn't in what you gave it, it says the team will follow up rather than making something up. And it doesn't give professional advice — if a question needs an expert, it hands it over.",
+      "note": "We say this plainly because it's half the value. A bot that invents is worse than no bot."
+    },
+    "closing": {
+      "title": "Try it on your real customers",
+      "body": "14 days, no credit card. If it isn't right for you, switch it off."
+    }
+  },
+  "agency": {
+    "hero": {
+      "title": "A new client every week, without a new hire",
+      "body": "Run all your clients' accounts from one place. Each client has its own knowledge base, channels and team, and you see all of them from above.",
+      "cta": "Start free for 14 days"
+    },
+    "why": {
+      "title": "Why agencies use it",
+      "items": [
         {
-          "name": "pages.pricing.tiers.0.name",
-          "summary": "pages.pricing.tiers.0.summary",
-          "cta": "pages.pricing.tiers.0.cta"
+          "label": "Leads stop leaking",
+          "body": "You're spending your client's ad budget, and an unanswered message wastes it. Mudrik answers every one in a second."
         },
         {
-          "name": "pages.pricing.tiers.1.name",
-          "summary": "pages.pricing.tiers.1.summary",
-          "cta": "pages.pricing.tiers.1.cta"
+          "label": "A report with numbers in it",
+          "body": "How many asked, how many booked, how many showed up. Numbers for the monthly report instead of estimates."
         },
         {
-          "name": "pages.pricing.tiers.2.name",
-          "summary": "pages.pricing.tiers.2.summary",
-          "cta": "pages.pricing.tiers.2.cta"
+          "label": "Nothing new to learn per client",
+          "body": "The same dashboard for every client. Whoever set up one can set up the next."
         }
       ]
     },
-    "contact": {
-      "metaTitle": "pages.contact.metaTitle",
-      "metaDescription": "pages.contact.metaDescription",
-      "title": "pages.contact.title",
-      "intro": "pages.contact.intro",
-      "channels": [
-        {
-          "label": "pages.contact.channels.0.label",
-          "value": "pages.contact.channels.0.value"
-        },
-        {
-          "label": "pages.contact.channels.1.label",
-          "value": "pages.contact.channels.1.value"
-        }
-      ]
+    "honest": {
+      "title": "Something we'll say upfront",
+      "body": "Mudrik currently runs under its own name, not your agency's. If that matters to you, talk to us and tell us exactly what you need — we build what clients ask for."
+    },
+    "closing": {
+      "title": "Try it on one client",
+      "body": "Start with one account for 14 days. If it works, add more."
+    }
+  },
+  "pricing": {
+    "hero": {
+      "title": "Plans that match your size",
+      "body": "The plans differ in channels, branches, conversations and accounts. We talk about price based on your size, so someone with one branch doesn't pay like someone with ten."
+    },
+    "tiers": [
+      {
+        "name": "Starter",
+        "for": "One branch, one channel",
+        "body": "Right if you're starting out, or testing one channel before you expand."
+      },
+      {
+        "name": "Growth",
+        "for": "More than one branch, every channel",
+        "body": "WhatsApp, Facebook, Instagram and your site together, with different hours and capacity per branch."
+      },
+      {
+        "name": "Agency",
+        "for": "More than one client under one account",
+        "body": "Each client fully separated from the others, and you see all of them."
+      }
+    ],
+    "setup": {
+      "title": "Setup — optional",
+      "body": "We write the knowledge base, configure the settings and hours, and test the bot on real conversations until it answers the way you want. A one-time fee, separate from the subscription."
+    },
+    "trial": {
+      "title": "Everyone starts with 14 days free",
+      "body": "No credit card. Enter your information, connect a channel, and watch the bot answer your real customers before you pay anything."
+    },
+    "cta": "Talk to us about price"
+  },
+  "contact": {
+    "hero": {
+      "title": "Talk to us",
+      "body": "Whether you want a price, want us to set it up for you, or have a question before you try it — write to us."
+    },
+    "form": {
+      "name": "Your name",
+      "business": "Your business",
+      "phone": "Mobile number",
+      "email": "Email",
+      "message": "What do you need?",
+      "submit": "Send",
+      "sending": "Sending…",
+      "success": "We got it. We'll reply within one working day.",
+      "error": "It didn't send. Try again, or message us on WhatsApp."
+    },
+    "direct": {
+      "title": "Or directly",
+      "whatsapp": "WhatsApp",
+      "email": "Email"
     }
   },
   "legal": {
