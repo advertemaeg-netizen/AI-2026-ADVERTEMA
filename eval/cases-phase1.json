@@ -101,10 +101,11 @@
       "turns": ["عايز أحجز بكرة الساعة 6 مساءً"],
       "expect": {
         "appointment": null,
-        "contains_all": [["اسمك"], ["رقم"]],
+        "contains_all": [["اسمك"]],
+        "not_contains": ["موبايلك"],
         "must_not_claim_booking": true
       },
-      "why": "مفيش ميعاد من غير اسم ورقم. الوقت يتحفظ كطلب، والرد يقول الناقص من غير ما يدّعي حجز. (عكس AM01 في المجموعة المجمّدة: دا السلوك اللي بنعكسه عن قصد.)"
+      "why": "مفيش ميعاد من غير اسم ورقم. الوقت يتحفظ كطلب، والرد يقول الناقص من غير ما يدّعي حجز. (عكس AM01 في المجموعة المجمّدة: دا السلوك اللي بنعكسه عن قصد.) Changed 2026-10-19 (booking order): one thing per message, the name before the mobile number, so the reply asks for the name only; it used to require both at once."
     },
     {
       "id": "GT02", "group": "بوابة الحجز",

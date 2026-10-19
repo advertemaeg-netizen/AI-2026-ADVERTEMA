@@ -1,0 +1,176 @@
+{
+  "_meta": {
+    "name": "Booking order (October 2026)",
+    "purpose": "The order the injected booking instruction sets: the appointment first (day, then time), then the name, then the mobile number, one thing per message. Scored on its own: eval/cases.json is frozen.",
+    "run": "npm run eval -- --provider=openai --cases=booking-order",
+    "written": "Before the code it measures (2026-10-19). Every visitor turn and every needle is sliced from an existing case or from messages/ar.json, not typed."
+  },
+  "cases": [
+    {
+      "id": "BO01",
+      "group": "ترتيب الحجز",
+      "turns": [
+        "عايز أحجز"
+      ],
+      "expect": {
+        "appointment": "asks_for_time",
+        "must_not_claim_booking": true,
+        "not_contains": [
+          "اسمك",
+          "موبايلك"
+        ]
+      },
+      "why": "Nothing of the appointment is known: the bot asks for the day, and neither the name nor the number. Booking order: no name or number before the appointment is complete."
+    },
+    {
+      "id": "BO02",
+      "group": "ترتيب الحجز",
+      "turns": [
+        "عايز أحجز بكرة الساعة 6 مساءً",
+        "كريم سامي"
+      ],
+      "expect": {
+        "appointment": null,
+        "must_not_claim_booking": true,
+        "contains_all": [
+          [
+            "رقم موبايلك"
+          ]
+        ],
+        "not_contains": [
+          "اسمك"
+        ]
+      },
+      "why": "Name before mobile, and the mobile asked for by code: the time is held, the name has just come, the next and only question is the mobile number."
+    },
+    {
+      "id": "BO03",
+      "group": "ترتيب الحجز",
+      "turns": [
+        "عايز أحجز بكرة الساعة 6 مساءً",
+        "كريم سامي",
+        "01002847901"
+      ],
+      "expect": {
+        "appointment": {
+          "day_offset": 1,
+          "hour": 18,
+          "minute": 0
+        },
+        "phone_on_record": "+201002847901",
+        "name_incomplete": false
+      },
+      "why": "The whole order, one thing per message: time, then name, then mobile, then the booking."
+    },
+    {
+      "id": "BO04",
+      "group": "ترتيب الحجز",
+      "turns": [
+        "أنا كريم سامي، عايز أحجز",
+        "بكرة الساعة 6 مساءً"
+      ],
+      "expect": {
+        "appointment": null,
+        "must_not_claim_booking": true,
+        "contains_all": [
+          [
+            "رقم موبايلك"
+          ]
+        ],
+        "not_contains": [
+          "اسمك"
+        ]
+      },
+      "why": "A name volunteered before the appointment is kept: once the time is held, only the mobile number is asked for."
+    },
+    {
+      "id": "BO05",
+      "group": "ترتيب الحجز",
+      "turns": [
+        "عايز أحجز، رقمي 01002847901",
+        "بكرة الساعة 6 مساءً"
+      ],
+      "expect": {
+        "appointment": null,
+        "must_not_claim_booking": true,
+        "phone_on_record": "+201002847901",
+        "contains_all": [
+          [
+            "اسمك"
+          ]
+        ],
+        "not_contains": [
+          "موبايلك"
+        ]
+      },
+      "why": "A number volunteered before the appointment is kept: once the time is held, only the name is asked for."
+    },
+    {
+      "id": "BO06",
+      "group": "ترتيب الحجز",
+      "turns": [
+        "أنا سامح، عايز أحجز"
+      ],
+      "expect": {
+        "appointment": "asks_for_time",
+        "must_not_claim_booking": true,
+        "not_contains": [
+          "اسمك"
+        ]
+      },
+      "why": "A one-word name volunteered before the appointment is not asked about yet: the full name is asked for at the name step, not before the day and time."
+    },
+    {
+      "id": "BO07",
+      "group": "ترتيب الحجز",
+      "turns": [
+        "أنا سامح، عايز أحجز",
+        "بكرة الساعة 6 مساءً",
+        "01554108276"
+      ],
+      "expect": {
+        "appointment": {
+          "day_offset": 1,
+          "hour": 18,
+          "minute": 0
+        },
+        "phone_on_record": "+201554108276",
+        "name_incomplete": true
+      },
+      "why": "The one-word name is kept, asked about once at the name step, and accepted flagged: the booking goes through."
+    },
+    {
+      "id": "BO08",
+      "group": "ترتيب الحجز",
+      "turns": [
+        "كريم سامي، 01002847901",
+        "عايز أحجز بكرة",
+        "الساعة 6 مساءً"
+      ],
+      "expect": {
+        "appointment": {
+          "day_offset": 1,
+          "hour": 18,
+          "minute": 0
+        }
+      },
+      "why": "The model is no longer told to restate earlier parts: the day from one message and the hour from the next still make the appointment (the draft holds the day)."
+    },
+    {
+      "id": "BO09",
+      "group": "ترتيب الحجز",
+      "turns": [
+        "كريم سامي، 01002847901",
+        "عايز أحجز"
+      ],
+      "expect": {
+        "appointment": "asks_for_time",
+        "must_not_claim_booking": true,
+        "not_contains": [
+          "الساعة كام"
+        ]
+      },
+      "why": "One thing per message: with nothing of the appointment known, the day is asked for, not the day and the hour together."
+    }
+  ]
+}
