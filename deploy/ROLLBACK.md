@@ -1,17 +1,27 @@
 # The marketing site takes over the apex — NOT APPLIED
 
 Written 2026-10-18 with the site scaffold (`app/[locale]/site`, `src/site`,
-`messages/site`). Apply it **in the same deploy that ships the site**, never
-before: until then the apex 302s to the app, as it does today.
+`messages/site`). Apply it **only after the site's code is deployed** and the
+app checked, never before: until then the apex 302s to the app, as it does
+today.
 
-## LAUNCH BLOCKER: the legal pages
+**If the apex misbehaves after the Traefik change, the fix is to put the old
+redirect router back ("Rollback" below), not to redeploy.**
 
-**The site must not be deployed publicly until Ahmed confirms the legal
-review of /privacy and /terms is done.** Their text is a DRAFT pending a
-lawyer (decided 2026-10-18). This is a blocker, not a nice-to-have: do not
-apply the apex change below, and do not flip `SITE_INDEXABLE`
-(src/site/config.ts), until that confirmation is written here, with its date
-and who gave it:
+Launch order, decided 2026-10-19: deploy main first and check
+app.mudrik-ai.com and sign-in; only then apply the Traefik change below.
+
+## DEFERRED, not cancelled: the legal pages
+
+/privacy and /terms are drafts with [[placeholders]]: the company that signs
+them doesn't exist yet, and the lawyer hasn't reviewed them. Decided
+2026-10-19: the site launches without them linked. `SITE_LEGAL_LINKED`
+(src/site/config.ts) is off, so the footer doesn't link them and they are
+never indexed; the routes stay reachable by their URL.
+
+**The footer links go back (`SITE_LEGAL_LINKED = true`) when the review is
+done and the placeholders are filled**, and that is written here, with its
+date and who gave it:
 
 - Legal review confirmed by: _(not yet)_
 
@@ -26,20 +36,25 @@ not go public before that fix is deployed, or its first demo is of
 behaviour the product doesn't have. The fix is the next bot task (the
 handover note, "NEXT BOT TASK").
 
-- Booking-order fix deployed: _(not yet)_
+- Booking-order fix deployed: _(not yet; it ships in the launch deploy of 2026-10-19 — fill in the commit and date)_
 
-## LAUNCH BLOCKER: the contact form sends to a mailbox someone reads
+## Not a launch gate: the contact form
 
-**The contact page promises a reply within one working day.** Its form sends
-by SMTP to contact@mudrik-ai.com (src/site/contact-mail.ts), and without the
-`CONTACT_SMTP_*` settings (.env.example) every send fails: the visitor is told
-it didn't send and pointed at WhatsApp. That is the right failure, never a
-fake success, but a site whose contact form always fails must not go public.
-Before the apex change below, all three must be true and written here:
+Decided 2026-10-19: the site launches with the contact page as WhatsApp and
+the email address (a mailto link), which work with nothing configured.
+`SITE_CONTACT_FORM` (src/site/config.ts) is off, so the form isn't shown.
+Its code stays (src/site/contact-mail.ts): it sends by SMTP to
+contact@mudrik-ai.com, and without the `CONTACT_SMTP_*` settings
+(.env.example) every send fails, honestly, so it must not be switched on
+before them. Ahmed's task, in this order:
 
 - `CONTACT_SMTP_*` set on the server: _(not yet)_
-- A form sent from the deployed site arrived in the mailbox: _(not yet)_
+- A message sent from the deployed site arrived in the mailbox: _(not yet)_
 - Someone reads contact@mudrik-ai.com every working day (who): _(not yet)_
+- Then `SITE_CONTACT_FORM = true` and a deploy.
+
+The mailbox is unverified either way: the contact page's mailto link points
+at it too.
 
 ## What changes, and why
 

@@ -44,3 +44,18 @@ export const SITE_WIDGET_CHANNEL_ID: string | null = null
  */
 export const SITE_WHATSAPP = '+201010491850'
 export const SITE_EMAIL = 'contact@mudrik-ai.com'
+
+/**
+ * The legal pages are drafts with [[placeholders]] until the company exists
+ * and a lawyer has reviewed them. Off: the footer doesn't link them and they
+ * are never indexed; they stay reachable by their URL. On once the review is
+ * done (deploy/ROLLBACK.md).
+ */
+export const SITE_LEGAL_LINKED = false
+
+/**
+ * The contact form sends by SMTP (src/site/contact-mail.ts). Off: the contact
+ * page is WhatsApp and the email address, which work with nothing configured.
+ * On once CONTACT_SMTP_* are set on the server and a test message arrived.
+ */
+export const SITE_CONTACT_FORM = false
