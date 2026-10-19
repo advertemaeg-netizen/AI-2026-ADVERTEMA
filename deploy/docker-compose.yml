@@ -43,14 +43,19 @@ services:
       - traefik.http.routers.advertema.entrypoints=websecure
       - traefik.http.routers.advertema.tls.certresolver=letsencrypt
       - traefik.http.routers.advertema.service=advertema
-      # mudrik-ai.com and www → the app, with a real certificate, until a
-      # marketing site takes the apex over. Temporary (302), so browsers don't
-      # cache it. $$ is compose's escape for the regex's $.
-      - traefik.http.routers.advertema-apex.rule=Host(`mudrik-ai.com`) || Host(`www.mudrik-ai.com`)
+      # The marketing site: the apex reaches the app, whose proxy serves the
+      # site's pages there and sends every other path to app.mudrik-ai.com
+      - traefik.http.routers.advertema-apex.rule=Host(`mudrik-ai.com`)
       - traefik.http.routers.advertema-apex.entrypoints=websecure
       - traefik.http.routers.advertema-apex.tls.certresolver=letsencrypt
       - traefik.http.routers.advertema-apex.service=advertema
-      - traefik.http.routers.advertema-apex.middlewares=advertema-to-app
-      - traefik.http.middlewares.advertema-to-app.redirectregex.regex=^https?://[^/]+/?(.*)$$
-      - traefik.http.middlewares.advertema-to-app.redirectregex.replacement=https://app.mudrik-ai.com/$${1}
-      - traefik.http.middlewares.advertema-to-app.redirectregex.permanent=false
+      # www → the apex, same path. Temporary (302) while things still move.
+      # $$ is compose's escape for the regex's $.
+      - traefik.http.routers.advertema-www.rule=Host(`www.mudrik-ai.com`)
+      - traefik.http.routers.advertema-www.entrypoints=websecure
+      - traefik.http.routers.advertema-www.tls.certresolver=letsencrypt
+      - traefik.http.routers.advertema-www.service=advertema
+      - traefik.http.routers.advertema-www.middlewares=advertema-to-apex
+      - traefik.http.middlewares.advertema-to-apex.redirectregex.regex=^https?://[^/]+/?(.*)$$
+      - traefik.http.middlewares.advertema-to-apex.redirectregex.replacement=https://mudrik-ai.com/$${1}
+      - traefik.http.middlewares.advertema-to-apex.redirectregex.permanent=false

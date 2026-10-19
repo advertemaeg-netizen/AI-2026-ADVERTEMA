@@ -1,4 +1,4 @@
-# The marketing site takes over the apex — NOT APPLIED
+# The marketing site takes over the apex — in deploy/docker-compose.yml on branch site-apex; live once the container is recreated (step below)
 
 Written 2026-10-18 with the site scaffold (`app/[locale]/site`, `src/site`,
 `messages/site`). Apply it **only after the site's code is deployed** and the
