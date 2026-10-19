@@ -101,3 +101,16 @@ $$;
 
 revoke execute on function public.test_sqlstate(text) from public, anon, authenticated;
 grant execute on function public.test_sqlstate(text) to service_role;
+
+-- Test-only: an auth user created with sign-up metadata, as supabase.auth.signUp
+-- leaves one (the profile row is made by the triggers on auth.users)
+create function public.test_create_auth_user_with_meta(p_email text, p_meta jsonb)
+returns uuid
+language sql
+security definer
+as $$
+  insert into auth.users (email, raw_user_meta_data) values (p_email, p_meta) returning id
+$$;
+
+revoke execute on function public.test_create_auth_user_with_meta(text, jsonb) from public, anon, authenticated;
+grant execute on function public.test_create_auth_user_with_meta(text, jsonb) to service_role;

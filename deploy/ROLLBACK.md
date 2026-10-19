@@ -19,11 +19,29 @@ them doesn't exist yet, and the lawyer hasn't reviewed them. Decided
 (src/site/config.ts) is off, so the footer doesn't link them and they are
 never indexed; the routes stay reachable by their URL.
 
-**The footer links go back (`SITE_LEGAL_LINKED = true`) when the review is
-done and the placeholders are filled**, and that is written here, with its
-date and who gave it:
+**The footer links go back when the review is done and the placeholders are
+filled**, and that is written here, with its date and who gave it:
 
 - Legal review confirmed by: _(not yet)_
+
+Since 2026-10-20 the texts live in the database (`public.legal_versions`,
+migration `20261029100000_legal_versions.sql`), edited in the admin area
+(Legal documents) with every version kept. Relinking is one change, in this
+order:
+
+1. Publish the lawyer's text as a new version of each document, in both
+   languages, from the admin editor.
+2. Replace the English stand-ins with Arabic: `legal.history`,
+   `legal.olderVersion`, `legal.currentLink` in `messages/site/ar.json`, and
+   `admin.legal.*` / `admin.nav.legal` in `messages/ar.json`.
+3. `LEGAL_LINKED = true` (`src/lib/legal-linked.ts`). That one switch relinks
+   the footer AND turns on the signup checkbox: the pages and the recorded
+   acceptance go live together, never one without the other.
+
+**Deploying this code needs the migration first.** The legal pages are
+generated at build time from the table, read with the publishable key: if
+`20261029100000_legal_versions.sql` isn't applied, or the database can't be
+reached during the build, the build fails rather than shipping an empty page.
 
 ## LAUNCH BLOCKER: the booking-order fix
 

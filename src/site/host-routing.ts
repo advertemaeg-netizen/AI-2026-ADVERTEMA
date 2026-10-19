@@ -24,6 +24,8 @@ export type HostRoute =
 
 const LOCALES = routing.locales as readonly string[]
 // Files Next generates inside the segment (og-image, icons): the head tags point at them
+// An earlier version of a legal page, at its own address: /privacy/v/3
+const LEGAL_VERSION = /^\/(?:privacy|terms)\/v\/[1-9]\d{0,5}$/
 const SEGMENT_FILE = /^\/(?:opengraph-image|twitter-image|icon|apple-icon)(?:[-.?/]|$)/
 
 export function hostRoute(host: string | null, pathname: string, search = ''): HostRoute {
@@ -51,7 +53,7 @@ export function hostRoute(host: string | null, pathname: string, search = ''): H
     // Never two URLs for one page: /ar/site/pricing is /ar/pricing
     return { kind: 'redirect', to: `/${locale}${inner}${search}`, status: 302 }
   }
-  if ((SITE_PAGES as readonly string[]).includes(after)) {
+  if ((SITE_PAGES as readonly string[]).includes(after) || LEGAL_VERSION.test(after)) {
     return { kind: 'rewrite', to: `/${locale}/site${after}${search}` }
   }
   return { kind: 'redirect', to: `${APP_ORIGIN}${pathname}${search}`, status: 302 }

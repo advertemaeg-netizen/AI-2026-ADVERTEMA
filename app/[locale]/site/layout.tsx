@@ -8,10 +8,15 @@ import './site.css'
  * proxy.ts rewrites the site's hosts here (src/site/host-routing.ts) and
  * answers 404 for it on the app's host. Visitors never see "/site" in a URL.
  *
- * Fully static: both locales are rendered at build time and nothing here
- * reads the request. <html lang dir> comes from the [locale] layout.
+ * Static: both locales are rendered at build time and nothing here reads the
+ * request. <html lang dir> comes from the [locale] layout.
+ *
+ * No `dynamicParams = false` here, on purpose: set on this layout it wins
+ * over a page's own `true`, and the legal pages' earlier versions
+ * (privacy/v/[version], terms/v/[version]) are published after the build and
+ * must be generated on their first visit. An unknown locale is still a 404:
+ * the [locale] layout checks it, and the proxy only rewrites known ones.
  */
-export const dynamicParams = false
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }))

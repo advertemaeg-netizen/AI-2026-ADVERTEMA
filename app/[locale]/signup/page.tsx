@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { CheckCircle2, Building2, Store } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AuthFrame, authLinkClass } from '@/components/auth-frame'
+import { LegalConsentField, useLegalConsent } from '@/components/legal-consent'
 
 type OrgType = 'agency' | 'direct'
 
@@ -28,9 +29,19 @@ export default function SignupPage() {
   const supabase = createClient()
   const t = useTranslations('auth')
   const tCommon = useTranslations('common')
+  // Off until the legal pages are relinked (LEGAL_LINKED): then a tick is required
+  const consent = useLegalConsent()
+  const [consentMissing, setConsentMissing] = useState(false)
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
+    if (!consent.ready) {
+      // Not ticked: the copy's own error under the box. Ticked, but the versions
+      // to record never loaded: a connection problem, and still no signup
+      if (consent.accepted) setError(t('genericError'))
+      else setConsentMissing(true)
+      return
+    }
     setLoading(true)
     setError(null)
 
@@ -42,6 +53,7 @@ export default function SignupPage() {
           full_name: fullName,
           organization_name: organizationName,
           org_type: orgType,
+          ...consent.metadata,
         },
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
@@ -168,6 +180,8 @@ export default function SignupPage() {
                 placeholder={t('passwordMin')}
               />
             </div>
+
+            <LegalConsentField consent={consent} invalid={consentMissing && !consent.accepted} />
 
             {error && <div className="text-sm text-destructive">{error}</div>}
 

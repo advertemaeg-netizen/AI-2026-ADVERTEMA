@@ -1,78 +1,74 @@
+import Link from 'next/link'
+import { LegalMarkdown } from '@/components/legal-markdown'
+import type { LegalVersion } from '@/lib/legal'
 import type { SitePage as Page } from '@/site/config'
 import { SitePage } from '@/site/components/site-page'
 
 /**
- * A legal page: title, the date it was last changed, and its sections. The
- * text is a DRAFT pending a lawyer until Ahmed confirms the review; the site
- * is not deployed publicly before then (deploy/ROLLBACK.md, launch blocker).
- * Its [[placeholders]] stay visible on purpose: a draft shows what is missing.
+ * A legal page: one version of the document (public.legal_versions), its
+ * date, and every version before it at its own address. Until the lawyer's
+ * version is published the text is the imported draft, [[placeholders]]
+ * visible on purpose (a draft shows what is missing), under the draft notice.
  */
 export function LegalPage({
   locale,
   page,
   notice,
-  copy,
+  version,
+  updated,
+  history,
+  older,
 }: {
   locale: string
   page: Page
-  /** «مسودة — هذه الصفحة قيد المراجعة القانونية ولم تُعتمد بعد.» until the review is done */
-  notice: string
-  copy: { title: string; updated: string; sections: { heading: string; body: string }[] }
+  /** The draft notice, while the pages are unlinked (SITE_LEGAL_LINKED); null after */
+  notice: string | null
+  version: LegalVersion
+  /** "Last updated: <date>", from the copy file's own line with the version's date in it */
+  updated: string
+  history: { label: string; versions: { version: number; date: string; href: string }[] }
+  /** On an earlier version: says so, and links to the current one */
+  older?: { text: string; current: { label: string; href: string } }
 }) {
+  const earlier = history.versions.filter((v) => v.version !== version.version)
   return (
     <SitePage locale={locale} page={page}>
       <article className="site-panel-quiet mx-auto flex w-full max-w-3xl flex-col gap-8 p-6 md:p-10">
         <header className="flex flex-col gap-3">
-          <p role="note" className="rounded-lg border border-warning-solid bg-warning-solid/15 px-3 py-2 text-sm font-semibold">
-            {notice}
-          </p>
-          <h1 className="site-h2">{copy.title}</h1>
-          <p className="text-sm">{copy.updated}</p>
+          {notice && (
+            <p role="note" className="rounded-lg border border-warning-solid bg-warning-solid/15 px-3 py-2 text-sm font-semibold">
+              {notice}
+            </p>
+          )}
+          {older && (
+            <p role="note" className="rounded-lg border border-primary/30 bg-white/80 px-3 py-2 text-sm">
+              {older.text}{' '}
+              <Link href={older.current.href} className="font-semibold underline underline-offset-4">
+                {older.current.label}
+              </Link>
+            </p>
+          )}
+          <h1 className="site-h2">{version.title}</h1>
+          <p className="text-sm">{updated}</p>
         </header>
-        {copy.sections.map((section, i) => (
-          <section key={i} className="flex flex-col gap-3">
-            <h2 className="text-xl font-bold">{section.heading}</h2>
-            <LegalBody text={section.body} />
-          </section>
-        ))}
+        <div className="flex flex-col gap-4">
+          <LegalMarkdown text={version.body} />
+        </div>
+        {earlier.length > 0 && (
+          <nav aria-label={history.label} className="flex flex-col gap-2 border-t border-border pt-6 text-sm">
+            <h2 className="font-bold">{history.label}</h2>
+            <ul className="flex flex-col gap-1">
+              {earlier.map((v) => (
+                <li key={v.version}>
+                  <Link href={v.href} className="underline underline-offset-4">
+                    {v.date}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
       </article>
     </SitePage>
   )
-}
-
-/**
- * The drafts' markdown, as far as they use it: paragraphs (hard-wrapped lines
- * joined with a space), "- " lists whose items may wrap onto indented lines,
- * and **bold**. Nothing else is interpreted.
- */
-function LegalBody({ text }: { text: string }) {
-  const blocks = text.split(/\n\s*\n/)
-  return blocks.map((block, i) => {
-    const lines = block.split('\n')
-    if (lines[0].startsWith('- ')) {
-      const items: string[] = []
-      for (const line of lines) {
-        if (line.startsWith('- ')) items.push(line.slice(2).trim())
-        else items[items.length - 1] += ` ${line.trim()}`
-      }
-      return (
-        <ul key={i} className="flex list-disc flex-col gap-1.5 ps-6 leading-relaxed">
-          {items.map((item, j) => (
-            <li key={j}>
-              <Inline text={item} />
-            </li>
-          ))}
-        </ul>
-      )
-    }
-    return (
-      <p key={i} className="leading-relaxed">
-        <Inline text={lines.map((line) => line.trim()).join(' ')} />
-      </p>
-    )
-  })
-}
-
-function Inline({ text }: { text: string }) {
-  return text.split(/(\*\*[^*]+\*\*)/).map((part, i) => (part.startsWith('**') && part.endsWith('**') ? <strong key={i}>{part.slice(2, -2)}</strong> : part))
 }

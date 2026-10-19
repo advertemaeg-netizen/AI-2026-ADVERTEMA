@@ -54,7 +54,13 @@
     "agencyName": "Agency name",
     "businessName": "Business name",
     "agencyPlaceholder": "e.g. Success Marketing Agency",
-    "businessPlaceholder": "e.g. Al Noor Clinic"
+    "businessPlaceholder": "e.g. Al Noor Clinic",
+    "signup": {
+      "consent": {
+        "label": "I agree to the [Terms of Service] and the [Privacy Policy]",
+        "error": "You need to agree to the Terms and the Privacy Policy to continue."
+      }
+    }
   },
   "dashboard": {
     "overview": "Overview",
@@ -1140,7 +1146,8 @@
       "plans": "Plans",
       "subscriptions": "Subscriptions",
       "invoices": "Invoices",
-      "aiUsage": "AI usage"
+      "aiUsage": "AI usage",
+      "legal": "Legal documents"
     },
     "overview": {
       "title": "Platform overview",
@@ -1276,6 +1283,40 @@
       "you": "(you)",
       "grantTitle": "Adding a super admin",
       "grantDesc": "For safety this can’t be done from the app. Run this in the Supabase SQL editor with the person’s email:"
+    },
+    "legal": {
+      "title": "Legal documents",
+      "intro": "Every publish is a new version: nothing is edited in place or deleted, and each earlier version stays readable at its own address.",
+      "privacy": "Privacy policy",
+      "terms": "Terms of service",
+      "arabic": "Arabic",
+      "english": "English",
+      "current": "Version {version} · {date}",
+      "fieldTitle": "Title",
+      "fieldBody": "Text",
+      "fieldNote": "Change note (internal, not shown on the site)",
+      "edit": "Edit",
+      "preview": "Preview",
+      "changes": "Changes",
+      "noChanges": "No changes from the current version.",
+      "publish": "Publish as version {version}",
+      "confirm": "This replaces the public text now. The current version stays readable at its own address.",
+      "confirmPublish": "Publish now",
+      "cancel": "Cancel",
+      "published": "Published version {version}.",
+      "error": {
+        "forbidden": "Only a super admin can publish a legal document.",
+        "validation": "The title and the text can't be empty.",
+        "unchanged": "Nothing changed: there is nothing to publish.",
+        "unknown": "It didn't publish. Nothing was changed; try again."
+      },
+      "history": "All versions",
+      "version": "Version",
+      "date": "Published",
+      "by": "By",
+      "note": "Note",
+      "imported": "Imported draft",
+      "view": "View"
     }
   },
   "subscription": {

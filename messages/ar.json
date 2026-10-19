@@ -54,7 +54,13 @@
     "agencyName": "اسم الوكالة",
     "businessName": "اسم النشاط",
     "agencyPlaceholder": "مثال: وكالة النجاح للتسويق",
-    "businessPlaceholder": "مثال: عيادة النور"
+    "businessPlaceholder": "مثال: عيادة النور",
+    "signup": {
+      "consent": {
+        "label": "أوافق على [الشروط والأحكام] و[سياسة الخصوصية]",
+        "error": "لازم توافق على الشروط وسياسة الخصوصية عشان تكمل."
+      }
+    }
   },
   "dashboard": {
     "overview": "نظرة عامة",
@@ -1140,7 +1146,8 @@
       "plans": "الخطط",
       "subscriptions": "الاشتراكات",
       "invoices": "الفواتير",
-      "aiUsage": "استهلاك الذكاء الاصطناعي"
+      "aiUsage": "استهلاك الذكاء الاصطناعي",
+      "legal": "Legal documents"
     },
     "overview": {
       "title": "نظرة عامة على المنصة",
@@ -1276,6 +1283,40 @@
       "you": "(أنت)",
       "grantTitle": "إضافة Super Admin",
       "grantDesc": "لأسباب أمنية لا يمكن ذلك من داخل التطبيق. نفّذ هذا الأمر في محرر SQL في Supabase مع بريد الشخص:"
+    },
+    "legal": {
+      "title": "Legal documents",
+      "intro": "Every publish is a new version: nothing is edited in place or deleted, and each earlier version stays readable at its own address.",
+      "privacy": "Privacy policy",
+      "terms": "Terms of service",
+      "arabic": "Arabic",
+      "english": "English",
+      "current": "Version {version} · {date}",
+      "fieldTitle": "Title",
+      "fieldBody": "Text",
+      "fieldNote": "Change note (internal, not shown on the site)",
+      "edit": "Edit",
+      "preview": "Preview",
+      "changes": "Changes",
+      "noChanges": "No changes from the current version.",
+      "publish": "Publish as version {version}",
+      "confirm": "This replaces the public text now. The current version stays readable at its own address.",
+      "confirmPublish": "Publish now",
+      "cancel": "Cancel",
+      "published": "Published version {version}.",
+      "error": {
+        "forbidden": "Only a super admin can publish a legal document.",
+        "validation": "The title and the text can't be empty.",
+        "unchanged": "Nothing changed: there is nothing to publish.",
+        "unknown": "It didn't publish. Nothing was changed; try again."
+      },
+      "history": "All versions",
+      "version": "Version",
+      "date": "Published",
+      "by": "By",
+      "note": "Note",
+      "imported": "Imported draft",
+      "view": "View"
     }
   },
   "subscription": {
