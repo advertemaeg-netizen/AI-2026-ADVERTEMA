@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import ar from '../../messages/ar.json'
+import { formatAppointment } from '@/lib/ai/appointment'
 import { composeReply } from '@/lib/ai/compose'
 import { describeContact, EMPTY_CONTACT, readContact, validateName, type ContactState } from '@/lib/ai/contact'
 import { displayPhone, normalizePhone, telHref, whatsappHref } from '@/lib/phone'
@@ -221,8 +222,20 @@ describe('the reply states only what is on record', () => {
     expect(compose({ template: 'تمام، رقمك وصل.', events: { name: 'none', phone: 'rejected_final' } })).toBe(T.phoneGiveUp)
   })
 
-  it('asks for the full name instead of the model\'s reply', () => {
-    expect(compose({ template: 'تمام يا م 😊 ممكن رقم موبايلك؟', events: { name: 'ask_again', phone: 'none' } })).toBe(T.nameAsk)
+  it('asks for the full name instead of the model\'s reply, once a time is held', () => {
+    const held = { status: 'needs_details', at: '2026-10-08T15:00:00.000Z', missing: ['name', 'phone'], handoff: false } as const
+    const A = ar.botReplies.appointment
+    expect(compose({ template: 'Got it, and your number?', outcome: held, events: { name: 'ask_again', phone: 'none' } })).toBe(
+      A.needDetails.replace('{time}', formatAppointment(held.at, 'ar')).replace('{missing}', A.missingName)
+    )
+  })
+
+  // The booking order: no name asked for before the appointment is complete.
+  // The name given is kept, and taken as it is on the next message (readContact)
+  it('does not ask about a short name before a time is held', () => {
+    expect(compose({ template: 'Hello! Which day would suit you?', events: { name: 'ask_again', phone: 'none' } })).toBe(
+      'Hello! Which day would suit you?'
+    )
   })
 
   it('fills {{saved_phone}} from the record, in the form it is dialled', () => {
@@ -283,7 +296,9 @@ describe('a name code has accepted is not asked for again', () => {
   // The eval, case NM01, 13 October 2026
   it('greets the visitor by the name they gave and asks for the next thing the booking needs', () => {
     expect(compose({})).toBe(`${hello('م')}\n${A.askTime}`)
-    expect(compose({ known: { ...known, phone: null } })).toBe(`${hello('م')}\n${T.phoneAsk}`)
+    // The appointment before the number (the booking order); the number once a time is held
+    expect(compose({ known: { ...known, phone: null } })).toBe(`${hello('م')}\n${A.askTime}`)
+    expect(compose({ known: { ...known, phone: null, time: true } })).toBe(`${hello('م')}\n${T.phoneAsk}`)
     // The number is not asked for once the bot has stopped asking for it
     expect(compose({ known: { ...known, phone: null, phoneGivenUp: true } })).toBe(`${hello('م')}\n${A.askTime}`)
   })

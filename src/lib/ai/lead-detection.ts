@@ -38,11 +38,14 @@ Use null for anything not stated.
 
 // Only for messages the bot didn't answer: when it does, the reply call reads
 // the appointment (the reply has to quote what was stored). Same components,
-// same resolver either way.
+// same resolver either way. Unlike the reply call, the analysis reads the
+// whole conversation and has no draft to hold earlier parts: it reports the
+// whole request.
 const APPOINTMENT_PROMPT = `
 
 Appointments ("appointment", null when the visitor asked for none):
 ${APPOINTMENT_COMPONENTS}
+- When the latest message only completes what they asked before (answering which part of the day, or which hour), report the whole request: the day and hour from earlier with what they just added.
 - With no specific day ("next week", "soon") or no time at all, "appointment" is null.`
 
 // Structured-output schema (JSON Schema; each provider translates it). The

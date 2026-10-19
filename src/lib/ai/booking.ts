@@ -257,25 +257,29 @@ async function writeAppointment(supabase: SupabaseClient, lead: BookableLead, ai
  * The time the visitor asked for earlier, kept as a request while their name
  * or number was missing, becomes the appointment once both are on record —
  * on their next message, whatever it is about. The time is checked again as
- * it stands now: gone, or outside opening hours, it is dropped and said so.
- * Returns null when there is no such request, or the details are still short.
- * Throws on a database error.
+ * it stands now: gone, or outside opening hours, it is dropped and said so,
+ * details or not. While the details are still short it stays held, and the
+ * outcome is 'needs_details' with what is missing: code asks for the next one
+ * itself (the name, then the number), not the model.
+ * Returns null when there is no such request. Throws on a database error.
  */
 export async function confirmPending({
   supabase,
   conversationId,
   businessHours,
+  contact = null,
   now = new Date(),
 }: {
   supabase: SupabaseClient
   conversationId: string
   businessHours: BusinessHours | null
+  /** The name and number as code holds them after this message: whether the bot has stopped asking for the number */
+  contact?: ContactState | null
   now?: Date
 }): Promise<BookingOutcome | null> {
   const open = (await loadLeads(supabase, conversationId)).find((lead) => !isClosed(lead)) ?? null
   const pending = open?.ai_appointment
   if (!open || !pending?.pending || open.appointment_at) return null
-  if (missingDetails(open.name, open.phone).length > 0) return null
 
   const drop = async (outcome: BookingOutcome) => {
     const { error } = await supabase.from('leads').update({ ai_appointment: null }).eq('id', open.id)
@@ -286,6 +290,15 @@ export async function confirmPending({
   if (businessHours?.enabled) {
     const opening = openingAt(businessHours, pending.at)
     if (!opening.open) return drop({ status: 'outside_hours', hours: opening.day })
+  }
+  const missing = missingDetails(open.name, open.phone)
+  if (missing.length > 0) {
+    return {
+      status: 'needs_details',
+      at: pending.at,
+      missing,
+      handoff: missing.includes('phone') && (contact?.phoneRejections ?? 0) >= MAX_PHONE_REJECTIONS,
+    }
   }
   return writeAppointment(supabase, open, {
     at: pending.at,

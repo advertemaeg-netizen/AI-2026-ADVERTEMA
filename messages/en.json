@@ -1975,19 +1975,18 @@
       "bookedConfirmed": "Done — your appointment is {time} ✅",
       "bookedRequest": "We've noted your request for {time}, and the team will confirm it with you.",
       "kept": "You already have an appointment on {time}. If you'd like to change it, someone from our team will be in touch.",
-      "askTime": "Which day and what time would you like to book?",
+      "askTime": "Which day would you like to book?",
       "askHour": "Sure — what time on {day}?",
       "askDay": "Which day would you like that time on?",
       "askDayAt": "Sure — {time} on which day?",
       "askPeriod": "{hour} in the morning or in the evening?",
       "outsideHours": "That time is outside our working hours: on {day} we are open from {from} to {to}. Would another time suit you?",
       "closedDay": "We are closed on {day}. Would another day suit you?",
-      "past": "That time has already passed. Which day and what time would you like?",
+      "past": "That time has already passed. Would another time suit you?",
       "needDetails": "To book {time} I need {missing}.",
       "needDetailsHandoff": "Your request for {time} is noted as a request, and someone from our team will contact you here to complete it.",
       "missingName": "your full name",
-      "missingPhone": "your mobile number",
-      "and": " and "
+      "missingPhone": "your mobile number"
     },
     "contact": {
       "phoneInvalid": "That number doesn't look right. A mobile number is 11 digits starting with 01, or an international number starting with +. Could you send it again?",

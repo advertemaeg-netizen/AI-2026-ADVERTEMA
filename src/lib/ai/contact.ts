@@ -165,23 +165,24 @@ export function missingDetails(name: string | null, phone: string | null): ('nam
 
 /**
  * What the chat model is told about the record before it writes: which of
- * the two details it need not ask for, and when to stop asking for the phone
- * number. Without it the model, which is told to collect both, would go on
- * asking for a number the system has given up on — the loop the escape hatch
- * exists to prevent, moved into the model.
+ * the two details are on record, and that it does not ask for either: code
+ * asks for the name and then the number once a time is held (the booking
+ * order). Without it the model would go on asking for a number the system has
+ * given up on — the loop the escape hatch exists to prevent, moved into the
+ * model.
  */
 export function describeContact(state: ContactState): string {
   const lines = [
     state.name
       ? "The visitor's name is on record: don't ask for it again."
       : state.pendingName
-        ? "The visitor was asked once for their full name: don't ask for it again, whatever they answer."
-        : "The visitor's name is not on record yet.",
+        ? "The visitor gave a name that is not a full one: don't ask for it again, whatever they answer; the system takes it as given."
+        : "The visitor's name is not on record yet: the system asks for it once the appointment is complete, so don't ask for it yourself.",
     state.phone
       ? "The visitor's phone number is on record: don't ask for it again."
       : state.phoneRejections >= MAX_PHONE_REJECTIONS
         ? 'The visitor has sent numbers that are not phone numbers, and the team will take their number: do NOT ask for a phone number again.'
-        : "The visitor's phone number is not on record yet.",
+        : "The visitor's phone number is not on record yet: the system asks for it after the name, so don't ask for it yourself.",
   ]
   return `What the system holds for this visitor (before their latest message):\n${lines.map((line) => `- ${line}`).join('\n')}`
 }

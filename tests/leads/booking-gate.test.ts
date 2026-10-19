@@ -151,7 +151,7 @@ describe('a phone number is checked before the reply, not after it', () => {
 })
 
 describe('a name is checked, with one re-ask and never a loop', () => {
-  it('asks once for the full name, then takes what was given and flags the lead', async () => {
+  it('takes a short name on the next message and flags the lead, without asking before a time is held', async () => {
     chatModel({
       'عايز أحجز، رقمي 01002847901': botReply('تمام 😊 ممكن أعرف اسمك؟'),
       'اسمي م': botReply('تمام يا م 😊', null, { name: 'م' }),
@@ -160,7 +160,9 @@ describe('a name is checked, with one re-ask and never a loop', () => {
     const { say, leads } = await visitor()
     await say('عايز أحجز، رقمي 01002847901')
 
-    expect(await say('اسمي م')).toBe(CONTACT.nameAsk)
+    // No time is held: code does not ask about the name yet (the booking
+    // order), and the name is not accepted on this message either
+    expect(await say('اسمي م')).not.toContain(CONTACT.nameAsk)
     expect((await leads())[0].name).toBeNull()
 
     // The second answer is accepted as it is: the model's reply goes through
@@ -183,7 +185,8 @@ describe('a name is checked, with one re-ask and never a loop', () => {
     })
     const { say, leads } = await visitor()
     await say('عايز أحجز، رقمي 01002847901')
-    expect(await say('اسمي م')).toBe(CONTACT.nameAsk)
+    // No time is held, so code does not ask about the name yet (the booking order)
+    expect(await say('اسمي م')).not.toContain(CONTACT.nameAsk)
 
     // Accepted as given: greeted by it, and asked for the day and time, the
     // next thing the booking needs (the number is on record)
@@ -198,13 +201,14 @@ describe('a name is checked, with one re-ask and never a loop', () => {
 })
 
 describe('no appointment without a name and a valid phone number', () => {
-  it('keeps the time as a request, claims nothing, and says what is missing', async () => {
+  it('keeps the time as a request, claims nothing, and asks for the first thing missing', async () => {
     chatModel({ 'عايز أحجز بكرة الساعة 7 مساءً': botReply('تمام، حجزتلك {{appointment}}.', AT_7_TOMORROW) })
     const { say, leads } = await visitor()
 
     const reply = await say('عايز أحجز بكرة الساعة 7 مساءً')
 
-    expect(reply).toBe(`عشان أثبّت الحجز يوم ${TOMORROW_7PM_TEXT} محتاج اسمك بالكامل ورقم موبايلك.`)
+    // One thing per message, the name first (the booking order)
+    expect(reply).toBe(APPOINTMENT.needDetails.replace('{time}', TOMORROW_7PM_TEXT).replace('{missing}', APPOINTMENT.missingName))
     expect(reply).not.toContain('حجزتلك')
     expect(reply).not.toContain(APPOINTMENT.confirmed)
     const [lead] = await leads()

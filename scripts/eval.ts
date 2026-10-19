@@ -352,14 +352,25 @@ async function converse(bot: Bot, turns: string[]) {
     let confirmedOnRecord = false
     let decided = result.appointment !== null
     let evidenceDropped: EvidencedPart[] = []
-    // confirmPending: the time asked for earlier becomes the appointment, once the details are there
+    // confirmPending: the time asked for earlier becomes the appointment once
+    // the details are there; until then it stays held and code asks for the next one
     const promotePending = (): BookingOutcome | null => {
-      if (!pending || appointmentAt || missingDetails(record.name, record.phone).length > 0) return null
+      if (!pending || appointmentAt) return null
       const waiting = pending
+      const opening = hours?.enabled ? openingAt(hours, waiting.at) : null
+      const gone = new Date(waiting.at).getTime() < Date.now()
+      const missing = missingDetails(record.name, record.phone)
+      if (!gone && (!opening || opening.open) && missing.length > 0) {
+        return {
+          status: 'needs_details',
+          at: waiting.at,
+          missing,
+          handoff: missing.includes('phone') && contact.phoneRejections >= MAX_PHONE_REJECTIONS,
+        }
+      }
       pending = null
       draft = null
-      const opening = hours?.enabled ? openingAt(hours, waiting.at) : null
-      if (new Date(waiting.at).getTime() < Date.now()) return { status: 'past' }
+      if (gone) return { status: 'past' }
       if (opening && !opening.open) return { status: 'outside_hours', hours: opening.day }
       appointmentAt = waiting.at
       confirmedOnRecord = waiting.confirmed
@@ -411,7 +422,7 @@ async function converse(bot: Bot, turns: string[]) {
         booking = resolved
       }
       draft = narrowDraft(draft, request, booking)
-    } else if (pending && !appointmentAt && missingDetails(record.name, record.phone).length === 0) {
+    } else if (pending && !appointmentAt) {
       booking = promotePending()!
       decided = true
     } else if (appointmentAt && result.reply.includes(APPOINTMENT_PLACEHOLDER)) {

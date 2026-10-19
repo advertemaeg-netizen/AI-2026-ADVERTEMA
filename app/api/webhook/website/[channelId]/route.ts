@@ -464,7 +464,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
             // booked once it can be, one on record is restated, and otherwise
             // the visitor is asked for the day and time.
             booking =
-              (await confirmPending({ supabase, conversationId, businessHours: settings.business_hours })) ??
+              (await confirmPending({ supabase, conversationId, businessHours: settings.business_hours, contact })) ??
               (await appointmentOnRecord({ supabase, conversationId }))
             if (booking.status === 'none') booking = ASK_DAY_AND_TIME
           } else {
@@ -490,9 +490,9 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       } else if (settings.lead_qualification_enabled) {
         // A time asked for earlier, held back for a name or a number: once
         // both are on record it becomes the appointment, whatever this
-        // message is about
+        // message is about; until then code asks for the next one
         try {
-          const promoted = await confirmPending({ supabase, conversationId, businessHours: settings.business_hours })
+          const promoted = await confirmPending({ supabase, conversationId, businessHours: settings.business_hours, contact })
           if (promoted) {
             booking = promoted
             decided = true

@@ -107,8 +107,7 @@ export const botReplySchema = z.object({
 export const APPOINTMENT_COMPONENTS = `- When the visitor's latest message asks for, agrees to or changes an appointment and names a specific day, a specific time, or both, fill "appointment" with what THEY said, as components. Report, don't calculate: no dates worked out from "tomorrow" or a weekday, no 24-hour conversion, and no guessing a part of the day they didn't say.
   day_type: today (النهارده), tomorrow (بكرة), day_after_tomorrow (بعد بكرة), weekday (a named day: set "weekday"), date (a calendar date: set "day_of_month", "month" if stated, and "year" only if they said a year), or none.
   hour and minute exactly as said ("الساعة 6" → 6; "11 ونص" → 11 and 30). period: morning (الصبح), noon (الضهر), afternoon (العصر), evening (المغرب), night (بالليل / العشا), or unspecified when they didn't say.
-- A new time without a day ("خليها 7") is day_type none with the new hour, and a new day without a time is the day with no hour: the system keeps what they already chose of the rest, also after a time was refused. Always the visitor's latest choice.
-- When the latest message only completes what they asked before (answering which part of the day, or which hour), report the whole request: the day and hour from earlier with what they just added.
+- A new time without a day ("خليها 7") is day_type none with the new hour, and a new day without a time is the day with no hour: the system keeps what they already chose of the rest, also after a refusal: a time refused on a day keeps the day, and a day the business is closed keeps the time. Always the visitor's latest choice.
 - needs_team_check: true when the information you were given says the business is closed or unavailable at that time (a holiday, a doctor who is away), or you cannot tell whether it can be honoured. Report the request all the same: the system decides what becomes of it.`
 
 /** Where the reply states what is on record; replaced from the lead row */
@@ -119,11 +118,12 @@ export const SAVED_NAME_PLACEHOLDER = '{{saved_name}}'
 export const APPOINTMENT_INSTRUCTIONS = `Answer as JSON with "contact", "appointment", "other_answer" and "reply" (your message to the visitor).
 
 The visitor's details ("contact", null when the latest message gives none):
-- name: the name the visitor gave for themselves in their LATEST message, copied exactly as they wrote it. phone: the phone number they gave in their LATEST message, every digit as written, even if it looks wrong or incomplete. Report, don't judge and don't correct: the system checks them and tells the visitor itself when one is not usable.
+- name: the name the visitor gave for themselves in their LATEST message, copied exactly as they wrote it. phone: the phone number they gave in their LATEST message, every digit as written, even if it looks wrong or incomplete. Report, don't judge and don't correct: the system checks them and tells the visitor itself when one is not usable. Report them whenever the visitor gives them, also before they were asked for and before the appointment is complete: the system keeps them, and does not ask for them again.
 - You cannot see what has been saved, but the system can. Never say that a name or a number was received, saved, recorded, registered or updated, and never write the visitor's phone number in "reply". When the visitor asks what is on record ("سجلت رقمي؟"), or you want to state it, answer with the placeholder — ${SAVED_PHONE_PLACEHOLDER} for the phone number, ${SAVED_NAME_PLACEHOLDER} for the name, as in "رقمك المسجّل عندنا ${SAVED_PHONE_PLACEHOLDER}" — and never by saying that you can't see it: the system replaces the placeholder with what is actually stored, or says that nothing is.
 
 Appointments ("appointment"):
 ${APPOINTMENT_COMPONENTS}
+- Report only what the latest message itself says, also when it only completes what the visitor asked before (which part of the day, or which hour): the system holds what earlier messages gave and puts the two together. Don't repeat the day or the hour of an earlier message.
 - Whenever "appointment" is not null, the SYSTEM writes everything the visitor is told about it: whether it is recorded, confirmed, refused, outside working hours, or still needs their name or number. Your "reply" is NOT shown to the visitor on that turn, so nothing you think about the time — that it is fine, that it is not possible, that another time would be better — reaches them or should be written anywhere else.
 - "other_answer": when the same message ALSO asked about something that is not the appointment (a price, insurance, an address, a doctor), answer that here, and only that. Nothing about the appointment, its day or time, opening hours as a reason, or whether it can be booked. Null when the message asked nothing else, and null whenever "appointment" is null, unless you are told below that a time the visitor asked for earlier is held.
 - When "appointment" is null and you mention an appointment the visitor already has, write ${APPOINTMENT_PLACEHOLDER} in "reply" exactly where its day and time belong, and never write the day or the time yourself: the system replaces it with the appointment on record. Never say that something is booked or confirmed yourself.
@@ -132,12 +132,12 @@ ${APPOINTMENT_COMPONENTS}
 
 /**
  * Added to the prompt while a time the visitor asked for earlier is held on
- * the lead for their name or number (confirmPending): the system may book or
- * refuse it on this message without the model reporting anything, and then
- * the reply is not sent either, so the rest of the answer has to be in
- * "other_answer" already.
+ * the lead for their name or number (confirmPending): on this message the
+ * system books it, refuses it or asks for the next detail without the model
+ * reporting anything, and the reply is not sent, so the rest of the answer
+ * has to be in "other_answer" already.
  */
-export const HELD_REQUEST_INSTRUCTIONS = `A day and time the visitor asked for earlier is held until their name and phone number are both on record. The system may book or refuse it on this message, and then your "reply" is NOT shown to the visitor: the system says what became of it. So whenever "appointment" is null, also write in "other_answer" your answer to everything in the latest message that is not about that appointment (a greeting, a question, what you still need from them), with nothing about the appointment, its day or time, or whether it can be booked; null when there is nothing else to say. "reply" is written as usual.`
+export const HELD_REQUEST_INSTRUCTIONS = `A day and time the visitor asked for earlier is held until their name and phone number are both on record. On this message the system books it, refuses it, or asks for the name or number still missing, and your "reply" is NOT shown to the visitor: the system says what became of it. So whenever "appointment" is null, also write in "other_answer" your answer to everything in the latest message that is not about that appointment (a greeting, a question), with nothing about the appointment, its day or time, whether it can be booked, or the name or number still needed: the system asks for those itself. Null when there is nothing else to say. "reply" is written as usual.`
 
 // With only a part of the day, a usual hour for it (flagged as approximate)
 const PERIOD_DEFAULT_HOUR: Record<Exclude<Period, 'unspecified'>, number> = {
@@ -512,7 +512,9 @@ export function narrowDraft(
     case 'outside_hours':
       return outcome.hours.open ? keep(day, null) : keep(null, time)
     case 'past':
-      return keep(day && dayHasGone(day, now) ? null : day, null)
+      // A date that has gone takes back the day and keeps the time; a time
+      // gone today takes back the time and keeps the day
+      return day && dayHasGone(day, now) ? keep(null, time) : keep(day, null)
     case 'none':
       // Unusable is a day that doesn't exist or is too far ahead
       return keep(null, time)
@@ -681,11 +683,11 @@ export function appointmentLine(outcome: BookingOutcome, language: ReplyLanguage
       return outcome.time ? t.askDayAt.replace('{time}', formatHeldTime(outcome.time, language)) : t.askDay
     case 'needs_details': {
       const time = formatAppointment(outcome.at, language)
+      // One thing per message, the name before the number (the booking
+      // order): the next one is asked for once this one is on record
       return outcome.handoff
         ? t.needDetailsHandoff.replace('{time}', time)
-        : t.needDetails
-            .replace('{time}', time)
-            .replace('{missing}', outcome.missing.map((field) => (field === 'name' ? t.missingName : t.missingPhone)).join(t.and))
+        : t.needDetails.replace('{time}', time).replace('{missing}', outcome.missing[0] === 'name' ? t.missingName : t.missingPhone)
     }
     case 'none':
       // No usable day and time in what was reported, or the booking failed

@@ -101,15 +101,16 @@ export function mentionsName(template: string) {
 }
 
 /**
- * The next thing the booking still needs, asked by code: the phone number,
- * then the day and time. The branch is not asked for here: until a client's
- * branches are data (the branches table) code cannot know whether it has one
- * branch or several, and "which branch?" to a business with one is a new
- * defect.
+ * The next thing the booking still needs, asked by code, in the booking
+ * order (src/lib/ai/booking-order.ts): the appointment first, then the phone
+ * number; the name is what was just given. The branch is not asked for here:
+ * until a client's branches are data (the branches table) code cannot know
+ * whether it has one branch or several, and "which branch?" to a business
+ * with one is a new defect.
  */
 function nextQuestion(known: Known, language: ReplyLanguage) {
-  if (!known.phone && !known.phoneGivenUp) return TEXTS[language].phoneAsk
   if (!known.time) return (language === 'ar' ? ar : en).botReplies.appointment.askTime
+  if (!known.phone && !known.phoneGivenUp) return TEXTS[language].phoneAsk
   return ''
 }
 
@@ -152,9 +153,20 @@ export function composeReply({
   // A number or a name code did not accept: the model wrote its reply before
   // anything had read them ("تمام يا م، رقمك وصل"), so none of it is kept.
   // Code says what is wrong, and where the booking stands.
-  if (refusals.length > 0 || events.name === 'ask_again') {
-    const booking = outcome.status === 'none' ? '' : renderReply('', outcome, language).trim()
-    return [...refusals, booking || (events.name === 'ask_again' ? t.nameAsk : '')].filter(Boolean).join('\n')
+  //
+  // A name short of a full one is asked about only once a time is held: the
+  // name is not asked for before the appointment is complete (the booking
+  // order). Given earlier, it is kept and taken as it is on the next message,
+  // flagged for the team (readContact).
+  const askName = events.name === 'ask_again' && outcome.status === 'needs_details'
+  if (refusals.length > 0 || askName) {
+    // The refusal already asks for the number again: the line that asks for
+    // the next detail of the held time would be a second question
+    const booking =
+      outcome.status === 'none' || (refusals.length > 0 && outcome.status === 'needs_details' && !outcome.handoff)
+        ? ''
+        : renderReply('', outcome, language).trim()
+    return [...refusals, booking || (askName ? t.nameAsk : '')].filter(Boolean).join('\n')
   }
 
   // ONE RULE, in both directions: on any turn where code decides something

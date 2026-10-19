@@ -276,11 +276,12 @@ describe('a reply about a time that did not become an appointment', () => {
     )
   })
 
-  it('says what is missing when the name or the number is not on record', () => {
+  it('says what is missing when the name or the number is not on record, one at a time', () => {
     const at = '2026-10-08T15:00:00.000Z'
     const time = 'الخميس 8 أكتوبر الساعة 6:00 مساءً'
+    // One thing per message, the name first (the booking order): not the name and the number together
     expect(renderReply('حجزتلك {{appointment}}.', { status: 'needs_details', at, missing: ['name', 'phone'], handoff: false }, 'ar')).toBe(
-      `عشان أثبّت الحجز يوم ${time} محتاج اسمك بالكامل ورقم موبايلك.`
+      T.needDetails.replace('{time}', time).replace('{missing}', T.missingName)
     )
     expect(renderReply('حجزتلك {{appointment}}.', { status: 'needs_details', at, missing: ['phone'], handoff: true }, 'ar')).toBe(
       T.needDetailsHandoff.replace('{time}', time)
