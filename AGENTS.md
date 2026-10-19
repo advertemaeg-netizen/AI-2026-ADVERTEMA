@@ -11,3 +11,11 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 # Database migrations: do not use a real timestamp
 
 The filenames in `supabase/migrations/` run ahead of the calendar, so a file made by `supabase migration new` (or named with today's date) sorts before migrations that are already applied. Read `supabase/README.md` before adding one: name it after the highest timestamp in `supabase/migrations/` and `supabase/pending/`, and never pass `--include-all` to `supabase db push`.
+
+# Before committing: `npm run check`
+
+Run `npm run check` after the last edit and before every commit: `tsc --noEmit` over the whole repo (test files included), then `eslint`, then `vitest run`. Vitest alone does not type-check: commit eb21545 landed a test that broke `tsc` while every test passed. The multi-message webhook tests have a known flake, and it is a real defect: `messages` and `leads` are ordered by `created_at` alone, so two rows can be read in the wrong order (seen 2026-10-19: the bot answered a visitor's first message in reply to their second). Report such a failure with what it read; don't rerun until green and call it clean.
+
+# New dependencies: an exact release at least two weeks old
+
+Pin anything new to an exact version (`npm install --save-exact pkg@x.y.z`): the newest release published at least two weeks ago, found with `npm view <pkg> time --json`, then `npm audit`. Say in the commit which version and why. On 2026-10-19 nodemailer had shipped five releases in one day; 10.0.13 was pinned instead.
