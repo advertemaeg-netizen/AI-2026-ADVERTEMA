@@ -47,6 +47,17 @@
   line-height: 1.6;
 }
 
+/* Arabic line heights, per locale (Alexandria, 20 October 2026): Arabic needs room for
+   its marks above and below the line; English keeps the values above. Unlayered, so
+   they win over the components' leading-* utilities and the classes above. */
+html:lang(ar) body,
+html:lang(ar) :is(p, li, dd, dt, label, .site-lead) {
+  line-height: 1.85;
+}
+html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
+  line-height: 1.35;
+}
+
 /* Surfaces with real depth and no blur (cheap on a phone) */
 .site-panel {
   background: rgb(255 252 242 / 0.94);

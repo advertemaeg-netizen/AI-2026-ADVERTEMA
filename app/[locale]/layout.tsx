@@ -2,15 +2,17 @@ import type { Metadata, Viewport } from 'next'
 import { NextIntlClientProvider, hasLocale } from 'next-intl'
 import { setRequestLocale } from 'next-intl/server'
 import { notFound } from 'next/navigation'
-import { Cairo } from 'next/font/google'
+import { Alexandria } from 'next/font/google'
 import { Providers } from '@/components/providers'
 import { MARK_SEEN_SCRIPT } from '@/components/brand'
 import { routing } from '@/i18n/routing'
 import '../globals.css'
 
-const cairo = Cairo({
+// Arabic and Latin in one family, variable 100–900: covers every weight in use (400–800).
+// Replaced Cairo on 20 October 2026.
+const alexandria = Alexandria({
   subsets: ['arabic', 'latin'],
-  variable: '--font-cairo',
+  variable: '--font-alexandria',
 })
 
 // cover: env(safe-area-inset-*) is only non-zero with it (notch, home indicator).
@@ -53,7 +55,7 @@ export default async function LocaleLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: MARK_SEEN_SCRIPT }} />
       </head>
-      <body className={`${cairo.variable} font-sans antialiased`} suppressHydrationWarning>
+      <body className={`${alexandria.variable} font-sans antialiased`} suppressHydrationWarning>
         <NextIntlClientProvider>
           <Providers>{children}</Providers>
         </NextIntlClientProvider>
