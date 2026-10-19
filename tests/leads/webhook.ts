@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { NextRequest } from 'next/server'
+import { expect, onTestFailed } from 'vitest'
 import { POST } from '../../app/api/webhook/website/[channelId]/route'
-import { flushAfter, geminiText, seedClient, type GeminiCall } from '../harness/helpers'
+import { flushAfter, geminiText, seedClient, serviceClient, type GeminiCall } from '../harness/helpers'
 
 export const newVisitorId = () => `visitor-${randomUUID()}`
 
@@ -20,7 +21,53 @@ export async function sendVisitorMessage(
   const response = await POST(request, { params: Promise.resolve({ channelId }) })
   // Lead detection is scheduled with after(): let it finish before asserting
   await flushAfter()
-  return { status: response.status, body: (await response.json()) as Record<string, unknown> }
+  const body = (await response.json()) as Record<string, unknown>
+  if (typeof body.conversationId === 'string') dumpOnFailure(body.conversationId)
+  return { status: response.status, body }
+}
+
+// The conversations the running test has written to; one failure hook per test
+let watchedTest: string | undefined
+let watched = new Set<string>()
+
+/**
+ * When a webhook test fails, its conversations' rows are printed as the
+ * webhook and lead detection read them: ordered by created_at alone, with
+ * every created_at as stored, and a row that shares its created_at with
+ * another marked TIE. Evidence for the ordering defect (AGENTS.md: rows read
+ * in the wrong order) — whether the rows that came back out of order share a
+ * timestamp. It prints on any failure, since the ordering ones can't be told
+ * apart in advance; npm run check keeps the output of a failed run.
+ */
+function dumpOnFailure(conversationId: string) {
+  const test = expect.getState().currentTestName
+  if (!test) return
+  if (test !== watchedTest) {
+    watchedTest = test
+    watched = new Set()
+    const ids = watched
+    onTestFailed(async () => {
+      const supabase = serviceClient()
+      for (const id of ids) {
+        const [messages, leads] = await Promise.all([
+          supabase.from('messages').select('id, role, created_at, content').eq('conversation_id', id).order('created_at', { ascending: true }),
+          supabase.from('leads').select('id, status, created_at, updated_at').eq('conversation_id', id).order('created_at', { ascending: true }),
+        ])
+        const tie = (rows: { created_at: string }[] | null) =>
+          (row: { created_at: string }) => ((rows ?? []).filter((other) => other.created_at === row.created_at).length > 1 ? ' TIE' : '')
+        const markMessage = tie(messages.data)
+        const markLead = tie(leads.data)
+        console.error(
+          [
+            `[ordering dump] ${test} — conversation ${id}, rows ordered by created_at as the app orders them`,
+            ...(messages.error ? [`  messages: error ${messages.error.message}`] : (messages.data ?? []).map((m) => `  message ${m.created_at}${markMessage(m)} ${m.role} ${m.id} ${JSON.stringify(String(m.content).slice(0, 60))}`)),
+            ...(leads.error ? [`  leads: error ${leads.error.message}`] : (leads.data ?? []).map((l) => `  lead ${l.created_at}${markLead(l)} ${l.status} ${l.id} updated ${l.updated_at}`)),
+          ].join('\n')
+        )
+      }
+    })
+  }
+  watched.add(conversationId)
 }
 
 export const INTRO_MESSAGE = 'السلام عليكم، أنا كريم مصطفى، عايز أحجز تنظيف أسنان. رقمي 01012345678'
