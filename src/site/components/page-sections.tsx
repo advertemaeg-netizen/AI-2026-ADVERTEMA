@@ -89,7 +89,7 @@ export function Tiers({ tiers, cta }: { tiers: { name: string; for: string; body
   )
 }
 
-/** Two blocks side by side on a wide screen: the setup and the trial */
+/** Two blocks side by side on a wide screen: the setup and what to do next */
 export function Pair({ items }: { items: Item[] }) {
   return (
     <div className="grid gap-6 md:grid-cols-2">

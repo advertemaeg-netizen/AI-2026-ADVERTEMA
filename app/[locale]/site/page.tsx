@@ -36,7 +36,7 @@ export default async function HomePage({ params }: Props) {
   const home = siteCopy(locale).home
   // The bot's lines in the hero are the product's own sentences, word for word
   const product = language === 'en' ? en.botReplies : ar.botReplies
-  // The trial is self-serve: the product's own signup. Done-for-you is a conversation.
+  // Creating an account is self-serve: the product's own signup. Done-for-you is a conversation.
   const signup = `${APP_ORIGIN}/${locale}/signup`
   const contact = sitePath(locale, '/contact')
   return (

@@ -2,11 +2,11 @@
   "meta": {
     "home": {
       "title": "Mudrik — a bot that answers your customers and books their appointments",
-      "description": "Answers WhatsApp, Facebook, Instagram and your website using your own information, books appointments and records every lead. Free for 14 days."
+      "description": "Answers WhatsApp, Facebook, Instagram and your website using your own information, books appointments and records every lead in one place."
     },
     "business": {
       "title": "Mudrik for business owners — a bot that answers and books for you",
-      "description": "It knows your hours, services, prices and branches, and answers with them on WhatsApp, Facebook, Instagram and your site. Free for 14 days."
+      "description": "It knows your hours, services, prices and branches, and answers with them on WhatsApp, Facebook, Instagram and your site."
     },
     "agency": {
       "title": "Mudrik for agencies — all your clients in one place",
@@ -14,7 +14,7 @@
     },
     "pricing": {
       "title": "Mudrik plans",
-      "description": "The plans differ in channels, branches, conversations and accounts. Everyone starts with 14 days free, no credit card."
+      "description": "The plans differ in channels, branches, conversations and accounts. Price depends on your size."
     },
     "contact": {
       "title": "Talk to Mudrik",
@@ -27,7 +27,7 @@
     "pricing": "Plans",
     "contact": "Contact",
     "signIn": "Sign in",
-    "signUp": "Start free",
+    "signUp": "Create an account",
     "languageSwitch": "العربية",
     "menu": "Menu",
     "menuClose": "Close"
@@ -59,7 +59,7 @@
       },
       "title": "Every message you don't answer is an ad you paid for.",
       "subtitle": "Mudrik answers your customers in a second — on WhatsApp, Facebook, Instagram and your site — using your own information, books their appointments, and records every lead in one place.",
-      "cta_primary": "Start free for 14 days",
+      "cta_primary": "Create an account",
       "cta_secondary": "Have us set it up",
       "sectors": "Clinics · Beauty centres · Gyms · Tutoring centres · Labs · Workshops · and more"
     },
@@ -127,7 +127,7 @@
       "self": {
         "label": "Set it up yourself",
         "body": "Sign up, enter your information, connect your channels. Right if you have the time, or if you manage more than one account.",
-        "cta": "Start free for 14 days"
+        "cta": "Create an account"
       },
       "done_for_you": {
         "label": "We set it up for you",
@@ -142,9 +142,9 @@
       "cta": "See the plans"
     },
     "closing": {
-      "title": "Try it on your real customers",
-      "body": "No credit card. If it isn't right for you, switch it off.",
-      "cta_primary": "Start free for 14 days",
+      "title": "See it on your own business",
+      "body": "Enter your information, connect a channel, and watch the bot answer your real customers.",
+      "cta_primary": "Create an account",
       "cta_secondary": "Talk to us"
     }
   },
@@ -152,7 +152,7 @@
     "hero": {
       "title": "Your business answers for itself, while you sleep",
       "body": "Mudrik knows your hours, services, prices and branches, and answers everyone who asks — on WhatsApp, Facebook, Instagram and your site.",
-      "cta": "Start free for 14 days"
+      "cta": "Create an account"
     },
     "day": {
       "title": "An ordinary day with Mudrik",
@@ -174,15 +174,15 @@
       "note": "We say this plainly because it's half the value. A bot that invents is worse than no bot."
     },
     "closing": {
-      "title": "Try it on your real customers",
-      "body": "14 days, no credit card. If it isn't right for you, switch it off."
+      "title": "See it with your real customers",
+      "body": "Enter your hours and services, connect a channel, and see the difference yourself."
     }
   },
   "agency": {
     "hero": {
       "title": "A new client every week, without a new hire",
       "body": "Run all your clients' accounts from one place. Each client has its own knowledge base, channels and team, and you see all of them from above.",
-      "cta": "Start free for 14 days"
+      "cta": "Create an account"
     },
     "why": {
       "title": "Why agencies use it",
@@ -206,8 +206,8 @@
       "body": "Mudrik currently runs under its own name, not your agency's. If that matters to you, talk to us and tell us exactly what you need — we build what clients ask for."
     },
     "closing": {
-      "title": "Try it on one client",
-      "body": "Start with one account for 14 days. If it works, add more."
+      "title": "Start with one client",
+      "body": "Set it up on one account first. If it works, add more."
     }
   },
   "pricing": {
@@ -236,9 +236,9 @@
       "title": "Setup — optional",
       "body": "We write the knowledge base, configure the settings and hours, and test the bot on real conversations until it answers the way you want. A one-time fee, separate from the subscription."
     },
-    "trial": {
-      "title": "Everyone starts with 14 days free",
-      "body": "No credit card. Enter your information, connect a channel, and watch the bot answer your real customers before you pay anything."
+    "next": {
+      "title": "Not sure which plan?",
+      "body": "Tell us how many branches and channels you have and how many messages you get, and we'll tell you which fits and what it costs."
     },
     "cta": "Talk to us about price"
   },

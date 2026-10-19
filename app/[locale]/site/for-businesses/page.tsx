@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: Props) {
   return siteMetadata(locale, '/for-businesses', { metaTitle: meta.title, metaDescription: meta.description })
 }
 
-/** Business owners: the trial is self-serve, so both calls are the product's own signup */
+/** Business owners: creating an account is self-serve, so both calls are the product's own signup */
 export default async function ForBusinessesPage({ params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)

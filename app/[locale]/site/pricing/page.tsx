@@ -25,7 +25,7 @@ export default async function PricingPage({ params }: Props) {
       <Pair
         items={[
           { label: copy.setup.title, body: copy.setup.body },
-          { label: copy.trial.title, body: copy.trial.body },
+          { label: copy.next.title, body: copy.next.body },
         ]}
       />
     </SitePage>
