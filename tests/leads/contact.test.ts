@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import ar from '../../messages/ar.json'
-import { formatAppointment } from '@/lib/ai/appointment'
+import { formatAppointment, type BookingOutcome } from '@/lib/ai/appointment'
 import { composeReply } from '@/lib/ai/compose'
 import { describeContact, EMPTY_CONTACT, readContact, validateName, type ContactState } from '@/lib/ai/contact'
 import { displayPhone, normalizePhone, telHref, whatsappHref } from '@/lib/phone'
@@ -223,10 +223,10 @@ describe('the reply states only what is on record', () => {
   })
 
   it('asks for the full name instead of the model\'s reply, once a time is held', () => {
-    const held = { status: 'needs_details', at: '2026-10-08T15:00:00.000Z', missing: ['name', 'phone'], handoff: false } as const
+    const held: BookingOutcome = { status: 'needs_details', at: '2026-10-08T15:00:00.000Z', missing: ['name', 'phone'], handoff: false }
     const A = ar.botReplies.appointment
     expect(compose({ template: 'Got it, and your number?', outcome: held, events: { name: 'ask_again', phone: 'none' } })).toBe(
-      A.needDetails.replace('{time}', formatAppointment(held.at, 'ar')).replace('{missing}', A.missingName)
+      A.needDetails.replace('{time}', formatAppointment('2026-10-08T15:00:00.000Z', 'ar')).replace('{missing}', A.missingName)
     )
   })
 
