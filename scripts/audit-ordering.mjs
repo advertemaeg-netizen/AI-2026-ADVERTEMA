@@ -3,6 +3,9 @@
 // names — and prints counts. First run 2026-10-19: none, for real clients (the
 // inversions seen so far were the test database's clock; AGENTS.md).
 //   node scripts/audit-ordering.mjs     (reads .env.local)
+// Rerun it when the first paying client has been live for a week, and again when real
+// clients' conversations reach 100 (23 at the first run). An inversion reopens the
+// insertion-order column for messages and leads.
 import fs from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
 const env = Object.fromEntries(fs.readFileSync(new URL('../.env.local', import.meta.url), 'utf8').split('\n').filter((l) => /^[A-Z_]+=/.test(l)).map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1).replace(/^"|"$/g, '')]))
