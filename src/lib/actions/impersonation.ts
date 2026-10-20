@@ -20,6 +20,17 @@ import type { ImpersonationLogEntry, ImpersonationResult } from '@/lib/types/imp
  * same (see the impersonation migration).
  */
 
+/**
+ * What a session starting or ending changes: the dashboard's and the admin
+ * panel's shells. Never wider: '/[locale]' at layout level also invalidated
+ * every page of the marketing site, and each sign-out took it down
+ * (tests/site/revalidate-scope.test.ts).
+ */
+function revalidateShells() {
+  revalidatePath('/[locale]/dashboard', 'layout')
+  revalidatePath('/[locale]/admin', 'layout')
+}
+
 /** Opens `orgId`'s dashboard for the super admin (ending any other session). */
 export async function startImpersonation(orgId: string): Promise<ImpersonationResult> {
   if (typeof orgId !== 'string' || !UUID_PATTERN.test(orgId)) return { ok: false, error: 'notFound' }
@@ -39,7 +50,7 @@ export async function startImpersonation(orgId: string): Promise<ImpersonationRe
   store.set(IMPERSONATION_COOKIE, signImpersonationCookie(sessionId as string, profile.id), IMPERSONATION_COOKIE_OPTIONS)
   // Start from "all clients" rather than a pick made in another account
   store.delete(SELECTED_CLIENT_COOKIE)
-  revalidatePath('/[locale]', 'layout')
+  revalidateShells()
   return { ok: true }
 }
 
@@ -47,7 +58,8 @@ export async function startImpersonation(orgId: string): Promise<ImpersonationRe
 export async function endImpersonation(): Promise<{ ok: boolean }> {
   const { supabase, profile } = await getSession()
   const store = await cookies()
-  if (store.has(IMPERSONATION_COOKIE)) {
+  const wasImpersonating = store.has(IMPERSONATION_COOKIE)
+  if (wasImpersonating) {
     store.delete(IMPERSONATION_COOKIE)
     store.delete(SELECTED_CLIENT_COOKIE)
   }
@@ -59,7 +71,8 @@ export async function endImpersonation(): Promise<{ ok: boolean }> {
     console.error('[impersonation] end', error)
     return { ok: false }
   }
-  revalidatePath('/[locale]', 'layout')
+  // An ordinary sign-out viewed nothing: there is nothing to refresh
+  if (wasImpersonating) revalidateShells()
   return { ok: true }
 }
 

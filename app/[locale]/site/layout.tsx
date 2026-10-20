@@ -10,9 +10,14 @@ import './site.css'
  *
  * Fully static: both locales are rendered at build time and nothing here
  * reads the request. <html lang dir> comes from the [locale] layout.
+ *
+ * dynamicParams stays at its default (true) so that a page whose cache entry
+ * is lost renders again. With false, Next refused to regenerate it, fell
+ * through to the [...rest] 404 and wrote that 404 over the prerendered file,
+ * which kept the site down until the container was recreated. An unknown
+ * locale still gets a 404: the proxy never sends one here, and the [locale]
+ * layout's hasLocale() check is the backstop.
  */
-export const dynamicParams = false
-
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }))
 }

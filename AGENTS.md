@@ -23,3 +23,9 @@ The evidence is kept for you: `npm run check` (`scripts/check.sh`) writes everyt
 # New dependencies: an exact release at least two weeks old
 
 Pin anything new to an exact version (`npm install --save-exact pkg@x.y.z`): the newest release published at least two weeks ago, found with `npm view <pkg> time --json`, then `npm audit`. Say in the commit which version and why. On 2026-10-19 nodemailer had shipped five releases in one day; 10.0.13 was pinned instead.
+
+# Running the production build locally: bind 0.0.0.0, as the container does
+
+To test the marketing site's hosts against `node .next/standalone/server.js`, start it with `HOSTNAME=0.0.0.0` (the Dockerfile's value), not `127.0.0.1`. With 127.0.0.1, every site page 404s from the first request, a failure production cannot have. The proxy rewrites to `new URL(to, request.url)`, and the middleware sees `request.url` as `localhost` while Next's own origin for the request is `127.0.0.1`. The origins differ, so Next treats the rewrite as external and sends it back to itself without the site's Host, where the proxy answers 404. Found 2026-10-20; it cost an hour to tell apart from the real site outage.
+
+Copy `public/` the way the Dockerfile's `COPY` does, by merging its contents (`cp -a public/. <dir>/public/`). The standalone output already has a `public/`, so `cp -a public <dir>/public` nests the copy as `public/public` and the brand files 404.
