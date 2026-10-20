@@ -28,9 +28,13 @@ describe('on the site’s hosts', () => {
     expect(hostRoute(APEX, '/ar/privacy/v/3')).toEqual({ kind: 'rewrite', to: '/ar/site/privacy/v/3' })
     expect(hostRoute(APEX, '/en/terms/v/12')).toEqual({ kind: 'rewrite', to: '/en/site/terms/v/12' })
     expect(hostRoute(APEX, '/ar/privacy/v/999')).toEqual({ kind: 'rewrite', to: '/ar/site/privacy/v/999' })
-    for (const path of ['/ar/privacy/v/0', '/ar/privacy/v/abc', '/ar/pricing/v/3', '/ar/terms/v/3/x', '/ar/privacy/v/1000', '/ar/terms/v/0012']) {
-      expect(hostRoute(APEX, path).kind, path).toBe('redirect')
+    // Not a version number: the same 404 as a number with no version behind it
+    for (const path of ['/ar/privacy/v/0', '/ar/privacy/v/abc', '/ar/terms/v/3/x', '/ar/privacy/v/1000', '/ar/terms/v/0012', '/en/privacy/v', '/en/privacy/v/']) {
+      expect(hostRoute(APEX, path), path).toEqual({ kind: 'notFound', locale: path.split('/')[1] })
     }
+    // Not a legal page: the app's, as before
+    expect(hostRoute(APEX, '/ar/pricing/v/3').kind).toBe('redirect')
+    expect(hostRoute(APEX, '/ar/privacyx/v/3').kind).toBe('redirect')
   })
 
   it('keeps the query string', () => {

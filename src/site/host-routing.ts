@@ -19,13 +19,16 @@ export type HostRoute =
   | { kind: 'redirect'; to: string; status: 302 | 307 }
   /** No locale yet on a site host: next-intl adds it (a redirect to /ar/…) */
   | { kind: 'locale' }
-  /** The internal segment asked for on the app's host */
+  /** The internal segment asked for on the app's host, or a legal version address that isn't one */
   | { kind: 'notFound'; locale: string }
 
 const LOCALES = routing.locales as readonly string[]
 // An earlier version of a legal page, at its own address: /privacy/v/3. One to
 // three digits, as parseVersion() reads them: anything longer never reaches a render
 const LEGAL_VERSION = /^\/(?:privacy|terms)\/v\/[1-9]\d{0,2}$/
+// Anything else under a legal page's /v/ is a version that doesn't exist: the
+// same 404 as a number with no version behind it, not a trip to the app's host
+const LEGAL_VERSION_PREFIX = /^\/(?:privacy|terms)\/v(?:\/|$)/
 // Files Next generates inside the segment (og-image, icons): the head tags point at them
 const SEGMENT_FILE = /^\/(?:opengraph-image|twitter-image|icon|apple-icon)(?:[-.?/]|$)/
 
@@ -57,5 +60,6 @@ export function hostRoute(host: string | null, pathname: string, search = ''): H
   if ((SITE_PAGES as readonly string[]).includes(after) || LEGAL_VERSION.test(after)) {
     return { kind: 'rewrite', to: `/${locale}/site${after}${search}` }
   }
+  if (LEGAL_VERSION_PREFIX.test(after)) return { kind: 'notFound', locale }
   return { kind: 'redirect', to: `${APP_ORIGIN}${pathname}${search}`, status: 302 }
 }

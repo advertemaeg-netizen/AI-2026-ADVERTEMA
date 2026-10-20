@@ -326,15 +326,17 @@ async function main() {
     for (let round = 0; round < 3; round += 1) {
       for (const address of missing) statuses.push((await page(address)).status)
     }
-    // Longer than three digits never reaches a render: the proxy sends it on
-    const tooLong = await page('/ar/privacy/v/1000')
+    // Not a version number (more than three digits, not digits): never reaches a
+    // render, and answers the same 404
+    const notNumbers: number[] = []
+    for (const address of ['/ar/privacy/v/1000', '/en/terms/v/abc']) notNumbers.push((await page(address)).status)
     await sleep(3000)
     const filesAfter = snapshot()
     const written = [...filesAfter].filter(([file, sig]) => filesBefore.get(file) !== sig).map(([file]) => file)
     record(
       'missing versions are 404s that write nothing',
-      statuses.every((s) => s === 404) && tooLong.status === 302 && written.length === 0,
-      `${statuses.length} requests: ${[...new Set(statuses)].join('/')}; /v/1000: ${tooLong.status}; files written or changed under .next: ${written.length}${written.length ? ` (${written.slice(0, 8).join(', ')})` : ''}`
+      statuses.every((s) => s === 404) && notNumbers.every((s) => s === 404) && written.length === 0,
+      `${statuses.length} requests: ${[...new Set(statuses)].join('/')}; /v/1000 and /v/abc: ${notNumbers.join('/')}; files written or changed under .next: ${written.length}${written.length ? ` (${written.slice(0, 8).join(', ')})` : ''}`
     )
 
     // 4. Outage past the interval: the last good page, not an error
