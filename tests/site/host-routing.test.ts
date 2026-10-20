@@ -24,6 +24,15 @@ describe('on the site’s hosts', () => {
     expect(hostRoute(APEX, path)).toEqual({ kind: 'rewrite', to })
   })
 
+  it('serves an earlier version of a legal page at its own address, and nothing else under it', () => {
+    expect(hostRoute(APEX, '/ar/privacy/v/3')).toEqual({ kind: 'rewrite', to: '/ar/site/privacy/v/3' })
+    expect(hostRoute(APEX, '/en/terms/v/12')).toEqual({ kind: 'rewrite', to: '/en/site/terms/v/12' })
+    expect(hostRoute(APEX, '/ar/privacy/v/999')).toEqual({ kind: 'rewrite', to: '/ar/site/privacy/v/999' })
+    for (const path of ['/ar/privacy/v/0', '/ar/privacy/v/abc', '/ar/pricing/v/3', '/ar/terms/v/3/x', '/ar/privacy/v/1000', '/ar/terms/v/0012']) {
+      expect(hostRoute(APEX, path).kind, path).toBe('redirect')
+    }
+  })
+
   it('keeps the query string', () => {
     expect(hostRoute(APEX, '/ar/pricing', '?utm_source=x')).toEqual({ kind: 'rewrite', to: '/ar/site/pricing?utm_source=x' })
   })

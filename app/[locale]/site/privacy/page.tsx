@@ -1,19 +1,21 @@
 import { setRequestLocale } from 'next-intl/server'
-import { LegalPage } from '@/site/components/legal-page'
 import { siteCopy } from '@/site/copy'
+import { LegalRoute } from '@/site/legal-route'
 import { siteMetadata } from '@/site/metadata'
 
 type Props = { params: Promise<{ locale: string }> }
+
+// LEGAL_REVALIDATE_SECONDS (src/site/legal-route.tsx): a segment config value must be a literal
+export const revalidate = 300
 
 export async function generateMetadata({ params }: Props) {
   const { locale } = await params
   return siteMetadata(locale, '/privacy', siteCopy(locale).legal.privacy)
 }
 
-/** The privacy policy: a DRAFT pending legal review (deploy/ROLLBACK.md, launch blocker) */
+/** The current version of the privacy policy, from public.legal_versions */
 export default async function PrivacyPage({ params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
-  const { legal } = siteCopy(locale)
-  return <LegalPage locale={locale} page="/privacy" notice={legal.draftNotice} copy={legal.privacy} />
+  return <LegalRoute locale={locale} document="privacy" />
 }

@@ -9,9 +9,25 @@ import { describe, expect, it } from 'vitest'
  * revalidatePath('/[locale]', 'layout'), run on every sign-out, 404'd the
  * whole site until the container was recreated. This reads every call in the
  * code and fails on one that reaches that far.
+ *
+ * The one exception under the site is the legal pages: publishing a version
+ * expires the current page of that document, at page level, and nothing else.
  */
 
 const ROOT = path.resolve(import.meta.dirname, '../..')
+
+/** The real document names, read from the code rather than restated here */
+const LEGAL_DOCUMENTS = (() => {
+  const list = readFileSync(path.join(ROOT, 'src/lib/legal.ts'), 'utf8').match(/LEGAL_DOCUMENTS = \[([^\]]*)\]/)
+  if (!list) throw new Error('LEGAL_DOCUMENTS not found in src/lib/legal.ts')
+  return [...list[1].matchAll(/'([^']*)'/g)].map((m) => m[1])
+})()
+
+/** Template variables that stand for one of a known set of values */
+const KNOWN_VALUES: Record<string, string[]> = { document: LEGAL_DOCUMENTS }
+
+/** A site path a publish may expire, at page level: a legal document's page, or its earlier versions' */
+const LEGAL_PAGE = new RegExp(`^/(\\[locale\\]|ar|en)/site/(${LEGAL_DOCUMENTS.join('|')})(/v/(\\[version\\]|[1-9]\\d{0,2}))?$`)
 
 function sources(dir: string): string[] {
   return readdirSync(path.join(ROOT, dir), { withFileTypes: true, recursive: true })
@@ -40,8 +56,14 @@ function calls(): Call[] {
       if (literal) return [literal[1]]
       const template = arg.match(/^`([^`]*)`$/)
       if (template) {
-        const out = template[1].replace(/\$\{(\w+)\}/g, (_, name: string) => strings.get(name) ?? '\0')
-        return out.includes('\0') ? null : [out]
+        // Every combination: a constant is one value, a known variable each of its values
+        let outs = [template[1]]
+        for (const [, name] of template[1].matchAll(/\$\{(\w+)\}/g)) {
+          const values = strings.has(name) ? [strings.get(name)!] : KNOWN_VALUES[name]
+          if (!values) return null
+          outs = outs.flatMap((out) => values.map((value) => out.replace(`\${${name}}`, value)))
+        }
+        return outs
       }
       if (strings.has(arg)) return [strings.get(arg)!]
       const array = loopVars.get(arg)
@@ -81,17 +103,38 @@ describe('revalidatePath across the code', () => {
     expect(wide.map((c) => `${where(c)} ${c.paths} (layout)`)).toEqual([])
   })
 
-  it('never reaches the site or the root', () => {
-    const site = all.filter((c) => c.paths?.some((p) => p === '/' || p === '/[locale]' || /\/site(\/|$)/.test(p)))
-    expect(site.map((c) => `${where(c)} ${c.paths}`)).toEqual([])
+  it('never reaches the root', () => {
+    const root = all.filter((c) => c.paths?.some((p) => p === '/' || p === '/[locale]'))
+    expect(root.map((c) => `${where(c)} ${c.paths}`)).toEqual([])
+  })
+
+  it('reaches the site only to expire a legal page, at page level', () => {
+    // A call without a type names one concrete page
+    const site = all.filter((c) => c.paths?.some((p) => /\/site(\/|$)/.test(p) && !(c.type !== 'layout' && LEGAL_PAGE.test(p))))
+    expect(site.map((c) => `${where(c)} ${c.paths} (${c.type ?? 'page'})`)).toEqual([])
+  })
+
+  it('reads the legal documents it allows from the code', () => {
+    expect(LEGAL_DOCUMENTS).toEqual(['privacy', 'terms'])
   })
 })
 
 describe('the site segment', () => {
-  // With false, a lost cache entry became a 404 written over the prerendered page
+  // With false, a lost cache entry became a 404 written over the prerendered page.
+  // Code only: a comment explaining why the line is gone must not trip it
   it('lets a page whose cache entry is lost render again', () => {
     for (const file of sources('app/[locale]/site')) {
-      expect(readFileSync(file, 'utf8'), path.relative(ROOT, file)).not.toMatch(/dynamicParams\s*=\s*false/)
+      expect(readFileSync(file, 'utf8'), path.relative(ROOT, file)).not.toMatch(/export\s+const\s+dynamicParams\s*=\s*false/)
+    }
+  })
+
+  // A cached version page would store a 404 for every number anyone asks for
+  it('never caches an earlier version of a legal page', () => {
+    for (const document of LEGAL_DOCUMENTS) {
+      const file = `app/[locale]/site/${document}/v/[version]/page.tsx`
+      const text = readFileSync(path.join(ROOT, file), 'utf8')
+      expect(text, file).toMatch(/export\s+const\s+dynamic\s*=\s*'force-dynamic'/)
+      expect(text, file).not.toMatch(/export\s+const\s+revalidate\b/)
     }
   })
 })

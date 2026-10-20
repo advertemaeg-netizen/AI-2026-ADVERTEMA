@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { BrainCircuit, Building2, CreditCard, LayoutDashboard, LogOut, Menu, Package, Receipt, Settings, ShieldCheck, type LucideIcon } from 'lucide-react'
+import { BrainCircuit, Building2, CreditCard, LayoutDashboard, LogOut, Menu, Package, Receipt, Settings, ShieldCheck, type LucideIcon, Scale } from 'lucide-react'
 import { BrandMark, markSeen } from '@/components/brand'
 import { navClass, navIconClass, navItemClass } from '@/components/nav-item'
 import { NavIndicator } from '@/components/nav-indicator'
@@ -47,6 +47,7 @@ export function AdminShell({
     { name: t('nav.subscriptions'), href: '/admin/subscriptions', icon: CreditCard },
     { name: t('nav.invoices'), href: '/admin/invoices', icon: Receipt },
     { name: t('nav.aiUsage'), href: '/admin/ai-usage', icon: BrainCircuit },
+    { name: t('nav.legal'), href: '/admin/legal', icon: Scale },
     { name: t('nav.settings'), href: '/admin/settings', icon: Settings },
   ]
 

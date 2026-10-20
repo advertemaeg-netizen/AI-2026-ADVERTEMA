@@ -8,15 +8,19 @@ import './site.css'
  * proxy.ts rewrites the site's hosts here (src/site/host-routing.ts) and
  * answers 404 for it on the app's host. Visitors never see "/site" in a URL.
  *
- * Fully static: both locales are rendered at build time and nothing here
- * reads the request. <html lang dir> comes from the [locale] layout.
+ * Static: both locales are rendered at build time and nothing here reads the
+ * request. <html lang dir> comes from the [locale] layout.
  *
- * dynamicParams stays at its default (true) so that a page whose cache entry
- * is lost renders again. With false, Next refused to regenerate it, fell
- * through to the [...rest] 404 and wrote that 404 over the prerendered file,
- * which kept the site down until the container was recreated. An unknown
- * locale still gets a 404: the proxy never sends one here, and the [locale]
- * layout's hasLocale() check is the backstop.
+ * No `dynamicParams = false` here, on purpose, for two reasons:
+ * - A page whose cache entry is lost must render again. With false, Next
+ *   refused to regenerate it, fell through to the [...rest] 404 and wrote that
+ *   404 over the prerendered file, which kept the site down until the
+ *   container was recreated (tests/site/revalidate-scope.test.ts).
+ * - Set on this layout it wins over its pages' own settings, and the legal
+ *   pages' earlier versions (privacy/v/[version], terms/v/[version]) are
+ *   published after the build and must render for any version number.
+ * An unknown locale is still a 404: the proxy only rewrites known ones, and
+ * the [locale] layout's hasLocale() check is the backstop.
  */
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }))

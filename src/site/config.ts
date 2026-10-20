@@ -1,3 +1,5 @@
+import { LEGAL_LINKED } from '@/lib/legal-linked'
+
 /**
  * The marketing site: mudrik-ai.com. It lives in this app (app/[locale]/site,
  * src/site, messages/site) so it shares the product's tokens and deploy, and
@@ -48,10 +50,12 @@ export const SITE_EMAIL = 'contact@mudrik-ai.com'
 /**
  * The legal pages are drafts with [[placeholders]] until the company exists
  * and a lawyer has reviewed them. Off: the footer doesn't link them and they
- * are never indexed; they stay reachable by their URL. On once the review is
- * done (deploy/ROLLBACK.md).
+ * are never indexed; they stay reachable by their URL. The same switch as the
+ * signup checkbox (LEGAL_LINKED in src/lib/legal-linked.ts): the pages are linked and
+ * acceptance is asked for together, once the review is done
+ * (deploy/ROLLBACK.md).
  */
-export const SITE_LEGAL_LINKED = false
+export const SITE_LEGAL_LINKED = LEGAL_LINKED
 
 /**
  * The contact form sends by SMTP (src/site/contact-mail.ts). Off: the contact
