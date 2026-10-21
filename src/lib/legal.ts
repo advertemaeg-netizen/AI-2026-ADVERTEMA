@@ -47,19 +47,15 @@ function revalidateSeconds() {
 
 /**
  * A cookie-free client with the publishable key: safe in a statically generated page.
- * Cached and tagged by default: regenerated on the interval, expired at once by a publish.
- * Uncached for a read keyed by something a visitor chooses (a version number): a cached
- * read stores an entry for every value asked for, existing or not, and the version
- * pages' `force-dynamic` does not override this fetch's own options (checked:
- * npm run check:legal-cache, check 5).
+ * Cached and tagged: regenerated on the interval, expired at once by a publish. Never
+ * read here by anything a visitor chooses (there are no version addresses): a cached
+ * read would store an entry for every value asked for.
  */
-function publicClient({ cached = true } = {}) {
+function publicClient() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: {
-      fetch: cached
-        ? (input, init) => fetch(input, { ...init, next: { revalidate: revalidateSeconds(), tags: [LEGAL_CACHE_TAG] } })
-        : (input, init) => fetch(input, { ...init, cache: 'no-store' }),
+      fetch: (input, init) => fetch(input, { ...init, next: { revalidate: revalidateSeconds(), tags: [LEGAL_CACHE_TAG] } }),
     },
   })
 }
@@ -79,27 +75,3 @@ export async function currentLegalVersion(document: LegalDocument, locale: Legal
   return data
 }
 
-/** One version by its number, or null when there is no such version. Never cached. Throws on any error */
-export async function legalVersion(document: LegalDocument, locale: LegalLocale, version: number): Promise<LegalVersion | null> {
-  const { data, error } = await publicClient({ cached: false })
-    .from('legal_versions')
-    .select(PUBLIC_COLUMNS)
-    .eq('document', document)
-    .eq('locale', locale)
-    .eq('version', version)
-    .maybeSingle<LegalVersion>()
-  if (error) throw new Error(`reading version ${version} of the ${locale} ${document}: ${error.message}`)
-  return data
-}
-
-/** Every version's number and date, newest first. Throws on any error */
-export async function legalHistory(document: LegalDocument, locale: LegalLocale): Promise<Pick<LegalVersion, 'version' | 'created_at'>[]> {
-  const { data, error } = await publicClient()
-    .from('legal_versions')
-    .select('version, created_at')
-    .eq('document', document)
-    .eq('locale', locale)
-    .order('version', { ascending: false })
-  if (error) throw new Error(`reading the history of the ${locale} ${document}: ${error.message}`)
-  return data
-}

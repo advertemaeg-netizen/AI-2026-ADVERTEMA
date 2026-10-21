@@ -26,12 +26,14 @@ describe('on the site’s hosts', () => {
     expect(hostRoute(APEX, path)).toEqual({ kind: 'rewrite', to })
   })
 
-  it('serves an earlier version of a legal page at its own address, and nothing else under it', () => {
-    expect(hostRoute(APEX, '/ar/privacy-policy/v/5')).toEqual({ kind: 'rewrite', to: '/ar/site/privacy-policy/v/5' })
-    expect(hostRoute(APEX, '/en/terms-of-service/v/2')).toEqual({ kind: 'rewrite', to: '/en/site/terms-of-service/v/2' })
-    expect(hostRoute(APEX, '/ar/privacy-policy/v/999')).toEqual({ kind: 'rewrite', to: '/ar/site/privacy-policy/v/999' })
-    // Not a version number: the same 404 as a number with no version behind it
+  it('has no address for an earlier version of a legal page: everything under /v is a 404', () => {
     for (const path of [
+      '/ar/privacy-policy/v/1',
+      '/ar/privacy-policy/v/5',
+      '/en/privacy-policy/v/2',
+      '/ar/terms-of-service/v/4',
+      '/en/terms-of-service/v/2',
+      '/ar/privacy-policy/v/999',
       '/ar/privacy-policy/v/0',
       '/ar/privacy-policy/v/abc',
       '/ar/terms-of-service/v/3/x',
@@ -48,17 +50,19 @@ describe('on the site’s hosts', () => {
     expect(hostRoute(APEX, '/ar/privacyx/v/3')).toMatchObject({ kind: 'redirect', status: 302 })
   })
 
-  // Served 200 on 2026-10-20 and 21, before the move: somebody's history has them
+  // Served 200 on 2026-10-20 and 21, before the move: somebody's history has them.
+  // A version address goes to the current page: there is no version page any more
   it.each([
     ['/ar/privacy', '/ar/privacy-policy'],
     ['/en/privacy/', '/en/privacy-policy'],
     ['/en/terms', '/en/terms-of-service'],
-    ['/ar/privacy/v/5', '/ar/privacy-policy/v/5'],
-    ['/en/terms/v/2', '/en/terms-of-service/v/2'],
-    // Lands on the new address's own 404, not the app's host
-    ['/ar/terms/v/abc', '/ar/terms-of-service/v/abc'],
+    ['/ar/privacy/v/5', '/ar/privacy-policy'],
+    ['/en/terms/v/2', '/en/terms-of-service'],
+    ['/ar/terms/v/abc', '/ar/terms-of-service'],
+    ['/ar/privacy/v', '/ar/privacy-policy'],
+    ['/ar/privacy/v/1/x', '/ar/privacy-policy'],
     ['/privacy', '/privacy-policy'],
-    ['/terms/v/1', '/terms-of-service/v/1'],
+    ['/terms/v/1', '/terms-of-service'],
   ])('moves the old address %s permanently to %s', (path, to) => {
     expect(hostRoute(APEX, path)).toEqual({ kind: 'redirect', to, status: 301 })
   })

@@ -22,8 +22,14 @@ The site launched on 2026-10-19 with the legal pages unlinked, as drafts.
 Their addresses moved in the same change: `/privacy-policy` and
 `/terms-of-service` in both languages (`LEGAL_PAGES`, src/site/config.ts).
 The database keeps the documents' names, `privacy` and `terms`. The first
-addresses, `/privacy` and `/terms` and their `/v/N`, 301 to the new ones
+addresses, `/privacy` and `/terms` and their `/v/N`, 301 to the current pages
 (src/site/host-routing.ts) for good.
+
+**Only the current version is public** (Ahmed, 2026-10-21): the text was
+written once with the lawyer and isn't changing, so a public history would be
+links to drafts. `/<page>/v/<anything>` is a 404. Every version stays in the
+table and is read in the admin editor; an account's acceptance points at a
+version id, whose text is there when it's needed.
 
 **Turning it off again is a commit, a build and a deploy**: `LEGAL_LINKED` is
 a constant in the code, not an environment variable. Off, the footer column
@@ -39,9 +45,9 @@ order:
 
 1. Publish the lawyer's text as a new version of each document, in both
    languages, from the admin editor.
-2. Replace the English stand-ins with Arabic: `legal.history`,
-   `legal.olderVersion`, `legal.currentLink` in `messages/site/ar.json`, and
-   `admin.legal.*` / `admin.nav.legal` in `messages/ar.json`.
+2. Replace the English stand-ins with Arabic: `admin.legal.*` /
+   `admin.nav.legal` in `messages/ar.json` (and the site's version-history
+   strings, since deleted with the version pages).
 3. `LEGAL_LINKED = true` (`src/lib/legal-linked.ts`). That one switch relinks
    the footer AND turns on the signup checkbox: the pages and the recorded
    acceptance go live together, never one without the other.

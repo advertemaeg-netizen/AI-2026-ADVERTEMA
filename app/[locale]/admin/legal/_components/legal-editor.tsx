@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { Fragment, useState, useTransition } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
@@ -21,9 +21,10 @@ const LOCALES: LegalLocale[] = ['ar', 'en']
  * The legal documents' editor: the two documents, each with its Arabic and
  * English side by side (two texts, two histories). A publish is a new version
  * and the public text at once, so it asks first, and only when something
- * changed; nothing here edits or removes a version.
+ * changed; nothing here edits or removes a version. Earlier versions are read
+ * here only: the public site shows the current version alone.
  */
-export function LegalEditor({ versions, siteOrigin }: { versions: AdminLegalVersion[]; siteOrigin: string }) {
+export function LegalEditor({ versions }: { versions: AdminLegalVersion[] }) {
   const t = useTranslations('admin.legal')
   return (
     <Tabs defaultValue="privacy" className="grid gap-4">
@@ -42,7 +43,7 @@ export function LegalEditor({ versions, siteOrigin }: { versions: AdminLegalVers
               return <DocumentColumn key={locale} document={document} locale={locale} current={history[0] ?? null} />
             })}
           </div>
-          <History versions={versions.filter((v) => v.document === document)} siteOrigin={siteOrigin} />
+          <History versions={versions.filter((v) => v.document === document)} />
         </TabsContent>
       ))}
     </Tabs>
@@ -169,9 +170,11 @@ function Changes({ before, after, dir }: { before: string; after: string; dir: '
   )
 }
 
-function History({ versions, siteOrigin }: { versions: AdminLegalVersion[]; siteOrigin: string }) {
+/** Every version, each readable in place: the public site has no address for an earlier one */
+function History({ versions }: { versions: AdminLegalVersion[] }) {
   const t = useTranslations('admin.legal')
   const format = useFormatter()
+  const [open, setOpen] = useState<string | null>(null)
   return (
     <section className="grid gap-3">
       <h2 className="text-lg font-bold">{t('history')}</h2>
@@ -188,19 +191,38 @@ function History({ versions, siteOrigin }: { versions: AdminLegalVersion[]; site
           </TableHeader>
           <TableBody>
             {versions.map((v) => (
-              <TableRow key={v.id}>
-                <TableCell className="tabular-nums">
-                  {v.locale.toUpperCase()} {v.version}
-                </TableCell>
-                <TableCell>{format.dateTime(new Date(v.created_at), { dateStyle: 'medium', timeStyle: 'short' })}</TableCell>
-                <TableCell>{v.created_by_email ?? t('imported')}</TableCell>
-                <TableCell className="max-w-xs truncate">{v.note ?? ''}</TableCell>
-                <TableCell>
-                  <a href={`${siteOrigin}/${v.locale}/${v.document}/v/${v.version}`} target="_blank" rel="noopener" className="underline underline-offset-4">
-                    {t('view')}
-                  </a>
-                </TableCell>
-              </TableRow>
+              <Fragment key={v.id}>
+                <TableRow>
+                  <TableCell className="tabular-nums">
+                    {v.locale.toUpperCase()} {v.version}
+                  </TableCell>
+                  <TableCell>{format.dateTime(new Date(v.created_at), { dateStyle: 'medium', timeStyle: 'short' })}</TableCell>
+                  <TableCell>{v.created_by_email ?? t('imported')}</TableCell>
+                  <TableCell className="max-w-xs truncate">{v.note ?? ''}</TableCell>
+                  <TableCell>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      aria-expanded={open === v.id}
+                      aria-controls={`legal-version-${v.id}`}
+                      onClick={() => setOpen(open === v.id ? null : v.id)}
+                    >
+                      {t('view')}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+                {open === v.id && (
+                  <TableRow id={`legal-version-${v.id}`}>
+                    <TableCell colSpan={5} className="whitespace-normal">
+                      <div dir={v.locale === 'ar' ? 'rtl' : 'ltr'} lang={v.locale} className="grid max-h-[60vh] gap-4 overflow-y-auto rounded-lg border border-border p-4">
+                        <h3 className="text-xl font-bold">{v.title}</h3>
+                        <LegalMarkdown text={v.body} headingClassName="text-lg font-bold" />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </Fragment>
             ))}
           </TableBody>
         </Table>

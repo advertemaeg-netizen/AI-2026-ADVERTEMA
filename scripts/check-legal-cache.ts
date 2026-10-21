@@ -5,16 +5,16 @@
  *      interval has passed (the first request after it serves the cached page
  *      and regenerates; the next one is new).
  *   2. Save: a version published through the editor's server action shows on
- *      the very next request, current page and its own address.
- *   3. The new version's address, requested BEFORE it existed (a 404), shows
- *      the version right after the save.
+ *      the current page on the very next request.
+ *   3. (with 5) Version addresses are gone (decided 2026-10-21): /v/N is a
+ *      404 for every N, a version that exists (the save's own) included, and
+ *      shows no version's text.
  *   4. Outage: with the database unreachable past the interval, the page is
  *      still served, with its last good text, not an error.
- *   5. Version addresses with no version behind them answer 404 and write
- *      nothing under .next: earlier versions are never cached, so no request,
- *      whatever number it asks for, leaves a stored 404 behind.
- *   6. The pages' first addresses (/privacy, /terms and their versions) 301
- *      to the current ones (LEGAL_PAGES) and write nothing under .next.
+ *   5. Those 404s write nothing under .next, however often asked: no request,
+ *      whatever it asks for, leaves a stored 404 behind.
+ *   6. The pages' first addresses (/privacy, /terms and their /v/N) 301 to the
+ *      current pages (LEGAL_PAGES) and write nothing under .next.
  *
  * Self-contained and local: the test database (tests/harness/stack.ts, every
  * migration applied), a proxy in front of it (Supabase's /rest/v1 paths, the
@@ -255,8 +255,7 @@ async function main() {
       `right after publishing: ${shows(right.body, intervalMarker) ? 'new (not cached?)' : 'cached'}; after ${INTERVAL}s: ${shows(after.body, intervalMarker) ? 'new' : 'still old'}`
     )
 
-    // 2 and 3. The save, through the editor's server action; the new version's
-    // address requested first, while it doesn't exist
+    // 2. The save, through the editor's server action
     const { data: versions } = await service
       .from('legal_versions')
       .select('version')
@@ -266,7 +265,6 @@ async function main() {
       .limit(1)
       .single<{ version: number }>()
     const nextVersion = (versions?.version ?? 0) + 1
-    const before404 = await page(`/ar/privacy-policy/v/${nextVersion}`)
     const manifest = JSON.parse(readFileSync(path.join(ROOT, '.next/server/server-reference-manifest.json'), 'utf8')) as {
       node: Record<string, { exportedName?: string; filename?: string }>
     }
@@ -308,47 +306,50 @@ async function main() {
       shows(current.body, saveMarker),
       shows(current.body, saveMarker) ? 'current page is the saved version' : 'current page still old'
     )
-    const ownAddress = await page(`/ar/privacy-policy/v/${nextVersion}`)
-    record(
-      "the new version's address, a 404 before it existed",
-      before404.status === 404 && ownAddress.status === 200 && shows(ownAddress.body, saveMarker),
-      `before the save: ${before404.status}; right after: ${ownAddress.status}`
-    )
-
-    // 5. Addresses with no version behind them: a 404 each, and nothing written
-    // for them. A version page also reads its document's current version and
-    // history, a fixed set of cached reads per document and language: one
-    // missing number per pair first, so those are in place, then different
-    // numbers, which must write nothing at all.
-    for (const address of ['/ar/privacy-policy/v/901', '/en/privacy-policy/v/901', '/ar/terms-of-service/v/901', '/en/terms-of-service/v/901']) await page(address)
-    await sleep(3000)
-    const missing = ['/ar/privacy-policy/v/999', '/ar/privacy-policy/v/517', '/en/terms-of-service/v/123', '/ar/terms-of-service/v/7', '/en/privacy-policy/v/88']
+    // 3 and 5. Version addresses are gone: every one a 404, the versions that
+    // exist (the drafts' v1, the interval's v2, the save just made) exactly like
+    // numbers that never existed and things that aren't numbers; none shows any
+    // version's text; and none writes anything under .next, however often asked
+    const gone = [
+      '/ar/privacy-policy/v/1',
+      '/en/privacy-policy/v/1',
+      '/ar/terms-of-service/v/1',
+      '/en/terms-of-service/v/1',
+      `/ar/privacy-policy/v/${nextVersion - 1}`,
+      `/ar/privacy-policy/v/${nextVersion}`,
+      '/ar/privacy-policy/v/999',
+      '/en/terms-of-service/v/123',
+      '/ar/terms-of-service/v/7',
+      '/ar/privacy-policy/v/1000',
+      '/en/terms-of-service/v/abc',
+      '/en/privacy-policy/v',
+    ]
     const filesBefore = snapshot()
     const statuses: number[] = []
+    let leaked = 0
     for (let round = 0; round < 3; round += 1) {
-      for (const address of missing) statuses.push((await page(address)).status)
+      for (const address of gone) {
+        const r = await page(address)
+        statuses.push(r.status)
+        if (shows(r.body, saveMarker) || shows(r.body, intervalMarker) || shows(r.body, '## ')) leaked += 1
+      }
     }
-    // Not a version number (more than three digits, not digits): never reaches a
-    // render, and answers the same 404
-    const notNumbers: number[] = []
-    for (const address of ['/ar/privacy-policy/v/1000', '/en/terms-of-service/v/abc']) notNumbers.push((await page(address)).status)
     await sleep(3000)
-    const filesAfter = snapshot()
-    const written = [...filesAfter].filter(([file, sig]) => filesBefore.get(file) !== sig).map(([file]) => file)
+    const written = [...snapshot()].filter(([file, sig]) => filesBefore.get(file) !== sig).map(([file]) => file)
     record(
-      'missing versions are 404s that write nothing',
-      statuses.every((s) => s === 404) && notNumbers.every((s) => s === 404) && written.length === 0,
-      `${statuses.length} requests: ${[...new Set(statuses)].join('/')}; /v/1000 and /v/abc: ${notNumbers.join('/')}; files written or changed under .next: ${written.length}${written.length ? ` (${written.slice(0, 8).join(', ')})` : ''}`
+      'version addresses are gone: 404s that show no version and write nothing',
+      statuses.every((s) => s === 404) && leaked === 0 && written.length === 0,
+      `${statuses.length} requests to ${gone.length} addresses (existing versions included, the save's v${nextVersion} among them): ${[...new Set(statuses)].join('/')}; responses showing a version's text: ${leaked}; files written or changed under .next: ${written.length}${written.length ? ` (${written.slice(0, 8).join(', ')})` : ''}`
     )
 
     // 6. The first addresses (/privacy, /terms, before the move to LEGAL_PAGES):
-    // a 301 to the new one each, versions included, and nothing written
+    // a 301 to the current page each, version addresses included, and nothing written
     const moves: [string, string][] = [
       ['/ar/privacy', '/ar/privacy-policy'],
       ['/en/terms', '/en/terms-of-service'],
-      ['/ar/privacy/v/1', '/ar/privacy-policy/v/1'],
-      ['/en/terms/v/1', '/en/terms-of-service/v/1'],
-      ['/ar/terms/v/999', '/ar/terms-of-service/v/999'],
+      ['/ar/privacy/v/1', '/ar/privacy-policy'],
+      ['/en/terms/v/1', '/en/terms-of-service'],
+      ['/ar/terms/v/999', '/ar/terms-of-service'],
     ]
     const movesBefore = snapshot()
     const moved: string[] = []
@@ -364,12 +365,11 @@ async function main() {
     // The redirects' own writes only: the pages they land on read the cached
     // current version, which the interval may be refreshing by now
     const movesWritten = [...snapshot()].filter(([file, sig]) => movesBefore.get(file) !== sig).map(([file]) => file)
-    for (const target of targets) {
+    for (const target of new Set(targets)) {
       if (!target) continue
       const landed = await page(target)
       moved.push(`${target} ${landed.status}`)
-      // The last one moves to a version that doesn't exist: its own 404
-      if (landed.status !== (target.endsWith('/999') ? 404 : 200)) moved.push('WRONG LANDING')
+      if (landed.status !== 200) moved.push('WRONG LANDING')
     }
     record(
       'old addresses move permanently and write nothing',

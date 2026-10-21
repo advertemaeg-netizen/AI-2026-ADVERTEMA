@@ -25,8 +25,10 @@ export const SITE_HOSTS = ['mudrik-ai.com', 'www.mudrik-ai.com', 'site.localhost
 /**
  * Each legal document's page (public.legal_versions' `document` → its address).
  * The key is the table's and can't change (its rows refuse UPDATE); the
- * address is the site's. Their first addresses, /privacy and /terms (served
- * 2026-10-20 to 21, never linked), 301 here (src/site/host-routing.ts).
+ * address is the site's, and it shows the current version only: earlier
+ * versions have no public address. Their first addresses, /privacy and /terms
+ * and their /v/N (served 2026-10-20 to 21, never linked), 301 here
+ * (src/site/host-routing.ts).
  */
 export const LEGAL_PAGES = { privacy: '/privacy-policy', terms: '/terms-of-service' } as const
 

@@ -11,14 +11,11 @@ import './site.css'
  * Static: both locales are rendered at build time and nothing here reads the
  * request. <html lang dir> comes from the [locale] layout.
  *
- * No `dynamicParams = false` here, on purpose, for two reasons:
- * - A page whose cache entry is lost must render again. With false, Next
- *   refused to regenerate it, fell through to the [...rest] 404 and wrote that
- *   404 over the prerendered file, which kept the site down until the
- *   container was recreated (tests/site/revalidate-scope.test.ts).
- * - Set on this layout it wins over its pages' own settings, and the legal
- *   pages' earlier versions (privacy/v/[version], terms/v/[version]) are
- *   published after the build and must render for any version number.
+ * No `dynamicParams = false` here, on purpose: a page whose cache entry is
+ * lost must render again. With false, Next refused to regenerate it, fell
+ * through to the [...rest] 404 and wrote that 404 over the prerendered file,
+ * which kept the site down until the container was recreated
+ * (tests/site/revalidate-scope.test.ts).
  * An unknown locale is still a 404: the proxy only rewrites known ones, and
  * the [locale] layout's hasLocale() check is the backstop.
  */

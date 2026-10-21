@@ -11,7 +11,8 @@ import { describe, expect, it } from 'vitest'
  * code and fails on one that reaches that far.
  *
  * The one exception under the site is the legal pages: publishing a version
- * expires the current page of that document, at page level, and nothing else.
+ * expires the current page of that document, at page level, and nothing else
+ * (there is nothing under it: earlier versions have no public address).
  * The pages' addresses are not the documents' names (LEGAL_PAGES,
  * src/site/config.ts): /privacy-policy is the document 'privacy'.
  */
@@ -35,8 +36,8 @@ const LEGAL_PAGES = (() => {
 /** Template variables that stand for one of a known set of values */
 const KNOWN_VALUES: Record<string, string[]> = { document: LEGAL_DOCUMENTS, legalPage: LEGAL_PAGES }
 
-/** A site path a publish may expire, at page level: a legal document's page, or its earlier versions' */
-const LEGAL_PAGE = new RegExp(`^/(\\[locale\\]|ar|en)/site(${LEGAL_PAGES.join('|')})(/v/(\\[version\\]|[1-9]\\d{0,2}))?$`)
+/** A site path a publish may expire, at page level: a legal document's page, and nothing under it */
+const LEGAL_PAGE = new RegExp(`^/(\\[locale\\]|ar|en)/site(${LEGAL_PAGES.join('|')})$`)
 
 function sources(dir: string): string[] {
   return readdirSync(path.join(ROOT, dir), { withFileTypes: true, recursive: true })
@@ -104,7 +105,7 @@ describe('the rules themselves', () => {
   const call = (p: string, type: string | null): Call => ({ file: 'x.ts', line: 1, paths: [p], type })
 
   it('allow the legal pages at page level, by their addresses', () => {
-    for (const p of ['/[locale]/site/privacy-policy', '/[locale]/site/terms-of-service', '/ar/site/terms-of-service/v/2']) {
+    for (const p of ['/[locale]/site/privacy-policy', '/[locale]/site/terms-of-service', '/ar/site/terms-of-service', '/en/site/privacy-policy']) {
       expect(reachesSite(call(p, 'page')), p).toBe(false)
       expect(tooWide(call(p, 'page')), p).toBe(false)
     }
@@ -117,8 +118,18 @@ describe('the rules themselves', () => {
     }
   })
 
-  it('fail on any other site page, the documents’ names and the old addresses included', () => {
-    for (const p of ['/[locale]/site', '/[locale]/site/pricing', '/en/site', '/[locale]/site/privacy', '/[locale]/site/terms', '/[locale]/site/privacy-policyx', '/[locale]/site/privacy-policy/v/1000']) {
+  it('fail on any other site page: the documents’ names, the old addresses, and version addresses included', () => {
+    for (const p of [
+      '/[locale]/site',
+      '/[locale]/site/pricing',
+      '/en/site',
+      '/[locale]/site/privacy',
+      '/[locale]/site/terms',
+      '/[locale]/site/privacy-policyx',
+      '/[locale]/site/privacy-policy/v/[version]',
+      '/ar/site/terms-of-service/v/2',
+      '/[locale]/site/privacy-policy/v/1000',
+    ]) {
       expect(reachesSite(call(p, 'page')), p).toBe(true)
       expect(reachesSite(call(p, null)), p).toBe(true)
     }
@@ -170,13 +181,11 @@ describe('the site segment', () => {
     }
   })
 
-  // A cached version page would store a 404 for every number anyone asks for
-  it('never caches an earlier version of a legal page', () => {
+  // Earlier versions have no public address (2026-10-21): the current page is the only route
+  it('has no route under a legal page', () => {
     for (const page of LEGAL_PAGES) {
-      const file = `app/[locale]/site${page}/v/[version]/page.tsx`
-      const text = readFileSync(path.join(ROOT, file), 'utf8')
-      expect(text, file).toMatch(/export\s+const\s+dynamic\s*=\s*'force-dynamic'/)
-      expect(text, file).not.toMatch(/export\s+const\s+revalidate\b/)
+      const dir = path.join(ROOT, `app/[locale]/site${page}`)
+      expect(readdirSync(dir), dir).toEqual(['page.tsx'])
     }
   })
 })
