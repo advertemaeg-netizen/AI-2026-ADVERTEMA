@@ -45,6 +45,8 @@ function leadsQuery(supabase: Supabase, columns: string, filters: LeadFilters) {
   let query = supabase
     .from('leads')
     .select(`${columns}, ${conversationEmbed(!!filters.channelType)}`)
+    // Leads only: RLS hides the rest from clients, this keeps a super admin's list the same
+    .eq('is_complete', true)
     .order('created_at', { ascending: false })
 
   if (filters.clientId) query = query.eq('client_id', filters.clientId)

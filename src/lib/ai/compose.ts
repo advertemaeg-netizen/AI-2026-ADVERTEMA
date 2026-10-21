@@ -1,12 +1,15 @@
 import {
   APPOINTMENT_PLACEHOLDER,
+  DEFAULT_REPLY_RULES,
   SAVED_NAME_PLACEHOLDER,
   SAVED_PHONE_PLACEHOLDER,
   appointmentLine,
   renderReply,
   type BookingOutcome,
   type ReplyLanguage,
+  type ReplyRules,
 } from '@/lib/ai/appointment'
+import type { BookingMode } from '@/lib/types/bot-settings'
 import type { ContactEvents } from '@/lib/ai/contact'
 import { displayPhone, normalizePhone, phoneLikeRuns } from '@/lib/phone'
 import ar from '../../../messages/ar.json'
@@ -108,10 +111,29 @@ export function mentionsName(template: string) {
  * whether it has one branch or several, and "which branch?" to a business
  * with one is a new defect.
  */
-function nextQuestion(known: Known, language: ReplyLanguage) {
-  if (!known.time) return (language === 'ar' ? ar : en).botReplies.appointment.askTime
+function nextQuestion(known: Known, language: ReplyLanguage, mode: BookingMode) {
+  // With no booking, the next thing is the number; otherwise the booking comes first
+  if (!known.time && mode !== 'none') return (language === 'ar' ? ar : en).botReplies.appointment.askTime
   if (!known.phone && !known.phoneGivenUp) return TEXTS[language].phoneAsk
   return ''
+}
+
+// A question about a time of day, in the model's own text: «الساعة كام؟»,
+// «أنهي وقت يناسبك؟», "what time suits you?", «تحب 5 مساءً؟». Only questions:
+// a statement of the opening hours is information a day-only business gives too.
+const TIME_WORD =
+  /(?<![\p{L}])(?:ال)?(?:ساعة|ساعه|وقت|توقيت)(?![\p{L}])|\btime\b|o'clock|\d{1,2}(?::\d{2})?\s*(?:ص|م|صباحًا|صباحا|مساءً|مساءا|مساء|am|pm)(?![\p{L}])/iu
+const isTimeQuestion = (sentence: string) => /[?؟]/.test(sentence) && TIME_WORD.test(unmarked(sentence))
+
+/**
+ * DAY-ONLY: no time is asked for, whatever the model writes. Its questions
+ * about a time are removed; if that leaves nothing that moves the
+ * conversation on, the day is asked for instead.
+ */
+function withoutTimeQuestions(text: string) {
+  const sentences = text.split(SENTENCE_END)
+  const kept = sentences.filter((sentence) => !isTimeQuestion(sentence))
+  return { text: kept.join('').trim(), removed: kept.length < sentences.length }
 }
 
 export function composeReply({
@@ -124,6 +146,7 @@ export function composeReply({
   appointmentDecided = false,
   otherAnswer = null,
   known,
+  rules = DEFAULT_REPLY_RULES,
 }: {
   /** The model's reply, placeholders included */
   template: string
@@ -144,6 +167,44 @@ export function composeReply({
   otherAnswer?: string | null
   /** Without it the model's questions are not checked against what code holds */
   known?: Known
+  /** The business's booking shape and name rule; without them, an appointment business asking for a full name */
+  rules?: ReplyRules
+}): string {
+  const reply = composeFor({ template, outcome, events, record, visitorMessages, language, appointmentDecided, otherAnswer, known, rules })
+  if (rules.mode === 'none') {
+    // No booking: once the name and the number are both on record, the
+    // visitor is told the team will follow up — on the message that completed them
+    const completed = (events.name === 'stored' || events.name === 'stored_incomplete' || events.phone === 'stored') && record.name && record.phone
+    return completed ? [reply, TEXTS[language].followUp].filter(Boolean).join('\n') : reply
+  }
+  if (rules.mode !== 'day_only') return reply
+  const { text, removed } = withoutTimeQuestions(reply)
+  if (!removed) return reply
+  return /[?؟]/.test(text) ? text : [text, (language === 'ar' ? ar : en).botReplies.appointment.askTime].filter(Boolean).join('\n')
+}
+
+function composeFor({
+  template,
+  outcome,
+  events,
+  record,
+  visitorMessages,
+  language,
+  appointmentDecided,
+  otherAnswer,
+  known,
+  rules,
+}: {
+  template: string
+  outcome: BookingOutcome
+  events: ContactEvents
+  record: SavedRecord
+  visitorMessages: string[]
+  language: ReplyLanguage
+  appointmentDecided: boolean
+  otherAnswer: string | null
+  known?: Known
+  rules: ReplyRules
 }): string {
   const t = TEXTS[language]
   const refusals = [
@@ -165,7 +226,7 @@ export function composeReply({
     const booking =
       outcome.status === 'none' || (refusals.length > 0 && outcome.status === 'needs_details' && !outcome.handoff)
         ? ''
-        : renderReply('', outcome, language).trim()
+        : renderReply('', outcome, language, rules).trim()
     return [...refusals, booking || (askName ? t.nameAsk : '')].filter(Boolean).join('\n')
   }
 
@@ -210,11 +271,11 @@ export function composeReply({
           .filter((sentence) => !sentence.includes(APPOINTMENT_PLACEHOLDER))
           .join('')
           .trim(),
-        appointmentLine(outcome, language),
+        appointmentLine(outcome, language, rules),
       ]
         .filter(Boolean)
         .join('\n')
-    : renderReply(text, outcome, language).trim()
+    : renderReply(text, outcome, language, rules).trim()
   const reply = withoutUnsavedNumbers(renderSaved(rendered, record, language), record, visitorMessages, language)
   // The appointment's own sentence opens with "تمام": no second one before it
   if (!nameSettled || !known?.name || outcome.status === 'booked') return reply
@@ -223,5 +284,5 @@ export function composeReply({
   // A question the model asked about something else, or what code says of
   // the booking, already moves the conversation on
   const movesOn = /[?؟]/.test(reply) || outcome.status !== 'none'
-  return [greeting, reply, movesOn ? '' : nextQuestion(known, language)].filter(Boolean).join('\n')
+  return [greeting, reply, movesOn ? '' : nextQuestion(known, language, rules.mode)].filter(Boolean).join('\n')
 }

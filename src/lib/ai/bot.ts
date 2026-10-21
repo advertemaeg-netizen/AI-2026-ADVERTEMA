@@ -5,16 +5,22 @@ import type { AiOperation } from '@/lib/ai/usage'
 import {
   APPOINTMENT_INSTRUCTIONS,
   BOT_REPLY_SCHEMA,
+  DAY_ONLY_INSTRUCTIONS,
+  DAY_ONLY_ORDER_INSTRUCTIONS,
   HELD_REQUEST_INSTRUCTIONS,
+  NO_BOOKING_INSTRUCTIONS,
   botReplySchema,
   type AppointmentRequest,
 } from '@/lib/ai/appointment'
 import { BOOKING_ORDER_INSTRUCTIONS } from '@/lib/ai/booking-order'
 import { describeContact, type ContactReport, type ContactState } from '@/lib/ai/contact'
 import {
+  BOOKING_MODES,
   DEFAULT_SERVICE_UNAVAILABLE_MESSAGE,
   WEEK_DAYS,
   businessHoursSchema,
+  effectiveBookingMode,
+  type BookingMode,
   type BotLanguage,
   type BotSettingsInput,
   type BotTone,
@@ -210,16 +216,29 @@ function describeBusinessHours(hours: BusinessHours, now: Date) {
   return `Business hours (${hours.timezone}):\n${schedule}\nCurrent local time: ${localNow}. If the business is closed right now, tell the visitor once in the conversation (when it's relevant) and say when it opens next; don't repeat it in every reply.`
 }
 
+const BOOKING_INSTRUCTIONS: Record<BookingMode, string> = {
+  appointment: APPOINTMENT_INSTRUCTIONS,
+  day_only: DAY_ONLY_INSTRUCTIONS,
+  none: NO_BOOKING_INSTRUCTIONS,
+}
+// The order a booking is collected in; with no booking, NO_BOOKING_INSTRUCTIONS says it
+const BOOKING_ORDERS: Record<BookingMode, string> = {
+  appointment: BOOKING_ORDER_INSTRUCTIONS,
+  day_only: DAY_ONLY_ORDER_INSTRUCTIONS,
+  none: '',
+}
+
 export function buildSystemPrompt(
   client: BotClient,
   settings: BotSettingsInput,
   knowledge: Pick<RetrievedChunk, 'title' | 'content'>[],
   now = new Date(),
-  /** The name and number as code holds them; only read with lead collection on */
+  /** The name and number as code holds them */
   contact: ContactState | null = null,
-  /** A time asked for earlier is held for the visitor's details; only read with lead collection on */
+  /** A time (or, day-only, a day) asked for earlier is held for the visitor's details */
   heldRequest = false
 ) {
+  const mode = effectiveBookingMode(settings)
   const guidelines = [
     `- Language: ${LANGUAGE_INSTRUCTIONS[settings.language]}`,
     `- Tone: ${TONE_INSTRUCTIONS[settings.tone]}`,
@@ -240,15 +259,14 @@ export function buildSystemPrompt(
     }, chatting with a visitor through the chat widget on the business's website. The chat opened with this welcome message from you: "${settings.welcome_message}"`,
     client.description ? `About the business:\n${client.description}` : '',
     settings.business_hours?.enabled ? describeBusinessHours(settings.business_hours, now) : '',
-    // Appointments are part of collecting leads: without it nothing is booked
-    settings.lead_qualification_enabled
-      ? APPOINTMENT_INSTRUCTIONS
-      : '',
+    // The name and the number are always reported, whatever the booking
+    // shape; how a booking is reported, and in what order, is the shape's
+    BOOKING_INSTRUCTIONS[mode],
     // Right after the booking JSON instructions, so the booking rules read
     // together; the client's prompt above cannot reorder it
-    settings.lead_qualification_enabled ? BOOKING_ORDER_INSTRUCTIONS : '',
-    settings.lead_qualification_enabled && heldRequest ? HELD_REQUEST_INSTRUCTIONS : '',
-    settings.lead_qualification_enabled && contact ? describeContact(contact) : '',
+    BOOKING_ORDERS[mode],
+    mode !== 'none' && heldRequest ? HELD_REQUEST_INSTRUCTIONS : '',
+    contact ? describeContact(contact, mode) : '',
     knowledge.length > 0
       ? `Excerpts from the business's knowledge base that may answer the visitor's question:\n\n${knowledge
           .map((chunk, i) => `[${i + 1}] (${chunk.title})\n${chunk.content}`)
@@ -279,10 +297,12 @@ export async function loadBotSettings(supabase: SupabaseClient, clientId: string
     fallback_message: row.fallback_message,
     // Missing on a database that predates the setting
     service_unavailable_message: row.service_unavailable_message ?? DEFAULT_SERVICE_UNAVAILABLE_MESSAGE,
-    lead_qualification_enabled: row.lead_qualification_enabled,
     // Missing on a database that predates the setting: on, like the default
     auto_confirm_appointments: row.auto_confirm_appointments ?? true,
     business_hours: hours.success ? hours.data : null,
+    // Unknown values read as unset (it follows the opening hours) and as any name
+    booking_mode: BOOKING_MODES.includes(row.booking_mode as BookingMode) ? row.booking_mode : null,
+    name_strictness: row.name_strictness === 'two_parts' ? 'two_parts' : 'single',
   }
 }
 
@@ -385,13 +405,19 @@ export async function runBot({
     systemPrompt,
     history: trimmed,
     temperature: settings.temperature,
-    responseSchema: settings.lead_qualification_enabled ? BOT_REPLY_SCHEMA : undefined,
+    responseSchema: BOT_REPLY_SCHEMA,
     usage: { operation, clientId, conversationId },
   })
   const generationMs = performance.now() - generationStarted
-  const { reply, appointment, contact, otherAnswer } = settings.lead_qualification_enabled
-    ? parseBotReply(text)
-    : { reply: text, appointment: null, contact: null, otherAnswer: null }
+  const parsed = parseBotReply(text)
+  // A business that doesn't book through the chat: whatever the model
+  // reports about a booking is not one, and its reply is sent whole
+  const noBooking = effectiveBookingMode(settings) === 'none'
+  // Its text for an appointment it reported anyway is the answer it gave besides it
+  const kept = noBooking ? parsed.reply || parsed.otherAnswer || '' : parsed.reply
+  if (noBooking && !kept) throw new Error('The model returned no reply')
+  const { appointment, contact, otherAnswer } = noBooking ? { ...parsed, appointment: null, otherAnswer: null } : parsed
+  const reply = kept
 
   return {
     reply,

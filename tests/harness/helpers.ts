@@ -213,8 +213,17 @@ async function seed<T>(query: () => PromiseLike<SeedResult<T>>): Promise<T> {
 /**
  * A fresh organization with one client and a live website channel. Both get
  * their default trial subscriptions from the database triggers.
+ *
+ * The client books appointments (a day and a time), like every client that
+ * existed when the booking setting shipped: a brand-new client follows its
+ * opening hours instead, and these tests were written for appointments.
+ * `bookingMode: null` leaves the new-client default in place. The name rule
+ * is the default (any name) unless a test asks for two parts.
  */
-export async function seedClient() {
+export async function seedClient({
+  bookingMode = 'appointment',
+  nameStrictness = 'single',
+}: { bookingMode?: 'appointment' | 'day_only' | 'none' | null; nameStrictness?: 'single' | 'two_parts' } = {}) {
   const supabase = serviceClient()
   const tag = randomUUID().slice(0, 8)
 
@@ -235,6 +244,16 @@ export async function seedClient() {
       .select('id')
       .single<{ id: string }>()
   )
+  if (bookingMode !== null || nameStrictness !== 'single') {
+    await seed(() =>
+      supabase
+        .from('bot_settings')
+        .update({ ...(bookingMode !== null ? { booking_mode: bookingMode } : {}), name_strictness: nameStrictness })
+        .eq('client_id', client.id)
+        .select('client_id')
+        .single()
+    )
+  }
 
   return { supabase, organizationId: org.id, clientId: client.id, channelId: channel.id }
 }

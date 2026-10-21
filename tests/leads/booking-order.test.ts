@@ -36,7 +36,7 @@ const NOW = '2026-10-05T09:00:00.000Z'
 const TOMORROW_7PM = '2026-10-06T16:00:00.000Z'
 const TOMORROW_7PM_TEXT = formatAppointment(TOMORROW_7PM, 'ar')
 const AT_7_TOMORROW = { day_type: 'tomorrow', hour: 7, period: 'evening' }
-const needs = (field: 'missingName' | 'missingPhone') =>
+const needs = (field: 'missingName' | 'missingNameAny' | 'missingPhone') =>
   APPOINTMENT.needDetails.replace('{time}', TOMORROW_7PM_TEXT).replace('{missing}', APPOINTMENT[field])
 
 const SETTINGS: BotSettingsInput = {
@@ -48,9 +48,10 @@ const SETTINGS: BotSettingsInput = {
   welcome_message: 'Hello',
   fallback_message: 'Sorry',
   service_unavailable_message: 'Down',
-  lead_qualification_enabled: true,
   auto_confirm_appointments: true,
   business_hours: null,
+  booking_mode: 'appointment',
+  name_strictness: 'two_parts',
 }
 const CLIENT = { name: 'Clinic', industry: null, description: null }
 
@@ -76,8 +77,9 @@ describe('the booking order is injected by code, after the booking JSON instruct
     expect(prompt()).not.toMatch(/ask for their name and phone number/i)
   })
 
-  it('is not there when the bot collects no leads, like the rest of the booking rules', () => {
-    expect(prompt({ lead_qualification_enabled: false })).not.toContain(BOOKING_ORDER_INSTRUCTIONS)
+  it('is not there for a business that books days only, or nothing: theirs asks for no hour', () => {
+    expect(prompt({ booking_mode: 'day_only' })).not.toContain(BOOKING_ORDER_INSTRUCTIONS)
+    expect(prompt({ booking_mode: 'none' })).not.toContain(BOOKING_ORDER_INSTRUCTIONS)
   })
 
   it('holds back the branch and the service lines: four steps, numbered 1 to 4', () => {
@@ -210,7 +212,8 @@ describe('the questions after the time is held are code\'s', () => {
     })
     const { say, leads } = await visitor()
 
-    expect(await say('book me tomorrow at 7 pm')).toBe(needs('missingName'))
+    // Any name the visitor gives, by default: asked for as just "your name"
+    expect(await say('book me tomorrow at 7 pm')).toBe(needs('missingNameAny'))
     expect(await say('Karim Samy')).toBe(needs('missingPhone'))
     expect(await say('01002847901')).toBe(APPOINTMENT.bookedConfirmed.replace('{time}', TOMORROW_7PM_TEXT))
     const [lead] = await leads()

@@ -37,9 +37,12 @@ export async function getDashboardStats(clientId: string | null = null) {
     .from('leads')
     .select('id', { count: 'exact', head: true })
     .in('status', ACTIVE_LEAD_STATUSES)
+    // Leads only: RLS hides the rest from clients, this keeps a super admin's numbers the same
+    .eq('is_complete', true)
   let recentLeadsQuery = supabase
     .from('leads')
     .select('id, name, status, created_at, client:clients!inner(name)')
+    .eq('is_complete', true)
   let recentConversationsQuery = supabase
     .from('conversations')
     .select('id, contact_name, contact_identifier, last_message_at, client:clients!inner(name)')

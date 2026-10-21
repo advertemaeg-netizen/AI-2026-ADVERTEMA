@@ -14,9 +14,21 @@ export const BOT_TIMEZONES = [
   'Europe/London',
 ] as const
 
+/**
+ * The booking shape is the business's. 'appointment': a day and a time.
+ * 'day_only': a day, first come first served; no time is asked for or
+ * confirmed. 'none': the bot never books; it takes the name and phone and the
+ * team follows up. Unset (null): it follows the opening hours (effectiveBookingMode).
+ */
+export const BOOKING_MODES = ['appointment', 'day_only', 'none'] as const
+/** How much of a name is enough: whatever the visitor gives, or at least two words */
+export const NAME_STRICTNESS = ['single', 'two_parts'] as const
+
 export type BotTone = (typeof BOT_TONES)[number]
 export type BotLanguage = (typeof BOT_LANGUAGES)[number]
 export type WeekDay = (typeof WEEK_DAYS)[number]
+export type BookingMode = (typeof BOOKING_MODES)[number]
+export type NameStrictness = (typeof NAME_STRICTNESS)[number]
 
 export const SYSTEM_PROMPT_MAX = 4000
 export const MESSAGE_MAX = 500
@@ -50,13 +62,23 @@ export const botSettingsSchema = z.object({
   welcome_message: z.string().trim().min(1, 'required').max(MESSAGE_MAX, 'tooLong'),
   fallback_message: z.string().trim().min(1, 'required').max(MESSAGE_MAX, 'tooLong'),
   service_unavailable_message: z.string().trim().min(1, 'required').max(MESSAGE_MAX, 'tooLong'),
-  lead_qualification_enabled: z.boolean(),
   auto_confirm_appointments: z.boolean(),
   business_hours: businessHoursSchema.nullable(),
+  booking_mode: z.enum(BOOKING_MODES).nullable(),
+  name_strictness: z.enum(NAME_STRICTNESS),
 })
 
 export type BotSettingsInput = z.infer<typeof botSettingsSchema>
 export type BusinessHours = z.infer<typeof businessHoursSchema>
+
+/**
+ * The booking shape in force. A business that hasn't chosen one gets
+ * appointments once it has entered opening hours, and none before: a bot
+ * with no hours to check has nothing to offer a time against.
+ */
+export function effectiveBookingMode(settings: Pick<BotSettingsInput, 'booking_mode' | 'business_hours'>): BookingMode {
+  return settings.booking_mode ?? (settings.business_hours?.enabled ? 'appointment' : 'none')
+}
 
 export type BotSettings = BotSettingsInput & { client_id: string }
 

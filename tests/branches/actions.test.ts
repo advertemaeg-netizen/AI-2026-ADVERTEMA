@@ -62,8 +62,13 @@ async function branchId(name: string) {
   return branch.id as string
 }
 
+// A lead as the client sees one: with a name and a phone (rows short of them are hidden by RLS)
 async function addLead(fields: Record<string, unknown>) {
-  const { data, error } = await admin.from('leads').insert({ client_id: world.clientId, ...fields }).select('id').single<{ id: string }>()
+  const { data, error } = await admin
+    .from('leads')
+    .insert({ client_id: world.clientId, name: 'Test Lead', phone: '+201012345678', ...fields })
+    .select('id')
+    .single<{ id: string }>()
   if (error) throw new Error(error.message)
   return data.id
 }

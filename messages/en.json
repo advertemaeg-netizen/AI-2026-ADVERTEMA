@@ -583,24 +583,26 @@
       "welcome_message": "Welcome message",
       "fallback_message": "Fallback message",
       "service_unavailable_message": "Service unavailable message",
-      "leadQualification": "Collect lead details",
       "language": "Reply language",
       "temperature": "Creativity",
       "maxLength": "Maximum reply length",
       "hoursEnabled": "Enable business hours",
       "timezone": "Time zone",
-      "autoConfirmAppointments": "Confirm appointments automatically"
+      "autoConfirmAppointments": "Confirm appointments automatically",
+      "bookingMode": "Booking",
+      "nameStrictness": "Visitor’s name"
     },
     "hints": {
       "systemPrompt": "Describe who the assistant is, what it does, and what it must not do.",
       "welcome_message": "Shown as the first message in the website chat window.",
       "fallback_message": "Used when a visitor asks about something that isn’t in the business info or knowledge base.",
       "service_unavailable_message": "Sent when the assistant cannot reply at all: the service is down, the plan is out of messages, or the subscription is inactive. The conversation is then marked as needing a reply from your team. Include a number for urgent cases.",
-      "leadQualification": "The assistant asks which service is needed and requests a name and phone number.",
       "maxLength": "An approximate character limit the assistant keeps to in each reply.",
       "hoursEnabled": "The schedule and current time are added to the assistant’s instructions.",
       "overnight": "A closing time earlier than the opening time (e.g. 12:00 to 02:00) means it closes after midnight.",
-      "autoConfirmAppointments": "On: the assistant records the appointment and confirms it to the visitor right away. Off: it records it and tells the visitor it will be confirmed, and your team confirms it with one click on the lead page."
+      "autoConfirmAppointments": "On: the assistant records the appointment and confirms it to the visitor right away. Off: it records it and tells the visitor it will be confirmed, and your team confirms it with one click on the lead page.",
+      "bookingMode": "How the assistant books. Whatever you choose, it always takes the visitor’s name and mobile number.",
+      "nameStrictness": "How much of a name the assistant asks for before it takes it."
     },
     "tones": {
       "friendly": "Friendly",
@@ -653,6 +655,16 @@
       "validation": "Some values are invalid. Please check the fields.",
       "unknown": "Something went wrong. Please try again.",
       "impersonating": "Changes aren’t allowed while viewing a customer’s account"
+    },
+    "bookingModes": {
+      "auto": "Automatic: appointments once opening hours are set, otherwise none",
+      "appointment": "A day and a time",
+      "day_only": "A day only (first come, first served)",
+      "none": "No booking: the team follows up"
+    },
+    "nameStrictness": {
+      "single": "Any name the visitor gives",
+      "two_parts": "At least two names (first and family)"
     }
   },
   "leads": {
@@ -2027,7 +2039,14 @@
       "needDetails": "To book {time} I need {missing}.",
       "needDetailsHandoff": "Your request for {time} is noted as a request, and someone from our team will contact you here to complete it.",
       "missingName": "your full name",
-      "missingPhone": "your mobile number"
+      "missingPhone": "your mobile number",
+      "bookedDay": "Done — you're booked for {day}. Visits that day are seen in order of arrival, and someone from our team will call you to confirm.",
+      "keptDay": "You already have a visit booked for {day}. If you'd like to change it, someone from our team will be in touch.",
+      "needDetailsDay": "To book {day} I need {missing}.",
+      "needDetailsDayHandoff": "Your request for {day} is noted, and someone from our team will contact you here to complete it.",
+      "pastDay": "That day has already passed. Which day would suit you?",
+      "missingNameAny": "your name",
+      "bookingSaveFailed": "Sorry — I couldn't complete the booking just now. Everything you've given me is saved, and someone from our team will make sure it's booked."
     },
     "contact": {
       "phoneInvalid": "That number doesn't look right. A mobile number is 11 digits starting with 01, or an international number starting with +. Could you send it again?",
@@ -2037,7 +2056,8 @@
       "phoneAsk": "Could I have your mobile number?",
       "noPhoneOnRecord": "We don't have a mobile number on record for you yet.",
       "phoneOnRecord": "The mobile number we have on record: {phone}.",
-      "noNameOnRecord": "We don't have a name on record for you yet."
+      "noNameOnRecord": "We don't have a name on record for you yet.",
+      "followUp": "Thank you — someone from our team will contact you shortly."
     }
   },
   "settings": {

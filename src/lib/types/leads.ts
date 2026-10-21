@@ -104,6 +104,12 @@ export type AiAppointment = {
    * never decides whether the visitor is told the appointment is confirmed.
    */
   needs_team_check?: true
+  /**
+   * A day-only visit (first come, first served): the DAY is the booking.
+   * `at` is that day's opening time (midday without hours), only to place it
+   * on the day: never shown or stated as an appointment time.
+   */
+  day_only?: true
 }
 
 export type LeadDetail = LeadListItem & {

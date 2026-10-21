@@ -6,16 +6,21 @@ import { detectLead } from '@/lib/ai/lead-detection'
 import {
   APPOINTMENT_PLACEHOLDER,
   ASK_DAY_AND_TIME,
+  NOTHING_SAID,
   mergeDraft,
   narrowDraft,
   parseBookingDraft,
   replyLanguage,
+  resolvesWhole,
   saysNothing,
+  withoutTime,
+  type AppointmentRequest,
   type BookingDraft,
   type BookingOutcome,
+  type ReplyRules,
 } from '@/lib/ai/appointment'
 import { withEvidence, type EvidencedPart } from '@/lib/ai/evidence'
-import { appointmentOnRecord, confirmPending, heldRequest, recordAppointment, saveContact, savedRecord } from '@/lib/ai/booking'
+import { appointmentOnRecord, bookingState, confirmPending, recordAppointment, saveContact, savedRecord } from '@/lib/ai/booking'
 import { composeReply, mentionsName, type SavedRecord } from '@/lib/ai/compose'
 import {
   EMPTY_CONTACT,
@@ -25,7 +30,9 @@ import {
   type ContactEvents,
   type ContactState,
 } from '@/lib/ai/contact'
-import type { BotSettingsInput } from '@/lib/types/bot-settings'
+import { effectiveBookingMode, type BotSettingsInput } from '@/lib/types/bot-settings'
+import ar from '../../../../../messages/ar.json'
+import en from '../../../../../messages/en.json'
 import { checkClientLimit } from '@/lib/subscription-limits'
 import { UUID_PATTERN } from '@/lib/types/clients'
 import type { NeedsHumanReason } from '@/lib/types/conversations'
@@ -37,6 +44,8 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type',
   'Access-Control-Max-Age': '86400',
 }
+
+const BOOKING_TEXTS = { ar: ar.botReplies.appointment, en: en.botReplies.appointment }
 
 const MAX_MESSAGE_LENGTH = 2000
 const VISITOR_ID_PATTERN = /^[A-Za-z0-9_-]{8,64}$/
@@ -289,9 +298,11 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       recent.map((m) => (m.role === 'assistant' ? parseContactState(m.metadata?.contact) : null)).find(Boolean) ?? EMPTY_CONTACT
     // The partial booking as the latest bot reply left it (one with a booking
     // trace: a fallback message says nothing about it). No draft on that reply
-    // means there was none: an older one ended there.
+    // means there was none: an older one ended there. The lead row's own
+    // draft, read below, takes precedence: this is for conversations that
+    // were under way before the row held it.
     const lastReplyTrace = recent.find((m) => m.role === 'assistant' && m.metadata?.booking !== undefined)?.metadata
-    const previousDraft = parseBookingDraft(lastReplyTrace?.draft)
+    const tracedDraft = parseBookingDraft(lastReplyTrace?.draft)
     const history: ChatTurn[] = recent
       .reverse()
       .map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }))
@@ -309,9 +320,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
     // whether the client's subscription allows the analysis.
     const convId = conversationId
     const scheduleLeadDetection = (turns: ChatTurn[], replied = false, contact: ContactState | null = null) => {
-      // Settings that failed to load don't say whether it's switched off;
-      // it's on by default, so the message is analysed rather than lost
-      if (settings && !settings.lead_qualification_enabled) return
+      // Always: a lead's name and number never depend on a switch
       after(() =>
         detectLead({
           supabase,
@@ -393,17 +402,53 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       contact_events?: ContactEvents
     }
     let contact: ContactState | null = null
+    // The business's booking shape, and how much of a name it asks for
+    const mode = effectiveBookingMode(settings)
+    const rules: ReplyRules = { mode, nameStrictness: settings.name_strictness }
+
+    // The open lead as it stands: a day (and time) held for the visitor's
+    // details, and the partial booking written so far. Unread, the message
+    // trace stands in: it never blocks a reply.
+    let held = false
+    let previousDraft = tracedDraft
     try {
-      // A time held from earlier may become the appointment on this message
-      // without the model reporting one: it is told so before it answers
-      let held = false
-      if (settings.lead_qualification_enabled) {
-        try {
-          held = await heldRequest(supabase, conversationId)
-        } catch (error) {
-          console.error('[webhook/website] reading the held appointment request failed', error)
-        }
+      const state = await bookingState(supabase, conversationId)
+      held = state.held
+      if (state.hasDraft) previousDraft = state.draft
+    } catch (error) {
+      console.error('[webhook/website] reading the open lead failed', error)
+    }
+    // A partial booking that is already whole: written before a booking that
+    // failed (5.2). It is booked on this message, whatever it is about, and the
+    // visitor is not asked again for what they gave.
+    const resumable =
+      mode !== 'none' && previousDraft !== null && resolvesWhole(previousDraft, mode, settings.business_hours)
+
+    // THE PHONE IS CODE'S TO READ, so it is read and written before the model
+    // is called: a reply that fails cannot lose a number the visitor sent. (The
+    // name needs the model's report; it is read after.) After the plan's limits
+    // above, as every capture is: a person's takeover and a plan past its
+    // limit are left to the analysis, as before.
+    const early = readContact(previousContact, null, message, visitorMessages, settings.name_strictness)
+    if (early.events.phone === 'stored') {
+      try {
+        await saveContact({
+          supabase,
+          clientId: channel.client_id,
+          conversationId,
+          sourceMessageId: userMessage.id,
+          contact: { ...previousContact, phone: early.state.phone },
+          events: { name: 'none', phone: 'stored' },
+        })
+      } catch (error) {
+        console.error('[webhook/website] saving the phone number failed', error)
       }
+    }
+
+    try {
+      // A day or time held from earlier may become the appointment on this
+      // message without the model reporting one: it is told so before it answers
+      held = mode !== 'none' && (held || resumable)
       const result = await runBot({
         supabase,
         clientId: channel.client_id,
@@ -418,8 +463,11 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
 
       // The model reported; code decides. The name and the number are
       // checked and written before the reply is rendered, so the reply can
-      // only state what the lead row holds.
-      let events: ContactEvents = { name: 'none', phone: 'none' }
+      // only state what the lead row holds. Always: the name and the number
+      // are the product, and no setting turns them off.
+      const read = readContact(previousContact, result.contact, message, visitorMessages, settings.name_strictness)
+      contact = read.state
+      const events: ContactEvents = read.events
       let booking: BookingOutcome = { status: 'none' }
       let bookingFailed = false
       // Kept as it was unless this message reported something about the appointment
@@ -429,33 +477,39 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       // Code decided something about the appointment on this message: then
       // code alone speaks about it (composeReply)
       let decided = result.appointment !== null
-      if (settings.lead_qualification_enabled) {
-        const read = readContact(previousContact, result.contact, message, visitorMessages)
-        contact = read.state
-        events = read.events
-        try {
-          await saveContact({
-            supabase,
-            clientId: channel.client_id,
-            conversationId,
-            sourceMessageId: userMessage.id,
-            contact,
-            events,
-          })
-        } catch (error) {
-          // Not saved: the reply states the record, so it will say so
-          console.error('[webhook/website] saving the contact details failed', error)
-        }
+
+      // Only what this message shows a trace of (withEvidence), completed with
+      // what earlier ones gave (the draft). A day-only business takes no time,
+      // whatever the model reported.
+      let request: AppointmentRequest | null = null
+      if (result.appointment) {
+        const evidenced = withEvidence(result.appointment, message)
+        evidenceDropped = evidenced.dropped
+        const merged = mergeDraft(previousDraft, evidenced.request)
+        request = mode === 'day_only' ? withoutTime(merged) : merged
+      }
+      // THE LEAD AS IT ARRIVES: the name, the number, and the partial booking
+      // with what this message added, written now — before anything is booked,
+      // so nothing given can be lost to a failure further on
+      const arriving = request && !saysNothing(request) ? narrowDraft(previousDraft, request, ASK_DAY_AND_TIME) : undefined
+      try {
+        await saveContact({
+          supabase,
+          clientId: channel.client_id,
+          conversationId,
+          sourceMessageId: userMessage.id,
+          contact,
+          events,
+          ...(arriving !== undefined ? { draft: arriving } : {}),
+        })
+      } catch (error) {
+        // Not saved: the reply states the record, so it will say so
+        console.error('[webhook/website] saving the lead failed', error)
       }
 
       // The appointment is recorded before the reply goes out, and the reply
       // quotes the record: it can't promise a time that isn't stored
-      if (result.appointment) {
-        // Only what this message shows a trace of (withEvidence), completed
-        // with what earlier ones gave (the draft)
-        const evidenced = withEvidence(result.appointment, message)
-        evidenceDropped = evidenced.dropped
-        const request = mergeDraft(previousDraft, evidenced.request)
+      if (request) {
         try {
           if (saysNothing(request)) {
             // Reported, but none of it was said and nothing is held: as if
@@ -480,27 +534,60 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
               contact,
               // The visitor is here to be asked the hour rather than given a guess at one
               hourFromPartOfDay: false,
+              mode: mode === 'day_only' ? 'day_only' : 'appointment',
             })
           }
           draft = narrowDraft(previousDraft, request, booking)
         } catch (error) {
           console.error('[webhook/website] recording the appointment failed', error)
           bookingFailed = true
+          // As written above: what the visitor gave stays, for the next message to book
+          draft = arriving ?? previousDraft
         }
-      } else if (settings.lead_qualification_enabled) {
+      } else if (mode !== 'none') {
         // A time asked for earlier, held back for a name or a number: once
         // both are on record it becomes the appointment, whatever this
-        // message is about; until then code asks for the next one
+        // message is about; until then code asks for the next one. A partial
+        // booking already whole (a booking write that failed) is booked the
+        // same way.
         try {
           const promoted = await confirmPending({ supabase, conversationId, businessHours: settings.business_hours, contact })
           if (promoted) {
             booking = promoted
             decided = true
             draft = null
+          } else if (resumable && previousDraft) {
+            const resumed = mergeDraft(previousDraft, NOTHING_SAID)
+            booking = await recordAppointment({
+              supabase,
+              clientId: channel.client_id,
+              conversationId,
+              sourceMessageId: userMessage.id,
+              request: resumed,
+              autoConfirm: settings.auto_confirm_appointments,
+              businessHours: settings.business_hours,
+              source: 'reply',
+              contact,
+              hourFromPartOfDay: false,
+              mode: mode === 'day_only' ? 'day_only' : 'appointment',
+            })
+            decided = true
+            draft = narrowDraft(previousDraft, resumed, booking)
           }
         } catch (error) {
           console.error('[webhook/website] confirming the requested appointment failed', error)
           bookingFailed = true
+        }
+      }
+      // What the row holds now: the draft as this message wrote it above, or as it was
+      const onRow = arriving !== undefined ? arriving : previousDraft
+      if (draft !== onRow && !bookingFailed) {
+        // The partial booking as this message left it: narrowed by a refusal,
+        // or gone once the lead holds the appointment or the request
+        try {
+          await saveContact({ supabase, clientId: channel.client_id, conversationId, sourceMessageId: userMessage.id, contact, events, draft })
+        } catch (error) {
+          console.error('[webhook/website] saving the partial booking failed', error)
         }
       }
       if (!result.appointment && booking.status === 'none' && !bookingFailed && result.reply.includes(APPOINTMENT_PLACEHOLDER)) {
@@ -539,34 +626,39 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
         // Kept so a real time the detector missed can be found and counted
         ...(evidenceDropped.length > 0 ? { evidence_dropped: evidenceDropped } : {}),
         draft,
-        ...(contact ? { contact, contact_events: events } : {}),
+        contact,
+        contact_events: events,
       }
-      reply = composeReply({
-        template: result.reply,
-        outcome: booking,
-        events,
-        record,
-        visitorMessages,
-        language: replyLanguage(settings.language, message),
-        appointmentDecided: decided,
-        otherAnswer: result.otherAnswer,
-        ...(contact
-          ? {
-              known: {
-                name: contact.name,
-                phone: contact.phone ?? record.phone,
-                phoneGivenUp: contact.phoneRejections >= MAX_PHONE_REJECTIONS,
-                time: timeOnRecord,
-              },
-            }
-          : {}),
-      })
+      const language = replyLanguage(settings.language, message)
+      reply = bookingFailed
+        ? // The booking could not be written. Everything the visitor gave is on
+          // the lead (written above) and the next message books it: they are
+          // told so, never asked again, and never handed a booking that isn't one
+          [decided ? result.otherAnswer : null, BOOKING_TEXTS[language].bookingSaveFailed].filter(Boolean).join('\n')
+        : composeReply({
+            template: result.reply,
+            outcome: booking,
+            events,
+            record,
+            visitorMessages,
+            language,
+            appointmentDecided: decided,
+            otherAnswer: result.otherAnswer,
+            rules,
+            known: {
+              name: contact.name,
+              phone: contact.phone ?? record.phone,
+              phoneGivenUp: contact.phoneRejections >= MAX_PHONE_REJECTIONS,
+              time: timeOnRecord,
+            },
+          })
       // The visitor was told a person will take it from here: make that true.
       // 'no_answer' is the nearest reason the column allows today; a reason
       // of its own needs a migration.
       if (events.phone === 'rejected_final' || (booking.status === 'needs_details' && booking.handoff)) {
         await markForPerson('no_answer')
       }
+      if (bookingFailed) await markForPerson('service_down')
     } catch (error) {
       console.error('[webhook/website] AI reply failed', error)
       // A failed reply (rate limit, timeout, 503) must not lose the lead: the

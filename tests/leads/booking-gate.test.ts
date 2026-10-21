@@ -52,9 +52,12 @@ type Lead = {
   ai_extracted_data: Record<string, unknown> | null
 }
 
-/** A clinic open noon to 10 PM, and one visitor talking to it */
+/**
+ * A clinic open noon to 10 PM that asks for a full name (the rule these
+ * tests check: two parts, one re-ask, never a loop), and one visitor talking to it
+ */
 async function visitor() {
-  const seeded = await seedClient()
+  const seeded = await seedClient({ nameStrictness: 'two_parts' })
   await openEveryDay(seeded, '12:00', '22:00')
   const visitorId = newVisitorId()
   let conversationId: string | undefined

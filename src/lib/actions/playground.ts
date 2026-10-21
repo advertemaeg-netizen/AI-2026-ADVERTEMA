@@ -1,13 +1,13 @@
 'use server'
 
 import { loadBotSettings, runBot, type BotClient } from '@/lib/ai/bot'
-import { confirmsItself, replyLanguage, resolveAppointment } from '@/lib/ai/appointment'
+import { confirmsItself, replyLanguage, resolveAppointment, resolveDay, withoutTime } from '@/lib/ai/appointment'
 import { withEvidence } from '@/lib/ai/evidence'
 import { composeReply } from '@/lib/ai/compose'
 import { canManage, getSession, isImpersonating } from '@/lib/auth/session'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checkClientLimit, guardLimit } from '@/lib/subscription-limits'
-import { botSettingsSchema, type BotSettingsInput } from '@/lib/types/bot-settings'
+import { botSettingsSchema, effectiveBookingMode, type BotSettingsInput } from '@/lib/types/bot-settings'
 import { UUID_PATTERN } from '@/lib/types/clients'
 import {
   PLAYGROUND_MAX_MESSAGE_LENGTH,
@@ -108,9 +108,14 @@ export async function testBot(
     // Only what the latest message shows a trace of, as the widget takes it.
     // No draft here: a test chat keeps nothing between messages.
     const evidenced = appointment ? withEvidence(appointment, visitorMessages.at(-1) ?? '').request : null
-    const resolved = evidenced
-      ? resolveAppointment(evidenced, { businessHours: settings.business_hours, hourFromPartOfDay: false })
-      : ({ status: 'none' } as const)
+    // The business's booking shape, as the widget applies it (runBot already
+    // drops any booking with none)
+    const mode = effectiveBookingMode(settings)
+    const resolved = !evidenced
+      ? ({ status: 'none' } as const)
+      : mode === 'day_only'
+        ? resolveDay(withoutTime(evidenced), { businessHours: settings.business_hours })
+        : resolveAppointment(evidenced, { businessHours: settings.business_hours, hourFromPartOfDay: false })
     // Nothing is saved from a test chat either: a reply that states what is
     // on record says there is nothing, as it would to a visitor with no lead
     const reply = composeReply({
@@ -121,6 +126,7 @@ export async function testBot(
       language: replyLanguage(settings.language, visitorMessages.at(-1) ?? ''),
       appointmentDecided: Boolean(appointment),
       otherAnswer,
+      rules: { mode, nameStrictness: settings.name_strictness },
       outcome:
       resolved.status === 'resolved'
         ? {

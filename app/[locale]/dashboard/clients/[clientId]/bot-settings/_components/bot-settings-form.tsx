@@ -32,11 +32,13 @@ import { cn } from '@/lib/utils'
 import { updateBotSettings } from '@/lib/actions/bot-settings'
 import { BOT_PRESET_NAMES, BOT_PRESETS, type BotPresetName } from '@/lib/constants/bot-presets'
 import {
+  BOOKING_MODES,
   BOT_LANGUAGES,
   BOT_TIMEZONES,
   BOT_TONES,
   DEFAULT_BUSINESS_HOURS,
   MESSAGE_MAX,
+  NAME_STRICTNESS,
   SYSTEM_PROMPT_MAX,
   WEEK_DAYS,
   botSettingsSchema,
@@ -217,19 +219,50 @@ export function BotSettingsForm({
             <FieldGroup>
               <Controller
                 control={control}
-                name="lead_qualification_enabled"
+                name="booking_mode"
                 render={({ field }) => (
-                  <Field orientation="horizontal">
-                    <FieldContent>
-                      <FieldLabel htmlFor="lead_qualification_enabled">{t('fields.leadQualification')}</FieldLabel>
-                      <FieldDescription>{t('hints.leadQualification')}</FieldDescription>
-                    </FieldContent>
-                    <Switch
-                      id="lead_qualification_enabled"
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
+                  <Field>
+                    <FieldLabel htmlFor="booking_mode">{t('fields.bookingMode')}</FieldLabel>
+                    {/* Unset follows the opening hours: shown as its own choice, saved as null */}
+                    <Select
+                      value={field.value ?? 'auto'}
+                      onValueChange={(value) => field.onChange(value === 'auto' ? null : value)}
                       disabled={field.disabled}
-                    />
+                    >
+                      <SelectTrigger id="booking_mode" className="w-full sm:w-96">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(['auto', ...BOOKING_MODES] as const).map((mode) => (
+                          <SelectItem key={mode} value={mode}>
+                            {t(`bookingModes.${mode}`)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FieldDescription>{t('hints.bookingMode')}</FieldDescription>
+                  </Field>
+                )}
+              />
+              <Controller
+                control={control}
+                name="name_strictness"
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel htmlFor="name_strictness">{t('fields.nameStrictness')}</FieldLabel>
+                    <Select value={field.value} onValueChange={field.onChange} disabled={field.disabled}>
+                      <SelectTrigger id="name_strictness" className="w-full sm:w-96">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {NAME_STRICTNESS.map((strictness) => (
+                          <SelectItem key={strictness} value={strictness}>
+                            {t(`nameStrictness.${strictness}`)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FieldDescription>{t('hints.nameStrictness')}</FieldDescription>
                   </Field>
                 )}
               />

@@ -52,6 +52,8 @@ export async function getUpcomingAppointments(
   let query = supabase
     .from('leads')
     .select(APPOINTMENT_COLUMNS)
+    // Leads only: RLS hides the rest from clients, this keeps a super admin's view the same
+    .eq('is_complete', true)
     .gte('appointment_at', from.toISOString())
     .order('appointment_at', { ascending: true })
     .limit(LIST_LIMIT)

@@ -73,6 +73,8 @@ export async function getBranches(clientId: string): Promise<Branch[]> {
       .from('leads')
       .select('branch_id, appointment_at')
       .eq('client_id', clientId)
+      // Leads only: RLS hides the rest from clients, this keeps a super admin's counts the same
+      .eq('is_complete', true)
       .not('branch_id', 'is', null)
       .returns<{ branch_id: string; appointment_at: string | null }[]>(),
   ])

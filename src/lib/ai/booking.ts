@@ -3,12 +3,17 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   confirmsItself,
   openingAt,
+  parseBookingDraft,
   resolveAppointment,
+  resolveDay,
   sameInstant,
   type AppointmentRequest,
+  type BookingDraft,
   type BookingOutcome,
 } from '@/lib/ai/appointment'
 import { MAX_PHONE_REJECTIONS, missingDetails, type ContactEvents, type ContactState } from '@/lib/ai/contact'
+import { cairoParts } from '@/lib/cairo-time'
+import type { BookingMode } from '@/lib/types/bot-settings'
 import type { SavedRecord } from '@/lib/ai/compose'
 import { normalizePhone } from '@/lib/phone'
 import type { BusinessHours } from '@/lib/types/bot-settings'
@@ -24,9 +29,10 @@ type BookableLead = {
   showed_up: boolean | null
   ai_appointment: AiAppointment | null
   ai_extracted_data: LeadExtractedData | null
+  booking_draft: unknown
 }
 
-const COLUMNS = 'id, name, phone, status, appointment_at, appointment_confirmed, showed_up, ai_appointment, ai_extracted_data'
+const COLUMNS = 'id, name, phone, status, appointment_at, appointment_confirmed, showed_up, ai_appointment, ai_extracted_data, booking_draft'
 
 const isClosed = (lead: BookableLead) => CLOSED_LEAD_STATUSES.includes(lead.status)
 
@@ -42,15 +48,22 @@ async function loadLeads(supabase: SupabaseClient, conversationId: string) {
 }
 
 /**
- * Writes the visitor's name and number, as code accepted them, on the
- * conversation's open lead, before the reply is rendered — and returns what
- * the lead row then holds, which is the only thing the reply may state as
- * saved. A valid phone number opens a lead when there is none: a number the
- * visitor was told nothing about must not be a number the clinic never got.
+ * THE LEAD IS WRITTEN AS IT ARRIVES. Whatever this message gave toward it —
+ * the visitor's name or number as code accepted them, the partial booking
+ * (the draft) — goes onto the conversation's open lead now, before the reply
+ * is rendered and before anything is booked; the first of them opens the
+ * lead. Every later piece updates that same row. Nothing waits for a complete
+ * set, so a failure further on (the booking write, the reply) cannot take
+ * back what was already given (the 20 October booking lost at confirmation).
  *
- * The assistant fills an empty field, or replaces a value that is still its
- * own (the visitor corrected it); anything the team edited stays.
- * Throws on a database error.
+ * A row is a lead the client sees once it holds a name and a phone
+ * (leads.is_complete, enforced by RLS); until then only a super admin does.
+ *
+ * Returns what the lead row then holds, which is the only thing the reply may
+ * state as saved. The assistant fills an empty field, or replaces a value
+ * that is still its own (the visitor corrected it); anything the team edited
+ * stays. `draft`: the partial booking to store (null clears it); undefined
+ * leaves it as it is. Throws on a database error.
  */
 export async function saveContact({
   supabase,
@@ -59,27 +72,36 @@ export async function saveContact({
   sourceMessageId,
   contact,
   events,
+  draft,
 }: {
   supabase: SupabaseClient
   clientId: string
   conversationId: string
   sourceMessageId: string | null
   contact: ContactState
+  /** What this message did to the name and number: only something it gave opens a lead */
   events: ContactEvents
+  draft?: BookingDraft | null
 }): Promise<SavedRecord> {
   const leads = await loadLeads(supabase, conversationId)
   let open = leads.find((lead) => !isClosed(lead)) ?? null
   const traced = { accepted_name: contact.name, accepted_phone: contact.phone, name_incomplete: contact.nameIncomplete }
+  const draftPatch = draft === undefined ? {} : { booking_draft: draft }
 
   if (!open) {
-    if (events.phone !== 'stored') return { name: null, phone: null }
+    // A lead opens with something THIS message gave: a name or number carried
+    // over from an earlier episode is not new (a customer who came back to
+    // say thanks has not started another)
+    const gave = events.name === 'stored' || events.name === 'stored_incomplete' || events.phone === 'stored' || Boolean(draft)
+    if (!gave) return { name: null, phone: null }
     const returningFrom = leads.findLast(isClosed) ?? null
-    const row = { name: contact.name ?? returningFrom?.name ?? null, phone: contact.phone }
+    const row = { name: contact.name ?? returningFrom?.name ?? null, phone: contact.phone ?? returningFrom?.phone ?? null }
     const { error } = await supabase.from('leads').insert({
       client_id: clientId,
       conversation_id: conversationId,
       source_message_id: sourceMessageId,
       ...row,
+      ...draftPatch,
       status: 'new',
       ai_extracted_data: traced,
     })
@@ -100,14 +122,32 @@ export async function saveContact({
     const aiOwned = !current || current === (previous[`accepted_${key}`] ?? previous[key])
     if (value && !same && aiOwned) patch[key] = value
   }
-  if (Object.keys(patch).length > 0) {
+  if (Object.keys(patch).length > 0 || draft !== undefined) {
     const { error } = await supabase
       .from('leads')
-      .update({ ...patch, ai_extracted_data: { ...previous, ...traced } })
+      .update({ ...patch, ...draftPatch, ...(Object.keys(patch).length > 0 ? { ai_extracted_data: { ...previous, ...traced } } : {}) })
       .eq('id', open.id)
     if (error) throw error
   }
   return { name: patch.name ?? open.name, phone: patch.phone ?? open.phone }
+}
+
+/**
+ * Where the conversation's open lead stands on a booking: a day (and time)
+ * held for the visitor's details (confirmPending can book it on this
+ * message), and the partial booking written so far. Throws on a database error.
+ */
+export async function bookingState(
+  supabase: SupabaseClient,
+  conversationId: string
+): Promise<{ held: boolean; draft: BookingDraft | null; hasDraft: boolean }> {
+  const open = (await loadLeads(supabase, conversationId)).find((lead) => !isClosed(lead)) ?? null
+  return {
+    held: Boolean(open?.ai_appointment?.pending && !open.appointment_at),
+    draft: parseBookingDraft(open?.booking_draft),
+    // A lead whose booking_draft was never written: rows from before it existed fall back to the message trace
+    hasDraft: open !== null && open.booking_draft !== undefined && open.booking_draft !== null,
+  }
 }
 
 /**
@@ -136,6 +176,7 @@ export async function recordAppointment({
   source,
   contact,
   hourFromPartOfDay = true,
+  mode = 'appointment',
   now = new Date(),
 }: {
   supabase: SupabaseClient
@@ -157,14 +198,19 @@ export async function recordAppointment({
   contact: ContactState | null
   /** resolveAppointment's: false where the visitor can be asked for the hour (the reply) */
   hourFromPartOfDay?: boolean
+  /** 'day_only': a day is booked, never a time (resolveDay); otherwise a day and a time */
+  mode?: Exclude<BookingMode, 'none'>
   now?: Date
 }): Promise<BookingOutcome> {
   const leads = await loadLeads(supabase, conversationId)
   let open = leads.find((lead) => !isClosed(lead)) ?? null
 
+  const dayOnly = mode === 'day_only'
   // A time-only change ("make it 7") keeps the day already on record, or asked for
   const keepDayOf = open?.appointment_at ?? (open?.ai_appointment?.pending ? open.ai_appointment.at : null)
-  const resolved = resolveAppointment(request, { now, keepDayOf, businessHours, hourFromPartOfDay })
+  const resolved = dayOnly
+    ? resolveDay(request, { now, businessHours })
+    : resolveAppointment(request, { now, keepDayOf, businessHours, hourFromPartOfDay })
   if (resolved.status !== 'resolved') return resolved
 
   const returningFrom = leads.findLast(isClosed) ?? null
@@ -179,6 +225,8 @@ export async function recordAppointment({
     source,
     ...(missing.length > 0 ? { pending: true as const } : {}),
     ...(request.needs_team_check === true ? { needs_team_check: true as const } : {}),
+    // The day is the booking; the stored time only places it on that day
+    ...(dayOnly ? { day_only: true as const } : {}),
   }
   const needsDetails: BookingOutcome = {
     status: 'needs_details',
@@ -286,7 +334,9 @@ export async function confirmPending({
     if (error) throw error
     return outcome
   }
-  if (new Date(pending.at).getTime() < now.getTime()) return drop({ status: 'past' })
+  // A day-only visit has gone when its day has, not its placing time
+  const gone = pending.day_only ? dayKey(pending.at) < dayKey(now) : new Date(pending.at).getTime() < now.getTime()
+  if (gone) return drop({ status: 'past' })
   if (businessHours?.enabled) {
     const opening = openingAt(businessHours, pending.at)
     if (!opening.open) return drop({ status: 'outside_hours', hours: opening.day })
@@ -306,7 +356,14 @@ export async function confirmPending({
     confirmed: pending.confirmed,
     source: pending.source,
     ...(pending.needs_team_check ? { needs_team_check: true as const } : {}),
+    ...(pending.day_only ? { day_only: true as const } : {}),
   })
+}
+
+/** "2026-10-22": a Cairo calendar day, comparable as text */
+function dayKey(at: string | Date) {
+  const { year, month, day } = cairoParts(at)
+  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
 /**

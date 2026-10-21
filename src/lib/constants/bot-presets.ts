@@ -3,10 +3,10 @@ import type { BotSettingsInput } from '@/lib/types/bot-settings'
 export const BOT_PRESET_NAMES = ['clinic', 'restaurant', 'ecommerce', 'customerService'] as const
 export type BotPresetName = (typeof BOT_PRESET_NAMES)[number]
 
-/** Values a preset fills in; language, business hours, appointment confirmation and the service-down message are left as they are. */
+/** Values a preset fills in; language, business hours, the booking shape, the name rule, appointment confirmation and the service-down message are left as they are. */
 export type BotPreset = Omit<
   BotSettingsInput,
-  'language' | 'business_hours' | 'auto_confirm_appointments' | 'service_unavailable_message'
+  'language' | 'business_hours' | 'auto_confirm_appointments' | 'service_unavailable_message' | 'booking_mode' | 'name_strictness'
 >
 
 export const BOT_PRESETS: Record<BotPresetName, BotPreset> = {
@@ -23,7 +23,6 @@ export const BOT_PRESETS: Record<BotPresetName, BotPreset> = {
     welcome_message: 'أهلاً بيك في العيادة 👋 تحب تحجز موعد ولا عندك استفسار عن خدماتنا؟',
     fallback_message:
       'مش عندي المعلومة دي دلوقتي، بس سيب لي اسمك ورقم تليفونك وحد من فريق الاستقبال هيتواصل معاك ويفيدك.',
-    lead_qualification_enabled: true,
   },
   restaurant: {
     system_prompt:
@@ -37,7 +36,6 @@ export const BOT_PRESETS: Record<BotPresetName, BotPreset> = {
     welcome_message: 'أهلاً بيك! 🍽️ جعان؟ قولي تحب تطلب إيه أو أساعدك تختار من المنيو.',
     fallback_message:
       'المعلومة دي مش عندي دلوقتي، بس سيب لي رقمك وحد من المطعم هيكلمك حالاً.',
-    lead_qualification_enabled: true,
   },
   ecommerce: {
     system_prompt:
@@ -51,7 +49,6 @@ export const BOT_PRESETS: Record<BotPresetName, BotPreset> = {
     welcome_message: 'أهلاً بيك في متجرنا 🛍️ بتدور على حاجة معينة؟ أقدر أساعدك تلاقيها.',
     fallback_message:
       'مش متأكد من المعلومة دي، سيب لي اسمك ورقمك وفريق خدمة العملاء هيرد عليك في أسرع وقت.',
-    lead_qualification_enabled: true,
   },
   customerService: {
     system_prompt:
@@ -65,6 +62,5 @@ export const BOT_PRESETS: Record<BotPresetName, BotPreset> = {
     welcome_message: 'أهلاً بيك 👋 أنا هنا عشان أساعدك. إيه اللي محتاج مساعدة فيه النهارده؟',
     fallback_message:
       'آسف، مش عندي إجابة أكيدة على ده. سيب لي اسمك ورقم تليفونك وحد من الفريق هيتواصل معاك.',
-    lead_qualification_enabled: true,
   },
 }

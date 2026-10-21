@@ -1,4 +1,5 @@
 import { isOnlyANumber, normalizePhone, phoneLikeRuns, toLatinDigits } from '@/lib/phone'
+import type { BookingMode, NameStrictness } from '@/lib/types/bot-settings'
 
 /**
  * The visitor's name and phone number, as the conversation establishes them.
@@ -48,16 +49,20 @@ const NAME_TOKEN = /^[\p{L}\p{M}]+(?:['’\-][\p{L}\p{M}]+)*$/u
 const MARKS = /\p{M}/gu
 
 /**
- * A full name: at least two words, each of two letters or more, letters only
- * (any script; tashkeel, an apostrophe or a hyphen inside a word are fine).
- * Returns it with its spacing tidied, or null.
+ * A name as the business asks for it. 'two_parts': at least two words, each
+ * of two letters or more. 'single': whatever name the visitor gives, one word
+ * or more. Either way letters only (any script; tashkeel, an apostrophe or a
+ * hyphen inside a word are fine): digits are not a name. Returns it with its
+ * spacing tidied, or null.
  */
-export function validateName(input: string | null | undefined): string | null {
+export function validateName(input: string | null | undefined, strictness: NameStrictness = 'two_parts'): string | null {
   const name = (input ?? '').trim().replace(/\s+/g, ' ')
+  if (!name) return null
   const words = name.split(' ')
+  if (!words.every((word) => NAME_TOKEN.test(word))) return null
+  if (strictness === 'single') return name
   if (words.length < 2) return null
-  const fullWords = words.every((word) => NAME_TOKEN.test(word) && word.replace(MARKS, '').length >= 2)
-  return fullWords ? name : null
+  return words.every((word) => word.replace(MARKS, '').length >= 2) ? name : null
 }
 
 // Spelling the model may tidy when it copies a name: hamzas, ى/ي, ة/ه, tatweel, case
@@ -99,7 +104,9 @@ export function readContact(
   report: ContactReport | null,
   message: string,
   /** Every message the visitor wrote in this conversation, this one included */
-  visitorMessages: string[]
+  visitorMessages: string[],
+  /** How much of a name the business asks for (bot_settings.name_strictness) */
+  strictness: NameStrictness = 'two_parts'
 ): { state: ContactState; events: ContactEvents } {
   const state: ContactState = { ...previous }
   const events: ContactEvents = { name: 'none', phone: 'none' }
@@ -125,12 +132,14 @@ export function readContact(
 
   const reportedName = (report?.name ?? '').trim().replace(/\s+/g, ' ')
   const given = reportedName && writtenByVisitor(reportedName, visitorMessages) ? reportedName : null
-  const full = validateName(given)
+  const full = validateName(given, strictness)
   if (full) {
+    // Stored is news only when it changes the record: the model repeating a
+    // name already held is not the visitor giving it (nor a new lead)
+    if (full !== previous.name || previous.nameIncomplete || previous.pendingName !== null) events.name = 'stored'
     state.name = full
     state.nameIncomplete = false
     state.pendingName = null
-    events.name = 'stored'
   } else if (previous.pendingName !== null) {
     // Asked once already: take what they gave, then or now
     state.name = given ?? previous.pendingName
@@ -171,18 +180,25 @@ export function missingDetails(name: string | null, phone: string | null): ('nam
  * given up on — the loop the escape hatch exists to prevent, moved into the
  * model.
  */
-export function describeContact(state: ContactState): string {
+export function describeContact(state: ContactState, mode: BookingMode = 'appointment'): string {
+  // With no booking there is nothing for the system to ask after: the model asks, as its instructions say
+  const notYet = (what: 'name' | 'phone') =>
+    mode === 'none'
+      ? `The visitor's ${what === 'name' ? 'name' : 'phone number'} is not on record yet.`
+      : what === 'name'
+        ? `The visitor's name is not on record yet: the system asks for it once the ${mode === 'day_only' ? 'day is chosen' : 'appointment is complete'}, so don't ask for it yourself.`
+        : "The visitor's phone number is not on record yet: the system asks for it after the name, so don't ask for it yourself."
   const lines = [
     state.name
       ? "The visitor's name is on record: don't ask for it again."
       : state.pendingName
         ? "The visitor gave a name that is not a full one: don't ask for it again, whatever they answer; the system takes it as given."
-        : "The visitor's name is not on record yet: the system asks for it once the appointment is complete, so don't ask for it yourself.",
+        : notYet('name'),
     state.phone
       ? "The visitor's phone number is on record: don't ask for it again."
       : state.phoneRejections >= MAX_PHONE_REJECTIONS
         ? 'The visitor has sent numbers that are not phone numbers, and the team will take their number: do NOT ask for a phone number again.'
-        : "The visitor's phone number is not on record yet: the system asks for it after the name, so don't ask for it yourself.",
+        : notYet('phone'),
   ]
   return `What the system holds for this visitor (before their latest message):\n${lines.map((line) => `- ${line}`).join('\n')}`
 }
