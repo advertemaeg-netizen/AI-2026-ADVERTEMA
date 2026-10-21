@@ -60,7 +60,7 @@
       "title": "Every message you don't answer is an ad you paid for.",
       "subtitle": "Mudrik answers your customers in a second — on WhatsApp, Facebook, Instagram and your site — using your own information, books their appointments, and records every lead in one place.",
       "cta_primary": "Create an account",
-      "cta_secondary": "Have us set it up"
+      "cta_secondary": "We'll set it up for you"
     },
     "problem": {
       "title": "The problem isn't that you don't answer. It's that you can't see what you lost.",
@@ -112,8 +112,8 @@
           "body": "Name, number, service and appointment, in one list you can follow and export."
         },
         {
-          "label": "It speaks Egyptian",
-          "body": "Not a translation. It understands the dialect and answers in it, and reads a phone number however it's written."
+          "label": "It speaks to your customers in their own dialect",
+          "body": "Not a translation. It understands your customers' Egyptian as they write it, answers in it, and reads a phone number however it's typed."
         }
       ]
     },
@@ -141,7 +141,7 @@
       "cta": "See the plans"
     },
     "closing": {
-      "title": "See it on your own business",
+      "title": "See it with your real customers",
       "body": "Enter your information, connect a channel, and watch the bot answer your real customers.",
       "cta_primary": "Create an account",
       "cta_secondary": "Talk to us"
@@ -149,7 +149,7 @@
   },
   "business": {
     "hero": {
-      "title": "Your business answers for itself, while you sleep",
+      "title": "Your business answers for itself, even while you sleep",
       "body": "Mudrik knows your hours, services, prices and branches, and answers everyone who asks — on WhatsApp, Facebook, Instagram and your site.",
       "cta": "Create an account"
     },
