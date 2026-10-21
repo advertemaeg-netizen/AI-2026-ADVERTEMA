@@ -18,20 +18,18 @@ export const ctaPrimary =
 export const ctaSecondary =
   'inline-flex min-h-12 items-center justify-center rounded-full border border-primary/30 bg-white/90 px-6 text-base font-semibold text-primary'
 
-/* 1 — the hero: the headline, the calls, the breadth line, and the product answering for itself */
+/* 1 — the hero: the headline, the calls, and the product answering for itself */
 export function Hero({
   title,
   subtitle,
   primary,
   secondary,
-  sectors,
   demo,
 }: {
   title: string
   subtitle: string
   primary: Cta
   secondary: Cta
-  sectors: string
   demo: { language: 'ar' | 'en'; label: string; visitor: string[]; bot: BotTemplates; builtAt: string }
 }) {
   return (
@@ -51,10 +49,6 @@ export function Hero({
             {secondary.label}
           </Link>
         </div>
-        {/* The breadth line: quiet, no icons, no logos */}
-        <p className="site-rise text-sm tracking-wide" style={{ '--i': 3 } as React.CSSProperties}>
-          {sectors}
-        </p>
       </div>
       <div className="relative">
         {/* Depth: the mark, large, behind the conversation, drifting with the page */}

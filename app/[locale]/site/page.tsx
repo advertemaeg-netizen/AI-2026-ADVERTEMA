@@ -46,7 +46,6 @@ export default async function HomePage({ params }: Props) {
         subtitle={home.hero.subtitle}
         primary={{ label: home.hero.cta_primary, href: signup }}
         secondary={{ label: home.hero.cta_secondary, href: contact }}
-        sectors={home.hero.sectors}
         demo={{
           language,
           label: home.hero.demo.label,

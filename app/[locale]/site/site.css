@@ -29,7 +29,7 @@
 
 /* Type: generous, and fluid between a phone and a wide screen */
 .site-display {
-  font-size: clamp(2.6rem, 1.6rem + 4.6vw, 5.75rem);
+  font-size: clamp(2.1rem, 1.4rem + 3.2vw, 4.25rem);
   line-height: 1.05;
   font-weight: 800;
   letter-spacing: -0.02em;
