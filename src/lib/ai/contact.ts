@@ -1,4 +1,11 @@
 import { isOnlyANumber, normalizePhone, phoneLikeRuns, toLatinDigits } from '@/lib/phone'
+import {
+  DAY_ONLY_NAME_NOT_YET_AR,
+  DAY_ONLY_PHONE_NOT_YET_AR,
+  NONE_NAME_NOT_YET_AR,
+  NONE_PHONE_NOT_YET_AR,
+  RECORD_HEADER_AR,
+} from '@/lib/ai/prompts-ar'
 import type { BookingMode, NameStrictness } from '@/lib/types/bot-settings'
 
 /**
@@ -181,12 +188,18 @@ export function missingDetails(name: string | null, phone: string | null): ('nam
  * model.
  */
 export function describeContact(state: ContactState, mode: BookingMode = 'appointment'): string {
-  // With no booking there is nothing for the system to ask after: the model asks, as its instructions say
+  // Day-only and no booking: the copy owner's Arabic (prompts-ar.ts). With no
+  // booking there is nothing for the system to ask after: the model asks, as
+  // its instructions say. Appointments keep their English lines.
+  const NOT_YET_AR = {
+    day_only: { name: DAY_ONLY_NAME_NOT_YET_AR, phone: DAY_ONLY_PHONE_NOT_YET_AR },
+    none: { name: NONE_NAME_NOT_YET_AR, phone: NONE_PHONE_NOT_YET_AR },
+  }
   const notYet = (what: 'name' | 'phone') =>
-    mode === 'none'
-      ? `The visitor's ${what === 'name' ? 'name' : 'phone number'} is not on record yet.`
+    mode !== 'appointment'
+      ? NOT_YET_AR[mode][what]
       : what === 'name'
-        ? `The visitor's name is not on record yet: the system asks for it once the ${mode === 'day_only' ? 'day is chosen' : 'appointment is complete'}, so don't ask for it yourself.`
+        ? "The visitor's name is not on record yet: the system asks for it once the appointment is complete, so don't ask for it yourself."
         : "The visitor's phone number is not on record yet: the system asks for it after the name, so don't ask for it yourself."
   const lines = [
     state.name
@@ -200,7 +213,8 @@ export function describeContact(state: ContactState, mode: BookingMode = 'appoin
         ? 'The visitor has sent numbers that are not phone numbers, and the team will take their number: do NOT ask for a phone number again.'
         : notYet('phone'),
   ]
-  return `What the system holds for this visitor (before their latest message):\n${lines.map((line) => `- ${line}`).join('\n')}`
+  const header = mode === 'appointment' ? 'What the system holds for this visitor (before their latest message):' : RECORD_HEADER_AR
+  return `${header}\n${lines.map((line) => `- ${line}`).join('\n')}`
 }
 
 /** messages.metadata.contact → the state, tolerant of what older messages hold */

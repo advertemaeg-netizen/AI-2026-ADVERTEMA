@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { cairoParts, cairoWallTimeToIso, CAIRO_TZ } from '@/lib/cairo-time'
+import { DAY_ONLY_BOOKING_AR, DAY_ONLY_ORDER_AR, NO_BOOKING_AR } from '@/lib/ai/prompts-ar'
 import type { JsonSchema } from '@/lib/ai/providers/types'
 import type { BookingMode, BotLanguage, BusinessHours, NameStrictness, WeekDay } from '@/lib/types/bot-settings'
 import ar from '../../../messages/ar.json'
@@ -140,55 +141,25 @@ export const APPOINTMENT_INSTRUCTIONS = [JSON_ANSWER, CONTACT_REPORTING, APPOINT
  * For a business that books a day, first come first served. The model may
  * still report an hour; code drops it (withoutTime) and no time is ever asked
  * for or confirmed by code, so these lines are a request and the code is the
- * guarantee.
+ * guarantee. The booking section is the copy owner's Arabic (prompts-ar.ts);
+ * the two shared paragraphs above it stay English, as in appointments.
  */
-export const DAY_ONLY_INSTRUCTIONS = [
-  JSON_ANSWER,
-  CONTACT_REPORTING,
-  `Bookings ("appointment"): this business books a DAY, not a time. Visitors come on the day they chose and are seen in the order they arrive.
-- When the visitor's latest message asks for, agrees to or changes the day of a visit, fill "appointment" with the day THEY said, as components, with "hour" and "minute" null and "period" unspecified. Report, don't calculate: no dates worked out from "tomorrow" or a weekday.
-${DAY_TYPE_LINE}
-- Never ask for a time, never offer or suggest one, and never write a time for the visit. If the visitor names a time anyway, report only the day.
-- needs_team_check: true when the information you were given says the business is closed or unavailable that day (a holiday, a doctor who is away), or you cannot tell whether it can be honoured. Report the day all the same: the system decides what becomes of it.
-- Report only what the latest message itself says: the system holds what earlier messages gave.
-- Whenever "appointment" is not null, the SYSTEM writes everything the visitor is told about the booking: whether it is recorded, refused, or still needs their name or number. Your "reply" is NOT shown to the visitor on that turn.
-- "other_answer": when the same message ALSO asked about something that is not the booking (a price, an address, a doctor), answer that here, and only that. Null when the message asked nothing else, and null whenever "appointment" is null, unless you are told below that a day the visitor asked for earlier is held.
-- When "appointment" is null and you mention a visit the visitor already has, write ${APPOINTMENT_PLACEHOLDER} in "reply" exactly where its day belongs, and never write the day yourself. Never say that something is booked or confirmed yourself.
-- Without a specific day ("next week", "soon"), "appointment" is null: ask which day.
-- "appointment" is null whenever the latest message isn't about booking a visit.`,
-].join('\n\n')
-
-/** For a business that does not book through the chat: the team follows up on every lead */
-export const NO_BOOKING_INSTRUCTIONS = [
-  JSON_ANSWER,
-  CONTACT_REPORTING,
-  `Bookings: this business does not book through this chat. "appointment" and "other_answer" are always null.
-- Never say or imply that anything is booked, reserved, held or confirmed, and never offer a day or a time.
-- When the visitor wants a service, a booking or to be contacted, the team follows up with them by phone: ask for their name, and then their mobile number, one per message, unless the system already holds it (said below).`,
-].join('\n\n')
+export const DAY_ONLY_INSTRUCTIONS = [JSON_ANSWER, CONTACT_REPORTING, DAY_ONLY_BOOKING_AR].join('\n\n')
 
 /**
- * The day-only booking order: the day, then the name, then the number. No
- * hour anywhere. It replaces BOOKING_ORDER_INSTRUCTIONS, whose second step is
- * the hour, for these businesses.
+ * For a business that does not book through the chat: the team follows up on
+ * every lead. The one mode where the model itself asks for the name and the
+ * number, as the code works (prompts-ar.ts).
  */
-export const DAY_ONLY_ORDER_INSTRUCTIONS = `## Booking order
+export const NO_BOOKING_INSTRUCTIONS = [JSON_ANSWER, CONTACT_REPORTING, NO_BOOKING_AR].join('\n\n')
 
-First the day of the visit, then the contact details. Don't mix them.
-
-1. The day.
-Then, once the day is accepted:
-2. The name.
-3. The mobile number.
-
-Fixed rules:
-- Ask for one thing per message.
-- Don't ask for the name or the number before the day is chosen.
-- Never ask about a time: this business books days, not times.
-- Don't ask again for something the visitor already said.
-- Don't say the visit is booked before the day, the name and the number are all given.
-
-This order overrides any other order given earlier in these instructions.`
+/**
+ * The day-only booking order: the day is the model's step, the name and the
+ * number are the system's, listed so the model knows where the conversation
+ * stands. It replaces BOOKING_ORDER_INSTRUCTIONS, whose second step is the
+ * hour; its last line is that order's own, byte for byte (prompts-ar.ts).
+ */
+export const DAY_ONLY_ORDER_INSTRUCTIONS = DAY_ONLY_ORDER_AR
 
 /** Removes the hour from what was reported: a day-only business never takes one */
 export function withoutTime<T extends Pick<AppointmentRequest, 'hour' | 'minute' | 'period'>>(request: T): T {
