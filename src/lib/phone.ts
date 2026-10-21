@@ -17,6 +17,27 @@ export function toLatinDigits(text: string) {
   return text.replace(ARABIC_INDIC_DIGITS, (d) => String('٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹'.indexOf(d) % 10))
 }
 
+// Invisible format characters: direction marks (LRM, RLM, ALM), isolates,
+// joiners. A phone inserts them between the groups of a number copied out of
+// its contacts in an Arabic interface; they are never part of the number.
+const INVISIBLE = /\p{Cf}/gu
+// "13/10", "13/10/2026", "2026/10/13": a day, not a number split by slashes
+const SLASH_DATE = /^(?:\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|\d{4}\/\d{1,2}\/\d{1,2})$/
+
+/**
+ * A text as the phone functions read it: Latin digits, no invisible marks,
+ * and the separators people type inside a number ("010/12345678",
+ * "010_1234_5678", "010،1234،5678") read as spaces. The Arabic comma and the
+ * underscore count only between two digits with nothing around them: "،"
+ * followed by a space separates two numbers, not the groups of one.
+ */
+function phoneText(text: string) {
+  return toLatinDigits(text)
+    .replace(INVISIBLE, '')
+    .replace(/(?<=\d)[_،](?=\d)/g, ' ')
+    .replace(/\d+(?:\/\d+)+/g, (token) => (SLASH_DATE.test(token) ? token : token.replace(/\//g, ' ')))
+}
+
 /**
  * A phone number as E.164, or null when it isn't one the team can reach.
  *
@@ -33,7 +54,7 @@ export function toLatinDigits(text: string) {
  */
 export function normalizePhone(input: string | null | undefined): string | null {
   if (!input) return null
-  const text = toLatinDigits(input).trim()
+  const text = phoneText(input).trim()
   let digits = text.replace(/\D/g, '')
   const international = /^(\+|00)/.test(text)
   if (text.startsWith('00')) digits = digits.slice(2)
@@ -53,20 +74,27 @@ const MIN_PHONE_LIKE_DIGITS = 7
  * one of them is a phone number is normalizePhone's to say.
  */
 export function phoneLikeRuns(text: string): string[] {
-  const runs = toLatinDigits(text).match(/(?:\+|00)?\d(?:[\s\-.()]{0,2}\d){5,}/g) ?? []
+  const runs = phoneText(text).match(/(?:\+|00)?\d(?:[\s\-.()]{0,2}\d){5,}/g) ?? []
   return runs
     .map((run) => (run.trim().startsWith('+') ? '+' : '') + run.replace(/\D/g, ''))
     .filter((run) => run.replace(/\D/g, '').length >= MIN_PHONE_LIKE_DIGITS)
 }
 
-// "13-10-2026", "13.10": an answer to "which day?", not a phone number
-const DATE_LIKE = /^\d{1,2}[\-.]\d{1,2}(?:[\-.]\d{2,4})?$/
+// "13-10-2026", "13.10", "13/10/2026", "2026-10-13": an answer to "which day?", not a phone number
+// "1900-500+200": a sum. A "+" after a digit, or any other operator; a leading "+" is a country code
+const ARITHMETIC = /\d\s*\+|[=*×÷]/
+const DATE_LIKE = /^(?:\d{1,2}\s*[\-./]\s*\d{1,2}(?:\s*[\-./]\s*\d{2,4})?|\d{4}\s*[\-./]\s*\d{1,2}\s*[\-./]\s*\d{1,2})$/
 
-/** A message that is nothing but a number: "879995233130", "0100 284-7901" */
+/**
+ * A message that is nothing but a number: "879995233130", "0100 284-7901",
+ * "01012345678 🙏". No letters and enough digits, whatever sits between
+ * them: a separator nobody has seen yet makes the number one code reads
+ * (normalizePhone keeps the digits) or rejects out loud, never one it ignores.
+ */
 export function isOnlyANumber(text: string) {
-  const latin = toLatinDigits(text).trim()
-  if (DATE_LIKE.test(latin)) return false
-  return /^\+?[\d\s\-.()]+$/.test(latin) && latin.replace(/\D/g, '').length >= MIN_PHONE_LIKE_DIGITS
+  const latin = toLatinDigits(text).replace(INVISIBLE, '').trim()
+  if (DATE_LIKE.test(latin) || ARITHMETIC.test(latin)) return false
+  return !/\p{L}/u.test(latin) && latin.replace(/\D/g, '').length >= MIN_PHONE_LIKE_DIGITS
 }
 
 /**
