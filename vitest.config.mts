@@ -17,5 +17,8 @@ export default defineConfig({
     fileParallelism: false,
     testTimeout: 30_000,
     hookTimeout: 120_000,
+    // next-intl's ESM imports 'next/server' without an extension, which Node's
+    // resolver refuses; inlined, Vite resolves it (tests/meta imports the proxy)
+    server: { deps: { inline: ['next-intl'] } },
   },
 })
