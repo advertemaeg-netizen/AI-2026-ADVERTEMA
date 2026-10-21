@@ -53,7 +53,7 @@ describe('past the message limit', () => {
     expect(check).toMatchObject({ used: limit, limit, percentage: 100, reason: 'limit_reached' })
   })
 
-  it('captures the last message of the allowance (twice the limit in total) and nothing after it', async () => {
+  it('analyses the last message of the allowance (twice the limit in total) and nothing after it, and keeps every number', async () => {
     mockGemini(geminiWorks)
     const seeded = await seedClient()
     const limit = await atMessageLimit(seeded, (l) => l - 1)
@@ -62,11 +62,16 @@ describe('past the message limit', () => {
     expect(calls('analysis')).toBe(1)
     expect(await state(seeded)).toEqual({ leads: LEAD, messagesUsed: limit, captured: limit })
 
-    // Allowance spent: no model call at all, and both counters stop
+    // Allowance spent: no model call at all, and both counters stop. The
+    // number the next visitor typed is still kept (code reads it, no AI): a
+    // plan limits what a client sees, never what is stored
     await sendVisitorMessage(seeded.channelId, INTRO_MESSAGE)
     expect(calls('reply')).toBe(0)
     expect(calls('analysis')).toBe(1)
-    expect(await state(seeded)).toEqual({ leads: LEAD, messagesUsed: limit, captured: limit })
+    const after = await state(seeded)
+    expect(after).toMatchObject({ messagesUsed: limit, captured: limit })
+    expect(after.leads).toHaveLength(2)
+    expect(after.leads).toEqual(expect.arrayContaining([...LEAD, { name: null, phone: '+201012345678' }]))
   })
 
   it('takes nothing from the allowance for a message the bot answered', async () => {
@@ -127,7 +132,7 @@ describe('failures before the reply', () => {
     expect((await state(seeded)).leads).toEqual(LEAD)
   })
 
-  it('analyses nothing while the limit check keeps failing: no AI cost without a known subscription', async () => {
+  it('analyses nothing while the limit check keeps failing: no AI cost without a known subscription, and the number is kept', async () => {
     mockGemini(geminiWorks)
     const seeded = await seedClient()
     failRest('/rpc/check_client_limit', 2)
@@ -136,6 +141,7 @@ describe('failures before the reply', () => {
 
     expect(status).toBe(502)
     expect(geminiCalls).toEqual([])
-    expect((await state(seeded)).leads).toEqual([])
+    // Read by code before any of it: no AI, and nothing discarded
+    expect((await state(seeded)).leads).toEqual([{ name: null, phone: '+201012345678' }])
   })
 })

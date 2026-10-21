@@ -1011,7 +1011,8 @@
       "validation": "Invalid date.",
       "unknown": "Something went wrong. Please try again.",
       "impersonating": "Changes aren’t allowed while viewing a customer’s account"
-    }
+    },
+    "firstCome": "In order of arrival"
   },
   "journey": {
     "unnamed": "Unnamed",

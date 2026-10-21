@@ -9,7 +9,7 @@ import type { LeadVisit } from '@/lib/types/leads'
 export async function getConversationLeads(supabase: SupabaseClient, conversationId: string): Promise<LeadVisit[]> {
   const { data, error } = await supabase
     .from('leads')
-    .select('id, status, service_requested, appointment_at, created_at')
+    .select('id, status, service_requested, appointment_at, ai_appointment, created_at')
     .eq('conversation_id', conversationId)
     // Leads only: RLS hides the rest from clients, this keeps a super admin's view the same
     .eq('is_complete', true)

@@ -17,6 +17,7 @@ import { displayPhone, telHref, whatsappHref } from '@/lib/phone'
 import {
   APPOINTMENT_RANGES,
   appointmentState,
+  isDayOnlyVisit,
   type Appointment,
   type AppointmentRange,
 } from '@/lib/types/appointments'
@@ -109,7 +110,10 @@ export function AppointmentsView({
                           dateTime={appointment.appointment_at}
                           className="min-w-16 shrink-0 whitespace-nowrap text-lg font-semibold tabular-nums"
                         >
-                          {format.dateTime(new Date(appointment.appointment_at), { timeStyle: 'short' })}
+                          {/* A day-only visit has no time: what it has instead is the arrival order */}
+                          {isDayOnlyVisit(appointment)
+                            ? t('firstCome')
+                            : format.dateTime(new Date(appointment.appointment_at), { timeStyle: 'short' })}
                         </time>
 
                         <div className="min-w-0 flex-1">

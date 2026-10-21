@@ -3,10 +3,11 @@ import { ArrowDown, CalendarDays, UserCheck } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { AppointmentStateBadge } from '@/components/appointments/appointment-state-badge'
-import { appointmentState, type Appointment, type JourneyStats } from '@/lib/types/appointments'
+import { appointmentState, isDayOnlyVisit, type Appointment, type JourneyStats } from '@/lib/types/appointments'
 
 export function TodayAppointmentsCard({ appointments }: { appointments: Appointment[] }) {
   const t = useTranslations('journey')
+  const tAppointments = useTranslations('appointments')
   const format = useFormatter()
   const shown = appointments.slice(0, 5)
 
@@ -35,8 +36,11 @@ export function TodayAppointmentsCard({ appointments }: { appointments: Appointm
                   href={`/dashboard/leads/${appointment.id}`}
                   className="flex items-center gap-2 rounded-md text-sm hover:bg-accent/60 max-md:min-h-11"
                 >
-                  <span className="w-14 shrink-0 font-medium tabular-nums">
-                    {format.dateTime(new Date(appointment.appointment_at), { timeStyle: 'short' })}
+                  <span className={isDayOnlyVisit(appointment) ? 'shrink-0 text-xs font-medium' : 'w-14 shrink-0 font-medium tabular-nums'}>
+                    {/* A day-only visit has no time: what it has instead is the arrival order */}
+                    {isDayOnlyVisit(appointment)
+                      ? tAppointments('firstCome')
+                      : format.dateTime(new Date(appointment.appointment_at), { timeStyle: 'short' })}
                   </span>
                   <span className="min-w-0 flex-1 truncate">{appointment.name || t('unnamed')}</span>
                   <AppointmentStateBadge state={appointmentState(appointment)} />

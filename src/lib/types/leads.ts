@@ -28,6 +28,7 @@ export type LeadVisit = {
   status: LeadStatus
   service_requested: string | null
   appointment_at: string | null
+  ai_appointment: Pick<AiAppointment, 'at' | 'day_only'> | null
   created_at: string
 }
 

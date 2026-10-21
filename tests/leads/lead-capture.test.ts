@@ -3,6 +3,7 @@ import ar from '../../messages/ar.json'
 import {
   DAY_ONLY_ORDER_INSTRUCTIONS,
   NO_BOOKING_INSTRUCTIONS,
+  appointmentLine,
   formatAppointment,
   formatVisitDay,
   resolveDay,
@@ -11,6 +12,7 @@ import {
 import { BOOKING_ORDER_INSTRUCTIONS } from '@/lib/ai/booking-order'
 import { buildSystemPrompt } from '@/lib/ai/bot'
 import { EMPTY_CONTACT, validateName } from '@/lib/ai/contact'
+import { appointmentState, isDayOnlyVisit } from '@/lib/types/appointments'
 import { effectiveBookingMode, type BotSettingsInput, type BusinessHours } from '@/lib/types/bot-settings'
 import { createUser, geminiError, geminiText, interceptRest, mockGemini, seedClient, serviceClient, userClient, type GeminiCall } from '../harness/helpers'
 import { analyseTranscript, botReply, lastVisitorMessage, newVisitorId, openEveryDay, sendVisitorMessage } from './webhook'
@@ -82,6 +84,32 @@ describe('1. the name and the phone never depend on a switch', () => {
 
     await say(NUMBER)
     expect((await rows())[0]).toMatchObject({ phone: STORED })
+  })
+
+  it('stores a number sent while a person is answering, without the paid analysis finding it', async () => {
+    mockGemini((call) => {
+      if (call.kind === 'embedding') return Response.json({ error: { message: 'no embeddings in tests' } }, { status: 503 })
+      // The analysis reads nothing: only code's own reading can store the number
+      if (call.kind === 'analysis') return geminiText(JSON.stringify({ is_lead: false, confidence: 0, name: null, phone: null }))
+      return botReply('أهلاً')
+    })
+    const { say, rows, supabase, clientId } = await visitor()
+    await say('السلام عليكم')
+    // This client's one conversation
+    const { data: conversation } = await supabase.from('conversations').select('id').eq('client_id', clientId).single()
+    await supabase.from('conversations').update({ auto_reply_enabled: false }).eq('id', conversation!.id)
+
+    expect(await say(NUMBER)).toBeNull()
+    expect((await rows())[0]).toMatchObject({ phone: STORED })
+  })
+
+  it('asks for one missing detail at a time: never a list of them, so no joining word in any language', () => {
+    const at = '2026-10-20T10:00:00.000Z'
+    for (const mode of ['appointment', 'day_only'] as const) {
+      const line = appointmentLine({ status: 'needs_details', at, missing: ['name', 'phone'], handoff: false }, 'ar', { mode, nameStrictness: 'single' })
+      expect(line).toContain(APPOINTMENT.missingNameAny)
+      expect(line).not.toContain(APPOINTMENT.missingPhone)
+    }
   })
 
   it('stores the name and the number for a business that books nothing, and says the team will follow up once both are there', async () => {
@@ -302,6 +330,25 @@ describe('3. the booking shape is the business\'s', () => {
     expect(prompt('none')).toContain(NO_BOOKING_INSTRUCTIONS)
     // The name and the number are asked to be reported in every shape
     for (const mode of ['appointment', 'day_only', 'none'] as const) expect(prompt(mode)).toContain('"contact"')
+  })
+})
+
+describe('a day-only visit in the dashboard', () => {
+  // Placed at 13:00 Cairo on Tuesday 20 October 2026
+  const at = '2026-10-20T10:00:00.000Z'
+  const visit = { appointment_at: at, showed_up: null, ai_appointment: { at, day_only: true as const } }
+
+  it('is day-only only while it stays where the assistant placed it: a time the team sets is a real one', () => {
+    expect(isDayOnlyVisit(visit)).toBe(true)
+    expect(isDayOnlyVisit({ ...visit, appointment_at: '2026-10-20T12:30:00.000Z' })).toBe(false)
+    expect(isDayOnlyVisit({ ...visit, ai_appointment: { at } })).toBe(false)
+  })
+
+  it('is not late at its placing time, only once its day has gone', () => {
+    expect(appointmentState(visit, new Date('2026-10-20T15:00:00Z'))).toBe('today')
+    expect(appointmentState(visit, new Date('2026-10-21T08:00:00Z'))).toBe('late')
+    // The same instant as an ordinary appointment is late by then
+    expect(appointmentState({ ...visit, ai_appointment: null }, new Date('2026-10-20T15:00:00Z'))).toBe('late')
   })
 })
 

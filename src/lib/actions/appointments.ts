@@ -17,7 +17,7 @@ import {
 
 const APPOINTMENT_COLUMNS = `
   id, name, phone, service_requested, status, appointment_at, appointment_confirmed,
-  showed_up, arrival_confirmed_at, no_show_reason, client:clients!inner(id, name)`
+  showed_up, arrival_confirmed_at, no_show_reason, ai_appointment, client:clients!inner(id, name)`
 
 const LIST_LIMIT = 300
 const PERIOD_DAYS: Record<JourneyPeriod, number> = { '7d': 7, '30d': 30, '90d': 90 }

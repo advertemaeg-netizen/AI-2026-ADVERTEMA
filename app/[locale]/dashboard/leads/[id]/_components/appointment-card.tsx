@@ -19,7 +19,7 @@ import {
   setAppointment,
   setAppointmentConfirmed,
 } from '@/lib/actions/appointments'
-import { appointmentState, type AppointmentActionResult } from '@/lib/types/appointments'
+import { appointmentState, isDayOnlyVisit, type AppointmentActionResult } from '@/lib/types/appointments'
 import type { LeadDetail } from '@/lib/types/leads'
 
 export function AppointmentCard({ lead }: { lead: LeadDetail }) {
@@ -46,8 +46,10 @@ export function AppointmentCard({ lead }: { lead: LeadDetail }) {
   }
 
   const state = lead.appointment_at
-    ? appointmentState({ appointment_at: lead.appointment_at, showed_up: lead.showed_up })
+    ? appointmentState({ appointment_at: lead.appointment_at, showed_up: lead.showed_up, ai_appointment: lead.ai_appointment })
     : null
+  // A day-only visit: its day and the arrival order are shown, never the time it is stored at
+  const dayOnly = isDayOnlyVisit(lead)
   const ai = lead.ai_extracted_data
   // Still the time the assistant set
   const aiTime =
@@ -75,8 +77,14 @@ export function AppointmentCard({ lead }: { lead: LeadDetail }) {
       <CardContent className="grid gap-4">
         <div className="grid gap-2">
           <Label>{t('section.when')}</Label>
+          {dayOnly && (
+            <p className="text-sm font-medium">
+              {format.dateTime(new Date(lead.appointment_at!), { weekday: 'long', day: 'numeric', month: 'long' })} · {t('firstCome')}
+            </p>
+          )}
+          {/* For a day-only visit the picker starts empty: what it would show is a time nobody chose. The team can still set one. */}
           <CairoDateTimePicker
-            value={lead.appointment_at}
+            value={dayOnly ? null : lead.appointment_at}
             placeholder={t('section.pick')}
             disabled={isPending}
             allowPast

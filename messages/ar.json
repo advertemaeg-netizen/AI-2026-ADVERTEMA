@@ -589,8 +589,8 @@
       "hoursEnabled": "تفعيل ساعات العمل",
       "timezone": "المنطقة الزمنية",
       "autoConfirmAppointments": "تأكيد المواعيد تلقائياً",
-      "bookingMode": "Booking",
-      "nameStrictness": "Visitor’s name"
+      "bookingMode": "الحجز",
+      "nameStrictness": "اسم الزائر"
     },
     "hints": {
       "systemPrompt": "اكتب من هو المساعد، وماذا يفعل، وما الممنوع عليه.",
@@ -601,8 +601,8 @@
       "hoursEnabled": "يُضاف الجدول والوقت الحالي لتعليمات المساعد.",
       "overnight": "إذا كان وقت الإغلاق قبل وقت الفتح (مثلاً من 12:00 إلى 02:00) فهذا يعني الإغلاق بعد منتصف الليل.",
       "autoConfirmAppointments": "مفعّل: المساعد يسجّل الموعد ويؤكده للزائر فوراً. متوقف: المساعد يسجّله ويخبر الزائر أنه سيتم تأكيده، ويؤكده فريقك بضغطة من صفحة الليد.",
-      "bookingMode": "How the assistant books. Whatever you choose, it always takes the visitor’s name and mobile number.",
-      "nameStrictness": "How much of a name the assistant asks for before it takes it."
+      "bookingMode": "طريقة الحجز لدى المساعد. ومهما كان اختيارك، فهو يأخذ دائمًا اسم الزائر ورقم هاتفه.",
+      "nameStrictness": "مقدار الاسم الذي يطلبه المساعد قبل قبوله."
     },
     "tones": {
       "friendly": "ودود",
@@ -657,14 +657,14 @@
       "impersonating": "لا يمكن التعديل أثناء مشاهدة حساب عميل"
     },
     "bookingModes": {
-      "auto": "Automatic: appointments once opening hours are set, otherwise none",
-      "appointment": "A day and a time",
-      "day_only": "A day only (first come, first served)",
-      "none": "No booking: the team follows up"
+      "auto": "تلقائي: مواعيد محددة بعد إدخال مواعيد العمل، ولا حجز قبلها",
+      "appointment": "يوم وساعة محددة",
+      "day_only": "يوم فقط — الدخول بأسبقية الحضور",
+      "none": "بدون حجز — الفريق يتواصل مع الزائر"
     },
     "nameStrictness": {
-      "single": "Any name the visitor gives",
-      "two_parts": "At least two names (first and family)"
+      "single": "أي اسم يعطيه الزائر",
+      "two_parts": "اسمان على الأقل (الأول والعائلة)"
     }
   },
   "leads": {
@@ -1011,7 +1011,8 @@
       "validation": "تاريخ غير صالح.",
       "unknown": "حدث خطأ غير متوقع. حاول مرة أخرى.",
       "impersonating": "لا يمكن التعديل أثناء مشاهدة حساب عميل"
-    }
+    },
+    "firstCome": "بأسبقية الحضور"
   },
   "journey": {
     "unnamed": "بدون اسم",
@@ -2040,13 +2041,13 @@
       "needDetailsHandoff": "طلبك للحجز يوم {time} متسجّل كطلب، وحد من فريقنا هيتواصل معاك هنا عشان يكمّله.",
       "missingName": "اسمك بالكامل",
       "missingPhone": "رقم موبايلك",
-      "bookedDay": "Done — you're booked for {day}. Visits that day are seen in order of arrival, and someone from our team will call you to confirm.",
-      "keptDay": "You already have a visit booked for {day}. If you'd like to change it, someone from our team will be in touch.",
-      "needDetailsDay": "To book {day} I need {missing}.",
-      "needDetailsDayHandoff": "Your request for {day} is noted, and someone from our team will contact you here to complete it.",
-      "pastDay": "That day has already passed. Which day would suit you?",
-      "missingNameAny": "your name",
-      "bookingSaveFailed": "Sorry — I couldn't complete the booking just now. Everything you've given me is saved, and someone from our team will make sure it's booked."
+      "bookedDay": "تمام — حجزك يوم {day}. الدخول بأسبقية الحضور، وحد من الفريق هيكلمك يأكدلك.",
+      "keptDay": "عندك حجز بالفعل يوم {day}. لو عايز تغيّره، حد من الفريق هيتواصل معاك.",
+      "needDetailsDay": "عشان أحجزلك يوم {day} محتاج {missing}.",
+      "needDetailsDayHandoff": "طلبك ليوم {day} اتسجّل، وحد من الفريق هيكلمك هنا عشان يكمّله.",
+      "pastDay": "اليوم ده عدّى خلاص. أنهي يوم يناسبك؟",
+      "missingNameAny": "اسمك",
+      "bookingSaveFailed": "آسف — مقدرتش أكمّل الحجز دلوقتي. كل اللي قولتهولي محفوظ، وحد من الفريق هيتأكد إن الحجز اتعمل."
     },
     "contact": {
       "phoneInvalid": "الرقم ده مش مظبوط. رقم الموبايل لازم يكون 11 رقم ويبدأ بـ 01، أو رقم دولي يبدأ بـ +. ممكن تبعته تاني؟",
@@ -2057,7 +2058,7 @@
       "noPhoneOnRecord": "لسه مفيش رقم موبايل متسجّل عندنا.",
       "phoneOnRecord": "رقم الموبايل المتسجّل عندنا: {phone}.",
       "noNameOnRecord": "لسه مفيش اسم متسجّل عندنا.",
-      "followUp": "Thank you — someone from our team will contact you shortly."
+      "followUp": "شكرًا — حد من الفريق هيتواصل معاك قريب."
     }
   },
   "settings": {

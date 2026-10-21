@@ -2,6 +2,7 @@
 
 import { useFormatter, useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
+import { isDayOnlyVisit } from '@/lib/types/appointments'
 import type { LeadVisit } from '@/lib/types/leads'
 import { LeadStatusBadge } from './lead-status-badge'
 
@@ -11,6 +12,7 @@ import { LeadStatusBadge } from './lead-status-badge'
  */
 export function LeadVisitsList({ visits }: { visits: { visit: LeadVisit; number: number }[] }) {
   const t = useTranslations('leads.visits')
+  const tAppointments = useTranslations('appointments')
   const format = useFormatter()
   const date = (value: string, withTime: boolean) =>
     format.dateTime(new Date(value), withTime ? { dateStyle: 'medium', timeStyle: 'short' } : { dateStyle: 'medium' })
@@ -30,7 +32,12 @@ export function LeadVisitsList({ visits }: { visits: { visit: LeadVisit; number:
             {visit.service_requested && <span className="truncate">{visit.service_requested}</span>}
             <span className="text-xs text-muted-foreground">
               {visit.appointment_at
-                ? t('appointment', { date: date(visit.appointment_at, true) })
+                ? t('appointment', {
+                    // A day-only visit: the day, and the arrival order instead of a time
+                    date: isDayOnlyVisit(visit)
+                      ? `${date(visit.appointment_at, false)} · ${tAppointments('firstCome')}`
+                      : date(visit.appointment_at, true),
+                  })
                 : t('noAppointment', { date: date(visit.created_at, false) })}
             </span>
           </Link>

@@ -308,6 +308,28 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       .map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }))
     const visitorMessages = recent.filter((m) => m.role === 'user').map((m) => m.content)
 
+    // A NUMBER THE VISITOR TYPED IS ALWAYS SAVED. It belongs to the person who
+    // typed it, expecting a call: no plan limit, takeover or failure may
+    // discard it. So code reads it first — before a person's takeover, before
+    // the plan's limits, before the model is called — and writes it. Reading
+    // it costs nothing. A plan decides what a client may SEE, never what is
+    // stored. (The name needs the model's report; it is read with the reply.)
+    const early = readContact(previousContact, null, message, visitorMessages)
+    if (early.events.phone === 'stored') {
+      try {
+        await saveContact({
+          supabase,
+          clientId: channel.client_id,
+          conversationId,
+          sourceMessageId: userMessage.id,
+          contact: { ...previousContact, phone: early.state.phone },
+          events: { name: 'none', phone: 'stored' },
+        })
+      } catch (error) {
+        console.error('[webhook/website] saving the phone number failed', error)
+      }
+    }
+
     let settings: BotSettingsInput | null = null
     try {
       settings = await loadBotSettings(supabase, channel.client_id)
@@ -423,27 +445,6 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
     // visitor is not asked again for what they gave.
     const resumable =
       mode !== 'none' && previousDraft !== null && resolvesWhole(previousDraft, mode, settings.business_hours)
-
-    // THE PHONE IS CODE'S TO READ, so it is read and written before the model
-    // is called: a reply that fails cannot lose a number the visitor sent. (The
-    // name needs the model's report; it is read after.) After the plan's limits
-    // above, as every capture is: a person's takeover and a plan past its
-    // limit are left to the analysis, as before.
-    const early = readContact(previousContact, null, message, visitorMessages, settings.name_strictness)
-    if (early.events.phone === 'stored') {
-      try {
-        await saveContact({
-          supabase,
-          clientId: channel.client_id,
-          conversationId,
-          sourceMessageId: userMessage.id,
-          contact: { ...previousContact, phone: early.state.phone },
-          events: { name: 'none', phone: 'stored' },
-        })
-      } catch (error) {
-        console.error('[webhook/website] saving the phone number failed', error)
-      }
-    }
 
     try {
       // A day or time held from earlier may become the appointment on this

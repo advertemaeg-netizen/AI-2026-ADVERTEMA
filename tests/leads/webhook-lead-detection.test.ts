@@ -36,7 +36,7 @@ describe('website webhook: lead detection', () => {
     ])
   })
 
-  it('never calls the model, for the reply or the analysis, when the subscription is inactive', async () => {
+  it('never calls the model when the subscription is inactive, and still keeps the number the visitor typed', async () => {
     const { supabase, clientId, channelId } = await seedClient()
     const { error } = await supabase.from('client_subscriptions').update({ status: 'cancelled' }).eq('client_id', clientId)
     expect(error).toBeNull()
@@ -50,8 +50,10 @@ describe('website webhook: lead detection', () => {
     expect(body.ok).toBe(true)
     expect(geminiCalls).toEqual([])
 
-    const { data: leads } = await supabase.from('leads').select('id').eq('client_id', clientId)
-    expect(leads).toEqual([])
+    // A plan decides what a client sees, never what is stored: the number is
+    // kept (read by code, no AI), on a row the client sees once it has a name
+    const { data: leads } = await supabase.from('leads').select('name, phone, is_complete').eq('client_id', clientId)
+    expect(leads).toEqual([{ name: null, phone: '+201012345678', is_complete: false }])
     const { data: messages } = await supabase
       .from('messages')
       .select('role, metadata')
