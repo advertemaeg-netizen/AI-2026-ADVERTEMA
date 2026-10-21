@@ -12,6 +12,8 @@ import { describe, expect, it } from 'vitest'
  *
  * The one exception under the site is the legal pages: publishing a version
  * expires the current page of that document, at page level, and nothing else.
+ * The pages' addresses are not the documents' names (LEGAL_PAGES,
+ * src/site/config.ts): /privacy-policy is the document 'privacy'.
  */
 
 const ROOT = path.resolve(import.meta.dirname, '../..')
@@ -23,11 +25,18 @@ const LEGAL_DOCUMENTS = (() => {
   return [...list[1].matchAll(/'([^']*)'/g)].map((m) => m[1])
 })()
 
+/** The legal pages' addresses ('/privacy-policy'), read from the code the same way */
+const LEGAL_PAGES = (() => {
+  const map = readFileSync(path.join(ROOT, 'src/site/config.ts'), 'utf8').match(/LEGAL_PAGES = \{([^}]*)\}/)
+  if (!map) throw new Error('LEGAL_PAGES not found in src/site/config.ts')
+  return [...map[1].matchAll(/'([^']*)'/g)].map((m) => m[1])
+})()
+
 /** Template variables that stand for one of a known set of values */
-const KNOWN_VALUES: Record<string, string[]> = { document: LEGAL_DOCUMENTS }
+const KNOWN_VALUES: Record<string, string[]> = { document: LEGAL_DOCUMENTS, legalPage: LEGAL_PAGES }
 
 /** A site path a publish may expire, at page level: a legal document's page, or its earlier versions' */
-const LEGAL_PAGE = new RegExp(`^/(\\[locale\\]|ar|en)/site/(${LEGAL_DOCUMENTS.join('|')})(/v/(\\[version\\]|[1-9]\\d{0,2}))?$`)
+const LEGAL_PAGE = new RegExp(`^/(\\[locale\\]|ar|en)/site(${LEGAL_PAGES.join('|')})(/v/(\\[version\\]|[1-9]\\d{0,2}))?$`)
 
 function sources(dir: string): string[] {
   return readdirSync(path.join(ROOT, dir), { withFileTypes: true, recursive: true })
@@ -63,7 +72,8 @@ function calls(): Call[] {
           if (!values) return null
           outs = outs.flatMap((out) => values.map((value) => out.replace(`\${${name}}`, value)))
         }
-        return outs
+        // An expression this can't read (${PAGES[document]}) would otherwise pass as text
+        return outs.some((out) => out.includes('${')) ? null : outs
       }
       if (strings.has(arg)) return [strings.get(arg)!]
       const array = loopVars.get(arg)
@@ -84,6 +94,37 @@ function calls(): Call[] {
 
 const where = (c: Call) => `${c.file}:${c.line}`
 
+/** At layout level, anywhere but the dashboard or the admin panel */
+const tooWide = (c: Call) => c.type === 'layout' && c.paths?.some((p) => !/^\/\[locale\]\/(dashboard|admin)(\/|$)/.test(p))
+
+/** Under the site, and not a legal page at page level (a call without a type names one concrete page) */
+const reachesSite = (c: Call) => c.paths?.some((p) => /\/site(\/|$)/.test(p) && !(c.type !== 'layout' && LEGAL_PAGE.test(p)))
+
+describe('the rules themselves', () => {
+  const call = (p: string, type: string | null): Call => ({ file: 'x.ts', line: 1, paths: [p], type })
+
+  it('allow the legal pages at page level, by their addresses', () => {
+    for (const p of ['/[locale]/site/privacy-policy', '/[locale]/site/terms-of-service', '/ar/site/terms-of-service/v/2']) {
+      expect(reachesSite(call(p, 'page')), p).toBe(false)
+      expect(tooWide(call(p, 'page')), p).toBe(false)
+    }
+  })
+
+  it('fail on a legal page, or the site, at layout level', () => {
+    for (const p of ['/[locale]/site/privacy-policy', '/[locale]/site/terms-of-service', '/[locale]/site']) {
+      expect(reachesSite(call(p, 'layout')), p).toBe(true)
+      expect(tooWide(call(p, 'layout')), p).toBe(true)
+    }
+  })
+
+  it('fail on any other site page, the documents’ names and the old addresses included', () => {
+    for (const p of ['/[locale]/site', '/[locale]/site/pricing', '/en/site', '/[locale]/site/privacy', '/[locale]/site/terms', '/[locale]/site/privacy-policyx', '/[locale]/site/privacy-policy/v/1000']) {
+      expect(reachesSite(call(p, 'page')), p).toBe(true)
+      expect(reachesSite(call(p, null)), p).toBe(true)
+    }
+  })
+})
+
 describe('revalidatePath across the code', () => {
   const all = calls()
 
@@ -97,10 +138,7 @@ describe('revalidatePath across the code', () => {
   })
 
   it('stays inside the dashboard or the admin panel at layout level', () => {
-    const wide = all.filter(
-      (c) => c.type === 'layout' && c.paths?.some((p) => !/^\/\[locale\]\/(dashboard|admin)(\/|$)/.test(p)),
-    )
-    expect(wide.map((c) => `${where(c)} ${c.paths} (layout)`)).toEqual([])
+    expect(all.filter(tooWide).map((c) => `${where(c)} ${c.paths} (layout)`)).toEqual([])
   })
 
   it('never reaches the root', () => {
@@ -109,13 +147,17 @@ describe('revalidatePath across the code', () => {
   })
 
   it('reaches the site only to expire a legal page, at page level', () => {
-    // A call without a type names one concrete page
-    const site = all.filter((c) => c.paths?.some((p) => /\/site(\/|$)/.test(p) && !(c.type !== 'layout' && LEGAL_PAGE.test(p))))
-    expect(site.map((c) => `${where(c)} ${c.paths} (${c.type ?? 'page'})`)).toEqual([])
+    expect(all.filter(reachesSite).map((c) => `${where(c)} ${c.paths} (${c.type ?? 'page'})`)).toEqual([])
   })
 
-  it('reads the legal documents it allows from the code', () => {
+  it('finds the publish’s own call, resolved to both legal pages', () => {
+    const publish = all.filter((c) => c.file === path.join('src', 'lib', 'actions', 'legal.ts') && c.paths?.some((p) => p.includes('/site')))
+    expect(publish.flatMap((c) => c.paths)).toEqual(['/[locale]/site/privacy-policy', '/[locale]/site/terms-of-service'])
+  })
+
+  it('reads the legal documents and pages it allows from the code', () => {
     expect(LEGAL_DOCUMENTS).toEqual(['privacy', 'terms'])
+    expect(LEGAL_PAGES).toEqual(['/privacy-policy', '/terms-of-service'])
   })
 })
 
@@ -130,8 +172,8 @@ describe('the site segment', () => {
 
   // A cached version page would store a 404 for every number anyone asks for
   it('never caches an earlier version of a legal page', () => {
-    for (const document of LEGAL_DOCUMENTS) {
-      const file = `app/[locale]/site/${document}/v/[version]/page.tsx`
+    for (const page of LEGAL_PAGES) {
+      const file = `app/[locale]/site${page}/v/[version]/page.tsx`
       const text = readFileSync(path.join(ROOT, file), 'utf8')
       expect(text, file).toMatch(/export\s+const\s+dynamic\s*=\s*'force-dynamic'/)
       expect(text, file).not.toMatch(/export\s+const\s+revalidate\b/)

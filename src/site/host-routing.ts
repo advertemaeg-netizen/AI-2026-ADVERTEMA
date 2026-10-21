@@ -1,5 +1,5 @@
 import { routing } from '@/i18n/routing'
-import { APP_ORIGIN, SITE_HOSTS, SITE_PAGES } from '@/site/config'
+import { APP_ORIGIN, LEGAL_PAGES, SITE_HOSTS, SITE_PAGES } from '@/site/config'
 
 /**
  * What a request is, by its host, before the product's own proxy runs.
@@ -16,19 +16,23 @@ export type HostRoute =
   | { kind: 'app' }
   /** A marketing page: serve it from the internal segment */
   | { kind: 'rewrite'; to: string }
-  | { kind: 'redirect'; to: string; status: 302 | 307 }
+  | { kind: 'redirect'; to: string; status: 301 | 302 | 307 }
   /** No locale yet on a site host: next-intl adds it (a redirect to /ar/…) */
   | { kind: 'locale' }
   /** The internal segment asked for on the app's host, or a legal version address that isn't one */
   | { kind: 'notFound'; locale: string }
 
 const LOCALES = routing.locales as readonly string[]
-// An earlier version of a legal page, at its own address: /privacy/v/3. One to
+const LEGAL = `(?:${Object.values(LEGAL_PAGES).map((page) => page.slice(1)).join('|')})`
+// An earlier version of a legal page, at its own address: /privacy-policy/v/3. One to
 // three digits, as parseVersion() reads them: anything longer never reaches a render
-const LEGAL_VERSION = /^\/(?:privacy|terms)\/v\/[1-9]\d{0,2}$/
+const LEGAL_VERSION = new RegExp(`^/${LEGAL}/v/[1-9]\\d{0,2}$`)
 // Anything else under a legal page's /v/ is a version that doesn't exist: the
 // same 404 as a number with no version behind it, not a trip to the app's host
-const LEGAL_VERSION_PREFIX = /^\/(?:privacy|terms)\/v(?:\/|$)/
+const LEGAL_VERSION_PREFIX = new RegExp(`^/${LEGAL}/v(?:/|$)`)
+// The legal pages' first addresses, and their versions': answered 200 on
+// 2026-10-20 and 21 before the move, so they are kept, permanently, as redirects
+const LEGAL_FORMER = /^\/(privacy|terms)(\/v(?:\/.*)?)?\/?$/
 // Files Next generates inside the segment (og-image, icons): the head tags point at them
 const SEGMENT_FILE = /^\/(?:opengraph-image|twitter-image|icon|apple-icon)(?:[-.?/]|$)/
 
@@ -44,6 +48,11 @@ export function hostRoute(host: string | null, pathname: string, search = ''): H
   }
 
   if (pathname.startsWith('/api/')) return { kind: 'redirect', to: `${APP_ORIGIN}${pathname}${search}`, status: 307 }
+  const former = after.match(LEGAL_FORMER)
+  if (former) {
+    const page = LEGAL_PAGES[former[1] as keyof typeof LEGAL_PAGES]
+    return { kind: 'redirect', to: `${locale ? `/${locale}` : ''}${page}${former[2] ?? ''}${search}`, status: 301 }
+  }
   if (!locale) {
     // "/" and "/pricing" get their locale first; anything else is the app's
     return (SITE_PAGES as readonly string[]).includes(pathname.replace(/\/$/, ''))

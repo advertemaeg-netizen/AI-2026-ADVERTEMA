@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { getSession } from '@/lib/auth/session'
 import { isSuperAdmin } from '@/lib/auth/permissions'
 import { LEGAL_CACHE_TAG, LEGAL_DOCUMENTS, type LegalDocument, type LegalLocale } from '@/lib/legal'
+import { LEGAL_PAGES } from '@/site/config'
 
 /**
  * The legal documents' editor (app/[locale]/admin/legal). A save is a new
@@ -97,7 +98,8 @@ export async function publishLegalVersion(input: {
   // The current page (the site's hosts rewrite into app/[locale]/site), both
   // languages. Earlier versions' addresses are never cached, so there is
   // nothing there to expire.
-  revalidatePath(`/[locale]/site/${document}`, 'page')
+  const legalPage = LEGAL_PAGES[document]
+  revalidatePath(`/[locale]/site${legalPage}`, 'page')
   revalidatePath('/[locale]/admin/legal', 'page')
   return { ok: true, version }
 }

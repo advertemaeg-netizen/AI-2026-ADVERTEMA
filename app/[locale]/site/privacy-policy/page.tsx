@@ -1,4 +1,5 @@
 import { setRequestLocale } from 'next-intl/server'
+import { LEGAL_PAGES } from '@/site/config'
 import { siteCopy } from '@/site/copy'
 import { LegalRoute } from '@/site/legal-route'
 import { siteMetadata } from '@/site/metadata'
@@ -10,12 +11,12 @@ export const revalidate = 300
 
 export async function generateMetadata({ params }: Props) {
   const { locale } = await params
-  return siteMetadata(locale, '/terms', siteCopy(locale).legal.terms)
+  return siteMetadata(locale, LEGAL_PAGES.privacy, siteCopy(locale).legal.privacy)
 }
 
-/** The current version of the terms, from public.legal_versions */
-export default async function TermsPage({ params }: Props) {
+/** The current version of the privacy policy, from public.legal_versions */
+export default async function PrivacyPage({ params }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
-  return <LegalRoute locale={locale} document="terms" />
+  return <LegalRoute locale={locale} document="privacy" />
 }

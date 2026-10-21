@@ -22,8 +22,16 @@ export const APP_ORIGIN = 'https://app.mudrik-ai.com'
  */
 export const SITE_HOSTS = ['mudrik-ai.com', 'www.mudrik-ai.com', 'site.localhost']
 
+/**
+ * Each legal document's page (public.legal_versions' `document` → its address).
+ * The key is the table's and can't change (its rows refuse UPDATE); the
+ * address is the site's. Their first addresses, /privacy and /terms (served
+ * 2026-10-20 to 21, never linked), 301 here (src/site/host-routing.ts).
+ */
+export const LEGAL_PAGES = { privacy: '/privacy-policy', terms: '/terms-of-service' } as const
+
 /** The site's pages, as paths after the locale ('' is the home page). Anything else on a site host is the app's. */
-export const SITE_PAGES = ['', '/for-businesses', '/for-agencies', '/pricing', '/contact', '/privacy', '/terms'] as const
+export const SITE_PAGES = ['', '/for-businesses', '/for-agencies', '/pricing', '/contact', LEGAL_PAGES.privacy, LEGAL_PAGES.terms] as const
 export type SitePage = (typeof SITE_PAGES)[number]
 
 /**
@@ -48,12 +56,11 @@ export const SITE_WHATSAPP = '+201010491850'
 export const SITE_EMAIL = 'contact@mudrik-ai.com'
 
 /**
- * The legal pages are drafts with [[placeholders]] until the company exists
- * and a lawyer has reviewed them. Off: the footer doesn't link them and they
- * are never indexed; they stay reachable by their URL. The same switch as the
- * signup checkbox (LEGAL_LINKED in src/lib/legal-linked.ts): the pages are linked and
- * acceptance is asked for together, once the review is done
- * (deploy/ROLLBACK.md).
+ * The legal pages are linked from the footer and indexable (with the rest of
+ * the site, SITE_INDEXABLE), and carry no draft notice. Off, they were
+ * reachable by their URL only. The same switch as the signup checkbox
+ * (LEGAL_LINKED in src/lib/legal-linked.ts): the pages are linked and
+ * acceptance is asked for together (deploy/ROLLBACK.md).
  */
 export const SITE_LEGAL_LINKED = LEGAL_LINKED
 

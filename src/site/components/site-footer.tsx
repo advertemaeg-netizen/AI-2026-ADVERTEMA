@@ -1,13 +1,13 @@
 import Link from 'next/link'
 import { BrandMark } from '@/components/brand'
-import { SITE_LEGAL_LINKED, type SitePage } from '@/site/config'
+import { LEGAL_PAGES, SITE_LEGAL_LINKED, type SitePage } from '@/site/config'
 import { siteCopy } from '@/site/copy'
 import { sitePath } from '@/site/paths'
 
 /**
  * The footer, on every page: the tagline, then the product and company
- * columns, and the legal one once the legal pages are linked
- * (SITE_LEGAL_LINKED: they are drafts until the review, deploy/ROLLBACK.md).
+ * columns, and the legal one while the legal pages are linked
+ * (SITE_LEGAL_LINKED, deploy/ROLLBACK.md).
  * The year in footer.rights is written out in the copy, not computed: it is
  * reviewed each January.
  */
@@ -28,8 +28,8 @@ export function SiteFooter({ locale }: { locale: string }) {
           {
             heading: copy.footer.legal,
             links: [
-              { page: '/privacy' as const, label: copy.footer.privacy },
-              { page: '/terms' as const, label: copy.footer.terms },
+              { page: LEGAL_PAGES.privacy, label: copy.footer.privacy },
+              { page: LEGAL_PAGES.terms, label: copy.footer.terms },
             ],
           },
         ]

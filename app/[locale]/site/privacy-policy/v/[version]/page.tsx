@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { setRequestLocale } from 'next-intl/server'
+import { LEGAL_PAGES } from '@/site/config'
 import { siteCopy } from '@/site/copy'
 import { LegalRoute, parseVersion } from '@/site/legal-route'
 import { siteMetadata } from '@/site/metadata'
@@ -16,7 +17,7 @@ export const dynamic = 'force-dynamic'
 export async function generateMetadata({ params }: Props) {
   const { locale } = await params
   // The canonical is the current version's address
-  return siteMetadata(locale, '/privacy', siteCopy(locale).legal.privacy)
+  return siteMetadata(locale, LEGAL_PAGES.privacy, siteCopy(locale).legal.privacy)
 }
 
 /** One version of the privacy policy, at its own address; it never changes */

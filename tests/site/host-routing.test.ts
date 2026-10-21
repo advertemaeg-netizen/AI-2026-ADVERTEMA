@@ -18,23 +18,57 @@ describe('on the site’s hosts', () => {
     ['/en/for-businesses', '/en/site/for-businesses'],
     ['/ar/for-agencies', '/ar/site/for-agencies'],
     ['/en/contact/', '/en/site/contact'],
-    ['/ar/privacy', '/ar/site/privacy'],
-    ['/en/terms', '/en/site/terms'],
+    ['/ar/privacy-policy', '/ar/site/privacy-policy'],
+    ['/en/privacy-policy', '/en/site/privacy-policy'],
+    ['/ar/terms-of-service', '/ar/site/terms-of-service'],
+    ['/en/terms-of-service/', '/en/site/terms-of-service'],
   ])('serves the marketing page %s from the internal segment', (path, to) => {
     expect(hostRoute(APEX, path)).toEqual({ kind: 'rewrite', to })
   })
 
   it('serves an earlier version of a legal page at its own address, and nothing else under it', () => {
-    expect(hostRoute(APEX, '/ar/privacy/v/3')).toEqual({ kind: 'rewrite', to: '/ar/site/privacy/v/3' })
-    expect(hostRoute(APEX, '/en/terms/v/12')).toEqual({ kind: 'rewrite', to: '/en/site/terms/v/12' })
-    expect(hostRoute(APEX, '/ar/privacy/v/999')).toEqual({ kind: 'rewrite', to: '/ar/site/privacy/v/999' })
+    expect(hostRoute(APEX, '/ar/privacy-policy/v/5')).toEqual({ kind: 'rewrite', to: '/ar/site/privacy-policy/v/5' })
+    expect(hostRoute(APEX, '/en/terms-of-service/v/2')).toEqual({ kind: 'rewrite', to: '/en/site/terms-of-service/v/2' })
+    expect(hostRoute(APEX, '/ar/privacy-policy/v/999')).toEqual({ kind: 'rewrite', to: '/ar/site/privacy-policy/v/999' })
     // Not a version number: the same 404 as a number with no version behind it
-    for (const path of ['/ar/privacy/v/0', '/ar/privacy/v/abc', '/ar/terms/v/3/x', '/ar/privacy/v/1000', '/ar/terms/v/0012', '/en/privacy/v', '/en/privacy/v/']) {
+    for (const path of [
+      '/ar/privacy-policy/v/0',
+      '/ar/privacy-policy/v/abc',
+      '/ar/terms-of-service/v/3/x',
+      '/ar/privacy-policy/v/1000',
+      '/ar/terms-of-service/v/0012',
+      '/en/privacy-policy/v',
+      '/en/privacy-policy/v/',
+    ]) {
       expect(hostRoute(APEX, path), path).toEqual({ kind: 'notFound', locale: path.split('/')[1] })
     }
     // Not a legal page: the app's, as before
     expect(hostRoute(APEX, '/ar/pricing/v/3').kind).toBe('redirect')
-    expect(hostRoute(APEX, '/ar/privacyx/v/3').kind).toBe('redirect')
+    expect(hostRoute(APEX, '/ar/privacy-policyx/v/3')).toMatchObject({ kind: 'redirect', status: 302 })
+    expect(hostRoute(APEX, '/ar/privacyx/v/3')).toMatchObject({ kind: 'redirect', status: 302 })
+  })
+
+  // Served 200 on 2026-10-20 and 21, before the move: somebody's history has them
+  it.each([
+    ['/ar/privacy', '/ar/privacy-policy'],
+    ['/en/privacy/', '/en/privacy-policy'],
+    ['/en/terms', '/en/terms-of-service'],
+    ['/ar/privacy/v/5', '/ar/privacy-policy/v/5'],
+    ['/en/terms/v/2', '/en/terms-of-service/v/2'],
+    // Lands on the new address's own 404, not the app's host
+    ['/ar/terms/v/abc', '/ar/terms-of-service/v/abc'],
+    ['/privacy', '/privacy-policy'],
+    ['/terms/v/1', '/terms-of-service/v/1'],
+  ])('moves the old address %s permanently to %s', (path, to) => {
+    expect(hostRoute(APEX, path)).toEqual({ kind: 'redirect', to, status: 301 })
+  })
+
+  it('keeps the query string on the move', () => {
+    expect(hostRoute(APEX, '/ar/terms', '?x=1')).toEqual({ kind: 'redirect', to: '/ar/terms-of-service?x=1', status: 301 })
+  })
+
+  it('takes the new address without a locale to next-intl first', () => {
+    expect(hostRoute(APEX, '/privacy-policy')).toEqual({ kind: 'locale' })
   })
 
   it('keeps the query string', () => {
@@ -79,7 +113,7 @@ describe('on the site’s hosts', () => {
 })
 
 describe('on the app’s host', () => {
-  it.each(['/ar/dashboard', '/ar/login', '/api/webhook/website/abc', '/ar', '/en/pricing'])('leaves %s to the product, as before', (path) => {
+  it.each(['/ar/dashboard', '/ar/login', '/api/webhook/website/abc', '/ar', '/en/pricing', '/ar/privacy'])('leaves %s to the product, as before', (path) => {
     expect(hostRoute(APP, path)).toEqual({ kind: 'app' })
   })
 

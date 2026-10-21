@@ -6,9 +6,8 @@ import { SitePage } from '@/site/components/site-page'
 
 /**
  * A legal page: one version of the document (public.legal_versions), its
- * date, and every version before it at its own address. Until the lawyer's
- * version is published the text is the imported draft, [[placeholders]]
- * visible on purpose (a draft shows what is missing), under the draft notice.
+ * date, and every version before it at its own address. While the pages are
+ * unlinked (SITE_LEGAL_LINKED off) it carries the draft notice.
  */
 export function LegalPage({
   locale,

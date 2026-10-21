@@ -11,18 +11,26 @@ redirect router back ("Rollback" below), not to redeploy.**
 Launch order, decided 2026-10-19: deploy main first and check
 app.mudrik-ai.com and sign-in; only then apply the Traefik change below.
 
-## DEFERRED, not cancelled: the legal pages
+## DONE 2026-10-21: the legal pages are linked
 
-/privacy and /terms are drafts with [[placeholders]]: the company that signs
-them doesn't exist yet, and the lawyer hasn't reviewed them. Decided
-2026-10-19: the site launches without them linked. `SITE_LEGAL_LINKED`
-(src/site/config.ts) is off, so the footer doesn't link them and they are
-never indexed; the routes stay reachable by their URL.
+The site launched on 2026-10-19 with the legal pages unlinked, as drafts.
 
-**The footer links go back when the review is done and the placeholders are
-filled**, and that is written here, with its date and who gave it:
+- Legal review confirmed by: Ahmed, 2026-10-21 — the text written with his
+  manager and the lawyer, published from the admin editor (current versions
+  then: Arabic privacy 5, terms 4; English privacy 2, terms 2).
 
-- Legal review confirmed by: _(not yet)_
+Their addresses moved in the same change: `/privacy-policy` and
+`/terms-of-service` in both languages (`LEGAL_PAGES`, src/site/config.ts).
+The database keeps the documents' names, `privacy` and `terms`. The first
+addresses, `/privacy` and `/terms` and their `/v/N`, 301 to the new ones
+(src/site/host-routing.ts) for good.
+
+**Turning it off again is a commit, a build and a deploy**: `LEGAL_LINKED` is
+a constant in the code, not an environment variable. Off, the footer column
+and the signup checkbox go, the draft notice comes back on the pages, and
+they are no longer indexable. Acceptances already recorded stay.
+
+The order it was done in, kept for the record:
 
 Since 2026-10-20 the texts live in the database (`public.legal_versions`,
 migration `20261029100000_legal_versions.sql`), edited in the admin area

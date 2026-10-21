@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { Checkbox } from '@/components/ui/checkbox'
 import { LEGAL_LINKED } from '@/lib/legal-linked'
 import { createClient } from '@/lib/supabase/client'
-import { SITE_ORIGIN } from '@/site/config'
+import { LEGAL_PAGES, SITE_ORIGIN } from '@/site/config'
 
 /**
  * "I agree to the Terms of Service and the Privacy Policy" at signup: a
@@ -14,9 +14,8 @@ import { SITE_ORIGIN } from '@/site/config'
  * accepted_legal) and recorded on their profile once (the trigger
  * record_legal_acceptance), as evidence of what they agreed to.
  *
- * Off with LEGAL_LINKED: the texts are pre-review drafts, and an acceptance of
- * a document with blanks in it would be a record of nothing. Off, nothing is
- * shown and nothing is sent, which is exactly today's signup.
+ * On with LEGAL_LINKED. Off, nothing is shown and nothing is sent: the signup
+ * as it was before the reviewed texts were published.
  */
 export function useLegalConsent() {
   const locale = useLocale() === 'en' ? 'en' : 'ar'
@@ -66,7 +65,7 @@ export function LegalConsentField({
   const t = useTranslations('auth.signup.consent')
   if (!consent.enabled) return null
   // "I agree to the [Terms of Service] and the [Privacy Policy]": the bracketed phrases, in that order
-  const targets = [`${SITE_ORIGIN}/${consent.locale}/terms`, `${SITE_ORIGIN}/${consent.locale}/privacy`]
+  const targets = [`${SITE_ORIGIN}/${consent.locale}${LEGAL_PAGES.terms}`, `${SITE_ORIGIN}/${consent.locale}${LEGAL_PAGES.privacy}`]
   let link = 0
   const label = t('label')
     .split(/(\[[^\]]+\])/)

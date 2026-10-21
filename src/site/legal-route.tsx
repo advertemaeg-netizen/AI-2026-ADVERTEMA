@@ -1,13 +1,13 @@
 import { notFound } from 'next/navigation'
 import { currentLegalVersion, legalHistory, legalVersion, type LegalDocument, type LegalLocale } from '@/lib/legal'
-import { SITE_LEGAL_LINKED } from '@/site/config'
+import { LEGAL_PAGES, SITE_LEGAL_LINKED } from '@/site/config'
 import { LegalPage } from '@/site/components/legal-page'
 import { siteCopy } from '@/site/copy'
 import { sitePath } from '@/site/paths'
 
 /**
  * The two legal routes, current and earlier versions (app/[locale]/site/
- * {privacy,terms}). The text is public.legal_versions'; the words around it
+ * {privacy-policy,terms-of-service}, LEGAL_PAGES). The text is public.legal_versions'; the words around it
  * are the copy file's.
  *
  * The current version is cached and regenerated every
@@ -18,8 +18,6 @@ import { sitePath } from '@/site/paths'
  * (their pages' `dynamic = 'force-dynamic'`).
  */
 export const LEGAL_REVALIDATE_SECONDS = 300
-
-const PATHS = { privacy: '/privacy', terms: '/terms' } as const
 
 const formatDate = (iso: string, locale: LegalLocale) =>
   new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', {
@@ -37,11 +35,11 @@ export async function LegalRoute({ locale, document, versionNumber }: { locale: 
   const shown = versionNumber === undefined ? current : await legalVersion(document, lang, versionNumber)
   if (!shown) notFound()
   const history = await legalHistory(document, lang)
-  const base = sitePath(locale, PATHS[document])
+  const base = sitePath(locale, LEGAL_PAGES[document])
   return (
     <LegalPage
       locale={locale}
-      page={PATHS[document]}
+      page={LEGAL_PAGES[document]}
       notice={SITE_LEGAL_LINKED ? null : legal.draftNotice}
       version={shown}
       // The copy file's own line, its [[date]] placeholder filled with this version's date

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { SITE_INDEXABLE, SITE_LEGAL_LINKED, SITE_ORIGIN, type SitePage } from '@/site/config'
+import { LEGAL_PAGES, SITE_INDEXABLE, SITE_LEGAL_LINKED, SITE_ORIGIN, type SitePage } from '@/site/config'
 import { alternatesFor, sitePath } from '@/site/paths'
 
 /** The share image is the brand lockup alone: its alt is the lockup's (src/components/brand.tsx) */
@@ -14,8 +14,8 @@ export const OG_ALT = 'Mudrik AI'
 export function siteMetadata(locale: string, page: SitePage, meta: { metaTitle: string; metaDescription: string }): Metadata {
   // app/[locale]/site/opengraph-image.tsx, id "og": the lockup, so its alt is the lockup's own
   const image = { url: `/${locale}/site/opengraph-image/og`, width: 1200, height: 630, alt: OG_ALT }
-  // The legal drafts are never indexed while they are unlinked (SITE_LEGAL_LINKED)
-  const indexable = SITE_INDEXABLE && (SITE_LEGAL_LINKED || (page !== '/privacy' && page !== '/terms'))
+  // The legal pages are never indexed while they are unlinked (SITE_LEGAL_LINKED)
+  const indexable = SITE_INDEXABLE && (SITE_LEGAL_LINKED || !(Object.values(LEGAL_PAGES) as SitePage[]).includes(page))
   return {
     metadataBase: new URL(SITE_ORIGIN),
     title: meta.metaTitle,

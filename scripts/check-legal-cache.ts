@@ -13,6 +13,8 @@
  *   5. Version addresses with no version behind them answer 404 and write
  *      nothing under .next: earlier versions are never cached, so no request,
  *      whatever number it asks for, leaves a stored 404 behind.
+ *   6. The pages' first addresses (/privacy, /terms and their versions) 301
+ *      to the current ones (LEGAL_PAGES) and write nothing under .next.
  *
  * Self-contained and local: the test database (tests/harness/stack.ts, every
  * migration applied), a proxy in front of it (Supabase's /rest/v1 paths, the
@@ -75,7 +77,7 @@ function request(
     body?: string
   } = {}
 ) {
-  return new Promise<{ status: number; body: string }>((resolve, reject) => {
+  return new Promise<{ status: number; body: string; location: string | undefined }>((resolve, reject) => {
     const req = http.request(
       {
         host: '127.0.0.1',
@@ -91,7 +93,7 @@ function request(
         let body = ''
         res.setEncoding('utf8')
         res.on('data', (chunk) => (body += chunk))
-        res.on('end', () => resolve({ status: res.statusCode ?? 0, body }))
+        res.on('end', () => resolve({ status: res.statusCode ?? 0, body, location: res.headers.location }))
       }
     )
     req.on('error', reject)
@@ -219,7 +221,7 @@ async function main() {
     server = run('npx', ['next', 'start', '-p', String(port)], env, serverLog)
     const site = `site.localhost:${port}`
     for (let i = 0; ; i += 1) {
-      const ok = await request(port, '/ar/privacy', { host: site }).then(
+      const ok = await request(port, '/ar/privacy-policy', { host: site }).then(
         (r) => r.status === 200,
         () => false
       )
@@ -242,11 +244,11 @@ async function main() {
       p_body: '## Section\n\nPublished outside the editor.',
     })
     if (publishError) throw publishError
-    const right = await page('/ar/privacy')
+    const right = await page('/ar/privacy-policy')
     await sleep((INTERVAL + 2) * 1000)
-    await page('/ar/privacy') // serves the cached page and starts regenerating
+    await page('/ar/privacy-policy') // serves the cached page and starts regenerating
     await sleep(3000)
-    const after = await page('/ar/privacy')
+    const after = await page('/ar/privacy-policy')
     record(
       'interval',
       !shows(right.body, intervalMarker) && shows(after.body, intervalMarker),
@@ -264,7 +266,7 @@ async function main() {
       .limit(1)
       .single<{ version: number }>()
     const nextVersion = (versions?.version ?? 0) + 1
-    const before404 = await page(`/ar/privacy/v/${nextVersion}`)
+    const before404 = await page(`/ar/privacy-policy/v/${nextVersion}`)
     const manifest = JSON.parse(readFileSync(path.join(ROOT, '.next/server/server-reference-manifest.json'), 'utf8')) as {
       node: Record<string, { exportedName?: string; filename?: string }>
     }
@@ -300,13 +302,13 @@ async function main() {
     })
     const savedOk = saved.status === 200 && saved.body.includes(`"version":${nextVersion}`)
     record('save went through the server action', savedOk, `status ${saved.status}${savedOk ? `, version ${nextVersion}` : `: ${saved.body.slice(0, 200)}`}`)
-    const current = await page('/ar/privacy')
+    const current = await page('/ar/privacy-policy')
     record(
       'save shows on the next request',
       shows(current.body, saveMarker),
       shows(current.body, saveMarker) ? 'current page is the saved version' : 'current page still old'
     )
-    const ownAddress = await page(`/ar/privacy/v/${nextVersion}`)
+    const ownAddress = await page(`/ar/privacy-policy/v/${nextVersion}`)
     record(
       "the new version's address, a 404 before it existed",
       before404.status === 404 && ownAddress.status === 200 && shows(ownAddress.body, saveMarker),
@@ -318,9 +320,9 @@ async function main() {
     // history, a fixed set of cached reads per document and language: one
     // missing number per pair first, so those are in place, then different
     // numbers, which must write nothing at all.
-    for (const address of ['/ar/privacy/v/901', '/en/privacy/v/901', '/ar/terms/v/901', '/en/terms/v/901']) await page(address)
+    for (const address of ['/ar/privacy-policy/v/901', '/en/privacy-policy/v/901', '/ar/terms-of-service/v/901', '/en/terms-of-service/v/901']) await page(address)
     await sleep(3000)
-    const missing = ['/ar/privacy/v/999', '/ar/privacy/v/517', '/en/terms/v/123', '/ar/terms/v/7', '/en/privacy/v/88']
+    const missing = ['/ar/privacy-policy/v/999', '/ar/privacy-policy/v/517', '/en/terms-of-service/v/123', '/ar/terms-of-service/v/7', '/en/privacy-policy/v/88']
     const filesBefore = snapshot()
     const statuses: number[] = []
     for (let round = 0; round < 3; round += 1) {
@@ -329,7 +331,7 @@ async function main() {
     // Not a version number (more than three digits, not digits): never reaches a
     // render, and answers the same 404
     const notNumbers: number[] = []
-    for (const address of ['/ar/privacy/v/1000', '/en/terms/v/abc']) notNumbers.push((await page(address)).status)
+    for (const address of ['/ar/privacy-policy/v/1000', '/en/terms-of-service/v/abc']) notNumbers.push((await page(address)).status)
     await sleep(3000)
     const filesAfter = snapshot()
     const written = [...filesAfter].filter(([file, sig]) => filesBefore.get(file) !== sig).map(([file]) => file)
@@ -339,12 +341,48 @@ async function main() {
       `${statuses.length} requests: ${[...new Set(statuses)].join('/')}; /v/1000 and /v/abc: ${notNumbers.join('/')}; files written or changed under .next: ${written.length}${written.length ? ` (${written.slice(0, 8).join(', ')})` : ''}`
     )
 
+    // 6. The first addresses (/privacy, /terms, before the move to LEGAL_PAGES):
+    // a 301 to the new one each, versions included, and nothing written
+    const moves: [string, string][] = [
+      ['/ar/privacy', '/ar/privacy-policy'],
+      ['/en/terms', '/en/terms-of-service'],
+      ['/ar/privacy/v/1', '/ar/privacy-policy/v/1'],
+      ['/en/terms/v/1', '/en/terms-of-service/v/1'],
+      ['/ar/terms/v/999', '/ar/terms-of-service/v/999'],
+    ]
+    const movesBefore = snapshot()
+    const moved: string[] = []
+    const targets: (string | null)[] = []
+    for (const [from, to] of moves) {
+      const r = await page(from)
+      const target = r.location ? new URL(r.location, `http://${site}`).pathname : null
+      targets.push(target)
+      moved.push(`${from} ${r.status} → ${r.location ?? 'nowhere'}`)
+      if (r.status !== 301 || target !== to) moved.push('WRONG')
+    }
+    await sleep(3000)
+    // The redirects' own writes only: the pages they land on read the cached
+    // current version, which the interval may be refreshing by now
+    const movesWritten = [...snapshot()].filter(([file, sig]) => movesBefore.get(file) !== sig).map(([file]) => file)
+    for (const target of targets) {
+      if (!target) continue
+      const landed = await page(target)
+      moved.push(`${target} ${landed.status}`)
+      // The last one moves to a version that doesn't exist: its own 404
+      if (landed.status !== (target.endsWith('/999') ? 404 : 200)) moved.push('WRONG LANDING')
+    }
+    record(
+      'old addresses move permanently and write nothing',
+      !moved.some((m) => m.startsWith('WRONG')) && movesWritten.length === 0,
+      `${moved.join('; ')}; files written or changed under .next: ${movesWritten.length}${movesWritten.length ? ` (${movesWritten.slice(0, 8).join(', ')})` : ''}`
+    )
+
     // 4. Outage past the interval: the last good page, not an error
     databaseDown = true
     await sleep((INTERVAL + 2) * 1000)
-    const during = await page('/ar/privacy')
+    const during = await page('/ar/privacy-policy')
     await sleep(3000)
-    const stillDuring = await page('/ar/privacy')
+    const stillDuring = await page('/ar/privacy-policy')
     databaseDown = false
     record(
       'outage',
