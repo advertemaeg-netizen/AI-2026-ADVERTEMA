@@ -445,6 +445,48 @@ export async function appointmentOnRecord({
   return { status: 'booked', at: open.appointment_at!, confirmed: open.appointment_confirmed, changed: false, validated: checkedOnRecord(open) }
 }
 
+/**
+ * The visit on record, checked again against its branch's hours as they are
+ * now: what is done when the visitor pushes back on it (5.4). A visit those
+ * hours refuse (one booked before the day was checked, or hours edited
+ * since) is cleared, so the lead stops holding a day known to be wrong, and
+ * the refusal is returned for the visitor to be told. Only the assistant's
+ * own visit is cleared: one a person set or confirmed is theirs to change,
+ * so it returns null like a visit that passes. Throws on a database error.
+ */
+export async function recheckOnRecord({
+  supabase,
+  conversationId,
+  businessHours,
+}: {
+  supabase: SupabaseClient
+  conversationId: string
+  businessHours: HoursInput
+}): Promise<BookingOutcome | null> {
+  const schedule = scheduleOf(businessHours)
+  if (!schedule) return null
+  const open = (await loadLeads(supabase, conversationId)).find((lead) => !isClosed(lead) && lead.appointment_at) ?? null
+  if (!open?.appointment_at) return null
+  const refused = refusalAt(schedule, open.appointment_at, open.ai_appointment?.day_only === true)
+  if (!refused) return null
+  const aiOwned =
+    sameInstant(open.appointment_at, open.ai_appointment?.at) &&
+    open.showed_up === null &&
+    (!open.appointment_confirmed || open.ai_appointment?.confirmed === true)
+  if (!aiOwned) return null
+  const { error } = await supabase
+    .from('leads')
+    .update({
+      appointment_at: null,
+      appointment_confirmed: false,
+      ai_appointment: null,
+      ...(open.status === 'appointment_booked' ? { status: 'new' } : {}),
+    })
+    .eq('id', open.id)
+  if (error) throw error
+  return refused
+}
+
 /** What the open lead holds: the only source for a statement about what is saved */
 export async function savedRecord(supabase: SupabaseClient, conversationId: string): Promise<SavedRecord> {
   const open = (await loadLeads(supabase, conversationId)).find((lead) => !isClosed(lead)) ?? null

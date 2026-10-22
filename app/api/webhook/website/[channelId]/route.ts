@@ -7,6 +7,8 @@ import {
   APPOINTMENT_PLACEHOLDER,
   ASK_DAY_AND_TIME,
   NOTHING_SAID,
+  appointmentLine,
+  disputeLine,
   mergeDraft,
   narrowDraft,
   parseBookingDraft,
@@ -18,10 +20,19 @@ import {
   type AppointmentRequest,
   type BookingDraft,
   type BookingOutcome,
+  type ReplyRules,
 } from '@/lib/ai/appointment'
 import { branchInMessage, branchNamed, loadBookingBranches, type BookingBranch } from '@/lib/ai/branches'
 import { withEvidence, type EvidencedPart } from '@/lib/ai/evidence'
-import { appointmentOnRecord, bookingState, confirmPending, recordAppointment, saveContact, savedRecord } from '@/lib/ai/booking'
+import {
+  appointmentOnRecord,
+  bookingState,
+  confirmPending,
+  recheckOnRecord,
+  recordAppointment,
+  saveContact,
+  savedRecord,
+} from '@/lib/ai/booking'
 import { composeReply, mentionsName, type SavedRecord } from '@/lib/ai/compose'
 import {
   EMPTY_CONTACT,
@@ -47,6 +58,9 @@ const CORS_HEADERS = {
 }
 
 const BOOKING_TEXTS = { ar: ar.botReplies.appointment, en: en.botReplies.appointment }
+
+// What the bot states rather than asks: never sent twice in a row (5.4)
+const STATEMENTS: BookingOutcome['status'][] = ['booked', 'kept', 'outside_hours', 'closed_date', 'past']
 
 const MAX_MESSAGE_LENGTH = 2000
 const VISITOR_ID_PATTERN = /^[A-Za-z0-9_-]{8,64}$/
@@ -308,6 +322,8 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       .reverse()
       .map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }))
     const visitorMessages = recent.filter((m) => m.role === 'user').map((m) => m.content)
+    // The bot's own last message (not a person's): a statement is never sent twice in a row (5.4)
+    const previousBotReply = recent.findLast((m) => m.role === 'assistant')?.content ?? null
 
     // A NUMBER THE VISITOR TYPED IS ALWAYS SAVED. It belongs to the person who
     // typed it, expecting a call: no plan limit, takeover or failure may
@@ -432,6 +448,8 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       raw: string
       booking: BookingOutcome['status']
       booking_error?: true
+      /** The same statement would have gone out twice in a row (5.4) */
+      repeat_stopped?: true
       evidence_dropped?: EvidencedPart[]
       /** What the visitor has said toward an appointment that is not one yet; the next message starts from here */
       draft: BookingDraft | null
@@ -677,6 +695,8 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
         contact_events: events,
       }
       const language = replyLanguage(settings.language, message)
+      // A refusal names the branch when there is more than one to tell apart
+      const rules: ReplyRules = { mode, nameStrictness: settings.name_strictness, branch: severalBranches ? (branch?.name ?? null) : null }
       reply = bookingFailed
         ? // The booking could not be written. Everything the visitor gave is on
           // the lead (written above) and the next message books it: they are
@@ -691,8 +711,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
             language,
             appointmentDecided: decided,
             otherAnswer: result.otherAnswer,
-            // A refusal names the branch when there is more than one to tell apart
-            rules: { mode, nameStrictness: settings.name_strictness, branch: severalBranches ? (branch?.name ?? null) : null },
+            rules,
             known: {
               name: contact.name,
               phone: contact.phone ?? record.phone,
@@ -700,6 +719,50 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
               time: timeOnRecord,
             },
           })
+
+      // NEVER THE SAME STATEMENT TWICE IN A ROW (5.4). A visit on record or a
+      // refusal about to go out word for word again means the visitor pushed
+      // back («م انت قلت المواعيد من 1», «انت غبي»): saying it again is never
+      // the answer. The visit is checked again against its branch; one those
+      // hours refuse is cleared and the refusal said (another day is asked
+      // for); otherwise the bot says something is wrong and a person takes
+      // over. Either way a person is told it happened. Questions (the day,
+      // the name, the number) are not statements: asking again is allowed.
+      let repeatStopped = false
+      if (
+        !bookingFailed &&
+        previousBotReply !== null &&
+        reply.trim() === previousBotReply.trim() &&
+        STATEMENTS.includes(booking.status)
+      ) {
+        repeatStopped = true
+        const repeated = booking.status
+        let refused: BookingOutcome | null = null
+        if (booking.status === 'booked' || booking.status === 'kept') {
+          try {
+            refused = await recheckOnRecord({ supabase, conversationId, businessHours: branch?.schedule ?? null })
+          } catch (error) {
+            console.error('[webhook/website] checking the visit on record again failed', error)
+          }
+        }
+        if (refused) {
+          booking = refused
+          // The day is gone from the record; the branch stays for the next one
+          draft = branch && severalBranches ? { day: null, time: null, branch: branch.name } : null
+          trace.booking = refused.status
+          trace.draft = draft
+          try {
+            await saveContact({ supabase, clientId: channel.client_id, conversationId, sourceMessageId: userMessage.id, contact, events, draft })
+          } catch (error) {
+            console.error('[webhook/website] saving the partial booking failed', error)
+          }
+        }
+        reply = refused ? appointmentLine(refused, language, rules) : disputeLine(language)
+        trace.repeat_stopped = true
+        console.error(
+          `[booking] conversation ${conversationId}: the same ${repeated} statement would have gone out twice; ${refused ? 'the visit was cleared and refused' : 'handed to a person'}`
+        )
+      }
       // The visitor was told a person will take it from here: make that true.
       // 'no_answer' is the nearest reason the column allows today; a reason
       // of its own needs a migration.
@@ -714,7 +777,8 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       if (
         events.phone === 'rejected_final' ||
         (booking.status === 'needs_details' && booking.handoff) ||
-        booking.status === 'no_open_days'
+        booking.status === 'no_open_days' ||
+        repeatStopped
       ) {
         await markForPerson('no_answer')
       }

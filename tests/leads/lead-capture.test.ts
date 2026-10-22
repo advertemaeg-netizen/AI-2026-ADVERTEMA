@@ -304,8 +304,9 @@ describe('3. the booking shape is the business\'s', () => {
     const [lead] = await rows()
     expect(lead.ai_appointment).toMatchObject({ day_only: true, validated: false })
 
-    // The model's own «حجزك» around the placeholder is not sent: code restates it
-    expect(await say('كدا الحجز اتأكد ؟')).toBe(APPOINTMENT.bookedDayRequest.replace('{day}', day))
+    // The model's own «حجزك» around the placeholder is not sent: code answers
+    // the question in its own sentence, not with the confirmation again (5.4)
+    expect(await say('كدا الحجز اتأكد ؟')).toBe(APPOINTMENT.onRecordDayRequest.replace('{day}', day))
   })
 
   it('says «حجزك» for a day checked against the opening hours, and restates it in its own words, not the model\'s', async () => {
@@ -323,7 +324,7 @@ describe('3. the booking shape is the business\'s', () => {
     const day = formatVisitDay(lead.appointment_at!, 'ar')
     expect(lead.ai_appointment).toMatchObject({ day_only: true, validated: true })
     expect(booked).toBe(APPOINTMENT.bookedDay.replace('{day}', day))
-    expect(await say('كدا الحجز اتأكد ؟')).toBe(APPOINTMENT.bookedDay.replace('{day}', day))
+    expect(await say('كدا الحجز اتأكد ؟')).toBe(APPOINTMENT.onRecordDay.replace('{day}', day))
   })
 
   it('tells a visitor who already has an unchecked day-only visit that it is a request', () => {

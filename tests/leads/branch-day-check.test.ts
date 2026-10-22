@@ -81,7 +81,7 @@ async function drAli({ branches = 'two' }: { branches?: 'one' | 'two' } = {}) {
     const { data } = await seeded.supabase.from('conversations').select('needs_human_since').eq('id', conversationId!).single()
     return data as { needs_human_since: string | null }
   }
-  return { ...seeded, say, lead, conversation, mansoura: first.id, manzala }
+  return { ...seeded, say, lead, conversation, conversationId: () => conversationId!, mansoura: first.id, manzala }
 }
 
 describe('a day is checked against the branch it is for', () => {
@@ -166,6 +166,72 @@ describe('a day is checked against the branch it is for', () => {
     expect((await seeded.conversation()).needs_human_since).not.toBeNull()
     expect(errors.mock.calls.some(([line]) => String(line).includes('open on no day'))).toBe(true)
     errors.mockRestore()
+  })
+})
+
+// 5.4: «انت غبي !!» got «تمام — حجزك يوم الثلاثاء…» a second time, word for word
+describe('a statement is never sent twice in a row', () => {
+  const ASKED = 'كدا الحجز اتأكد ؟'
+  const AGAIN = 'يعني اتأكد ولا لأ؟'
+
+  it('answers a question about the visit in its own sentence, then hands off rather than say it again', async () => {
+    chatModel({
+      'أنا كريم 01012345678': reply('أهلاً يا كريم', { name: 'كريم', phone: '01012345678' }),
+      'عايز أحجز الخميس': reply('', { appointment: { day_type: 'weekday', weekday: 'thursday' } }),
+      [ASKED]: reply('أيوه، {{appointment}}.'),
+      [AGAIN]: reply('أيوه، {{appointment}}.'),
+    })
+    const { say, lead, conversation } = await drAli({ branches: 'one' })
+    await say('أنا كريم 01012345678')
+    expect(await say('عايز أحجز الخميس')).toBe(T.bookedDay.replace('{day}', 'الخميس 22 أكتوبر'))
+
+    const answered = await say(ASKED)
+    expect(answered).toBe(T.onRecordDay.replace('{day}', 'الخميس 22 أكتوبر'))
+    expect((await conversation()).needs_human_since).toBeNull()
+
+    // The same answer again would be a loop: a person takes over, and the
+    // visit, which its branch still accepts, stays
+    expect(await say(AGAIN)).toBe(T.disputeHandoff)
+    expect((await conversation()).needs_human_since).not.toBeNull()
+    expect((await lead())?.appointment_at).not.toBeNull()
+  })
+
+  it('clears a visit on record that its branch\'s hours refuse, says so, asks for another day, and hands off', async () => {
+    chatModel({
+      'السلام عليكم': reply('وعليكم السلام'),
+      [ASKED]: reply('أيوه، {{appointment}}.'),
+      [AGAIN]: reply('أيوه، {{appointment}}.'),
+    })
+    const { say, lead, conversation, supabase, clientId, conversationId, mansoura } = await drAli({ branches: 'one' })
+    await say('السلام عليكم')
+    // A Friday at المنصورة recorded before the day was checked, as on 22 October
+    const friday = '2026-10-23T09:00:00.000Z'
+    const { error } = await supabase.from('leads').insert({
+      client_id: clientId,
+      conversation_id: conversationId(),
+      name: 'كريم',
+      phone: '+201012345678',
+      status: 'appointment_booked',
+      appointment_at: friday,
+      branch_id: mansoura,
+      ai_appointment: { at: friday, approximate: false, confirmed: false, source: 'reply', day_only: true },
+    })
+    expect(error).toBeNull()
+
+    // Never checked: a request, in its own words
+    expect(await say(ASKED)).toBe(T.onRecordDayRequest.replace('{day}', 'الجمعة 23 أكتوبر'))
+    // Pushed back on: checked again, refused, cleared, and another day asked for
+    expect(await say(AGAIN)).toBe(T.closedDay.replace('{day}', 'الجمعة').replace('{openDays}', MANSOURA_OPEN_DAYS))
+    expect(await lead()).toMatchObject({ appointment_at: null, ai_appointment: null })
+    expect((await conversation()).needs_human_since).not.toBeNull()
+  })
+
+  it('still asks the same question twice: asking for a day again is not a statement', async () => {
+    chatModel({ 'عايز أحجز': reply('تحب تيجي يوم إيه؟'), 'مش عارف': reply('تحب تيجي يوم إيه؟') })
+    const { say, conversation } = await drAli({ branches: 'one' })
+    await say('عايز أحجز')
+    expect(await say('مش عارف')).toBe('تحب تيجي يوم إيه؟')
+    expect((await conversation()).needs_human_since).toBeNull()
   })
 })
 

@@ -842,6 +842,15 @@ function formatHeldTime({ hour, minute, period }: Pick<AppointmentRequest, 'hour
   return formatClock(`${pad(to24Hour(hour, period) % 24)}:${pad(minute ?? 0)}`, language)
 }
 
+/**
+ * What the bot says when a statement it made (a visit on record, a refusal)
+ * would go out word for word a second time in a row: someone has pushed
+ * back, and saying it again is never the answer (5.4). A person takes over.
+ */
+export function disputeLine(language: ReplyLanguage) {
+  return TEXTS[language].disputeHandoff
+}
+
 /** What happened to the appointment the visitor asked for */
 export type BookingOutcome =
   /**
@@ -916,7 +925,13 @@ function bookedLine(outcome: Extract<BookingOutcome, { status: 'booked' }>, lang
   // is a request, as an appointment business says (the closed Fridays booked
   // for Dr.Ali on 22 October 2026, a client with no hours entered)
   if (rules.mode === 'day_only') {
-    return (outcome.validated ? t.bookedDay : t.bookedDayRequest).replace('{day}', formatVisitDay(outcome.at, language))
+    // A visit already on record, asked about («كدا الحجز اتأكد؟»), is answered,
+    // not confirmed again: the confirmation word for word is the sentence
+    // they already saw, and a repeat to someone asking is a loop (5.4)
+    const template = outcome.changed
+      ? outcome.validated ? t.bookedDay : t.bookedDayRequest
+      : outcome.validated ? t.onRecordDay : t.onRecordDayRequest
+    return template.replace('{day}', formatVisitDay(outcome.at, language))
   }
   return (outcome.confirmed ? t.bookedConfirmed : t.bookedRequest).replace('{time}', formatAppointment(outcome.at, language))
 }
