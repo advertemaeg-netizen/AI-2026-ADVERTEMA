@@ -111,6 +111,12 @@ export type AiAppointment = {
    * on the day: never shown or stated as an appointment time.
    */
   day_only?: true
+  /**
+   * Code checked the day (and time) against the business's opening hours.
+   * Absent on rows from before 22 October 2026: read as not checked, so the
+   * visitor is told of a request, never of a booking.
+   */
+  validated?: boolean
 }
 
 export type LeadDetail = LeadListItem & {

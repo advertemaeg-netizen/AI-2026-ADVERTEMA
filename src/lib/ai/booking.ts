@@ -36,6 +36,16 @@ const COLUMNS = 'id, name, phone, status, appointment_at, appointment_confirmed,
 
 const isClosed = (lead: BookableLead) => CLOSED_LEAD_STATUSES.includes(lead.status)
 
+/**
+ * Whether the appointment on record was checked by anyone: code against the
+ * opening hours, or a person who set or confirmed it. A time the assistant
+ * set without hours to check it against is still a request.
+ */
+function checkedOnRecord(lead: Pick<BookableLead, 'appointment_at' | 'appointment_confirmed' | 'ai_appointment'>) {
+  if (!sameInstant(lead.appointment_at, lead.ai_appointment?.at)) return true
+  return lead.appointment_confirmed || lead.ai_appointment?.validated === true
+}
+
 async function loadLeads(supabase: SupabaseClient, conversationId: string) {
   const { data, error } = await supabase
     .from('leads')
@@ -222,6 +232,7 @@ export async function recordAppointment({
     at: resolved.at,
     approximate: resolved.approximate,
     confirmed,
+    validated: resolved.validated,
     source,
     ...(missing.length > 0 ? { pending: true as const } : {}),
     ...(request.needs_team_check === true ? { needs_team_check: true as const } : {}),
@@ -233,6 +244,7 @@ export async function recordAppointment({
     at: resolved.at,
     missing,
     handoff: missing.includes('phone') && (contact?.phoneRejections ?? 0) >= MAX_PHONE_REJECTIONS,
+    validated: resolved.validated,
   }
 
   if (!open) {
@@ -248,7 +260,7 @@ export async function recordAppointment({
       ...(booked ? { appointment_at: resolved.at, appointment_confirmed: confirmed } : {}),
       ai_appointment: aiAppointment,
     })
-    if (!error) return booked ? { status: 'booked', at: resolved.at, confirmed, changed: true } : needsDetails
+    if (!error) return booked ? { status: 'booked', at: resolved.at, confirmed, changed: true, validated: resolved.validated } : needsDetails
     // 23505: a concurrent message opened the lead first — book on that one
     if (error.code !== '23505') throw error
     open = (await loadLeads(supabase, conversationId)).find((lead) => !isClosed(lead)) ?? null
@@ -256,7 +268,7 @@ export async function recordAppointment({
   }
 
   if (sameInstant(open.appointment_at, resolved.at)) {
-    return { status: 'booked', at: open.appointment_at!, confirmed: open.appointment_confirmed, changed: false }
+    return { status: 'booked', at: open.appointment_at!, confirmed: open.appointment_confirmed, changed: false, validated: checkedOnRecord(open) }
   }
 
   // Still the assistant's own: the time it set, not confirmed by anyone but
@@ -266,7 +278,7 @@ export async function recordAppointment({
     (sameInstant(open.appointment_at, open.ai_appointment?.at) &&
       open.showed_up === null &&
       (!open.appointment_confirmed || open.ai_appointment?.confirmed === true))
-  if (!aiOwned) return { status: 'kept', at: open.appointment_at! }
+  if (!aiOwned) return { status: 'kept', at: open.appointment_at!, validated: checkedOnRecord(open) }
 
   if (missing.length > 0) {
     // Not an appointment: the lead keeps what was asked for, and nothing else changes
@@ -298,7 +310,7 @@ async function writeAppointment(supabase: SupabaseClient, lead: BookableLead, ai
     const { error: confirmError } = await supabase.from('leads').update({ appointment_confirmed: true }).eq('id', lead.id)
     if (confirmError) throw confirmError
   }
-  return { status: 'booked', at: aiAppointment.at, confirmed: aiAppointment.confirmed, changed: true }
+  return { status: 'booked', at: aiAppointment.at, confirmed: aiAppointment.confirmed, changed: true, validated: aiAppointment.validated === true }
 }
 
 /**
@@ -341,6 +353,8 @@ export async function confirmPending({
     const opening = openingAt(businessHours, pending.at)
     if (!opening.open) return drop({ status: 'outside_hours', hours: opening.day })
   }
+  // Checked again just now, against the hours as they stand
+  const validated = businessHours?.enabled === true
   const missing = missingDetails(open.name, open.phone)
   if (missing.length > 0) {
     return {
@@ -348,12 +362,14 @@ export async function confirmPending({
       at: pending.at,
       missing,
       handoff: missing.includes('phone') && (contact?.phoneRejections ?? 0) >= MAX_PHONE_REJECTIONS,
+      validated,
     }
   }
   return writeAppointment(supabase, open, {
     at: pending.at,
     approximate: pending.approximate,
     confirmed: pending.confirmed,
+    validated,
     source: pending.source,
     ...(pending.needs_team_check ? { needs_team_check: true as const } : {}),
     ...(pending.day_only ? { day_only: true as const } : {}),
@@ -393,15 +409,15 @@ export async function appointmentOnRecord({
 }): Promise<BookingOutcome> {
   const { data, error } = await supabase
     .from('leads')
-    .select('status, appointment_at, appointment_confirmed')
+    .select('status, appointment_at, appointment_confirmed, ai_appointment')
     .eq('conversation_id', conversationId)
     .not('appointment_at', 'is', null)
     .order('created_at', { ascending: true })
-    .returns<Pick<BookableLead, 'status' | 'appointment_at' | 'appointment_confirmed'>[]>()
+    .returns<Pick<BookableLead, 'status' | 'appointment_at' | 'appointment_confirmed' | 'ai_appointment'>[]>()
   if (error) throw error
   const open = data.find((lead) => !CLOSED_LEAD_STATUSES.includes(lead.status))
   if (!open) return { status: 'none' }
-  return { status: 'booked', at: open.appointment_at!, confirmed: open.appointment_confirmed, changed: false }
+  return { status: 'booked', at: open.appointment_at!, confirmed: open.appointment_confirmed, changed: false, validated: checkedOnRecord(open) }
 }
 
 /** What the open lead holds: the only source for a statement about what is saved */

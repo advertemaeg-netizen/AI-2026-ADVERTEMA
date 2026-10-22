@@ -280,6 +280,64 @@ describe('3. the booking shape is the business\'s', () => {
     expect(reply).not.toMatch(/\d{1,2}:\d{2}/)
   })
 
+  // Dr.Ali, 22 October 2026: no opening hours entered, and three closed days
+  // in a row were each told «تمام — حجزك يوم …». Code had checked nothing.
+  it('never says a day-only visit is booked when no opening hours could check the day: it is a request, from the first question to the restatement', async () => {
+    const FRIDAY: Partial<AppointmentRequest> = { day_type: 'weekday', weekday: 'friday' }
+    chatModel({
+      'عايز أحجز الجمعة': botReply('', FRIDAY, null),
+      'أنا كريم مصطفى': botReply('أهلاً يا كريم', null, { name: 'كريم مصطفى' }),
+      [NUMBER]: botReply('تمام', null, { phone: NUMBER }),
+      'كدا الحجز اتأكد ؟': botReply('أيوه، حجزك يوم {{appointment}}.', null, null),
+    })
+    const { say, rows } = await visitor({ bookingMode: 'day_only' })
+    const asked = await say('عايز أحجز الجمعة')
+    const [held] = await rows()
+    const day = formatVisitDay(held.ai_appointment!.at as string, 'ar')
+
+    expect(asked).toBe(APPOINTMENT.needDetailsDayRequest.replace('{day}', day).replace('{missing}', APPOINTMENT.missingNameAny))
+    expect(await say('أنا كريم مصطفى')).toContain(APPOINTMENT.needDetailsDayRequest.replace('{day}', day).replace('{missing}', APPOINTMENT.missingPhone))
+
+    const recorded = await say(NUMBER)
+    expect(recorded).toContain(APPOINTMENT.bookedDayRequest.replace('{day}', day))
+    expect(recorded).not.toContain('حجزك')
+    const [lead] = await rows()
+    expect(lead.ai_appointment).toMatchObject({ day_only: true, validated: false })
+
+    // The model's own «حجزك» around the placeholder is not sent: code restates it
+    expect(await say('كدا الحجز اتأكد ؟')).toBe(APPOINTMENT.bookedDayRequest.replace('{day}', day))
+  })
+
+  it('says «حجزك» for a day checked against the opening hours, and restates it in its own words, not the model\'s', async () => {
+    chatModel({
+      [`أنا كريم مصطفى ${NUMBER}`]: botReply('أهلاً يا كريم', null, { name: 'كريم مصطفى', phone: NUMBER }),
+      'عايز أحجز بكرة': botReply('', { day_type: 'tomorrow' }, null),
+      'كدا الحجز اتأكد ؟': botReply('أيوه، حجزك {{appointment}} مؤكد.', null, null),
+    })
+    const { say, rows, ...seeded } = await visitor({ bookingMode: 'day_only' })
+    await openEveryDay(seeded, '13:00', '22:00')
+    await say(`أنا كريم مصطفى ${NUMBER}`)
+
+    const booked = await say('عايز أحجز بكرة')
+    const [lead] = await rows()
+    const day = formatVisitDay(lead.appointment_at!, 'ar')
+    expect(lead.ai_appointment).toMatchObject({ day_only: true, validated: true })
+    expect(booked).toBe(APPOINTMENT.bookedDay.replace('{day}', day))
+    expect(await say('كدا الحجز اتأكد ؟')).toBe(APPOINTMENT.bookedDay.replace('{day}', day))
+  })
+
+  it('tells a visitor who already has an unchecked day-only visit that it is a request', () => {
+    const at = '2026-10-23T09:00:00.000Z'
+    const rules = { mode: 'day_only', nameStrictness: 'single' } as const
+    const day = formatVisitDay(at, 'ar')
+    expect(appointmentLine({ status: 'kept', at }, 'ar', rules)).toBe(APPOINTMENT.keptDayRequest.replace('{day}', day))
+    expect(appointmentLine({ status: 'kept', at, validated: true }, 'ar', rules)).toBe(APPOINTMENT.keptDay.replace('{day}', day))
+    // An appointment business is unchanged: confirmed or not decides its sentence
+    expect(appointmentLine({ status: 'booked', at, confirmed: false, changed: true }, 'ar')).toBe(
+      APPOINTMENT.bookedRequest.replace('{time}', formatAppointment(at, 'ar'))
+    )
+  })
+
   it('never asks a day-only visitor for a time: the model\'s question about one is removed and the day is asked for', async () => {
     chatModel({ 'عايز أحجز': botReply('أكيد! تحب تيجي الساعة كام؟', null, null) })
     const { say } = await visitor({ bookingMode: 'day_only' })

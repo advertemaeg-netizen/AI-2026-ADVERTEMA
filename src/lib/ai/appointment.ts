@@ -738,10 +738,14 @@ function formatHeldTime({ hour, minute, period }: Pick<AppointmentRequest, 'hour
 
 /** What happened to the appointment the visitor asked for */
 export type BookingOutcome =
-  /** On record at `at`. `changed`: this message set or moved it */
-  | { status: 'booked'; at: string; confirmed: boolean; changed: boolean }
+  /**
+   * On record at `at`. `changed`: this message set or moved it. `validated`:
+   * code checked it against opening hours (or a person set or confirmed it);
+   * absent means nobody did, and a day-only visit is then stated as a request
+   */
+  | { status: 'booked'; at: string; confirmed: boolean; changed: boolean; validated?: boolean }
   /** The team's own time stays; the request was not applied */
-  | { status: 'kept'; at: string }
+  | { status: 'kept'; at: string; validated?: boolean }
   /** Nothing recorded yet: morning or evening has to be asked */
   | { status: 'ask_period'; hour: number }
   /**
@@ -749,7 +753,7 @@ export type BookingOutcome =
    * name and phone number are both on record. `handoff`: the bot has stopped
    * asking for the phone number, a person completes it.
    */
-  | { status: 'needs_details'; at: string; missing: ('name' | 'phone')[]; handoff: boolean }
+  | { status: 'needs_details'; at: string; missing: ('name' | 'phone')[]; handoff: boolean; validated?: boolean }
   /** Nothing recorded: the business is closed then */
   | { status: 'outside_hours'; hours: OpeningDay }
   /** Nothing recorded: that day and time have gone */
@@ -787,7 +791,12 @@ export const DEFAULT_REPLY_RULES: ReplyRules = { mode: 'appointment', nameStrict
 function bookedLine(outcome: Extract<BookingOutcome, { status: 'booked' }>, language: ReplyLanguage, rules: ReplyRules) {
   const t = TEXTS[language]
   // A day-only visit: the day, arrival order, and that someone will call. Never a time.
-  if (rules.mode === 'day_only') return t.bookedDay.replace('{day}', formatVisitDay(outcome.at, language))
+  // «حجزك» only for a day code checked against opening hours: without them it
+  // is a request, as an appointment business says (the closed Fridays booked
+  // for Dr.Ali on 22 October 2026, a client with no hours entered)
+  if (rules.mode === 'day_only') {
+    return (outcome.validated ? t.bookedDay : t.bookedDayRequest).replace('{day}', formatVisitDay(outcome.at, language))
+  }
   return (outcome.confirmed ? t.bookedConfirmed : t.bookedRequest).replace('{time}', formatAppointment(outcome.at, language))
 }
 
@@ -810,7 +819,7 @@ export function appointmentLine(outcome: BookingOutcome, language: ReplyLanguage
       return bookedLine(outcome, language, rules)
     case 'kept':
       return dayOnly
-        ? t.keptDay.replace('{day}', formatVisitDay(outcome.at, language))
+        ? (outcome.validated ? t.keptDay : t.keptDayRequest).replace('{day}', formatVisitDay(outcome.at, language))
         : t.kept.replace('{time}', formatAppointment(outcome.at, language))
     case 'ask_period':
       return t.askPeriod.replace('{hour}', String(outcome.hour))
@@ -833,7 +842,9 @@ export function appointmentLine(outcome: BookingOutcome, language: ReplyLanguage
       const missing = outcome.missing[0] === 'name' ? name : t.missingPhone
       if (dayOnly) {
         const day = formatVisitDay(outcome.at, language)
-        return outcome.handoff ? t.needDetailsDayHandoff.replace('{day}', day) : t.needDetailsDay.replace('{day}', day).replace('{missing}', missing)
+        if (outcome.handoff) return t.needDetailsDayHandoff.replace('{day}', day)
+        // "To book Friday…" promises the day before anything checked it
+        return (outcome.validated ? t.needDetailsDay : t.needDetailsDayRequest).replace('{day}', day).replace('{missing}', missing)
       }
       const time = formatAppointment(outcome.at, language)
       return outcome.handoff ? t.needDetailsHandoff.replace('{time}', time) : t.needDetails.replace('{time}', time).replace('{missing}', missing)
@@ -880,9 +891,9 @@ export function renderReply(template: string, outcome: BookingOutcome, language:
 
   if (!outcome.changed && !hasPlaceholder) return template
   if (rules.mode === 'day_only') {
-    // The visit's day where the model put the placeholder; a visit set on
-    // this message gets the system's own sentence, which never has a time
-    if (!outcome.changed) return template.replaceAll(APPOINTMENT_PLACEHOLDER, formatVisitDay(outcome.at, language)).trim()
+    // The model never states the visit, set on this message or restated: its
+    // sentences around the placeholder go («حجزك يوم الجمعة» on a day nobody
+    // checked), and the system's own sentence says booking or request
     return [withoutAppointmentSentences(template), bookedLine(outcome, language, rules)].filter(Boolean).join('\n')
   }
   const time = formatAppointment(outcome.at, language)

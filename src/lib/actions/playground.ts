@@ -135,6 +135,7 @@ export async function testBot(
             // As the widget would: only a time code checked against opening hours is confirmed
             confirmed: confirmsItself(settings.auto_confirm_appointments, resolved.validated),
             changed: true,
+            validated: resolved.validated,
           }
         : resolved,
     })
