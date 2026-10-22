@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ar from '../../messages/ar.json'
 import { geminiText, mockGemini, seedClient, type GeminiCall } from '../harness/helpers'
-import { analyseTranscript, botReply, lastVisitorMessage, newVisitorId, openEveryDay, sendVisitorMessage } from './webhook'
+import { analyseTranscript, botReply, lastVisitorMessage, newVisitorId, openEveryDay, sendVisitorMessage, setBranchHours } from './webhook'
 
 /**
  * What the visitor has said toward one appointment survives the messages in
@@ -70,16 +70,10 @@ async function visitor(hours: (seeded: Awaited<ReturnType<typeof seedClient>>) =
   return { say, appointmentAt }
 }
 
-/** Every day noon to 10 PM, Friday closed */
+/** Every day noon to 10 PM, Friday closed, on the client's branch */
 async function closedOnFriday(seeded: Awaited<ReturnType<typeof seedClient>>) {
-  const days = Object.fromEntries(
-    ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'].map((day) => [day, { open: day !== 'fri', from: '12:00', to: '22:00' }])
-  )
-  const { error } = await seeded.supabase
-    .from('bot_settings')
-    .update({ business_hours: { enabled: true, timezone: 'Africa/Cairo', days } })
-    .eq('client_id', seeded.clientId)
-  if (error) throw new Error(error.message)
+  const noonToTen: [string, string][] = [['12:00', '22:00']]
+  await setBranchHours(seeded, { sat: noonToTen, sun: noonToTen, mon: noonToTen, tue: noonToTen, wed: noonToTen, thu: noonToTen })
 }
 
 describe('a partial booking is kept across messages, and a refusal narrows it', () => {
@@ -184,7 +178,9 @@ describe('a partial booking is kept across messages, and a refusal narrows it', 
     const { say, appointmentAt } = await visitor(closedOnFriday)
     await say(`${NAME} 01097654189`)
 
-    expect(await say('الجمعة الساعة 7 بالليل')).toBe(APPOINTMENT.closedDay.replace('{day}', 'الجمعة'))
+    expect(await say('الجمعة الساعة 7 بالليل')).toBe(
+      APPOINTMENT.closedDay.replace('{day}', 'الجمعة').replace('{openDays}', 'السبت والأحد والاثنين والثلاثاء والأربعاء والخميس')
+    )
     // Saturday 24 October at the 7 PM asked for with Friday
     expect(await say('طب السبت')).toBe(APPOINTMENT.bookedConfirmed.replace('{time}', 'السبت 24 أكتوبر الساعة 7:00 مساءً'))
     expect(await appointmentAt()).toEqual(['2026-10-24T16:00:00.000Z'])

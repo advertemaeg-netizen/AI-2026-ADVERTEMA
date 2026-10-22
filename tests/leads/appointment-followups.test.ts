@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ar from '../../messages/ar.json'
 import { testBot } from '@/lib/actions/playground'
 import { geminiCalls, geminiError, geminiText, mockGemini, seedClient, serviceClient, type GeminiCall } from '../harness/helpers'
-import { analyseTranscript, botReply, newVisitorId, sendVisitorMessage } from './webhook'
+import { analyseTranscript, botReply, newVisitorId, openEveryDay, sendVisitorMessage } from './webhook'
 
 // The playground's signed-in admin
 vi.mock('@/lib/auth/session', () => ({
@@ -53,15 +53,8 @@ async function leadsOf({ supabase, clientId }: Seeded) {
 }
 const instant = (value: string | null) => (value ? new Date(value).toISOString() : null)
 
-const openHours = (from: string, to: string) => ({
-  enabled: true,
-  timezone: 'Africa/Cairo',
-  days: Object.fromEntries(['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'].map((day) => [day, { open: true, from, to }])),
-})
-async function setBusinessHours({ supabase, clientId }: Seeded, from: string, to: string) {
-  const { error } = await supabase.from('bot_settings').update({ business_hours: openHours(from, to) }).eq('client_id', clientId)
-  expect(error).toBeNull()
-}
+/** Open every day `from`–`to`, on the client's branch: the hours a booking is checked against */
+const setBusinessHours = (seeded: Seeded, from: string, to: string) => openEveryDay(seeded, from, to)
 
 describe('messages the bot does not answer', () => {
   it('reads the appointment in the analysis when an agent has taken over, unconfirmed and marked as from the analysis', async () => {

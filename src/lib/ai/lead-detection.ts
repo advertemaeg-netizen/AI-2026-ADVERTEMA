@@ -7,12 +7,12 @@ import {
   APPOINTMENT_COMPONENTS,
   APPOINTMENT_REQUEST_SCHEMA,
   appointmentRequestSchema,
+  type HoursInput,
 } from '@/lib/ai/appointment'
 import { recordAppointment } from '@/lib/ai/booking'
 import { validateName, type ContactState } from '@/lib/ai/contact'
 import { normalizePhone } from '@/lib/phone'
 import { claimLeadAnalysis } from '@/lib/subscription-limits'
-import type { BusinessHours } from '@/lib/types/bot-settings'
 import { CLOSED_LEAD_STATUSES, type LeadExtractedData, type LeadStatus } from '@/lib/types/leads'
 
 /** Minimum confidence to *create* a lead (an open lead is always enriched) */
@@ -205,8 +205,8 @@ export async function detectLead({
   history: ChatTurn[]
   /** The bot answered this message (so it's already counted as a message) */
   replied: boolean
-  /** Settles a bare hour ("at 9") in an appointment read here */
-  businessHours: BusinessHours | null
+  /** The branch's schedule: settles a bare hour ("at 9") in an appointment read here, and refuses a closed day */
+  businessHours: HoursInput
   /** The name and number code accepted while answering; null when the bot didn't answer */
   contact?: ContactState | null
 }) {

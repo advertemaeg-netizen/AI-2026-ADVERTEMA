@@ -1,7 +1,17 @@
 'use server'
 
 import { loadBotSettings, runBot, type BotClient } from '@/lib/ai/bot'
-import { confirmsItself, replyLanguage, resolveAppointment, resolveDay, withoutTime } from '@/lib/ai/appointment'
+import {
+  confirmsItself,
+  replyLanguage,
+  requestedDayKey,
+  resolveAppointment,
+  resolveDay,
+  withoutTime,
+  type AppointmentResolution,
+  type BookingOutcome,
+} from '@/lib/ai/appointment'
+import { branchInMessage, loadBookingBranches } from '@/lib/ai/branches'
 import { withEvidence } from '@/lib/ai/evidence'
 import { composeReply } from '@/lib/ai/compose'
 import { canManage, getSession, isImpersonating } from '@/lib/auth/session'
@@ -93,7 +103,11 @@ export async function testBot(
 
   try {
     const settings = override ?? (await loadBotSettings(supabase, clientId))
-    const { reply: template, appointment, otherAnswer } = await runBot({
+    const branches = await loadBookingBranches(supabase, clientId).catch((error) => {
+      console.error('[playground] reading the branches failed', error)
+      return []
+    })
+    const { reply: template, appointment, otherAnswer, branch: reportedBranch } = await runBot({
       supabase,
       clientId,
       client,
@@ -101,6 +115,7 @@ export async function testBot(
       history: messages.map((m) => ({ role: m.role, content: m.content })),
       // Unsaved settings: the bot settings page's live preview
       operation: override ? 'bot_preview' : 'playground',
+      branches,
     })
     // Nothing is booked from a test chat: the reply shows what a visitor
     // would get if the requested time were recorded
@@ -111,11 +126,23 @@ export async function testBot(
     // The business's booking shape, as the widget applies it (runBot already
     // drops any booking with none)
     const mode = effectiveBookingMode(settings)
-    const resolved = !evidenced
-      ? ({ status: 'none' } as const)
-      : mode === 'day_only'
-        ? resolveDay(withoutTime(evidenced), { businessHours: settings.business_hours })
-        : resolveAppointment(evidenced, { businessHours: settings.business_hours, hourFromPartOfDay: false })
+    // The branch, as the widget would hold it: the only one, or the latest a
+    // visitor message named (a test chat keeps no draft to hold it in)
+    const several = branches.length > 1
+    const branch = several
+      ? ([...visitorMessages]
+          .reverse()
+          .map((text, i) => branchInMessage(branches, text, i === 0 ? reportedBranch : null))
+          .find(Boolean) ?? null)
+      : (branches[0] ?? null)
+    const hours = branch?.schedule ?? null
+    const resolved: BookingOutcome | AppointmentResolution = !evidenced
+      ? { status: 'none' }
+      : several && !branch
+        ? { status: 'ask_branch', day: requestedDayKey(evidenced), branches: branches.map((b) => b.name) }
+        : mode === 'day_only'
+          ? resolveDay(withoutTime(evidenced), { businessHours: hours })
+          : resolveAppointment(evidenced, { businessHours: hours, hourFromPartOfDay: false })
     // Nothing is saved from a test chat either: a reply that states what is
     // on record says there is nothing, as it would to a visitor with no lead
     const reply = composeReply({
@@ -126,7 +153,7 @@ export async function testBot(
       language: replyLanguage(settings.language, visitorMessages.at(-1) ?? ''),
       appointmentDecided: Boolean(appointment),
       otherAnswer,
-      rules: { mode, nameStrictness: settings.name_strictness },
+      rules: { mode, nameStrictness: settings.name_strictness, branch: several ? (branch?.name ?? null) : null },
       outcome:
       resolved.status === 'resolved'
         ? {

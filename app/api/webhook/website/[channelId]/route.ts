@@ -11,14 +11,15 @@ import {
   narrowDraft,
   parseBookingDraft,
   replyLanguage,
+  requestedDayKey,
   resolvesWhole,
   saysNothing,
   withoutTime,
   type AppointmentRequest,
   type BookingDraft,
   type BookingOutcome,
-  type ReplyRules,
 } from '@/lib/ai/appointment'
+import { branchInMessage, branchNamed, loadBookingBranches, type BookingBranch } from '@/lib/ai/branches'
 import { withEvidence, type EvidencedPart } from '@/lib/ai/evidence'
 import { appointmentOnRecord, bookingState, confirmPending, recordAppointment, saveContact, savedRecord } from '@/lib/ai/booking'
 import { composeReply, mentionsName, type SavedRecord } from '@/lib/ai/compose'
@@ -337,6 +338,20 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       console.error('[webhook/website] loading bot settings failed', error)
     }
 
+    // The client's active branches: the hours a booking is checked against,
+    // and the ones the prompt states. Unread, nothing is checked (every
+    // booking is a request) and no hours are stated: it never blocks a reply.
+    let branches: BookingBranch[] = []
+    try {
+      branches = await loadBookingBranches(supabase, channel.client_id)
+    } catch (error) {
+      console.error('[webhook/website] reading the branches failed', error)
+    }
+    // More than one: the visitor's branch is a step of its own. One: it is the branch, never asked about
+    const severalBranches = branches.length > 1
+    // The branch this conversation's booking is for, once known
+    let branch: BookingBranch | null = severalBranches ? null : (branches[0] ?? null)
+
     // Lead detection runs after the response is sent, so it never slows the
     // reply. It runs whatever happens to the reply: detectLead itself decides
     // whether the client's subscription allows the analysis.
@@ -351,7 +366,8 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
           sourceMessageId: userMessage.id,
           history: turns,
           replied,
-          businessHours: settings?.business_hours ?? null,
+          // Read when the analysis runs, after the reply: the branch as this message left it
+          businessHours: branch?.schedule ?? null,
           contact,
         })
       )
@@ -426,25 +442,33 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
     let contact: ContactState | null = null
     // The business's booking shape, and how much of a name it asks for
     const mode = effectiveBookingMode(settings)
-    const rules: ReplyRules = { mode, nameStrictness: settings.name_strictness }
 
     // The open lead as it stands: a day (and time) held for the visitor's
     // details, and the partial booking written so far. Unread, the message
     // trace stands in: it never blocks a reply.
     let held = false
     let previousDraft = tracedDraft
+    let leadBranchId: string | null = null
     try {
       const state = await bookingState(supabase, conversationId)
       held = state.held
       if (state.hasDraft) previousDraft = state.draft
+      leadBranchId = state.branchId
     } catch (error) {
       console.error('[webhook/website] reading the open lead failed', error)
+    }
+    // The branch chosen earlier: the draft's, or the one a held day was recorded for
+    if (severalBranches) {
+      branch = branchNamed(branches, previousDraft?.branch ?? null) ?? branches.find((b) => b.id === leadBranchId) ?? null
     }
     // A partial booking that is already whole: written before a booking that
     // failed (5.2). It is booked on this message, whatever it is about, and the
     // visitor is not asked again for what they gave.
     const resumable =
-      mode !== 'none' && previousDraft !== null && resolvesWhole(previousDraft, mode, settings.business_hours)
+      mode !== 'none' &&
+      previousDraft !== null &&
+      (!severalBranches || branch !== null) &&
+      resolvesWhole(previousDraft, mode, branch?.schedule ?? null)
 
     try {
       // A day or time held from earlier may become the appointment on this
@@ -460,6 +484,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
         conversationId,
         knownContact: previousContact,
         heldRequest: held,
+        branches,
       })
 
       // The model reported; code decides. The name and the number are
@@ -471,13 +496,23 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       const events: ContactEvents = read.events
       let booking: BookingOutcome = { status: 'none' }
       let bookingFailed = false
-      // Kept as it was unless this message reported something about the appointment
-      let draft = previousDraft
       // What the model reported that the message gave no trace of
       let evidenceDropped: EvidencedPart[] = []
       // Code decided something about the appointment on this message: then
       // code alone speaks about it (composeReply)
       let decided = result.appointment !== null
+
+      // The branch this message names, if the visitor's own words name one
+      // (branchInMessage): it is the branch from here on, held in the draft
+      const named = severalBranches && mode !== 'none' ? branchInMessage(branches, message, result.branch) : null
+      const branchChosenNow = named !== null && named.id !== branch?.id
+      if (named) branch = named
+      const startDraft: BookingDraft | null =
+        severalBranches && branch && previousDraft?.branch !== branch.name
+          ? { day: previousDraft?.day ?? null, time: previousDraft?.time ?? null, branch: branch.name }
+          : previousDraft
+      // Kept as it was unless this message reported something about the appointment
+      let draft = startDraft
 
       // Only what this message shows a trace of (withEvidence), completed with
       // what earlier ones gave (the draft). A day-only business takes no time,
@@ -486,13 +521,18 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       if (result.appointment) {
         const evidenced = withEvidence(result.appointment, message)
         evidenceDropped = evidenced.dropped
-        const merged = mergeDraft(previousDraft, evidenced.request)
+        const merged = mergeDraft(startDraft, evidenced.request)
         request = mode === 'day_only' ? withoutTime(merged) : merged
+      } else if (branchChosenNow && (startDraft?.day || startDraft?.time)) {
+        // The answer to "which branch?": the day held for it is checked now
+        const merged = mergeDraft(startDraft, NOTHING_SAID)
+        request = mode === 'day_only' ? withoutTime(merged) : merged
+        decided = true
       }
       // THE LEAD AS IT ARRIVES: the name, the number, and the partial booking
       // with what this message added, written now — before anything is booked,
       // so nothing given can be lost to a failure further on
-      const arriving = request && !saysNothing(request) ? narrowDraft(previousDraft, request, ASK_DAY_AND_TIME) : undefined
+      const arriving = request && !saysNothing(request) ? narrowDraft(startDraft, request, ASK_DAY_AND_TIME) : undefined
       try {
         await saveContact({
           supabase,
@@ -519,9 +559,13 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
             // booked once it can be, one on record is restated, and otherwise
             // the visitor is asked for the day and time.
             booking =
-              (await confirmPending({ supabase, conversationId, businessHours: settings.business_hours, contact })) ??
+              (await confirmPending({ supabase, conversationId, businessHours: branch?.schedule ?? null, contact })) ??
               (await appointmentOnRecord({ supabase, conversationId }))
             if (booking.status === 'none') booking = ASK_DAY_AND_TIME
+          } else if (severalBranches && !branch) {
+            // No day can be checked before the branch is known: what was said
+            // is held, and named in the question
+            booking = { status: 'ask_branch', day: requestedDayKey(request), branches: branches.map((b) => b.name) }
           } else {
             booking = await recordAppointment({
               supabase,
@@ -530,7 +574,8 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
               sourceMessageId: userMessage.id,
               request,
               autoConfirm: settings.auto_confirm_appointments,
-              businessHours: settings.business_hours,
+              businessHours: branch?.schedule ?? null,
+              branch,
               source: 'reply',
               contact,
               // The visitor is here to be asked the hour rather than given a guess at one
@@ -538,12 +583,12 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
               mode: mode === 'day_only' ? 'day_only' : 'appointment',
             })
           }
-          draft = narrowDraft(previousDraft, request, booking)
+          draft = narrowDraft(startDraft, request, booking)
         } catch (error) {
           console.error('[webhook/website] recording the appointment failed', error)
           bookingFailed = true
           // As written above: what the visitor gave stays, for the next message to book
-          draft = arriving ?? previousDraft
+          draft = arriving ?? startDraft
         }
       } else if (mode !== 'none') {
         // A time asked for earlier, held back for a name or a number: once
@@ -552,13 +597,13 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
         // booking already whole (a booking write that failed) is booked the
         // same way.
         try {
-          const promoted = await confirmPending({ supabase, conversationId, businessHours: settings.business_hours, contact })
+          const promoted = await confirmPending({ supabase, conversationId, businessHours: branch?.schedule ?? null, contact })
           if (promoted) {
             booking = promoted
             decided = true
             draft = null
-          } else if (resumable && previousDraft) {
-            const resumed = mergeDraft(previousDraft, NOTHING_SAID)
+          } else if (resumable && startDraft) {
+            const resumed = mergeDraft(startDraft, NOTHING_SAID)
             booking = await recordAppointment({
               supabase,
               clientId: channel.client_id,
@@ -566,14 +611,15 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
               sourceMessageId: userMessage.id,
               request: resumed,
               autoConfirm: settings.auto_confirm_appointments,
-              businessHours: settings.business_hours,
+              businessHours: branch?.schedule ?? null,
+              branch,
               source: 'reply',
               contact,
               hourFromPartOfDay: false,
               mode: mode === 'day_only' ? 'day_only' : 'appointment',
             })
             decided = true
-            draft = narrowDraft(previousDraft, resumed, booking)
+            draft = narrowDraft(startDraft, resumed, booking)
           }
         } catch (error) {
           console.error('[webhook/website] confirming the requested appointment failed', error)
@@ -612,7 +658,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       }
       // Only when the reply talks about the visitor's name and code may have
       // to ask the next question itself: is a day and time on record already?
-      let timeOnRecord = booking.status !== 'none' && booking.status !== 'incomplete'
+      let timeOnRecord = !['none', 'incomplete', 'ask_branch', 'closed_date', 'no_open_days'].includes(booking.status)
       if (!timeOnRecord && contact?.name && mentionsName(decided ? (result.otherAnswer ?? '') : result.reply)) {
         try {
           timeOnRecord = (await appointmentOnRecord({ supabase, conversationId })).status === 'booked'
@@ -645,7 +691,8 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
             language,
             appointmentDecided: decided,
             otherAnswer: result.otherAnswer,
-            rules,
+            // A refusal names the branch when there is more than one to tell apart
+            rules: { mode, nameStrictness: settings.name_strictness, branch: severalBranches ? (branch?.name ?? null) : null },
             known: {
               name: contact.name,
               phone: contact.phone ?? record.phone,
@@ -656,7 +703,19 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       // The visitor was told a person will take it from here: make that true.
       // 'no_answer' is the nearest reason the column allows today; a reason
       // of its own needs a migration.
-      if (events.phone === 'rejected_final' || (booking.status === 'needs_details' && booking.handoff)) {
+      if (booking.status === 'no_open_days') {
+        // A branch marked active whose hours open on no day: the client
+        // half-configured it and nothing on their side says so. The visitor
+        // was told a person will be in touch.
+        console.error(
+          `[booking] client ${channel.client_id}: branch ${branch?.id ?? '(none)'} is active but its hours open on no day; conversation ${conversationId} handed to a person`
+        )
+      }
+      if (
+        events.phone === 'rejected_final' ||
+        (booking.status === 'needs_details' && booking.handoff) ||
+        booking.status === 'no_open_days'
+      ) {
         await markForPerson('no_answer')
       }
       if (bookingFailed) await markForPerson('service_down')

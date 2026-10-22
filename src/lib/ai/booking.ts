@@ -2,21 +2,23 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   confirmsItself,
-  openingAt,
   parseBookingDraft,
+  refusalAt,
   resolveAppointment,
   resolveDay,
   sameInstant,
+  scheduleOf,
   type AppointmentRequest,
   type BookingDraft,
   type BookingOutcome,
+  type HoursInput,
 } from '@/lib/ai/appointment'
+import type { BookingBranch } from '@/lib/ai/branches'
 import { MAX_PHONE_REJECTIONS, missingDetails, type ContactEvents, type ContactState } from '@/lib/ai/contact'
 import { cairoParts } from '@/lib/cairo-time'
 import type { BookingMode } from '@/lib/types/bot-settings'
 import type { SavedRecord } from '@/lib/ai/compose'
 import { normalizePhone } from '@/lib/phone'
-import type { BusinessHours } from '@/lib/types/bot-settings'
 import { CLOSED_LEAD_STATUSES, type AiAppointment, type LeadExtractedData, type LeadStatus } from '@/lib/types/leads'
 
 type BookableLead = {
@@ -30,9 +32,15 @@ type BookableLead = {
   ai_appointment: AiAppointment | null
   ai_extracted_data: LeadExtractedData | null
   booking_draft: unknown
+  branch_id: string | null
 }
 
-const COLUMNS = 'id, name, phone, status, appointment_at, appointment_confirmed, showed_up, ai_appointment, ai_extracted_data, booking_draft'
+const COLUMNS =
+  'id, name, phone, status, appointment_at, appointment_confirmed, showed_up, ai_appointment, ai_extracted_data, booking_draft, branch_id'
+
+/** The branch a booking is for, as the lead records it: the reference, and the name the dashboard shows */
+const branchColumns = (branch: Pick<BookingBranch, 'id' | 'name'> | null | undefined) =>
+  branch ? { branch_id: branch.id, branch: branch.name } : {}
 
 const isClosed = (lead: BookableLead) => CLOSED_LEAD_STATUSES.includes(lead.status)
 
@@ -101,8 +109,10 @@ export async function saveContact({
   if (!open) {
     // A lead opens with something THIS message gave: a name or number carried
     // over from an earlier episode is not new (a customer who came back to
-    // say thanks has not started another)
-    const gave = events.name === 'stored' || events.name === 'stored_incomplete' || events.phone === 'stored' || Boolean(draft)
+    // say thanks has not started another), and nor is a branch alone (a
+    // visitor who asked a branch's price has not asked to book)
+    const gave =
+      events.name === 'stored' || events.name === 'stored_incomplete' || events.phone === 'stored' || Boolean(draft?.day || draft?.time)
     if (!gave) return { name: null, phone: null }
     const returningFrom = leads.findLast(isClosed) ?? null
     const row = { name: contact.name ?? returningFrom?.name ?? null, phone: contact.phone ?? returningFrom?.phone ?? null }
@@ -150,10 +160,12 @@ export async function saveContact({
 export async function bookingState(
   supabase: SupabaseClient,
   conversationId: string
-): Promise<{ held: boolean; draft: BookingDraft | null; hasDraft: boolean }> {
+): Promise<{ held: boolean; draft: BookingDraft | null; hasDraft: boolean; branchId: string | null }> {
   const open = (await loadLeads(supabase, conversationId)).find((lead) => !isClosed(lead)) ?? null
   return {
     held: Boolean(open?.ai_appointment?.pending && !open.appointment_at),
+    // The branch a held day (or a visit on record) is for
+    branchId: open?.branch_id ?? null,
     draft: parseBookingDraft(open?.booking_draft),
     // A lead whose booking_draft was never written: rows from before it existed fall back to the message trace
     hasDraft: open !== null && open.booking_draft !== undefined && open.booking_draft !== null,
@@ -187,6 +199,7 @@ export async function recordAppointment({
   contact,
   hourFromPartOfDay = true,
   mode = 'appointment',
+  branch = null,
   now = new Date(),
 }: {
   supabase: SupabaseClient
@@ -196,8 +209,10 @@ export async function recordAppointment({
   request: AppointmentRequest
   /** bot_settings.auto_confirm_appointments */
   autoConfirm: boolean
-  /** Settles a bare hour ("at 9"), and refuses a time the business is closed at */
-  businessHours: BusinessHours | null
+  /** The branch's schedule: settles a bare hour ("at 9"), and refuses a day or time it is closed. None: nothing is checked */
+  businessHours: HoursInput
+  /** The branch the visit is for, written on the lead with it */
+  branch?: Pick<BookingBranch, 'id' | 'name'> | null
   /**
    * 'reply': read by the reply call; opens a lead if there is none.
    * 'analysis': read by the analysis of a message the bot didn't answer; only
@@ -259,6 +274,7 @@ export async function recordAppointment({
       status: booked ? 'appointment_booked' : 'new',
       ...(booked ? { appointment_at: resolved.at, appointment_confirmed: confirmed } : {}),
       ai_appointment: aiAppointment,
+      ...branchColumns(branch),
     })
     if (!error) return booked ? { status: 'booked', at: resolved.at, confirmed, changed: true, validated: resolved.validated } : needsDetails
     // 23505: a concurrent message opened the lead first — book on that one
@@ -283,22 +299,31 @@ export async function recordAppointment({
   if (missing.length > 0) {
     // Not an appointment: the lead keeps what was asked for, and nothing else changes
     if (!open.appointment_at) {
-      const { error } = await supabase.from('leads').update({ ai_appointment: aiAppointment }).eq('id', open.id)
+      const { error } = await supabase
+        .from('leads')
+        .update({ ai_appointment: aiAppointment, ...branchColumns(branch) })
+        .eq('id', open.id)
       if (error) throw error
     }
     return needsDetails
   }
 
-  return writeAppointment(supabase, open, aiAppointment)
+  return writeAppointment(supabase, open, aiAppointment, branch)
 }
 
 /** The appointment itself, on a lead that has passed the gate */
-async function writeAppointment(supabase: SupabaseClient, lead: BookableLead, aiAppointment: AiAppointment): Promise<BookingOutcome> {
+async function writeAppointment(
+  supabase: SupabaseClient,
+  lead: BookableLead,
+  aiAppointment: AiAppointment,
+  branch: Pick<BookingBranch, 'id' | 'name'> | null = null
+): Promise<BookingOutcome> {
   const { error } = await supabase
     .from('leads')
     .update({
       appointment_at: aiAppointment.at,
       ai_appointment: aiAppointment,
+      ...branchColumns(branch),
       ...(lead.status === 'new' || lead.status === 'contacted' ? { status: 'appointment_booked' } : {}),
     })
     .eq('id', lead.id)
@@ -332,7 +357,8 @@ export async function confirmPending({
 }: {
   supabase: SupabaseClient
   conversationId: string
-  businessHours: BusinessHours | null
+  /** The schedule of the branch the held day is for; none: nothing is checked */
+  businessHours: HoursInput
   /** The name and number as code holds them after this message: whether the bot has stopped asking for the number */
   contact?: ContactState | null
   now?: Date
@@ -349,12 +375,11 @@ export async function confirmPending({
   // A day-only visit has gone when its day has, not its placing time
   const gone = pending.day_only ? dayKey(pending.at) < dayKey(now) : new Date(pending.at).getTime() < now.getTime()
   if (gone) return drop({ status: 'past' })
-  if (businessHours?.enabled) {
-    const opening = openingAt(businessHours, pending.at)
-    if (!opening.open) return drop({ status: 'outside_hours', hours: opening.day })
-  }
-  // Checked again just now, against the hours as they stand
-  const validated = businessHours?.enabled === true
+  // Checked again just now, against the hours and closures as they stand
+  const schedule = scheduleOf(businessHours)
+  const refused = schedule ? refusalAt(schedule, pending.at, pending.day_only === true) : null
+  if (refused) return drop(refused)
+  const validated = schedule !== null
   const missing = missingDetails(open.name, open.phone)
   if (missing.length > 0) {
     return {

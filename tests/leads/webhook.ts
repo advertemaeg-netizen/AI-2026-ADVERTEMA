@@ -125,18 +125,59 @@ export const botReply = (
   otherAnswer: string | null = null
 ) => geminiText(JSON.stringify({ contact, appointment, other_answer: otherAnswer, reply }))
 
-/** Opening hours on the client: the assistant only confirms a time it could check against them */
+/**
+ * Opening hours on the client's branch (the one every client starts with):
+ * the assistant only confirms a time it could check against them. Only the
+ * branch's: the bot settings' own hours no longer decide a booking.
+ */
 export async function openEveryDay(
   seeded: Pick<Awaited<ReturnType<typeof seedClient>>, 'supabase' | 'clientId'>,
   from = '08:00',
   to = '23:00'
 ) {
-  const days = Object.fromEntries(['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'].map((day) => [day, { open: true, from, to }]))
-  const { error } = await seeded.supabase
-    .from('bot_settings')
-    .update({ business_hours: { enabled: true, timezone: 'Africa/Cairo', days } })
+  await setBranchHours(seeded, Object.fromEntries(WEEK.map((day) => [day, [[from, to]]])))
+}
+
+const WEEK = ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'] as const
+
+/** Every branch of the client, oldest first: the default one, then any a test added */
+export async function clientBranches(seeded: Pick<Awaited<ReturnType<typeof seedClient>>, 'supabase' | 'clientId'>) {
+  const { data, error } = await seeded.supabase
+    .from('branches')
+    .select('id, name')
     .eq('client_id', seeded.clientId)
+    .order('created_at', { ascending: true })
+    .returns<{ id: string; name: string }[]>()
+  if (error) throw new Error(`Reading the branches failed: ${error.message}`)
+  return data
+}
+
+/** The hours of one branch (the client's first when none is named), as the branch form writes them */
+export async function setBranchHours(
+  seeded: Pick<Awaited<ReturnType<typeof seedClient>>, 'supabase' | 'clientId'>,
+  hours: Partial<Record<(typeof WEEK)[number], [string, string][]>>,
+  branchId?: string
+) {
+  const id = branchId ?? (await clientBranches(seeded))[0].id
+  const business_hours = Object.fromEntries(WEEK.map((day) => [day, hours[day] ?? []]))
+  const { error } = await seeded.supabase.from('branches').update({ business_hours }).eq('id', id)
   if (error) throw new Error(`Setting the opening hours failed: ${error.message}`)
+}
+
+/** A second (third…) branch for the client, with its hours */
+export async function addBranch(
+  seeded: Pick<Awaited<ReturnType<typeof seedClient>>, 'supabase' | 'clientId'>,
+  name: string,
+  hours: Partial<Record<(typeof WEEK)[number], [string, string][]>> | null
+) {
+  const business_hours = hours && Object.fromEntries(WEEK.map((day) => [day, hours[day] ?? []]))
+  const { data, error } = await seeded.supabase
+    .from('branches')
+    .insert({ client_id: seeded.clientId, name, business_hours })
+    .select('id')
+    .single<{ id: string }>()
+  if (error) throw new Error(`Adding the branch failed: ${error.message}`)
+  return data.id
 }
 
 /**

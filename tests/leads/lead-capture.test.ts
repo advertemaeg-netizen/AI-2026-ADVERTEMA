@@ -456,6 +456,8 @@ describe('a day-only visit\'s day', () => {
     expect(resolveDay(request({ day_type: 'weekday', weekday: 'friday' }), { now: at('2026-10-19T09:00:00Z'), businessHours: hours })).toEqual({
       status: 'outside_hours',
       hours: { weekday: 5, open: false },
+      // The days it does open, Saturday first, for the refusal to name
+      openDays: [6, 0, 1, 2, 3, 4],
     })
   })
 

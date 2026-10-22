@@ -10,6 +10,7 @@ import {
   renderReply,
   resolveAppointment,
 } from '@/lib/ai/appointment'
+import type { BusinessHours } from '@/lib/types/bot-settings'
 
 // Monday 5 October 2026, 12:00 in Cairo (UTC+3)
 const now = new Date('2026-10-05T09:00:00.000Z')
@@ -19,13 +20,15 @@ const resolve = (request: Record<string, unknown>, keepDayOf: string | null = nu
   resolveAppointment(appointmentRequestSchema.parse({ period: 'unspecified', ...request }), { now, keepDayOf, businessHours })
 
 /** Open every day but Friday, `from`–`to` */
-const hours = (from: string, to: string): Hours => ({
+const hours = (from: string, to: string): BusinessHours => ({
   enabled: true,
   timezone: 'Africa/Cairo',
   days: Object.fromEntries(
     ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'].map((day) => [day, { open: day !== 'fri', from, to }])
-  ) as NonNullable<Hours>['days'],
+  ) as BusinessHours['days'],
 })
+// Every day but Friday, Saturday first (Date#getDay() numbers)
+const ALL_BUT_FRIDAY = [6, 0, 1, 2, 3, 4]
 
 // `validated`: the time was checked against opening hours (there were some)
 const at = (iso: string, approximate = false, validated = false) => ({ status: 'resolved', at: iso, approximate, validated })
@@ -117,6 +120,7 @@ describe('resolveAppointment: components → one Cairo instant', () => {
     expect(resolve({ day_type: 'weekday', weekday: 'friday' }, null, hours('12:00', '22:00'))).toEqual({
       status: 'outside_hours',
       hours: { weekday: 5, open: false },
+      openDays: ALL_BUT_FRIDAY,
     })
   })
 
@@ -158,7 +162,8 @@ describe('resolveAppointment: components → one Cairo instant', () => {
     it('is refused with that day\'s hours: 5 in the morning at a clinic that opens at noon', () => {
       expect(resolve({ day_type: 'tomorrow', hour: 5, period: 'morning' }, null, clinic)).toEqual({
         status: 'outside_hours',
-        hours: { weekday: 2, open: true, from: '12:00', to: '22:00' },
+        hours: { weekday: 2, open: true, ranges: [['12:00', '22:00']] },
+        openDays: ALL_BUT_FRIDAY,
       })
     })
 
@@ -172,6 +177,7 @@ describe('resolveAppointment: components → one Cairo instant', () => {
       expect(resolve({ day_type: 'weekday', weekday: 'friday', hour: 6, period: 'evening' }, null, clinic)).toEqual({
         status: 'outside_hours',
         hours: { weekday: 5, open: false },
+        openDays: ALL_BUT_FRIDAY,
       })
     })
 
@@ -197,8 +203,8 @@ describe('resolveAppointment: components → one Cairo instant', () => {
 describe('the partial booking kept between messages (the draft)', () => {
   const request = (fields: Record<string, unknown>) => appointmentRequestSchema.parse({ period: 'unspecified', ...fields })
   const thursday = (hour: number | null, period = 'unspecified') => request({ day_type: 'weekday', weekday: 'thursday', hour, period })
-  const outside = { status: 'outside_hours', hours: { weekday: 4, open: true, from: '12:00', to: '22:00' } } as const
-  const closed = { status: 'outside_hours', hours: { weekday: 5, open: false } } as const
+  const outside = { status: 'outside_hours', hours: { weekday: 4, open: true, ranges: [['12:00', '22:00']] }, openDays: ALL_BUT_FRIDAY } as const
+  const closed = { status: 'outside_hours', hours: { weekday: 5, open: false }, openDays: ALL_BUT_FRIDAY } as const
 
   // Conversation 0c6b8d64, 18 October 2026: two refused times, then "7 بالليل" without the day
   it('keeps the day when the time on it is refused, and completes a day-less time with it', () => {
@@ -267,12 +273,52 @@ describe('a reply about a time that did not become an appointment', () => {
   const T = ar.botReplies.appointment
 
   it('says the hours of that day, and drops what the model wrote about the booking', () => {
-    const outcome = { status: 'outside_hours', hours: { weekday: 2, open: true, from: '12:00', to: '22:00' } } as const
+    const outcome = { status: 'outside_hours', hours: { weekday: 2, open: true, ranges: [['12:00', '22:00']] }, openDays: ALL_BUT_FRIDAY } as const
     expect(renderReply('تمام، هسجل طلبك {{appointment}}. محتاج حاجة تانية؟', outcome, 'ar')).toBe(
       'محتاج حاجة تانية؟\nالميعاد ده برّه مواعيد العمل: يوم الثلاثاء بنشتغل من 12:00 ظهراً لـ 10:00 مساءً. تحب ساعة تانية؟'
     )
-    expect(renderReply('حجزتلك {{appointment}}.', { status: 'outside_hours', hours: { weekday: 5, open: false } }, 'ar')).toBe(
-      T.closedDay.replace('{day}', 'الجمعة')
+  })
+
+  // Dr.Ali's المنصورة, 22 October 2026: open Sunday, Monday, Wednesday and Thursday
+  const MANSOURA_OPEN = [0, 1, 3, 4]
+  const friday = { status: 'outside_hours', hours: { weekday: 5, open: false }, openDays: MANSOURA_OPEN } as const
+
+  it('refuses a closed day by naming the days it opens, «و» on every one after the first', () => {
+    const openDays = 'الأحد والاثنين والأربعاء والخميس'
+    expect(renderReply('حجزتلك {{appointment}}.', friday, 'ar')).toBe(T.closedDay.replace('{day}', 'الجمعة').replace('{openDays}', openDays))
+    expect(appointmentLine(friday, 'ar', { mode: 'day_only', nameStrictness: 'single', branch: 'فرع المنصورة' })).toBe(
+      T.closedDayAt.replace('{branch}', 'فرع المنصورة').replace('{day}', 'الجمعة').replace('{openDays}', openDays)
+    )
+  })
+
+  it('asks for the branch with « أو » between every name, holding the day it was given', () => {
+    const branches = ['فرع المنصورة', 'فرع المنزلة', 'فرع طلخا']
+    expect(appointmentLine({ status: 'ask_branch', day: null, branches: branches.slice(0, 2) }, 'ar')).toBe(
+      T.askBranch.replace('{branches}', 'فرع المنصورة أو فرع المنزلة')
+    )
+    expect(appointmentLine({ status: 'ask_branch', day: '2026-10-23', branches }, 'ar')).toBe(
+      T.askBranchForDay.replace('{day}', 'الجمعة 23 أكتوبر').replace('{branches}', 'فرع المنصورة أو فرع المنزلة أو فرع طلخا')
+    )
+  })
+
+  it('names a closure by its date, and hands a branch open on no day to a person', () => {
+    const rules = { mode: 'day_only', nameStrictness: 'single', branch: 'فرع المنصورة' } as const
+    expect(appointmentLine({ status: 'closed_date', date: '2026-10-30' }, 'ar', rules)).toBe(
+      T.closureDayAt.replace('{branch}', 'فرع المنصورة').replace('{date}', 'الجمعة 30 أكتوبر')
+    )
+    expect(appointmentLine({ status: 'closed_date', date: '2026-10-30' }, 'ar')).toBe(T.closureDay.replace('{date}', 'الجمعة 30 أكتوبر'))
+    expect(appointmentLine({ status: 'no_open_days' }, 'ar', rules)).toBe(T.noOpenDaysAt.replace('{branch}', 'فرع المنصورة'))
+    expect(appointmentLine({ status: 'no_open_days' }, 'ar')).toBe(T.noOpenDays)
+  })
+
+  it('lists a split shift\'s ranges, and names the branch when there is more than one', () => {
+    const split = { status: 'outside_hours', hours: { weekday: 0, open: true, ranges: [['17:00', '21:00'], ['10:00', '13:00']] }, openDays: [0] } as const
+    const ranges = `${T.timeRange.replace('{from}', '10:00 صباحاً').replace('{to}', '1:00 ظهراً')} و${T.timeRange
+      .replace('{from}', '5:00 مساءً')
+      .replace('{to}', '9:00 مساءً')}`
+    expect(appointmentLine(split, 'ar')).toBe(T.hours.replace('{day}', 'الأحد').replace('{ranges}', ranges))
+    expect(appointmentLine(split, 'ar', { mode: 'appointment', nameStrictness: 'single', branch: 'فرع المنزلة' })).toBe(
+      T.hoursAt.replace('{branch}', 'فرع المنزلة').replace('{day}', 'الأحد').replace('{ranges}', ranges)
     )
   })
 

@@ -13,19 +13,17 @@ import {
   type AppointmentRequest,
 } from '@/lib/ai/appointment'
 import { BOOKING_ORDER_INSTRUCTIONS } from '@/lib/ai/booking-order'
+import { describeBranches, loadBookingBranches, type BookingBranch } from '@/lib/ai/branches'
 import { describeContact, type ContactReport, type ContactState } from '@/lib/ai/contact'
 import {
   BOOKING_MODES,
   DEFAULT_SERVICE_UNAVAILABLE_MESSAGE,
-  WEEK_DAYS,
   businessHoursSchema,
   effectiveBookingMode,
   type BookingMode,
   type BotLanguage,
   type BotSettingsInput,
   type BotTone,
-  type BusinessHours,
-  type WeekDay,
 } from '@/lib/types/bot-settings'
 
 /**
@@ -191,31 +189,6 @@ const LANGUAGE_INSTRUCTIONS: Record<BotLanguage, string> = {
   both: 'Reply in the language the visitor writes in (Arabic or English), matching their dialect.',
 }
 
-const DAY_NAMES: Record<WeekDay, string> = {
-  sat: 'Saturday',
-  sun: 'Sunday',
-  mon: 'Monday',
-  tue: 'Tuesday',
-  wed: 'Wednesday',
-  thu: 'Thursday',
-  fri: 'Friday',
-}
-
-function describeBusinessHours(hours: BusinessHours, now: Date) {
-  const schedule = WEEK_DAYS.map((day) => {
-    const d = hours.days[day]
-    return `- ${DAY_NAMES[day]}: ${d.open ? `${d.from}–${d.to}${d.to <= d.from ? ' (closes after midnight)' : ''}` : 'closed'}`
-  }).join('\n')
-  const localNow = new Intl.DateTimeFormat('en-GB', {
-    timeZone: hours.timezone,
-    weekday: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).format(now)
-  return `Business hours (${hours.timezone}):\n${schedule}\nCurrent local time: ${localNow}. If the business is closed right now, tell the visitor once in the conversation (when it's relevant) and say when it opens next; don't repeat it in every reply.`
-}
-
 const BOOKING_INSTRUCTIONS: Record<BookingMode, string> = {
   appointment: APPOINTMENT_INSTRUCTIONS,
   day_only: DAY_ONLY_INSTRUCTIONS,
@@ -236,7 +209,9 @@ export function buildSystemPrompt(
   /** The name and number as code holds them */
   contact: ContactState | null = null,
   /** A time (or, day-only, a day) asked for earlier is held for the visitor's details */
-  heldRequest = false
+  heldRequest = false,
+  /** The client's active branches: their hours are the ones stated, and the ones booked from */
+  branches: BookingBranch[] = []
 ) {
   const mode = effectiveBookingMode(settings)
   const guidelines = [
@@ -258,7 +233,10 @@ export function buildSystemPrompt(
       client.industry ? `, a business in the ${client.industry} sector` : ''
     }, chatting with a visitor through the chat widget on the business's website. The chat opened with this welcome message from you: "${settings.welcome_message}"`,
     client.description ? `About the business:\n${client.description}` : '',
-    settings.business_hours?.enabled ? describeBusinessHours(settings.business_hours, now) : '',
+    // The branches' hours, the same record the booking is checked against.
+    // bot_settings.business_hours is no longer stated: a second schedule the
+    // code doesn't book from would be a second answer.
+    describeBranches(branches, now),
     // The name and the number are always reported, whatever the booking
     // shape; how a booking is reported, and in what order, is the shape's
     BOOKING_INSTRUCTIONS[mode],
@@ -316,16 +294,17 @@ export function parseBotReply(text: string): {
   appointment: AppointmentRequest | null
   contact: ContactReport | null
   otherAnswer: string | null
+  branch: string | null
 } {
   let json: unknown
   try {
     json = JSON.parse(text)
   } catch {
     // Not JSON: the model answered in plain text
-    return { reply: text, appointment: null, contact: null, otherAnswer: null }
+    return { reply: text, appointment: null, contact: null, otherAnswer: null, branch: null }
   }
   const parsed = json !== null && typeof json === 'object' && !Array.isArray(json) ? botReplySchema.safeParse(json) : null
-  if (!parsed?.success) return { reply: text, appointment: null, contact: null, otherAnswer: null }
+  if (!parsed?.success) return { reply: text, appointment: null, contact: null, otherAnswer: null, branch: null }
 
   const reply = parsed.data.reply?.trim() ?? ''
   const appointment = parsed.data.appointment ?? null
@@ -340,6 +319,8 @@ export function parseBotReply(text: string): {
     contact: parsed.data.contact ?? null,
     // Used only on a turn where code decides about the appointment (composeReply)
     otherAnswer: parsed.data.other_answer?.trim() || null,
+    // Unchecked: code accepts it only if the visitor's message names it (branchInMessage)
+    branch: parsed.data.branch?.trim() || null,
   }
 }
 
@@ -363,6 +344,7 @@ export async function runBot({
   conversationId = null,
   knownContact = null,
   heldRequest = false,
+  branches,
 }: {
   supabase: SupabaseClient
   clientId: string
@@ -376,9 +358,13 @@ export async function runBot({
   knownContact?: ContactState | null
   /** A time asked for earlier is held on the lead, and this message may book it (heldRequest) */
   heldRequest?: boolean
+  /** The client's active branches, when the caller has them; read here otherwise */
+  branches?: BookingBranch[]
 }): Promise<{
   reply: string
   appointment: AppointmentRequest | null
+  /** The branch the model says the latest message names: unchecked (branchInMessage) */
+  branch: string | null
   /** The name and number the model says the latest message gave: unchecked (readContact) */
   contact: ContactReport | null
   /** The model's answer to whatever the message asked besides the appointment: sent instead of `reply` when code decides about it (composeReply) */
@@ -397,7 +383,13 @@ export async function runBot({
     retrieval.chunks.filter((chunk) => chunk.used),
     undefined,
     knownContact,
-    heldRequest
+    heldRequest,
+    branches ??
+      // Unread, the prompt states no hours: it never blocks a reply
+      (await loadBookingBranches(supabase, clientId).catch((error) => {
+        console.error('[bot] reading the branches failed', error)
+        return []
+      }))
   )
 
   const generationStarted = performance.now()
@@ -416,12 +408,15 @@ export async function runBot({
   // Its text for an appointment it reported anyway is the answer it gave besides it
   const kept = noBooking ? parsed.reply || parsed.otherAnswer || '' : parsed.reply
   if (noBooking && !kept) throw new Error('The model returned no reply')
-  const { appointment, contact, otherAnswer } = noBooking ? { ...parsed, appointment: null, otherAnswer: null } : parsed
+  const { appointment, contact, otherAnswer, branch } = noBooking
+    ? { ...parsed, appointment: null, otherAnswer: null, branch: null }
+    : parsed
   const reply = kept
 
   return {
     reply,
     appointment,
+    branch,
     contact,
     otherAnswer,
     // The model's answer before anything read it: kept with the message, to

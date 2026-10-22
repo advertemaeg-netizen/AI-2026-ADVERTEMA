@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
-import { Info, MapPin } from 'lucide-react'
+import { MapPin } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { getClient } from '@/lib/actions/clients'
 import { getBranches } from '@/lib/actions/branches'
@@ -36,12 +36,6 @@ export default async function BranchesPage({
       </div>
 
       <ClientTabs clientId={clientId} />
-
-      {/* TODO(booking gate): remove once booking reads hours and closures from branches */}
-      <p className="mb-4 flex items-start gap-2 rounded-lg border bg-muted/50 p-3 text-sm text-muted-foreground">
-        <Info className="mt-0.5 size-4 shrink-0" />
-        {t('notInUse')}
-      </p>
 
       {branches.length === 0 ? (
         <Card>

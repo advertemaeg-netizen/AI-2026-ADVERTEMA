@@ -84,6 +84,9 @@ export const BOT_REPLY_SCHEMA: JsonSchema = {
     // September 2026).
     contact: CONTACT_REPORT_SCHEMA,
     appointment: APPOINTMENT_REQUEST_SCHEMA,
+    // The branch the latest message names, as listed in the prompt; code
+    // checks it is one of the client's, and that the message names it
+    branch: { type: ['string', 'null'] },
     // With an appointment reported, the only text of the model's that is
     // sent: its answer to something else the same message asked
     other_answer: { type: ['string', 'null'] },
@@ -98,6 +101,7 @@ export const botReplySchema = z.object({
   reply: z.string().nullish().catch(null),
   other_answer: z.string().nullish().catch(null),
   appointment: appointmentRequestSchema.nullish().catch(null),
+  branch: z.string().nullish().catch(null),
   contact: z
     .object({ name: z.string().nullish().catch(null), phone: z.string().nullish().catch(null) })
     .nullish()
@@ -208,16 +212,44 @@ function to24Hour(hour: number, period: Period): number {
 
 // Index = Date#getDay()
 const HOURS_DAY: WeekDay[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+// The week as the business states it, Saturday first (WEEK_DAYS); Date#getDay() numbers
+const STATED_WEEK = [6, 0, 1, 2, 3, 4, 5]
+
+/**
+ * What a booking is checked against: each weekday's opening ranges (empty
+ * when closed that day) and the dates the business is closed. Since 22
+ * October 2026 it is the branch's (scheduleFromBranch, branches.ts): the
+ * record the prompt also states. bot_settings.business_hours, one schedule
+ * for the whole business, is still accepted where it is passed (scheduleOf).
+ */
+export type Schedule = { days: Record<WeekDay, [string, string][]>; closures: readonly string[] }
+
+/** Opening hours as callers hold them: a schedule, the bot settings' one, or none */
+export type HoursInput = Schedule | BusinessHours | null | undefined
+
+/** The schedule to check against, or null when there is nothing to check */
+export function scheduleOf(hours: HoursInput): Schedule | null {
+  if (!hours) return null
+  if ('closures' in hours) return hours
+  if (!hours.enabled) return null
+  const days = Object.fromEntries(
+    Object.entries(hours.days).map(([day, d]) => [day, d.open ? [[d.from, d.to]] : []])
+  ) as Schedule['days']
+  return { days, closures: [] }
+}
+
+/** The weekdays it opens on (Date#getDay() numbers), in the order the business states its week */
+export function openDaysOf(schedule: Schedule): number[] {
+  return STATED_WEEK.filter((weekday) => schedule.days[HOURS_DAY[weekday]].length > 0)
+}
 
 /** Whether the business is open at that wall-clock time on that day */
-function isOpenAt(hours: BusinessHours, weekday: number, hour: number, minute: number) {
-  const day = hours.days[HOURS_DAY[weekday]]
-  if (!day.open) return false
+function isOpenAt(schedule: Schedule, weekday: number, hour: number, minute: number) {
   const time = `${pad(hour)}:${pad(minute)}`
   // A closing time at or before the opening time is after midnight. The small
   // hours of such a night don't count: "tomorrow at 1" could be either end of
   // the day, so it is asked about rather than settled here.
-  return day.to > day.from ? time >= day.from && time < day.to : time >= day.from
+  return schedule.days[HOURS_DAY[weekday]].some(([from, to]) => (to > from ? time >= from && time < to : time >= from))
 }
 
 // How far ahead an appointment may be; anything else is a misread
@@ -244,8 +276,8 @@ type Incomplete = {
   time: Pick<AppointmentRequest, 'hour' | 'minute' | 'period'> | null
 }
 
-/** A day of the business's week: closed, or open between two wall-clock times */
-export type OpeningDay = { weekday: number; open: false } | { weekday: number; open: true; from: string; to: string }
+/** A day of the business's week: closed, or open in one to three wall-clock ranges (a split shift) */
+export type OpeningDay = { weekday: number; open: false } | { weekday: number; open: true; ranges: readonly (readonly [string, string])[] }
 
 export type AppointmentResolution =
   | {
@@ -263,8 +295,12 @@ export type AppointmentResolution =
     }
   /** "at 9" with nothing to say whether morning or evening: the visitor has to be asked */
   | { status: 'ask_period'; hour: number }
-  /** A real day and time, when the business is closed; `hours` is that day's */
-  | { status: 'outside_hours'; hours: OpeningDay }
+  /** A real day and time, when the business is closed; `hours` is that day's, `openDays` the weekdays it opens */
+  | { status: 'outside_hours'; hours: OpeningDay; openDays: readonly number[] }
+  /** A date the business has closed (branch_closures): `date` is "2026-10-30" */
+  | { status: 'closed_date'; date: string }
+  /** Opening hours that open on no day at all: a setting left half done, which only a person can answer */
+  | { status: 'no_open_days' }
   /** A real day and time that has already gone */
   | { status: 'past' }
   /**
@@ -278,26 +314,39 @@ export type AppointmentResolution =
 
 const NONE: AppointmentResolution = { status: 'none' }
 const PAST: AppointmentResolution = { status: 'past' }
+const NO_OPEN_DAYS: AppointmentResolution = { status: 'no_open_days' }
+
+/** That day of the week, as the schedule has it */
+function openingDay(schedule: Schedule, weekday: number): OpeningDay {
+  const ranges = schedule.days[HOURS_DAY[weekday]]
+  return ranges.length > 0 ? { weekday, open: true, ranges } : { weekday, open: false }
+}
+
+/** A closed day, refused: the day and the days it does open */
+const closedOn = (schedule: Schedule, weekday: number) =>
+  ({ status: 'outside_hours', hours: { weekday, open: false }, openDays: openDaysOf(schedule) }) as const
 
 /**
- * Whether the business is open at an instant, and that day's hours.
- *
- * INTERIM (October 2026): `hours` is bot_settings.business_hours, one
- * schedule for the whole business. A business with branches has one per
- * branch: for the demo clinic this is right for المعادي and wrong for التجمع
- * (which opens an hour later and is closed on Fridays). It stops a patient
- * being told to come at 5 in the morning, which is what it is here for;
- * per-branch hours come with the branches table.
+ * Why the business can't take a visit at an instant (in Cairo time): a closed
+ * date, a day or time outside its hours, or no open day at all. Null when it
+ * can. The one check, wherever a time is accepted: the resolvers, and a time
+ * held for the visitor's details as it is booked later (confirmPending).
+ * `dayOnly`: only the day counts (a day-only visit's stored time just places it).
  */
-export function openingAt(hours: BusinessHours, at: string | Date): { open: boolean; day: OpeningDay } {
+export function refusalAt(
+  schedule: Schedule,
+  at: string | Date,
+  dayOnly = false
+): Extract<AppointmentResolution, { status: 'outside_hours' | 'closed_date' | 'no_open_days' }> | null {
+  if (openDaysOf(schedule).length === 0) return { status: 'no_open_days' }
   const wall = cairoParts(at)
-  const weekday = new Date(Date.UTC(wall.year, wall.month, wall.day)).getUTCDay()
+  const date = dateKey(wall)
+  if (schedule.closures.includes(date)) return { status: 'closed_date', date }
+  const weekday = weekdayOf(wall)
+  if (dayOnly && schedule.days[HOURS_DAY[weekday]].length > 0) return null
   const [hour, minute] = wall.time.split(':').map(Number)
-  const schedule = hours.days[HOURS_DAY[weekday]]
-  return {
-    open: isOpenAt(hours, weekday, hour, minute),
-    day: schedule.open ? { weekday, open: true, from: schedule.from, to: schedule.to } : { weekday, open: false },
-  }
+  if (isOpenAt(schedule, weekday, hour, minute)) return null
+  return { status: 'outside_hours', hours: openingDay(schedule, weekday), openDays: openDaysOf(schedule) }
 }
 
 /**
@@ -320,7 +369,8 @@ export function resolveAppointment(
   }: {
     now?: Date
     keepDayOf?: string | null
-    businessHours?: BusinessHours | null
+    /** The branch's schedule (or the bot settings' hours); none: nothing is checked, and the time is a request */
+    businessHours?: HoursInput
     /**
      * A part of the day alone ("Thursday morning") gets a usual hour for it,
      * flagged approximate. False where the visitor can be asked instead (the
@@ -330,6 +380,8 @@ export function resolveAppointment(
     hourFromPartOfDay?: boolean
   } = {}
 ): AppointmentResolution {
+  const schedule = scheduleOf(businessHours)
+  if (schedule && openDaysOf(schedule).length === 0) return NO_OPEN_DAYS
   const today: CalendarDay = cairoParts(now)
   const found = requestedDay(request, today, keepDayOf)
   if (found !== null && 'status' in found) return found
@@ -345,8 +397,8 @@ export function resolveAppointment(
   if (request.hour !== null && request.period === 'unspecified' && request.hour >= 1 && request.hour <= 12) {
     // "الساعة 9": morning or evening? Whichever one the business is open for
     const morning = request.hour % 12
-    const open = businessHours?.enabled
-      ? [morning, morning + 12].filter((h) => isOpenAt(businessHours, weekdayOf(day), h, request.minute ?? 0))
+    const open = schedule
+      ? [morning, morning + 12].filter((h) => isOpenAt(schedule, weekdayOf(day), h, request.minute ?? 0))
       : []
     if (open.length !== 1) return { status: 'ask_period', hour: request.hour }
     hour = open[0]
@@ -360,9 +412,8 @@ export function resolveAppointment(
     // otherwise kept while the time is asked for
     if (Date.UTC(day.year, day.month, day.day) > now.getTime() + MAX_DAYS_AHEAD * DAY_MS) return NONE
     const weekday = weekdayOf(day)
-    if (businessHours?.enabled && !businessHours.days[HOURS_DAY[weekday]].open) {
-      return { status: 'outside_hours', hours: { weekday, open: false } }
-    }
+    if (schedule?.closures.includes(dateKey(day))) return { status: 'closed_date', date: dateKey(day) }
+    if (schedule && schedule.days[HOURS_DAY[weekday]].length === 0) return closedOn(schedule, weekday)
     return { status: 'incomplete', missing: ['time'], day: dateKey(day), time: null }
   }
 
@@ -377,11 +428,11 @@ export function resolveAppointment(
   // An hour of slack for "today at 5" said just after 5
   if (at.getTime() < now.getTime() - HOUR_MS) return PAST
   if (at.getTime() > now.getTime() + MAX_DAYS_AHEAD * DAY_MS) return NONE
-  if (businessHours?.enabled) {
-    const opening = openingAt(businessHours, at)
-    if (!opening.open) return { status: 'outside_hours', hours: opening.day }
+  if (schedule) {
+    const refused = refusalAt(schedule, at)
+    if (refused) return refused
   }
-  return { status: 'resolved', at: at.toISOString(), approximate, validated: businessHours?.enabled === true }
+  return { status: 'resolved', at: at.toISOString(), approximate, validated: schedule !== null }
 }
 
 const dateKey = (day: CalendarDay) => `${day.year}-${pad(day.month + 1)}-${pad(day.day)}`
@@ -398,13 +449,15 @@ const DAY_ONLY_ANCHOR = '12:00'
  * appointment time.
  *
  * Today counts until closing time; a weekday named on that day after closing
- * is next week's. A day the business is closed is refused like a closed day
- * in an appointment.
+ * is next week's. A day the business is closed, every week or on that date,
+ * is refused, and so is every day when its hours open on none.
  */
 export function resolveDay(
   request: AppointmentRequest,
-  { now = new Date(), businessHours = null }: { now?: Date; businessHours?: BusinessHours | null } = {}
+  { now = new Date(), businessHours = null }: { now?: Date; businessHours?: HoursInput } = {}
 ): AppointmentResolution {
+  const schedule = scheduleOf(businessHours)
+  if (schedule && openDaysOf(schedule).length === 0) return NO_OPEN_DAYS
   const today: CalendarDay = cairoParts(now)
   const found = requestedDay(withoutTime(request), today, null)
   if (found !== null && 'status' in found) return found
@@ -412,10 +465,11 @@ export function resolveDay(
   let day = found
 
   const closingPassed = (d: CalendarDay) => {
-    if (!businessHours?.enabled || dateKey(d) !== dateKey(today)) return false
-    const schedule = businessHours.days[HOURS_DAY[weekdayOf(d)]]
-    // A day that closes after midnight is still open tonight
-    return schedule.open && schedule.to > schedule.from && cairoParts(now).time >= schedule.to
+    if (!schedule || dateKey(d) !== dateKey(today)) return false
+    const ranges = schedule.days[HOURS_DAY[weekdayOf(d)]]
+    // A day whose last range closes after midnight is still open tonight
+    const last = [...ranges].sort(([a], [b]) => a.localeCompare(b)).at(-1)
+    return last !== undefined && last[1] > last[0] && cairoParts(now).time >= last[1]
   }
   if (closingPassed(day)) {
     if (request.day_type !== 'weekday') return PAST
@@ -424,10 +478,12 @@ export function resolveDay(
   if (Date.UTC(day.year, day.month, day.day) > now.getTime() + MAX_DAYS_AHEAD * DAY_MS) return NONE
 
   const weekday = weekdayOf(day)
-  const schedule = businessHours?.enabled ? businessHours.days[HOURS_DAY[weekday]] : null
-  if (schedule && !schedule.open) return { status: 'outside_hours', hours: { weekday, open: false } }
-  const at = new Date(cairoWallTimeToIso(day.year, day.month, day.day, schedule?.from ?? DAY_ONLY_ANCHOR))
-  return { status: 'resolved', at: at.toISOString(), approximate: false, validated: businessHours?.enabled === true }
+  if (schedule?.closures.includes(dateKey(day))) return { status: 'closed_date', date: dateKey(day) }
+  const ranges = schedule?.days[HOURS_DAY[weekday]] ?? null
+  if (schedule && ranges?.length === 0) return closedOn(schedule, weekday)
+  const opens = ranges ? [...ranges].sort(([a], [b]) => a.localeCompare(b))[0][0] : DAY_ONLY_ANCHOR
+  const at = new Date(cairoWallTimeToIso(day.year, day.month, day.day, opens))
+  return { status: 'resolved', at: at.toISOString(), approximate: false, validated: schedule !== null }
 }
 
 /**
@@ -480,6 +536,12 @@ function requestedDay(request: AppointmentRequest, today: CalendarDay, keepDayOf
       break
   }
   return day
+}
+
+/** The calendar day a request names ("2026-10-23"), or null: what a question names while the day is held */
+export function requestedDayKey(request: AppointmentRequest, now = new Date()): string | null {
+  const found = requestedDay(request, cairoParts(now), null)
+  return found !== null && !('status' in found) ? dateKey(found) : null
 }
 
 type DayPart = Pick<AppointmentRequest, 'day_type' | 'weekday' | 'day_of_month' | 'month' | 'year'>
@@ -587,7 +649,7 @@ export const NOTHING_SAID: AppointmentRequest = {
 export function resolvesWhole(
   draft: BookingDraft,
   mode: Exclude<BookingMode, 'none'>,
-  businessHours: BusinessHours | null,
+  businessHours: HoursInput,
   now = new Date()
 ): boolean {
   const request = mergeDraft(draft, NOTHING_SAID)
@@ -636,6 +698,10 @@ export function narrowDraft(
       return null
     case 'outside_hours':
       return outcome.hours.open ? keep(day, null) : keep(null, time)
+    case 'closed_date':
+    case 'no_open_days':
+      // Only the day goes: the time, the branch, the name and the number stay
+      return keep(null, time)
     case 'past':
       // A date that has gone takes back the day and keeps the time; a time
       // gone today takes back the time and keeps the day
@@ -645,6 +711,7 @@ export function narrowDraft(
       return keep(null, time)
     case 'ask_period':
     case 'incomplete':
+    case 'ask_branch':
       return keep(day, time)
   }
 }
@@ -687,18 +754,57 @@ function formatClock(time: string, language: ReplyLanguage) {
   return `${hours % 12 || 12}:${pad(minutes)} ${dayPart}`
 }
 
-/** That day's opening hours, in words: what a refused time is answered with */
-function describeOpening(day: OpeningDay, language: ReplyLanguage) {
+/** "الأحد" / "Sunday" from Date#getDay() */
+function weekdayName(weekday: number, language: ReplyLanguage) {
+  // 4 January 1970 was a Sunday
+  return new Intl.DateTimeFormat(LOCALES[language], { weekday: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(1970, 0, 4 + weekday)))
+}
+
+/**
+ * A list in the language's own way, from its two-item pattern applied item
+ * by item ({a} the list so far, {b} the next item). Arabic is not a
+ * separator and a last conjunction: «الأحد والاثنين والأربعاء» and «أ أو ب أو ج»
+ * repeat the conjunction before every item after the first.
+ */
+function joinList(items: string[], kind: 'listAnd' | 'listOr', language: ReplyLanguage) {
+  const pattern = TEXTS[language][kind]
+  return items.reduce((joined, item) => pattern.replace('{a}', joined).replace('{b}', item))
+}
+
+/**
+ * What a refused day or time is answered with, from the day's hours: a
+ * closed day names the days it opens; a time outside the day's hours names
+ * them. With more than one branch the sentence names the branch.
+ */
+function describeOpening(outcome: Extract<BookingOutcome, { status: 'outside_hours' }>, language: ReplyLanguage, branch: string | null) {
   const t = TEXTS[language]
-  // 4 January 1970 was a Sunday: index = Date#getDay()
-  const name = new Intl.DateTimeFormat(LOCALES[language], { weekday: 'long', timeZone: 'UTC' }).format(
-    new Date(Date.UTC(1970, 0, 4 + day.weekday))
+  const day = outcome.hours
+  const name = weekdayName(day.weekday, language)
+  if (!day.open) {
+    const openDays = joinList(
+      outcome.openDays.map((weekday) => weekdayName(weekday, language)),
+      'listAnd',
+      language
+    )
+    const template = branch ? t.closedDayAt.replace('{branch}', branch) : t.closedDay
+    return template.replace('{day}', name).replace('{openDays}', openDays)
+  }
+  const ranges = [...day.ranges].sort(([a], [b]) => a.localeCompare(b))
+  // One range for one business reads as it always has; a split shift, or a
+  // branch to name, is listed
+  if (!branch && ranges.length === 1) {
+    return t.outsideHours
+      .replace('{day}', name)
+      .replace('{from}', formatClock(ranges[0][0], language))
+      .replace('{to}', formatClock(ranges[0][1], language))
+  }
+  const listed = joinList(
+    ranges.map(([from, to]) => t.timeRange.replace('{from}', formatClock(from, language)).replace('{to}', formatClock(to, language))),
+    'listAnd',
+    language
   )
-  if (!day.open) return t.closedDay.replace('{day}', name)
-  return t.outsideHours
-    .replace('{day}', name)
-    .replace('{from}', formatClock(day.from, language))
-    .replace('{to}', formatClock(day.to, language))
+  const template = branch ? t.hoursAt.replace('{branch}', branch) : t.hours
+  return template.replace('{day}', name).replace('{ranges}', listed)
 }
 
 /** "الخميس 8 أكتوبر الساعة 6:00 مساءً" / "Thursday 8 October at 6:00 PM", in Cairo time */
@@ -755,7 +861,17 @@ export type BookingOutcome =
    */
   | { status: 'needs_details'; at: string; missing: ('name' | 'phone')[]; handoff: boolean; validated?: boolean }
   /** Nothing recorded: the business is closed then */
-  | { status: 'outside_hours'; hours: OpeningDay }
+  | { status: 'outside_hours'; hours: OpeningDay; openDays: readonly number[] }
+  /** Nothing recorded: the business is closed on that date */
+  | { status: 'closed_date'; date: string }
+  /** Nothing recorded: its hours open on no day; a person takes it from here */
+  | { status: 'no_open_days' }
+  /**
+   * Nothing recorded yet: the business has more than one branch, and the day
+   * can't be checked before the visitor says which. `day`: the calendar day
+   * held meanwhile ("2026-10-23"), named in the question.
+   */
+  | { status: 'ask_branch'; day: string | null; branches: string[] }
   /** Nothing recorded: that day and time have gone */
   | { status: 'past' }
   /** Nothing recorded yet: the day or the time is still to come (kept in the draft meanwhile) */
@@ -784,7 +900,12 @@ function withoutAppointmentSentences(template: string) {
  * much of a name it asks for. Without it, an appointment business that asks
  * for a full name (the behaviour before these settings existed).
  */
-export type ReplyRules = { mode: BookingMode; nameStrictness: NameStrictness }
+export type ReplyRules = {
+  mode: BookingMode
+  nameStrictness: NameStrictness
+  /** The branch the visitor chose, named in a refusal: only for a business with more than one */
+  branch?: string | null
+}
 export const DEFAULT_REPLY_RULES: ReplyRules = { mode: 'appointment', nameStrictness: 'two_parts' }
 
 /** The appointment on record, in the system's own words: confirmed, or a request the team confirms */
@@ -824,7 +945,19 @@ export function appointmentLine(outcome: BookingOutcome, language: ReplyLanguage
     case 'ask_period':
       return t.askPeriod.replace('{hour}', String(outcome.hour))
     case 'outside_hours':
-      return describeOpening(outcome.hours, language)
+      return describeOpening(outcome, language, rules.branch ?? null)
+    case 'closed_date': {
+      const date = formatDay(outcome.date, language)
+      return (rules.branch ? t.closureDayAt.replace('{branch}', rules.branch) : t.closureDay).replace('{date}', date)
+    }
+    case 'no_open_days':
+      return rules.branch ? t.noOpenDaysAt.replace('{branch}', rules.branch) : t.noOpenDays
+    case 'ask_branch': {
+      const branches = joinList(outcome.branches, 'listOr', language)
+      return outcome.day
+        ? t.askBranchForDay.replace('{day}', formatDay(outcome.day, language)).replace('{branches}', branches)
+        : t.askBranch.replace('{branches}', branches)
+    }
     case 'past':
       return dayOnly ? t.pastDay : t.past
     case 'incomplete':
@@ -880,6 +1013,9 @@ export function renderReply(template: string, outcome: BookingOutcome, language:
   // booking goes, the rest of its answer stays, and code says why
   if (
     outcome.status === 'outside_hours' ||
+    outcome.status === 'closed_date' ||
+    outcome.status === 'no_open_days' ||
+    outcome.status === 'ask_branch' ||
     outcome.status === 'past' ||
     outcome.status === 'needs_details' ||
     outcome.status === 'incomplete'

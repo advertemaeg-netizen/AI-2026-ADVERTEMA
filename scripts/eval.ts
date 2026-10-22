@@ -39,7 +39,7 @@ import {
   confirmsItself,
   mergeDraft,
   narrowDraft,
-  openingAt,
+  refusalAt,
   replyLanguage,
   resolveAppointment,
   sameInstant,
@@ -49,6 +49,7 @@ import {
   type BookingDraft,
   type BookingOutcome,
 } from '@/lib/ai/appointment'
+import { loadBookingBranches } from '@/lib/ai/branches'
 import { withEvidence, type EvidencedPart } from '@/lib/ai/evidence'
 import { composeReply, type SavedRecord } from '@/lib/ai/compose'
 import { EMPTY_CONTACT, MAX_PHONE_REJECTIONS, missingDetails, readContact, type ContactEvents } from '@/lib/ai/contact'
@@ -321,7 +322,10 @@ async function converse(bot: Bot, turns: string[]) {
   /** What the visitor has said toward an appointment that is not one yet (the reply's metadata.draft) */
   let draft: BookingDraft | null = null
   const said: string[] = []
-  const hours = settings.business_hours
+  // The branch's hours, as production books from them. The eval models a
+  // client with one branch: with several, the branch step isn't replayed here
+  const branches = await loadBookingBranches(bot.admin, bot.clientId)
+  const hours = branches.length === 1 ? branches[0].schedule : null
 
   for (const user of turns) {
     said.push(user)
@@ -335,6 +339,7 @@ async function converse(bot: Bot, turns: string[]) {
       operation: 'playground',
       knownContact: contact,
       heldRequest: pending !== null && !appointmentAt,
+      branches,
     })
 
     // saveContact: the name and number code accepts go on the open lead; a
@@ -357,10 +362,10 @@ async function converse(bot: Bot, turns: string[]) {
     const promotePending = (): BookingOutcome | null => {
       if (!pending || appointmentAt) return null
       const waiting = pending
-      const opening = hours?.enabled ? openingAt(hours, waiting.at) : null
+      const refused = hours ? refusalAt(hours, waiting.at) : null
       const gone = new Date(waiting.at).getTime() < Date.now()
       const missing = missingDetails(record.name, record.phone)
-      if (!gone && (!opening || opening.open) && missing.length > 0) {
+      if (!gone && !refused && missing.length > 0) {
         return {
           status: 'needs_details',
           at: waiting.at,
@@ -371,7 +376,7 @@ async function converse(bot: Bot, turns: string[]) {
       pending = null
       draft = null
       if (gone) return { status: 'past' }
-      if (opening && !opening.open) return { status: 'outside_hours', hours: opening.day }
+      if (refused) return refused
       appointmentAt = waiting.at
       confirmedOnRecord = waiting.confirmed
       return { status: 'booked', at: waiting.at, confirmed: waiting.confirmed, changed: true }
