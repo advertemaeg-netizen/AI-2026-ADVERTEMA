@@ -470,6 +470,26 @@ async function writesFor(who: Who): Promise<Matrix> {
 describe('access matrix: who can read and write what', () => {
   beforeAll(seedFixture, 60_000)
 
+  // The RLS rewrite (20261101100000) asks accessible_client_ids() what
+  // has_client_access() answered row by row. They must agree for every
+  // identity on every client in the database, the other test files' too.
+  it('sees the same clients through accessible_client_ids() as through has_client_access()', async () => {
+    const { data: all } = await service.from('clients').select('id')
+    const clientIds = (all ?? []).map((c) => c.id as string)
+    expect(clientIds.length).toBeGreaterThan(3)
+    const mismatches: string[] = []
+    for (const who of Object.keys(clients).filter((w) => w !== 'anon') as Who[]) {
+      const { data: set, error } = await clients[who].rpc('accessible_client_ids')
+      expect(error).toBeNull()
+      const inSet = new Set((set as string[] | null) ?? [])
+      for (const clientId of clientIds) {
+        const { data: one } = await clients[who].rpc('has_client_access', { check_client_id: clientId })
+        if (Boolean(one) !== inSet.has(clientId)) mismatches.push(`${who} × ${name(clientId)}: has_client_access ${one}, set ${inSet.has(clientId)}`)
+      }
+    }
+    expect(mismatches).toEqual([])
+  }, 300_000)
+
   it('is the snapshot, for every identity, every table, every analytics function', async () => {
     const everyone = Object.keys(clients) as Who[]
     const matrix: Record<string, Matrix> = {}
