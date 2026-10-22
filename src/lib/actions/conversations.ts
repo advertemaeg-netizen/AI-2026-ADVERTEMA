@@ -50,9 +50,6 @@ export async function getConversations(
     .order('last_message_at', { ascending: false })
     .limit(LIST_LIMIT)
 
-  // RLS already enforces this; kept explicit so the intent is visible here
-  if (!canManage(profile)) query = query.eq('assigned_to', profile.id)
-
   if (filters.clientId) query = query.eq('client_id', filters.clientId)
   if (filters.status) query = query.eq('status', filters.status)
   if (filters.channelType) query = query.eq('channel.type', filters.channelType)

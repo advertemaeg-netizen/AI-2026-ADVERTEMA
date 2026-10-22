@@ -1,0 +1,2602 @@
+{
+  "anon": {
+    "read": {
+      "organizations": [],
+      "users": [],
+      "clients": [],
+      "client_members": [],
+      "channels": "refused",
+      "branches": [],
+      "branch_closures": [],
+      "bot_settings": [],
+      "knowledge_documents": [],
+      "conversations": [],
+      "messages": [],
+      "leads": "refused",
+      "lead_events": "refused"
+    },
+    "rpc": {
+      "needs_human_counts": "refused",
+      "client_team": {
+        "A1": "refused",
+        "A2": "refused",
+        "B1": "refused",
+        "X1": "refused"
+      },
+      "analytics_all_clients": {
+        "conversations_over_time": "refused",
+        "leads_over_time": "refused",
+        "channel_distribution": "refused",
+        "peak_hours": "refused",
+        "lead_status_breakdown": "refused",
+        "response_time": "refused",
+        "journey": "refused",
+        "upcoming_appointments": "refused"
+      },
+      "analytics_by_client": {
+        "A1": {
+          "conversations_over_time": "refused",
+          "leads_over_time": "refused",
+          "channel_distribution": "refused",
+          "peak_hours": "refused",
+          "lead_status_breakdown": "refused",
+          "response_time": "refused",
+          "journey": "refused",
+          "upcoming_appointments": "refused"
+        },
+        "A2": {
+          "conversations_over_time": "refused",
+          "leads_over_time": "refused",
+          "channel_distribution": "refused",
+          "peak_hours": "refused",
+          "lead_status_breakdown": "refused",
+          "response_time": "refused",
+          "journey": "refused",
+          "upcoming_appointments": "refused"
+        },
+        "B1": {
+          "conversations_over_time": "refused",
+          "leads_over_time": "refused",
+          "channel_distribution": "refused",
+          "peak_hours": "refused",
+          "lead_status_breakdown": "refused",
+          "response_time": "refused",
+          "journey": "refused",
+          "upcoming_appointments": "refused"
+        },
+        "X1": {
+          "conversations_over_time": "refused",
+          "leads_over_time": "refused",
+          "channel_distribution": "refused",
+          "peak_hours": "refused",
+          "lead_status_breakdown": "refused",
+          "response_time": "refused",
+          "journey": "refused",
+          "upcoming_appointments": "refused"
+        }
+      },
+      "client_performance": "refused",
+      "organization_details_A": "refused",
+      "platform_stats": "refused"
+    },
+    "write": {
+      "update": {
+        "conversations": {
+          "A1 assigned teamA1": "refused",
+          "A1 assigned clientAdminA1": "refused",
+          "A1 unassigned": "refused",
+          "A2 assigned teamA1": "refused",
+          "B1 unassigned": "refused",
+          "X1 unassigned": "refused"
+        },
+        "messages": {
+          "A1 assigned teamA1/user": "refused",
+          "A1 assigned teamA1/assistant": "refused",
+          "A1 assigned clientAdminA1/user": "refused",
+          "A1 assigned clientAdminA1/assistant": "refused",
+          "A1 unassigned/user": "refused",
+          "A1 unassigned/assistant": "refused",
+          "A2 assigned teamA1/user": "refused",
+          "A2 assigned teamA1/assistant": "refused",
+          "B1 unassigned/user": "refused",
+          "B1 unassigned/assistant": "refused",
+          "X1 unassigned/user": "refused",
+          "X1 unassigned/assistant": "refused"
+        },
+        "leads": {
+          "A1 assigned teamA1": "refused",
+          "A1 assigned clientAdminA1": "refused",
+          "A1 unassigned": "refused",
+          "A2 assigned teamA1": "refused",
+          "B1 unassigned": "refused",
+          "X1 unassigned": "refused",
+          "A1 incomplete": "refused",
+          "A1 booked": "refused"
+        },
+        "clients": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        },
+        "channels": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        },
+        "branches": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        },
+        "branch_closures": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        },
+        "knowledge_documents": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        },
+        "client_members": {
+          "clientAdminA1@A1": "refused",
+          "teamA1@A1": "refused"
+        },
+        "users": {
+          "super": "refused",
+          "superImpersonatingA": "refused",
+          "orgAdminA": "refused",
+          "orgAdminB": "refused",
+          "orgAdminX": "refused",
+          "clientAdminA1": "refused",
+          "teamA1": "refused",
+          "teamA_noClient": "refused"
+        },
+        "organizations": {
+          "A": "refused",
+          "B": "refused",
+          "X": "refused"
+        }
+      },
+      "insert": {
+        "conversations": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        },
+        "agent_messages": {
+          "A1 assigned teamA1": "refused",
+          "A1 assigned clientAdminA1": "refused",
+          "A1 unassigned": "refused",
+          "A2 assigned teamA1": "refused",
+          "B1 unassigned": "refused",
+          "X1 unassigned": "refused"
+        },
+        "leads": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        }
+      },
+      "delete": {
+        "leads": {
+          "A1 complete": "refused",
+          "A1 incomplete": "refused",
+          "A2 complete": "refused",
+          "A2 incomplete": "refused",
+          "B1 complete": "refused",
+          "B1 incomplete": "refused",
+          "X1 complete": "refused",
+          "X1 incomplete": "refused"
+        },
+        "messages": {
+          "A1 assigned teamA1": "refused",
+          "A1 assigned clientAdminA1": "refused",
+          "A1 unassigned": "refused",
+          "A2 assigned teamA1": "refused",
+          "B1 unassigned": "refused",
+          "X1 unassigned": "refused"
+        },
+        "conversations": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        }
+      }
+    }
+  },
+  "super": {
+    "read": {
+      "organizations": [
+        "orgA",
+        "orgB",
+        "orgX"
+      ],
+      "users": [
+        "clientAdminA1",
+        "orgAdminA",
+        "orgAdminB",
+        "orgAdminX",
+        "super",
+        "superImpersonatingA",
+        "teamA1",
+        "teamA_noClient"
+      ],
+      "clients": [
+        "A1",
+        "A2",
+        "B1",
+        "X1"
+      ],
+      "client_members": [
+        "membership clientAdminA1@A1",
+        "membership teamA1@A1"
+      ],
+      "channels": [
+        "channel A1",
+        "channel A2",
+        "channel B1",
+        "channel X1"
+      ],
+      "branches": [
+        "branch A1",
+        "branch A2",
+        "branch B1",
+        "branch X1"
+      ],
+      "branch_closures": [
+        "closure A1",
+        "closure A2",
+        "closure B1",
+        "closure X1"
+      ],
+      "bot_settings": [
+        "A1",
+        "A2",
+        "B1",
+        "X1"
+      ],
+      "knowledge_documents": [
+        "doc A1",
+        "doc A2",
+        "doc B1",
+        "doc X1"
+      ],
+      "conversations": [
+        "conversation A1 assigned clientAdminA1",
+        "conversation A1 assigned teamA1",
+        "conversation A1 unassigned",
+        "conversation A2 assigned teamA1",
+        "conversation B1 unassigned",
+        "conversation X1 unassigned"
+      ],
+      "messages": [
+        "message A1 assigned clientAdminA1/assistant",
+        "message A1 assigned clientAdminA1/user",
+        "message A1 assigned teamA1/assistant",
+        "message A1 assigned teamA1/user",
+        "message A1 unassigned/assistant",
+        "message A1 unassigned/user",
+        "message A2 assigned teamA1/assistant",
+        "message A2 assigned teamA1/user",
+        "message B1 unassigned/assistant",
+        "message B1 unassigned/user",
+        "message X1 unassigned/assistant",
+        "message X1 unassigned/user"
+      ],
+      "leads": [
+        "lead A1 assigned clientAdminA1",
+        "lead A1 assigned teamA1",
+        "lead A1 booked",
+        "lead A1 incomplete",
+        "lead A1 unassigned",
+        "lead A2 assigned teamA1",
+        "lead B1 unassigned",
+        "lead X1 unassigned"
+      ],
+      "lead_events": [
+        "event lead A1 assigned clientAdminA1:created",
+        "event lead A1 assigned teamA1:created",
+        "event lead A1 booked:appointment_set",
+        "event lead A1 booked:created",
+        "event lead A1 incomplete:created",
+        "event lead A1 unassigned:created",
+        "event lead A2 assigned teamA1:created",
+        "event lead B1 unassigned:created",
+        "event lead X1 unassigned:created"
+      ]
+    },
+    "rpc": {
+      "needs_human_counts": "not comparable: the super admin sees every client in the shared test database",
+      "client_team": {
+        "A1": [
+          "clientAdminA1",
+          "orgAdminA",
+          "teamA1"
+        ],
+        "A2": [
+          "orgAdminA"
+        ],
+        "B1": [
+          "orgAdminB"
+        ],
+        "X1": [
+          "orgAdminX"
+        ]
+      },
+      "analytics_all_clients": "not comparable: the super admin sees every client in the shared test database",
+      "analytics_by_client": {
+        "A1": {
+          "conversations_over_time": 3,
+          "leads_over_time": 4,
+          "channel_distribution": 3,
+          "peak_hours": 3,
+          "lead_status_breakdown": {
+            "appointment_booked": 1,
+            "new": 3
+          },
+          "response_time": {
+            "conversations": 3,
+            "responded": 3,
+            "agent_responded": 0
+          },
+          "journey": {
+            "A1": {
+              "leads": 4,
+              "booked": 1
+            }
+          },
+          "upcoming_appointments": [
+            "lead A1 booked"
+          ]
+        },
+        "A2": {
+          "conversations_over_time": 1,
+          "leads_over_time": 1,
+          "channel_distribution": 1,
+          "peak_hours": 1,
+          "lead_status_breakdown": {
+            "new": 1
+          },
+          "response_time": {
+            "conversations": 1,
+            "responded": 1,
+            "agent_responded": 0
+          },
+          "journey": {
+            "A2": {
+              "leads": 1,
+              "booked": 0
+            }
+          },
+          "upcoming_appointments": []
+        },
+        "B1": {
+          "conversations_over_time": 1,
+          "leads_over_time": 1,
+          "channel_distribution": 1,
+          "peak_hours": 1,
+          "lead_status_breakdown": {
+            "new": 1
+          },
+          "response_time": {
+            "conversations": 1,
+            "responded": 1,
+            "agent_responded": 0
+          },
+          "journey": {
+            "B1": {
+              "leads": 1,
+              "booked": 0
+            }
+          },
+          "upcoming_appointments": []
+        },
+        "X1": {
+          "conversations_over_time": 1,
+          "leads_over_time": 1,
+          "channel_distribution": 1,
+          "peak_hours": 1,
+          "lead_status_breakdown": {
+            "new": 1
+          },
+          "response_time": {
+            "conversations": 1,
+            "responded": 1,
+            "agent_responded": 0
+          },
+          "journey": {
+            "X1": {
+              "leads": 1,
+              "booked": 0
+            }
+          },
+          "upcoming_appointments": []
+        }
+      },
+      "client_performance": "not comparable: the super admin sees every client in the shared test database",
+      "organization_details_A": "returned",
+      "platform_stats": "returned figures"
+    },
+    "write": {
+      "update": {
+        "conversations": {
+          "A1 assigned teamA1": 1,
+          "A1 assigned clientAdminA1": 1,
+          "A1 unassigned": 1,
+          "A2 assigned teamA1": 1,
+          "B1 unassigned": 1,
+          "X1 unassigned": 1
+        },
+        "messages": {
+          "A1 assigned teamA1/user": 0,
+          "A1 assigned teamA1/assistant": 0,
+          "A1 assigned clientAdminA1/user": 0,
+          "A1 assigned clientAdminA1/assistant": 0,
+          "A1 unassigned/user": 0,
+          "A1 unassigned/assistant": 0,
+          "A2 assigned teamA1/user": 0,
+          "A2 assigned teamA1/assistant": 0,
+          "B1 unassigned/user": 0,
+          "B1 unassigned/assistant": 0,
+          "X1 unassigned/user": 0,
+          "X1 unassigned/assistant": 0
+        },
+        "leads": {
+          "A1 assigned teamA1": 1,
+          "A1 assigned clientAdminA1": 1,
+          "A1 unassigned": 1,
+          "A2 assigned teamA1": 1,
+          "B1 unassigned": 1,
+          "X1 unassigned": 1,
+          "A1 incomplete": 1,
+          "A1 booked": 1
+        },
+        "clients": {
+          "A1": 1,
+          "A2": 1,
+          "B1": 1,
+          "X1": 1
+        },
+        "channels": {
+          "A1": 1,
+          "A2": 1,
+          "B1": 1,
+          "X1": 1
+        },
+        "branches": {
+          "A1": 1,
+          "A2": 1,
+          "B1": 1,
+          "X1": 1
+        },
+        "branch_closures": {
+          "A1": 1,
+          "A2": 1,
+          "B1": 1,
+          "X1": 1
+        },
+        "knowledge_documents": {
+          "A1": 1,
+          "A2": 1,
+          "B1": 1,
+          "X1": 1
+        },
+        "client_members": {
+          "clientAdminA1@A1": 1,
+          "teamA1@A1": 1
+        },
+        "users": {
+          "super": 1,
+          "superImpersonatingA": 1,
+          "orgAdminA": 1,
+          "orgAdminB": 1,
+          "orgAdminX": 1,
+          "clientAdminA1": 1,
+          "teamA1": 1,
+          "teamA_noClient": 1
+        },
+        "organizations": {
+          "A": 1,
+          "B": 1,
+          "X": 1
+        }
+      },
+      "insert": {
+        "conversations": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        },
+        "agent_messages": {
+          "A1 assigned teamA1": "inserted",
+          "A1 assigned clientAdminA1": "inserted",
+          "A1 unassigned": "inserted",
+          "A2 assigned teamA1": "inserted",
+          "B1 unassigned": "inserted",
+          "X1 unassigned": "inserted"
+        },
+        "leads": {
+          "A1": "inserted",
+          "A2": "inserted",
+          "B1": "inserted",
+          "X1": "inserted"
+        }
+      },
+      "delete": {
+        "leads": {
+          "A1 complete": 1,
+          "A1 incomplete": 1,
+          "A2 complete": 1,
+          "A2 incomplete": 1,
+          "B1 complete": 1,
+          "B1 incomplete": 1,
+          "X1 complete": 1,
+          "X1 incomplete": 1
+        },
+        "messages": {
+          "A1 assigned teamA1": 0,
+          "A1 assigned clientAdminA1": 0,
+          "A1 unassigned": 0,
+          "A2 assigned teamA1": 0,
+          "B1 unassigned": 0,
+          "X1 unassigned": 0
+        },
+        "conversations": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        }
+      }
+    }
+  },
+  "superImpersonatingA": {
+    "read": {
+      "organizations": [
+        "orgA"
+      ],
+      "users": [
+        "clientAdminA1",
+        "orgAdminA",
+        "superImpersonatingA",
+        "teamA1",
+        "teamA_noClient"
+      ],
+      "clients": [
+        "A1",
+        "A2"
+      ],
+      "client_members": [
+        "membership clientAdminA1@A1",
+        "membership teamA1@A1"
+      ],
+      "channels": [
+        "channel A1",
+        "channel A2"
+      ],
+      "branches": [
+        "branch A1",
+        "branch A2"
+      ],
+      "branch_closures": [
+        "closure A1",
+        "closure A2"
+      ],
+      "bot_settings": [
+        "A1",
+        "A2"
+      ],
+      "knowledge_documents": [
+        "doc A1",
+        "doc A2"
+      ],
+      "conversations": [
+        "conversation A1 assigned clientAdminA1",
+        "conversation A1 assigned teamA1",
+        "conversation A1 unassigned",
+        "conversation A2 assigned teamA1"
+      ],
+      "messages": [
+        "message A1 assigned clientAdminA1/assistant",
+        "message A1 assigned clientAdminA1/user",
+        "message A1 assigned teamA1/assistant",
+        "message A1 assigned teamA1/user",
+        "message A1 unassigned/assistant",
+        "message A1 unassigned/user",
+        "message A2 assigned teamA1/assistant",
+        "message A2 assigned teamA1/user"
+      ],
+      "leads": [
+        "lead A1 assigned clientAdminA1",
+        "lead A1 assigned teamA1",
+        "lead A1 booked",
+        "lead A1 unassigned",
+        "lead A2 assigned teamA1"
+      ],
+      "lead_events": [
+        "event lead A1 assigned clientAdminA1:created",
+        "event lead A1 assigned teamA1:created",
+        "event lead A1 booked:appointment_set",
+        "event lead A1 booked:created",
+        "event lead A1 unassigned:created",
+        "event lead A2 assigned teamA1:created"
+      ]
+    },
+    "rpc": {
+      "needs_human_counts": {
+        "no_answer": 2
+      },
+      "client_team": {
+        "A1": [
+          "clientAdminA1",
+          "orgAdminA",
+          "teamA1"
+        ],
+        "A2": [
+          "orgAdminA"
+        ],
+        "B1": [],
+        "X1": []
+      },
+      "analytics_all_clients": {
+        "conversations_over_time": 4,
+        "leads_over_time": 5,
+        "channel_distribution": 4,
+        "peak_hours": 4,
+        "lead_status_breakdown": {
+          "appointment_booked": 1,
+          "new": 4
+        },
+        "response_time": {
+          "conversations": 4,
+          "responded": 4,
+          "agent_responded": 0
+        },
+        "journey": {
+          "A1": {
+            "leads": 4,
+            "booked": 1
+          },
+          "A2": {
+            "leads": 1,
+            "booked": 0
+          }
+        },
+        "upcoming_appointments": [
+          "lead A1 booked"
+        ]
+      },
+      "analytics_by_client": {
+        "A1": {
+          "conversations_over_time": 3,
+          "leads_over_time": 4,
+          "channel_distribution": 3,
+          "peak_hours": 3,
+          "lead_status_breakdown": {
+            "appointment_booked": 1,
+            "new": 3
+          },
+          "response_time": {
+            "conversations": 3,
+            "responded": 3,
+            "agent_responded": 0
+          },
+          "journey": {
+            "A1": {
+              "leads": 4,
+              "booked": 1
+            }
+          },
+          "upcoming_appointments": [
+            "lead A1 booked"
+          ]
+        },
+        "A2": {
+          "conversations_over_time": 1,
+          "leads_over_time": 1,
+          "channel_distribution": 1,
+          "peak_hours": 1,
+          "lead_status_breakdown": {
+            "new": 1
+          },
+          "response_time": {
+            "conversations": 1,
+            "responded": 1,
+            "agent_responded": 0
+          },
+          "journey": {
+            "A2": {
+              "leads": 1,
+              "booked": 0
+            }
+          },
+          "upcoming_appointments": []
+        },
+        "B1": {
+          "conversations_over_time": 0,
+          "leads_over_time": 0,
+          "channel_distribution": 0,
+          "peak_hours": 0,
+          "lead_status_breakdown": {},
+          "response_time": {
+            "conversations": 0,
+            "responded": 0,
+            "agent_responded": 0
+          },
+          "journey": {},
+          "upcoming_appointments": []
+        },
+        "X1": {
+          "conversations_over_time": 0,
+          "leads_over_time": 0,
+          "channel_distribution": 0,
+          "peak_hours": 0,
+          "lead_status_breakdown": {},
+          "response_time": {
+            "conversations": 0,
+            "responded": 0,
+            "agent_responded": 0
+          },
+          "journey": {},
+          "upcoming_appointments": []
+        }
+      },
+      "client_performance": {
+        "A1": {
+          "conversations": 3,
+          "leads": 4
+        },
+        "A2": {
+          "conversations": 1,
+          "leads": 1
+        }
+      },
+      "organization_details_A": "empty",
+      "platform_stats": "empty or zero"
+    },
+    "write": {
+      "update": {
+        "conversations": {
+          "A1 assigned teamA1": 1,
+          "A1 assigned clientAdminA1": 1,
+          "A1 unassigned": 1,
+          "A2 assigned teamA1": 1,
+          "B1 unassigned": 0,
+          "X1 unassigned": 0
+        },
+        "messages": {
+          "A1 assigned teamA1/user": "refused",
+          "A1 assigned teamA1/assistant": "refused",
+          "A1 assigned clientAdminA1/user": "refused",
+          "A1 assigned clientAdminA1/assistant": "refused",
+          "A1 unassigned/user": "refused",
+          "A1 unassigned/assistant": "refused",
+          "A2 assigned teamA1/user": "refused",
+          "A2 assigned teamA1/assistant": "refused",
+          "B1 unassigned/user": "refused",
+          "B1 unassigned/assistant": "refused",
+          "X1 unassigned/user": "refused",
+          "X1 unassigned/assistant": "refused"
+        },
+        "leads": {
+          "A1 assigned teamA1": "refused",
+          "A1 assigned clientAdminA1": "refused",
+          "A1 unassigned": "refused",
+          "A2 assigned teamA1": "refused",
+          "B1 unassigned": "refused",
+          "X1 unassigned": "refused",
+          "A1 incomplete": "refused",
+          "A1 booked": "refused"
+        },
+        "clients": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        },
+        "channels": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        },
+        "branches": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        },
+        "branch_closures": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        },
+        "knowledge_documents": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        },
+        "client_members": {
+          "clientAdminA1@A1": "refused",
+          "teamA1@A1": "refused"
+        },
+        "users": {
+          "super": "refused",
+          "superImpersonatingA": "refused",
+          "orgAdminA": "refused",
+          "orgAdminB": "refused",
+          "orgAdminX": "refused",
+          "clientAdminA1": "refused",
+          "teamA1": "refused",
+          "teamA_noClient": "refused"
+        },
+        "organizations": {
+          "A": "refused",
+          "B": "refused",
+          "X": "refused"
+        }
+      },
+      "insert": {
+        "conversations": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        },
+        "agent_messages": {
+          "A1 assigned teamA1": "refused",
+          "A1 assigned clientAdminA1": "refused",
+          "A1 unassigned": "refused",
+          "A2 assigned teamA1": "refused",
+          "B1 unassigned": "refused",
+          "X1 unassigned": "refused"
+        },
+        "leads": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        }
+      },
+      "delete": {
+        "leads": {
+          "A1 complete": "refused",
+          "A1 incomplete": "refused",
+          "A2 complete": "refused",
+          "A2 incomplete": "refused",
+          "B1 complete": "refused",
+          "B1 incomplete": "refused",
+          "X1 complete": "refused",
+          "X1 incomplete": "refused"
+        },
+        "messages": {
+          "A1 assigned teamA1": "refused",
+          "A1 assigned clientAdminA1": "refused",
+          "A1 unassigned": "refused",
+          "A2 assigned teamA1": "refused",
+          "B1 unassigned": "refused",
+          "X1 unassigned": "refused"
+        },
+        "conversations": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        }
+      }
+    }
+  },
+  "orgAdminA": {
+    "read": {
+      "organizations": [
+        "orgA"
+      ],
+      "users": [
+        "clientAdminA1",
+        "orgAdminA",
+        "teamA1",
+        "teamA_noClient"
+      ],
+      "clients": [
+        "A1",
+        "A2"
+      ],
+      "client_members": [
+        "membership clientAdminA1@A1",
+        "membership teamA1@A1"
+      ],
+      "channels": [
+        "channel A1",
+        "channel A2"
+      ],
+      "branches": [
+        "branch A1",
+        "branch A2"
+      ],
+      "branch_closures": [
+        "closure A1",
+        "closure A2"
+      ],
+      "bot_settings": [
+        "A1",
+        "A2"
+      ],
+      "knowledge_documents": [
+        "doc A1",
+        "doc A2"
+      ],
+      "conversations": [
+        "conversation A1 assigned clientAdminA1",
+        "conversation A1 assigned teamA1",
+        "conversation A1 unassigned",
+        "conversation A2 assigned teamA1"
+      ],
+      "messages": [
+        "message A1 assigned clientAdminA1/assistant",
+        "message A1 assigned clientAdminA1/user",
+        "message A1 assigned teamA1/assistant",
+        "message A1 assigned teamA1/user",
+        "message A1 unassigned/assistant",
+        "message A1 unassigned/user",
+        "message A2 assigned teamA1/assistant",
+        "message A2 assigned teamA1/user"
+      ],
+      "leads": [
+        "lead A1 assigned clientAdminA1",
+        "lead A1 assigned teamA1",
+        "lead A1 booked",
+        "lead A1 unassigned",
+        "lead A2 assigned teamA1"
+      ],
+      "lead_events": [
+        "event lead A1 assigned clientAdminA1:created",
+        "event lead A1 assigned teamA1:created",
+        "event lead A1 booked:appointment_set",
+        "event lead A1 booked:created",
+        "event lead A1 unassigned:created",
+        "event lead A2 assigned teamA1:created"
+      ]
+    },
+    "rpc": {
+      "needs_human_counts": {
+        "no_answer": 2
+      },
+      "client_team": {
+        "A1": [
+          "clientAdminA1",
+          "orgAdminA",
+          "teamA1"
+        ],
+        "A2": [
+          "orgAdminA"
+        ],
+        "B1": [],
+        "X1": []
+      },
+      "analytics_all_clients": {
+        "conversations_over_time": 4,
+        "leads_over_time": 5,
+        "channel_distribution": 4,
+        "peak_hours": 4,
+        "lead_status_breakdown": {
+          "appointment_booked": 1,
+          "new": 4
+        },
+        "response_time": {
+          "conversations": 4,
+          "responded": 4,
+          "agent_responded": 0
+        },
+        "journey": {
+          "A1": {
+            "leads": 4,
+            "booked": 1
+          },
+          "A2": {
+            "leads": 1,
+            "booked": 0
+          }
+        },
+        "upcoming_appointments": [
+          "lead A1 booked"
+        ]
+      },
+      "analytics_by_client": {
+        "A1": {
+          "conversations_over_time": 3,
+          "leads_over_time": 4,
+          "channel_distribution": 3,
+          "peak_hours": 3,
+          "lead_status_breakdown": {
+            "appointment_booked": 1,
+            "new": 3
+          },
+          "response_time": {
+            "conversations": 3,
+            "responded": 3,
+            "agent_responded": 0
+          },
+          "journey": {
+            "A1": {
+              "leads": 4,
+              "booked": 1
+            }
+          },
+          "upcoming_appointments": [
+            "lead A1 booked"
+          ]
+        },
+        "A2": {
+          "conversations_over_time": 1,
+          "leads_over_time": 1,
+          "channel_distribution": 1,
+          "peak_hours": 1,
+          "lead_status_breakdown": {
+            "new": 1
+          },
+          "response_time": {
+            "conversations": 1,
+            "responded": 1,
+            "agent_responded": 0
+          },
+          "journey": {
+            "A2": {
+              "leads": 1,
+              "booked": 0
+            }
+          },
+          "upcoming_appointments": []
+        },
+        "B1": {
+          "conversations_over_time": 0,
+          "leads_over_time": 0,
+          "channel_distribution": 0,
+          "peak_hours": 0,
+          "lead_status_breakdown": {},
+          "response_time": {
+            "conversations": 0,
+            "responded": 0,
+            "agent_responded": 0
+          },
+          "journey": {},
+          "upcoming_appointments": []
+        },
+        "X1": {
+          "conversations_over_time": 0,
+          "leads_over_time": 0,
+          "channel_distribution": 0,
+          "peak_hours": 0,
+          "lead_status_breakdown": {},
+          "response_time": {
+            "conversations": 0,
+            "responded": 0,
+            "agent_responded": 0
+          },
+          "journey": {},
+          "upcoming_appointments": []
+        }
+      },
+      "client_performance": {
+        "A1": {
+          "conversations": 3,
+          "leads": 4
+        },
+        "A2": {
+          "conversations": 1,
+          "leads": 1
+        }
+      },
+      "organization_details_A": "empty",
+      "platform_stats": "empty or zero"
+    },
+    "write": {
+      "update": {
+        "conversations": {
+          "A1 assigned teamA1": 1,
+          "A1 assigned clientAdminA1": 1,
+          "A1 unassigned": 1,
+          "A2 assigned teamA1": 1,
+          "B1 unassigned": 0,
+          "X1 unassigned": 0
+        },
+        "messages": {
+          "A1 assigned teamA1/user": 0,
+          "A1 assigned teamA1/assistant": 0,
+          "A1 assigned clientAdminA1/user": 0,
+          "A1 assigned clientAdminA1/assistant": 0,
+          "A1 unassigned/user": 0,
+          "A1 unassigned/assistant": 0,
+          "A2 assigned teamA1/user": 0,
+          "A2 assigned teamA1/assistant": 0,
+          "B1 unassigned/user": 0,
+          "B1 unassigned/assistant": 0,
+          "X1 unassigned/user": 0,
+          "X1 unassigned/assistant": 0
+        },
+        "leads": {
+          "A1 assigned teamA1": 1,
+          "A1 assigned clientAdminA1": 1,
+          "A1 unassigned": 1,
+          "A2 assigned teamA1": 1,
+          "B1 unassigned": 0,
+          "X1 unassigned": 0,
+          "A1 incomplete": 0,
+          "A1 booked": 1
+        },
+        "clients": {
+          "A1": 1,
+          "A2": 1,
+          "B1": 0,
+          "X1": 0
+        },
+        "channels": {
+          "A1": 1,
+          "A2": 1,
+          "B1": 0,
+          "X1": 0
+        },
+        "branches": {
+          "A1": 1,
+          "A2": 1,
+          "B1": 0,
+          "X1": 0
+        },
+        "branch_closures": {
+          "A1": 1,
+          "A2": 1,
+          "B1": 0,
+          "X1": 0
+        },
+        "knowledge_documents": {
+          "A1": 1,
+          "A2": 1,
+          "B1": 0,
+          "X1": 0
+        },
+        "client_members": {
+          "clientAdminA1@A1": 1,
+          "teamA1@A1": 1
+        },
+        "users": {
+          "super": 0,
+          "superImpersonatingA": 0,
+          "orgAdminA": 1,
+          "orgAdminB": 0,
+          "orgAdminX": 0,
+          "clientAdminA1": 1,
+          "teamA1": 1,
+          "teamA_noClient": 1
+        },
+        "organizations": {
+          "A": 0,
+          "B": 0,
+          "X": 0
+        }
+      },
+      "insert": {
+        "conversations": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        },
+        "agent_messages": {
+          "A1 assigned teamA1": "inserted",
+          "A1 assigned clientAdminA1": "inserted",
+          "A1 unassigned": "inserted",
+          "A2 assigned teamA1": "inserted",
+          "B1 unassigned": "refused",
+          "X1 unassigned": "refused"
+        },
+        "leads": {
+          "A1": "inserted",
+          "A2": "inserted",
+          "B1": "refused",
+          "X1": "refused"
+        }
+      },
+      "delete": {
+        "leads": {
+          "A1 complete": 1,
+          "A1 incomplete": 0,
+          "A2 complete": 1,
+          "A2 incomplete": 0,
+          "B1 complete": 0,
+          "B1 incomplete": 0,
+          "X1 complete": 0,
+          "X1 incomplete": 0
+        },
+        "messages": {
+          "A1 assigned teamA1": 0,
+          "A1 assigned clientAdminA1": 0,
+          "A1 unassigned": 0,
+          "A2 assigned teamA1": 0,
+          "B1 unassigned": 0,
+          "X1 unassigned": 0
+        },
+        "conversations": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        }
+      }
+    }
+  },
+  "orgAdminB": {
+    "read": {
+      "organizations": [
+        "orgB"
+      ],
+      "users": [
+        "orgAdminB"
+      ],
+      "clients": [
+        "B1"
+      ],
+      "client_members": [],
+      "channels": [
+        "channel B1"
+      ],
+      "branches": [
+        "branch B1"
+      ],
+      "branch_closures": [
+        "closure B1"
+      ],
+      "bot_settings": [
+        "B1"
+      ],
+      "knowledge_documents": [
+        "doc B1"
+      ],
+      "conversations": [
+        "conversation B1 unassigned"
+      ],
+      "messages": [
+        "message B1 unassigned/assistant",
+        "message B1 unassigned/user"
+      ],
+      "leads": [
+        "lead B1 unassigned"
+      ],
+      "lead_events": [
+        "event lead B1 unassigned:created"
+      ]
+    },
+    "rpc": {
+      "needs_human_counts": {
+        "no_answer": 1
+      },
+      "client_team": {
+        "A1": [],
+        "A2": [],
+        "B1": [
+          "orgAdminB"
+        ],
+        "X1": []
+      },
+      "analytics_all_clients": {
+        "conversations_over_time": 1,
+        "leads_over_time": 1,
+        "channel_distribution": 1,
+        "peak_hours": 1,
+        "lead_status_breakdown": {
+          "new": 1
+        },
+        "response_time": {
+          "conversations": 1,
+          "responded": 1,
+          "agent_responded": 0
+        },
+        "journey": {
+          "B1": {
+            "leads": 1,
+            "booked": 0
+          }
+        },
+        "upcoming_appointments": []
+      },
+      "analytics_by_client": {
+        "A1": {
+          "conversations_over_time": 0,
+          "leads_over_time": 0,
+          "channel_distribution": 0,
+          "peak_hours": 0,
+          "lead_status_breakdown": {},
+          "response_time": {
+            "conversations": 0,
+            "responded": 0,
+            "agent_responded": 0
+          },
+          "journey": {},
+          "upcoming_appointments": []
+        },
+        "A2": {
+          "conversations_over_time": 0,
+          "leads_over_time": 0,
+          "channel_distribution": 0,
+          "peak_hours": 0,
+          "lead_status_breakdown": {},
+          "response_time": {
+            "conversations": 0,
+            "responded": 0,
+            "agent_responded": 0
+          },
+          "journey": {},
+          "upcoming_appointments": []
+        },
+        "B1": {
+          "conversations_over_time": 1,
+          "leads_over_time": 1,
+          "channel_distribution": 1,
+          "peak_hours": 1,
+          "lead_status_breakdown": {
+            "new": 1
+          },
+          "response_time": {
+            "conversations": 1,
+            "responded": 1,
+            "agent_responded": 0
+          },
+          "journey": {
+            "B1": {
+              "leads": 1,
+              "booked": 0
+            }
+          },
+          "upcoming_appointments": []
+        },
+        "X1": {
+          "conversations_over_time": 0,
+          "leads_over_time": 0,
+          "channel_distribution": 0,
+          "peak_hours": 0,
+          "lead_status_breakdown": {},
+          "response_time": {
+            "conversations": 0,
+            "responded": 0,
+            "agent_responded": 0
+          },
+          "journey": {},
+          "upcoming_appointments": []
+        }
+      },
+      "client_performance": {
+        "B1": {
+          "conversations": 1,
+          "leads": 1
+        }
+      },
+      "organization_details_A": "empty",
+      "platform_stats": "empty or zero"
+    },
+    "write": {
+      "update": {
+        "conversations": {
+          "A1 assigned teamA1": 0,
+          "A1 assigned clientAdminA1": 0,
+          "A1 unassigned": 0,
+          "A2 assigned teamA1": 0,
+          "B1 unassigned": 1,
+          "X1 unassigned": 0
+        },
+        "messages": {
+          "A1 assigned teamA1/user": 0,
+          "A1 assigned teamA1/assistant": 0,
+          "A1 assigned clientAdminA1/user": 0,
+          "A1 assigned clientAdminA1/assistant": 0,
+          "A1 unassigned/user": 0,
+          "A1 unassigned/assistant": 0,
+          "A2 assigned teamA1/user": 0,
+          "A2 assigned teamA1/assistant": 0,
+          "B1 unassigned/user": 0,
+          "B1 unassigned/assistant": 0,
+          "X1 unassigned/user": 0,
+          "X1 unassigned/assistant": 0
+        },
+        "leads": {
+          "A1 assigned teamA1": 0,
+          "A1 assigned clientAdminA1": 0,
+          "A1 unassigned": 0,
+          "A2 assigned teamA1": 0,
+          "B1 unassigned": 1,
+          "X1 unassigned": 0,
+          "A1 incomplete": 0,
+          "A1 booked": 0
+        },
+        "clients": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 1,
+          "X1": 0
+        },
+        "channels": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 1,
+          "X1": 0
+        },
+        "branches": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 1,
+          "X1": 0
+        },
+        "branch_closures": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 1,
+          "X1": 0
+        },
+        "knowledge_documents": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 1,
+          "X1": 0
+        },
+        "client_members": {
+          "clientAdminA1@A1": 0,
+          "teamA1@A1": 0
+        },
+        "users": {
+          "super": 0,
+          "superImpersonatingA": 0,
+          "orgAdminA": 0,
+          "orgAdminB": 1,
+          "orgAdminX": 0,
+          "clientAdminA1": 0,
+          "teamA1": 0,
+          "teamA_noClient": 0
+        },
+        "organizations": {
+          "A": 0,
+          "B": 0,
+          "X": 0
+        }
+      },
+      "insert": {
+        "conversations": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        },
+        "agent_messages": {
+          "A1 assigned teamA1": "refused",
+          "A1 assigned clientAdminA1": "refused",
+          "A1 unassigned": "refused",
+          "A2 assigned teamA1": "refused",
+          "B1 unassigned": "inserted",
+          "X1 unassigned": "refused"
+        },
+        "leads": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "inserted",
+          "X1": "refused"
+        }
+      },
+      "delete": {
+        "leads": {
+          "A1 complete": 0,
+          "A1 incomplete": 0,
+          "A2 complete": 0,
+          "A2 incomplete": 0,
+          "B1 complete": 1,
+          "B1 incomplete": 0,
+          "X1 complete": 0,
+          "X1 incomplete": 0
+        },
+        "messages": {
+          "A1 assigned teamA1": 0,
+          "A1 assigned clientAdminA1": 0,
+          "A1 unassigned": 0,
+          "A2 assigned teamA1": 0,
+          "B1 unassigned": 0,
+          "X1 unassigned": 0
+        },
+        "conversations": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        }
+      }
+    }
+  },
+  "orgAdminX": {
+    "read": {
+      "organizations": [],
+      "users": [
+        "orgAdminX"
+      ],
+      "clients": [],
+      "client_members": [],
+      "channels": [],
+      "branches": [],
+      "branch_closures": [],
+      "bot_settings": [],
+      "knowledge_documents": [],
+      "conversations": [],
+      "messages": [],
+      "leads": [],
+      "lead_events": []
+    },
+    "rpc": {
+      "needs_human_counts": {},
+      "client_team": {
+        "A1": [],
+        "A2": [],
+        "B1": [],
+        "X1": []
+      },
+      "analytics_all_clients": {
+        "conversations_over_time": 0,
+        "leads_over_time": 0,
+        "channel_distribution": 0,
+        "peak_hours": 0,
+        "lead_status_breakdown": {},
+        "response_time": {
+          "conversations": 0,
+          "responded": 0,
+          "agent_responded": 0
+        },
+        "journey": {},
+        "upcoming_appointments": []
+      },
+      "analytics_by_client": {
+        "A1": {
+          "conversations_over_time": 0,
+          "leads_over_time": 0,
+          "channel_distribution": 0,
+          "peak_hours": 0,
+          "lead_status_breakdown": {},
+          "response_time": {
+            "conversations": 0,
+            "responded": 0,
+            "agent_responded": 0
+          },
+          "journey": {},
+          "upcoming_appointments": []
+        },
+        "A2": {
+          "conversations_over_time": 0,
+          "leads_over_time": 0,
+          "channel_distribution": 0,
+          "peak_hours": 0,
+          "lead_status_breakdown": {},
+          "response_time": {
+            "conversations": 0,
+            "responded": 0,
+            "agent_responded": 0
+          },
+          "journey": {},
+          "upcoming_appointments": []
+        },
+        "B1": {
+          "conversations_over_time": 0,
+          "leads_over_time": 0,
+          "channel_distribution": 0,
+          "peak_hours": 0,
+          "lead_status_breakdown": {},
+          "response_time": {
+            "conversations": 0,
+            "responded": 0,
+            "agent_responded": 0
+          },
+          "journey": {},
+          "upcoming_appointments": []
+        },
+        "X1": {
+          "conversations_over_time": 0,
+          "leads_over_time": 0,
+          "channel_distribution": 0,
+          "peak_hours": 0,
+          "lead_status_breakdown": {},
+          "response_time": {
+            "conversations": 0,
+            "responded": 0,
+            "agent_responded": 0
+          },
+          "journey": {},
+          "upcoming_appointments": []
+        }
+      },
+      "client_performance": {},
+      "organization_details_A": "empty",
+      "platform_stats": "empty or zero"
+    },
+    "write": {
+      "update": {
+        "conversations": {
+          "A1 assigned teamA1": 0,
+          "A1 assigned clientAdminA1": 0,
+          "A1 unassigned": 0,
+          "A2 assigned teamA1": 0,
+          "B1 unassigned": 0,
+          "X1 unassigned": 0
+        },
+        "messages": {
+          "A1 assigned teamA1/user": 0,
+          "A1 assigned teamA1/assistant": 0,
+          "A1 assigned clientAdminA1/user": 0,
+          "A1 assigned clientAdminA1/assistant": 0,
+          "A1 unassigned/user": 0,
+          "A1 unassigned/assistant": 0,
+          "A2 assigned teamA1/user": 0,
+          "A2 assigned teamA1/assistant": 0,
+          "B1 unassigned/user": 0,
+          "B1 unassigned/assistant": 0,
+          "X1 unassigned/user": 0,
+          "X1 unassigned/assistant": 0
+        },
+        "leads": {
+          "A1 assigned teamA1": 0,
+          "A1 assigned clientAdminA1": 0,
+          "A1 unassigned": 0,
+          "A2 assigned teamA1": 0,
+          "B1 unassigned": 0,
+          "X1 unassigned": 0,
+          "A1 incomplete": 0,
+          "A1 booked": 0
+        },
+        "clients": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        },
+        "channels": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        },
+        "branches": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        },
+        "branch_closures": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        },
+        "knowledge_documents": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        },
+        "client_members": {
+          "clientAdminA1@A1": 0,
+          "teamA1@A1": 0
+        },
+        "users": {
+          "super": 0,
+          "superImpersonatingA": 0,
+          "orgAdminA": 0,
+          "orgAdminB": 0,
+          "orgAdminX": 1,
+          "clientAdminA1": 0,
+          "teamA1": 0,
+          "teamA_noClient": 0
+        },
+        "organizations": {
+          "A": 0,
+          "B": 0,
+          "X": 0
+        }
+      },
+      "insert": {
+        "conversations": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        },
+        "agent_messages": {
+          "A1 assigned teamA1": "refused",
+          "A1 assigned clientAdminA1": "refused",
+          "A1 unassigned": "refused",
+          "A2 assigned teamA1": "refused",
+          "B1 unassigned": "refused",
+          "X1 unassigned": "refused"
+        },
+        "leads": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        }
+      },
+      "delete": {
+        "leads": {
+          "A1 complete": 0,
+          "A1 incomplete": 0,
+          "A2 complete": 0,
+          "A2 incomplete": 0,
+          "B1 complete": 0,
+          "B1 incomplete": 0,
+          "X1 complete": 0,
+          "X1 incomplete": 0
+        },
+        "messages": {
+          "A1 assigned teamA1": 0,
+          "A1 assigned clientAdminA1": 0,
+          "A1 unassigned": 0,
+          "A2 assigned teamA1": 0,
+          "B1 unassigned": 0,
+          "X1 unassigned": 0
+        },
+        "conversations": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        }
+      }
+    }
+  },
+  "clientAdminA1": {
+    "read": {
+      "organizations": [
+        "orgA"
+      ],
+      "users": [
+        "clientAdminA1"
+      ],
+      "clients": [
+        "A1"
+      ],
+      "client_members": [
+        "membership clientAdminA1@A1",
+        "membership teamA1@A1"
+      ],
+      "channels": [
+        "channel A1"
+      ],
+      "branches": [
+        "branch A1"
+      ],
+      "branch_closures": [
+        "closure A1"
+      ],
+      "bot_settings": [
+        "A1"
+      ],
+      "knowledge_documents": [
+        "doc A1"
+      ],
+      "conversations": [
+        "conversation A1 assigned clientAdminA1",
+        "conversation A1 assigned teamA1",
+        "conversation A1 unassigned"
+      ],
+      "messages": [
+        "message A1 assigned clientAdminA1/assistant",
+        "message A1 assigned clientAdminA1/user",
+        "message A1 assigned teamA1/assistant",
+        "message A1 assigned teamA1/user",
+        "message A1 unassigned/assistant",
+        "message A1 unassigned/user"
+      ],
+      "leads": [
+        "lead A1 assigned clientAdminA1",
+        "lead A1 assigned teamA1",
+        "lead A1 booked",
+        "lead A1 unassigned"
+      ],
+      "lead_events": [
+        "event lead A1 assigned clientAdminA1:created",
+        "event lead A1 assigned teamA1:created",
+        "event lead A1 booked:appointment_set",
+        "event lead A1 booked:created",
+        "event lead A1 unassigned:created"
+      ]
+    },
+    "rpc": {
+      "needs_human_counts": {
+        "no_answer": 2
+      },
+      "client_team": {
+        "A1": [
+          "clientAdminA1",
+          "orgAdminA",
+          "teamA1"
+        ],
+        "A2": [],
+        "B1": [],
+        "X1": []
+      },
+      "analytics_all_clients": {
+        "conversations_over_time": 3,
+        "leads_over_time": 4,
+        "channel_distribution": 3,
+        "peak_hours": 3,
+        "lead_status_breakdown": {
+          "appointment_booked": 1,
+          "new": 3
+        },
+        "response_time": {
+          "conversations": 3,
+          "responded": 3,
+          "agent_responded": 0
+        },
+        "journey": {
+          "A1": {
+            "leads": 4,
+            "booked": 1
+          }
+        },
+        "upcoming_appointments": [
+          "lead A1 booked"
+        ]
+      },
+      "analytics_by_client": {
+        "A1": {
+          "conversations_over_time": 3,
+          "leads_over_time": 4,
+          "channel_distribution": 3,
+          "peak_hours": 3,
+          "lead_status_breakdown": {
+            "appointment_booked": 1,
+            "new": 3
+          },
+          "response_time": {
+            "conversations": 3,
+            "responded": 3,
+            "agent_responded": 0
+          },
+          "journey": {
+            "A1": {
+              "leads": 4,
+              "booked": 1
+            }
+          },
+          "upcoming_appointments": [
+            "lead A1 booked"
+          ]
+        },
+        "A2": {
+          "conversations_over_time": 0,
+          "leads_over_time": 0,
+          "channel_distribution": 0,
+          "peak_hours": 0,
+          "lead_status_breakdown": {},
+          "response_time": {
+            "conversations": 0,
+            "responded": 0,
+            "agent_responded": 0
+          },
+          "journey": {},
+          "upcoming_appointments": []
+        },
+        "B1": {
+          "conversations_over_time": 0,
+          "leads_over_time": 0,
+          "channel_distribution": 0,
+          "peak_hours": 0,
+          "lead_status_breakdown": {},
+          "response_time": {
+            "conversations": 0,
+            "responded": 0,
+            "agent_responded": 0
+          },
+          "journey": {},
+          "upcoming_appointments": []
+        },
+        "X1": {
+          "conversations_over_time": 0,
+          "leads_over_time": 0,
+          "channel_distribution": 0,
+          "peak_hours": 0,
+          "lead_status_breakdown": {},
+          "response_time": {
+            "conversations": 0,
+            "responded": 0,
+            "agent_responded": 0
+          },
+          "journey": {},
+          "upcoming_appointments": []
+        }
+      },
+      "client_performance": {
+        "A1": {
+          "conversations": 3,
+          "leads": 4
+        }
+      },
+      "organization_details_A": "empty",
+      "platform_stats": "empty or zero"
+    },
+    "write": {
+      "update": {
+        "conversations": {
+          "A1 assigned teamA1": 1,
+          "A1 assigned clientAdminA1": 1,
+          "A1 unassigned": 1,
+          "A2 assigned teamA1": 0,
+          "B1 unassigned": 0,
+          "X1 unassigned": 0
+        },
+        "messages": {
+          "A1 assigned teamA1/user": 0,
+          "A1 assigned teamA1/assistant": 0,
+          "A1 assigned clientAdminA1/user": 0,
+          "A1 assigned clientAdminA1/assistant": 0,
+          "A1 unassigned/user": 0,
+          "A1 unassigned/assistant": 0,
+          "A2 assigned teamA1/user": 0,
+          "A2 assigned teamA1/assistant": 0,
+          "B1 unassigned/user": 0,
+          "B1 unassigned/assistant": 0,
+          "X1 unassigned/user": 0,
+          "X1 unassigned/assistant": 0
+        },
+        "leads": {
+          "A1 assigned teamA1": 1,
+          "A1 assigned clientAdminA1": 1,
+          "A1 unassigned": 1,
+          "A2 assigned teamA1": 0,
+          "B1 unassigned": 0,
+          "X1 unassigned": 0,
+          "A1 incomplete": 0,
+          "A1 booked": 1
+        },
+        "clients": {
+          "A1": 1,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        },
+        "channels": {
+          "A1": 1,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        },
+        "branches": {
+          "A1": 1,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        },
+        "branch_closures": {
+          "A1": 1,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        },
+        "knowledge_documents": {
+          "A1": 1,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        },
+        "client_members": {
+          "clientAdminA1@A1": 1,
+          "teamA1@A1": "refused"
+        },
+        "users": {
+          "super": 0,
+          "superImpersonatingA": 0,
+          "orgAdminA": 0,
+          "orgAdminB": 0,
+          "orgAdminX": 0,
+          "clientAdminA1": 1,
+          "teamA1": 0,
+          "teamA_noClient": 0
+        },
+        "organizations": {
+          "A": 0,
+          "B": 0,
+          "X": 0
+        }
+      },
+      "insert": {
+        "conversations": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        },
+        "agent_messages": {
+          "A1 assigned teamA1": "inserted",
+          "A1 assigned clientAdminA1": "inserted",
+          "A1 unassigned": "inserted",
+          "A2 assigned teamA1": "refused",
+          "B1 unassigned": "refused",
+          "X1 unassigned": "refused"
+        },
+        "leads": {
+          "A1": "inserted",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        }
+      },
+      "delete": {
+        "leads": {
+          "A1 complete": 1,
+          "A1 incomplete": 0,
+          "A2 complete": 0,
+          "A2 incomplete": 0,
+          "B1 complete": 0,
+          "B1 incomplete": 0,
+          "X1 complete": 0,
+          "X1 incomplete": 0
+        },
+        "messages": {
+          "A1 assigned teamA1": 0,
+          "A1 assigned clientAdminA1": 0,
+          "A1 unassigned": 0,
+          "A2 assigned teamA1": 0,
+          "B1 unassigned": 0,
+          "X1 unassigned": 0
+        },
+        "conversations": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        }
+      }
+    }
+  },
+  "teamA1": {
+    "read": {
+      "organizations": [
+        "orgA"
+      ],
+      "users": [
+        "teamA1"
+      ],
+      "clients": [
+        "A1"
+      ],
+      "client_members": [
+        "membership clientAdminA1@A1",
+        "membership teamA1@A1"
+      ],
+      "channels": [
+        "channel A1"
+      ],
+      "branches": [
+        "branch A1"
+      ],
+      "branch_closures": [
+        "closure A1"
+      ],
+      "bot_settings": [],
+      "knowledge_documents": [],
+      "conversations": [
+        "conversation A1 assigned clientAdminA1",
+        "conversation A1 assigned teamA1",
+        "conversation A1 unassigned"
+      ],
+      "messages": [
+        "message A1 assigned clientAdminA1/assistant",
+        "message A1 assigned clientAdminA1/user",
+        "message A1 assigned teamA1/assistant",
+        "message A1 assigned teamA1/user",
+        "message A1 unassigned/assistant",
+        "message A1 unassigned/user"
+      ],
+      "leads": [
+        "lead A1 assigned clientAdminA1",
+        "lead A1 assigned teamA1",
+        "lead A1 booked",
+        "lead A1 unassigned"
+      ],
+      "lead_events": [
+        "event lead A1 assigned clientAdminA1:created",
+        "event lead A1 assigned teamA1:created",
+        "event lead A1 booked:appointment_set",
+        "event lead A1 booked:created",
+        "event lead A1 unassigned:created"
+      ]
+    },
+    "rpc": {
+      "needs_human_counts": {
+        "no_answer": 2
+      },
+      "client_team": {
+        "A1": [
+          "clientAdminA1",
+          "orgAdminA",
+          "teamA1"
+        ],
+        "A2": [],
+        "B1": [],
+        "X1": []
+      },
+      "analytics_all_clients": {
+        "conversations_over_time": 3,
+        "leads_over_time": 4,
+        "channel_distribution": 3,
+        "peak_hours": 3,
+        "lead_status_breakdown": {
+          "appointment_booked": 1,
+          "new": 3
+        },
+        "response_time": {
+          "conversations": 3,
+          "responded": 3,
+          "agent_responded": 0
+        },
+        "journey": {
+          "A1": {
+            "leads": 4,
+            "booked": 1
+          }
+        },
+        "upcoming_appointments": [
+          "lead A1 booked"
+        ]
+      },
+      "analytics_by_client": {
+        "A1": {
+          "conversations_over_time": 3,
+          "leads_over_time": 4,
+          "channel_distribution": 3,
+          "peak_hours": 3,
+          "lead_status_breakdown": {
+            "appointment_booked": 1,
+            "new": 3
+          },
+          "response_time": {
+            "conversations": 3,
+            "responded": 3,
+            "agent_responded": 0
+          },
+          "journey": {
+            "A1": {
+              "leads": 4,
+              "booked": 1
+            }
+          },
+          "upcoming_appointments": [
+            "lead A1 booked"
+          ]
+        },
+        "A2": {
+          "conversations_over_time": 0,
+          "leads_over_time": 0,
+          "channel_distribution": 0,
+          "peak_hours": 0,
+          "lead_status_breakdown": {},
+          "response_time": {
+            "conversations": 0,
+            "responded": 0,
+            "agent_responded": 0
+          },
+          "journey": {},
+          "upcoming_appointments": []
+        },
+        "B1": {
+          "conversations_over_time": 0,
+          "leads_over_time": 0,
+          "channel_distribution": 0,
+          "peak_hours": 0,
+          "lead_status_breakdown": {},
+          "response_time": {
+            "conversations": 0,
+            "responded": 0,
+            "agent_responded": 0
+          },
+          "journey": {},
+          "upcoming_appointments": []
+        },
+        "X1": {
+          "conversations_over_time": 0,
+          "leads_over_time": 0,
+          "channel_distribution": 0,
+          "peak_hours": 0,
+          "lead_status_breakdown": {},
+          "response_time": {
+            "conversations": 0,
+            "responded": 0,
+            "agent_responded": 0
+          },
+          "journey": {},
+          "upcoming_appointments": []
+        }
+      },
+      "client_performance": {
+        "A1": {
+          "conversations": 3,
+          "leads": 4
+        }
+      },
+      "organization_details_A": "empty",
+      "platform_stats": "empty or zero"
+    },
+    "write": {
+      "update": {
+        "conversations": {
+          "A1 assigned teamA1": 1,
+          "A1 assigned clientAdminA1": 1,
+          "A1 unassigned": 1,
+          "A2 assigned teamA1": 0,
+          "B1 unassigned": 0,
+          "X1 unassigned": 0
+        },
+        "messages": {
+          "A1 assigned teamA1/user": 0,
+          "A1 assigned teamA1/assistant": 0,
+          "A1 assigned clientAdminA1/user": 0,
+          "A1 assigned clientAdminA1/assistant": 0,
+          "A1 unassigned/user": 0,
+          "A1 unassigned/assistant": 0,
+          "A2 assigned teamA1/user": 0,
+          "A2 assigned teamA1/assistant": 0,
+          "B1 unassigned/user": 0,
+          "B1 unassigned/assistant": 0,
+          "X1 unassigned/user": 0,
+          "X1 unassigned/assistant": 0
+        },
+        "leads": {
+          "A1 assigned teamA1": 1,
+          "A1 assigned clientAdminA1": 1,
+          "A1 unassigned": 1,
+          "A2 assigned teamA1": 0,
+          "B1 unassigned": 0,
+          "X1 unassigned": 0,
+          "A1 incomplete": 0,
+          "A1 booked": 1
+        },
+        "clients": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        },
+        "channels": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        },
+        "branches": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        },
+        "branch_closures": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        },
+        "knowledge_documents": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        },
+        "client_members": {
+          "clientAdminA1@A1": 0,
+          "teamA1@A1": 0
+        },
+        "users": {
+          "super": 0,
+          "superImpersonatingA": 0,
+          "orgAdminA": 0,
+          "orgAdminB": 0,
+          "orgAdminX": 0,
+          "clientAdminA1": 0,
+          "teamA1": 1,
+          "teamA_noClient": 0
+        },
+        "organizations": {
+          "A": 0,
+          "B": 0,
+          "X": 0
+        }
+      },
+      "insert": {
+        "conversations": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        },
+        "agent_messages": {
+          "A1 assigned teamA1": "inserted",
+          "A1 assigned clientAdminA1": "inserted",
+          "A1 unassigned": "inserted",
+          "A2 assigned teamA1": "refused",
+          "B1 unassigned": "refused",
+          "X1 unassigned": "refused"
+        },
+        "leads": {
+          "A1": "inserted",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        }
+      },
+      "delete": {
+        "leads": {
+          "A1 complete": 0,
+          "A1 incomplete": 0,
+          "A2 complete": 0,
+          "A2 incomplete": 0,
+          "B1 complete": 0,
+          "B1 incomplete": 0,
+          "X1 complete": 0,
+          "X1 incomplete": 0
+        },
+        "messages": {
+          "A1 assigned teamA1": 0,
+          "A1 assigned clientAdminA1": 0,
+          "A1 unassigned": 0,
+          "A2 assigned teamA1": 0,
+          "B1 unassigned": 0,
+          "X1 unassigned": 0
+        },
+        "conversations": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        }
+      }
+    }
+  },
+  "teamA_noClient": {
+    "read": {
+      "organizations": [
+        "orgA"
+      ],
+      "users": [
+        "teamA_noClient"
+      ],
+      "clients": [],
+      "client_members": [],
+      "channels": [],
+      "branches": [],
+      "branch_closures": [],
+      "bot_settings": [],
+      "knowledge_documents": [],
+      "conversations": [],
+      "messages": [],
+      "leads": [],
+      "lead_events": []
+    },
+    "rpc": {
+      "needs_human_counts": {},
+      "client_team": {
+        "A1": [],
+        "A2": [],
+        "B1": [],
+        "X1": []
+      },
+      "analytics_all_clients": {
+        "conversations_over_time": 0,
+        "leads_over_time": 0,
+        "channel_distribution": 0,
+        "peak_hours": 0,
+        "lead_status_breakdown": {},
+        "response_time": {
+          "conversations": 0,
+          "responded": 0,
+          "agent_responded": 0
+        },
+        "journey": {},
+        "upcoming_appointments": []
+      },
+      "analytics_by_client": {
+        "A1": {
+          "conversations_over_time": 0,
+          "leads_over_time": 0,
+          "channel_distribution": 0,
+          "peak_hours": 0,
+          "lead_status_breakdown": {},
+          "response_time": {
+            "conversations": 0,
+            "responded": 0,
+            "agent_responded": 0
+          },
+          "journey": {},
+          "upcoming_appointments": []
+        },
+        "A2": {
+          "conversations_over_time": 0,
+          "leads_over_time": 0,
+          "channel_distribution": 0,
+          "peak_hours": 0,
+          "lead_status_breakdown": {},
+          "response_time": {
+            "conversations": 0,
+            "responded": 0,
+            "agent_responded": 0
+          },
+          "journey": {},
+          "upcoming_appointments": []
+        },
+        "B1": {
+          "conversations_over_time": 0,
+          "leads_over_time": 0,
+          "channel_distribution": 0,
+          "peak_hours": 0,
+          "lead_status_breakdown": {},
+          "response_time": {
+            "conversations": 0,
+            "responded": 0,
+            "agent_responded": 0
+          },
+          "journey": {},
+          "upcoming_appointments": []
+        },
+        "X1": {
+          "conversations_over_time": 0,
+          "leads_over_time": 0,
+          "channel_distribution": 0,
+          "peak_hours": 0,
+          "lead_status_breakdown": {},
+          "response_time": {
+            "conversations": 0,
+            "responded": 0,
+            "agent_responded": 0
+          },
+          "journey": {},
+          "upcoming_appointments": []
+        }
+      },
+      "client_performance": {},
+      "organization_details_A": "empty",
+      "platform_stats": "empty or zero"
+    },
+    "write": {
+      "update": {
+        "conversations": {
+          "A1 assigned teamA1": 0,
+          "A1 assigned clientAdminA1": 0,
+          "A1 unassigned": 0,
+          "A2 assigned teamA1": 0,
+          "B1 unassigned": 0,
+          "X1 unassigned": 0
+        },
+        "messages": {
+          "A1 assigned teamA1/user": 0,
+          "A1 assigned teamA1/assistant": 0,
+          "A1 assigned clientAdminA1/user": 0,
+          "A1 assigned clientAdminA1/assistant": 0,
+          "A1 unassigned/user": 0,
+          "A1 unassigned/assistant": 0,
+          "A2 assigned teamA1/user": 0,
+          "A2 assigned teamA1/assistant": 0,
+          "B1 unassigned/user": 0,
+          "B1 unassigned/assistant": 0,
+          "X1 unassigned/user": 0,
+          "X1 unassigned/assistant": 0
+        },
+        "leads": {
+          "A1 assigned teamA1": 0,
+          "A1 assigned clientAdminA1": 0,
+          "A1 unassigned": 0,
+          "A2 assigned teamA1": 0,
+          "B1 unassigned": 0,
+          "X1 unassigned": 0,
+          "A1 incomplete": 0,
+          "A1 booked": 0
+        },
+        "clients": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        },
+        "channels": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        },
+        "branches": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        },
+        "branch_closures": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        },
+        "knowledge_documents": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        },
+        "client_members": {
+          "clientAdminA1@A1": 0,
+          "teamA1@A1": 0
+        },
+        "users": {
+          "super": 0,
+          "superImpersonatingA": 0,
+          "orgAdminA": 0,
+          "orgAdminB": 0,
+          "orgAdminX": 0,
+          "clientAdminA1": 0,
+          "teamA1": 0,
+          "teamA_noClient": 1
+        },
+        "organizations": {
+          "A": 0,
+          "B": 0,
+          "X": 0
+        }
+      },
+      "insert": {
+        "conversations": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        },
+        "agent_messages": {
+          "A1 assigned teamA1": "refused",
+          "A1 assigned clientAdminA1": "refused",
+          "A1 unassigned": "refused",
+          "A2 assigned teamA1": "refused",
+          "B1 unassigned": "refused",
+          "X1 unassigned": "refused"
+        },
+        "leads": {
+          "A1": "refused",
+          "A2": "refused",
+          "B1": "refused",
+          "X1": "refused"
+        }
+      },
+      "delete": {
+        "leads": {
+          "A1 complete": 0,
+          "A1 incomplete": 0,
+          "A2 complete": 0,
+          "A2 incomplete": 0,
+          "B1 complete": 0,
+          "B1 incomplete": 0,
+          "X1 complete": 0,
+          "X1 incomplete": 0
+        },
+        "messages": {
+          "A1 assigned teamA1": 0,
+          "A1 assigned clientAdminA1": 0,
+          "A1 unassigned": 0,
+          "A2 assigned teamA1": 0,
+          "B1 unassigned": 0,
+          "X1 unassigned": 0
+        },
+        "conversations": {
+          "A1": 0,
+          "A2": 0,
+          "B1": 0,
+          "X1": 0
+        }
+      }
+    }
+  }
+}

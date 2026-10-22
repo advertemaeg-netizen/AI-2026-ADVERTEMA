@@ -114,3 +114,25 @@ $$;
 
 revoke execute on function public.test_create_auth_user_with_meta(text, jsonb) from public, anon, authenticated;
 grant execute on function public.test_create_auth_user_with_meta(text, jsonb) to service_role;
+
+-- Test-only: every table of the public schema, with what protects it: row
+-- level security, and the impersonation read-only guard (a trigger named
+-- block_impersonated_writes). Read by tests/access/table-guards.test.ts, so a
+-- table added without either fails the suite the day it is added.
+create function public.test_table_guards()
+returns table (table_name text, has_client_id boolean, rls_enabled boolean, impersonation_guard boolean)
+language sql
+stable
+as $$
+  select c.relname::text,
+         exists (select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'client_id' and not a.attisdropped),
+         c.relrowsecurity,
+         exists (select 1 from pg_trigger t where t.tgrelid = c.oid and t.tgname = 'block_impersonated_writes' and not t.tgisinternal)
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'public' and c.relkind = 'r'
+   order by 1
+$$;
+
+revoke execute on function public.test_table_guards() from public, anon, authenticated;
+grant execute on function public.test_table_guards() to service_role;
