@@ -1,14 +1,13 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Controller, useForm, useWatch, type Control } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useLocale, useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { Eye, EyeOff, Save, Sparkles } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Slider } from '@/components/ui/slider'
 import { Textarea } from '@/components/ui/textarea'
@@ -31,16 +30,14 @@ import {
 import { cn } from '@/lib/utils'
 import { updateBotSettings } from '@/lib/actions/bot-settings'
 import { BOT_PRESET_NAMES, BOT_PRESETS, type BotPresetName } from '@/lib/constants/bot-presets'
+import { Link } from '@/i18n/navigation'
 import {
   BOOKING_MODES,
   BOT_LANGUAGES,
-  BOT_TIMEZONES,
   BOT_TONES,
-  DEFAULT_BUSINESS_HOURS,
   MESSAGE_MAX,
   NAME_STRICTNESS,
   SYSTEM_PROMPT_MAX,
-  WEEK_DAYS,
   botSettingsSchema,
   type BotSettingsInput,
 } from '@/lib/types/bot-settings'
@@ -76,7 +73,6 @@ export function BotSettingsForm({
   })
   const { control, handleSubmit, formState, getValues, setValue, reset } = form
   const welcomeMessage = useWatch({ control, name: 'welcome_message' })
-  const businessHours = useWatch({ control, name: 'business_hours' })
 
   // zod messages are translation keys ('required', 'tooLong', 'invalidTime')
   const errorText = (message?: string) => (message ? t(`errors.${message}`) : undefined)
@@ -363,36 +359,18 @@ export function BotSettingsForm({
           </CardContent>
         </Card>
 
-        {/* Business hours */}
+        {/* Business hours: no longer edited here. Since 22 October 2026 each
+            branch's hours decide a booking and are what the assistant states;
+            an editor that still looked like it worked would decide nothing. */}
         <Card>
           <CardHeader>
             <CardTitle>{t('sections.hours')}</CardTitle>
-            <CardDescription>{t('sections.hoursDesc')}</CardDescription>
+            <CardDescription>
+              <Link href={`/dashboard/clients/${clientId}/branches`} className="underline underline-offset-4 hover:text-foreground">
+                {t('sections.hoursMoved')}
+              </Link>
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <FieldGroup>
-              <Field orientation="horizontal">
-                <FieldContent>
-                  <FieldLabel htmlFor="hours_enabled">{t('fields.hoursEnabled')}</FieldLabel>
-                  <FieldDescription>{t('hints.hoursEnabled')}</FieldDescription>
-                </FieldContent>
-                <Switch
-                  id="hours_enabled"
-                  checked={!!businessHours?.enabled}
-                  disabled={!canManage}
-                  onCheckedChange={(enabled) =>
-                    setValue(
-                      'business_hours',
-                      { ...(getValues('business_hours') ?? DEFAULT_BUSINESS_HOURS), enabled },
-                      { shouldDirty: true }
-                    )
-                  }
-                />
-              </Field>
-
-              {businessHours?.enabled && <BusinessHoursEditor control={control} disabled={!canManage} />}
-            </FieldGroup>
-          </CardContent>
         </Card>
 
         <div className="sticky bottom-0 z-10 -mx-2 flex flex-wrap items-center justify-end gap-2 border-t bg-background/95 px-2 py-3 backdrop-blur">
@@ -431,97 +409,3 @@ export function BotSettingsForm({
   )
 }
 
-function BusinessHoursEditor({
-  control,
-  disabled,
-}: {
-  control: Control<BotSettingsInput>
-  disabled: boolean
-}) {
-  const t = useTranslations('botSettings')
-
-  return (
-    <>
-      <Controller
-        control={control}
-        name="business_hours.timezone"
-        render={({ field }) => (
-          <Field>
-            <FieldLabel htmlFor="timezone">{t('fields.timezone')}</FieldLabel>
-            <Select value={field.value} onValueChange={field.onChange} disabled={disabled}>
-              <SelectTrigger id="timezone" className="w-full sm:w-64" dir="ltr">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {BOT_TIMEZONES.map((zone) => (
-                  <SelectItem key={zone} value={zone}>
-                    {zone}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-        )}
-      />
-
-      <div className="grid gap-2">
-        {WEEK_DAYS.map((day) => (
-          <div key={day} className="flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2">
-            <Controller
-              control={control}
-              name={`business_hours.days.${day}.open`}
-              render={({ field }) => (
-                <label className="flex w-36 items-center gap-2 text-sm">
-                  <Switch checked={field.value} onCheckedChange={field.onChange} disabled={disabled} />
-                  {t(`days.${day}`)}
-                </label>
-              )}
-            />
-            <DayTimes control={control} day={day} disabled={disabled} />
-          </div>
-        ))}
-      </div>
-      <FieldDescription>{t('hints.overnight')}</FieldDescription>
-    </>
-  )
-}
-
-function DayTimes({
-  control,
-  day,
-  disabled,
-}: {
-  control: Control<BotSettingsInput>
-  day: (typeof WEEK_DAYS)[number]
-  disabled: boolean
-}) {
-  const t = useTranslations('botSettings')
-  const open = useWatch({ control, name: `business_hours.days.${day}.open` })
-
-  if (!open) return <span className="text-sm text-muted-foreground">{t('closed')}</span>
-
-  return (
-    <div className="flex items-center gap-2 text-sm">
-      {(['from', 'to'] as const).map((edge) => (
-        <Controller
-          key={edge}
-          control={control}
-          name={`business_hours.days.${day}.${edge}`}
-          render={({ field, fieldState }) => (
-            <label className="flex items-center gap-1.5">
-              <span className="text-muted-foreground">{t(`hours.${edge}`)}</span>
-              <Input
-                {...field}
-                type="time"
-                dir="ltr"
-                disabled={disabled}
-                aria-invalid={fieldState.invalid}
-                className="w-28"
-              />
-            </label>
-          )}
-        />
-      ))}
-    </div>
-  )
-}

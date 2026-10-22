@@ -574,7 +574,8 @@
       "behavior": "Behaviour",
       "behaviorDesc": "Reply language, creativity, reply length and lead collection.",
       "hours": "Business hours",
-      "hoursDesc": "Optional — lets the assistant tell visitors when the business is closed and when it opens."
+      "hoursDesc": "Optional — lets the assistant tell visitors when the business is closed and when it opens.",
+      "hoursMoved": "Opening hours are now set for each branch. Set them on the branches page."
     },
     "fields": {
       "systemPrompt": "System prompt (personality)",
