@@ -285,6 +285,20 @@ export async function loadBotSettings(supabase: SupabaseClient, clientId: string
 }
 
 /**
+ * Nothing to send: the model wrote no text, and code had nothing of its own
+ * to say (no booking sentence, no answer in other_answer, no question). The
+ * one case an empty reply is a failure; the caller's fallback then speaks,
+ * and stores the model's raw answer with it. The message is the one the
+ * logs have always shown, so earlier occurrences can be counted with these.
+ */
+export class NoReplyError extends Error {
+  constructor() {
+    super('The model returned no reply')
+    this.name = 'NoReplyError'
+  }
+}
+
+/**
  * The model's structured answer → its text and the appointment it reported.
  * Anything that isn't the expected JSON is taken as a plain reply: a
  * malformed answer must not cost the visitor their reply.
@@ -306,13 +320,16 @@ export function parseBotReply(text: string): {
   const parsed = json !== null && typeof json === 'object' && !Array.isArray(json) ? botReplySchema.safeParse(json) : null
   if (!parsed?.success) return { reply: text, appointment: null, contact: null, otherAnswer: null, branch: null }
 
+  // May be empty, and that is not decided here. The model is told its reply
+  // is not shown on turns where code writes the message, and it sometimes
+  // leaves it empty on those turns, also when it reported no appointment
+  // itself (a time held for the name and number, booked on this message).
+  // Failing here took those turns down: twice in the container log on 22
+  // October 2026, «The model returned no reply», and both visitors got the
+  // service-down message. Whether anything is left to send is known only
+  // once the reply is composed (NoReplyError, thrown by the caller).
   const reply = parsed.data.reply?.trim() ?? ''
   const appointment = parsed.data.appointment ?? null
-  // With an appointment the reply is not sent, and the model leaves it empty.
-  // Without one an empty reply is no answer at all: failing here lets the
-  // caller's own fallback speak, where returning `text` would send the
-  // visitor the model's JSON.
-  if (!reply && !appointment) throw new Error('The model returned no reply')
   return {
     reply,
     appointment,
@@ -406,8 +423,8 @@ export async function runBot({
   // reports about a booking is not one, and its reply is sent whole
   const noBooking = effectiveBookingMode(settings) === 'none'
   // Its text for an appointment it reported anyway is the answer it gave besides it
+  // Empty is the caller's to judge, as in every mode (NoReplyError)
   const kept = noBooking ? parsed.reply || parsed.otherAnswer || '' : parsed.reply
-  if (noBooking && !kept) throw new Error('The model returned no reply')
   const { appointment, contact, otherAnswer, branch } = noBooking
     ? { ...parsed, appointment: null, otherAnswer: null, branch: null }
     : parsed

@@ -1,6 +1,6 @@
 'use server'
 
-import { loadBotSettings, runBot, type BotClient } from '@/lib/ai/bot'
+import { NoReplyError, loadBotSettings, runBot, type BotClient } from '@/lib/ai/bot'
 import {
   confirmsItself,
   replyLanguage,
@@ -166,6 +166,8 @@ export async function testBot(
           }
         : resolved,
     })
+    // As the widget: empty is a failure only when nothing at all is left to send
+    if (!reply.trim()) throw new NoReplyError()
     // The reply reads as a booking: the caller has to say it's a rehearsal
     const simulated = resolved.status === 'resolved' ? { simulatedAppointment: resolved.at } : {}
     // Counted like a widget reply. consume_client_message is service-role

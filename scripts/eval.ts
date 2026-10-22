@@ -32,7 +32,7 @@
 import { createHash } from 'node:crypto'
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { loadBotSettings, runBot, type BotClient } from '@/lib/ai/bot'
+import { NoReplyError, loadBotSettings, runBot, type BotClient } from '@/lib/ai/bot'
 import {
   APPOINTMENT_PLACEHOLDER,
   ASK_DAY_AND_TIME,
@@ -451,6 +451,8 @@ async function converse(bot: Bot, turns: string[]) {
         time: (booking.status !== 'none' && booking.status !== 'incomplete') || appointmentAt !== null || pending !== null,
       },
     })
+    // As the webhook: empty is a failure only when nothing at all is left to send
+    if (!reply.trim()) throw new NoReplyError()
     history.push({ role: 'assistant', content: reply })
     records.push({
       user,

@@ -1,7 +1,7 @@
 import { after, NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { aiFailureReason, replyModel, type ChatTurn } from '@/lib/ai/provider'
-import { BOT_HISTORY_LIMIT, loadBotSettings, runBot } from '@/lib/ai/bot'
+import { BOT_HISTORY_LIMIT, NoReplyError, loadBotSettings, runBot } from '@/lib/ai/bot'
 import { detectLead } from '@/lib/ai/lead-detection'
 import {
   APPOINTMENT_PLACEHOLDER,
@@ -458,6 +458,10 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
       contact_events?: ContactEvents
     }
     let contact: ContactState | null = null
+    // The model's answer as it came, once there is one: stored with a
+    // fallback too, so a failure after the model answered can be read from
+    // the message instead of reconstructed from logs
+    let raw: string | null = null
     // The business's booking shape, and how much of a name it asks for
     const mode = effectiveBookingMode(settings)
 
@@ -504,6 +508,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
         heldRequest: held,
         branches,
       })
+      raw = result.raw
 
       // The model reported; code decides. The name and the number are
       // checked and written before the reply is rendered, so the reply can
@@ -783,6 +788,11 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
         await markForPerson('no_answer')
       }
       if (bookingFailed) await markForPerson('service_down')
+      // AN EMPTY REPLY IS A FAILURE ONLY HERE: the model wrote nothing (no
+      // reply, no other_answer) AND code had nothing of its own to say. Any
+      // booking sentence, refusal, question or follow-up of code's makes the
+      // empty reply correct, which is what the model is told it may be.
+      if (!reply.trim()) throw new NoReplyError()
     } catch (error) {
       console.error('[webhook/website] AI reply failed', error)
       // A failed reply (rate limit, timeout, 503) must not lose the lead: the
@@ -796,7 +806,15 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
         conversation_id: conversationId,
         role: 'assistant',
         content: settings.service_unavailable_message,
-        metadata: { fallback: 'ai_unavailable', reason: aiFailureReason(error) },
+        metadata: {
+          fallback: 'ai_unavailable',
+          reason: aiFailureReason(error),
+          // What failed, and what the model had answered if it had: the two
+          // service-down replies of 21–22 October took three days to explain
+          // because neither was kept
+          error: error instanceof Error ? error.message.slice(0, 500) : String(error).slice(0, 500),
+          ...(raw !== null ? { raw } : {}),
+        },
       })
       if (fallbackError) {
         console.error('[webhook/website] storing the fallback failed', fallbackError)

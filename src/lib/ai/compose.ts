@@ -243,7 +243,11 @@ function composeFor({
   // placeholder was written against the booking, and that a request flagged
   // needs_team_check was. GT07, 13 October 2026: a refusal that ended on the
   // placeholder, with no flag, sent as "…خارج مواعيد العمل… موعدك مؤكَّد ✅".
-  const said = appointmentDecided ? (otherAnswer ?? '') : template
+  // A model that left its reply empty and put its answer in other_answer
+  // still answered: that answer is sent (22 October 2026, «سعر الكشف كام»
+  // answered as the service-down message). An empty reply with nothing in
+  // other_answer and nothing of code's own is the caller's NoReplyError.
+  const said = appointmentDecided ? (otherAnswer ?? '') : template || (otherAnswer ?? '')
 
   // Code has the visitor's name, as given, and is not asking for it again;
   // the model, told so, asks all the same when the business's own prompt
