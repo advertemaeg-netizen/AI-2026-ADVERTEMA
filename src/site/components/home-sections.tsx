@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { BrandMark } from '@/components/brand'
 import { cn } from '@/lib/utils'
 import { HeroConversation, type BotTemplates } from '@/site/components/hero-conversation'
 
@@ -51,8 +50,6 @@ export function Hero({
         </div>
       </div>
       <div className="relative">
-        {/* Depth: the mark, large, behind the conversation, drifting with the page */}
-        <BrandMark height={260} className="site-drift absolute -top-10 end-0 -z-10 text-brand/25" />
         <HeroConversation {...demo} />
       </div>
     </section>
@@ -90,14 +87,14 @@ export function How({ title, steps }: { title: string; steps: Item[] }) {
           'rtl:md:[--site-steps-origin:right]'
         )}
       >
-        <span aria-hidden className="site-steps-track start-[1.1rem] top-2 bottom-2 w-1 md:start-[8%] md:end-[8%] md:top-[1.1rem] md:bottom-auto md:h-1 md:w-auto">
+        <span aria-hidden className="site-steps-track start-[1.06rem] top-2 bottom-2 w-0.5 md:start-[8%] md:end-[8%] md:top-[1.06rem] md:bottom-auto md:h-0.5 md:w-auto">
           <span className="site-steps-fill" />
         </span>
         {steps.map((step, i) => (
           <li key={i} className="relative flex gap-5 md:flex-col md:items-center md:text-center">
             <span
               aria-hidden
-              className="site-step-dot relative z-10 grid size-9 flex-none place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground shadow-raised"
+              className="site-step-dot relative z-10 grid size-9 flex-none place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground"
               style={{ '--i': i } as React.CSSProperties}
             >
               {i + 1}
@@ -138,9 +135,9 @@ export function Try({ title, body }: { title: string; body: string }) {
       <p className="site-lead max-w-2xl">{body}</p>
       {/* The widget sits at the bottom RIGHT of the screen in both languages (widget.js default),
           so the arrow is placed physically, not logically */}
-      <svg aria-hidden viewBox="0 0 48 48" className="site-pointer mt-2 size-14 text-foreground" style={{ marginLeft: 'auto', ['--site-nudge-x' as string]: '10px' }}>
-        <path d="M8 8 C 30 8, 40 18, 40 40" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
-        <path d="M30 34 L40 41 L44 29" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+      <svg aria-hidden viewBox="0 0 48 48" className="site-pointer mt-2 size-14 text-foreground" style={{ marginLeft: 'auto', ['--site-nudge-x' as string]: '6px' }}>
+        <path d="M8 8 C 30 8, 40 18, 40 40" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path d="M30 34 L40 41 L44 29" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </section>
   )
@@ -163,7 +160,7 @@ export function Paths({
       <h2 className="site-h2 site-reveal max-w-3xl">{title}</h2>
       <div className="grid gap-6 md:grid-cols-2">
         {/* Self-serve: direct and quick. Charcoal, white text (15.42) */}
-        <div className="site-reveal flex flex-col gap-5 rounded-[1.75rem] bg-primary p-8 text-primary-foreground shadow-raised md:p-10" style={{ '--i': 0 } as React.CSSProperties}>
+        <div className="site-reveal flex flex-col gap-5 rounded-[1.75rem] bg-primary p-8 text-primary-foreground md:p-10" style={{ '--i': 0 } as React.CSSProperties}>
           <h3 className="text-3xl font-bold">{self.label}</h3>
           <p className="site-lead flex-1">{self.body}</p>
           <a href={self.href} className="inline-flex min-h-12 items-center justify-center self-start rounded-full bg-white px-6 font-semibold text-primary">

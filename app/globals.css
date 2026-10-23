@@ -93,14 +93,20 @@
   /* Dialog and sheet backdrops */
   --overlay: rgb(34 37 39 / 0.25);
 
-  /* Categorical series (fixed order), separated by lightness as well as hue.
-     On a card: 14.49, 4.61, 5.19, 4.74, 7.10. On the bare ground #5b6cb8 is
-     4.39 — under 4.5, so charts stay on cards. Yellow is not a data colour. */
+  /*
+   * Categorical series: four, fixed order. On a ground this light five
+   * colours cannot each clear 3:1 against the ground AND against each other,
+   * so there is no fifth: a chart that needs more groups its tail as "other".
+   * Fills need 3:1 on the card (14.49, 4.93, 4.30, 3.13; sand dark is 2.98
+   * on the bare ground, so charts stay on cards). Pairs measure 1.15–4.63:
+   * where two fills TOUCH (pie segments, stacked bars, overlapping areas)
+   * a 1px stroke in the card ground separates them. Text in a series colour
+   * only for 1 and 2 (≥4.5); 3 and 4 get charcoal labels.
+   */
   --chart-1: var(--palette-charcoal);
-  --chart-2: #5b6cb8;
-  --chart-3: #c2341f;
-  --chart-4: #8a6a1e;
-  --chart-5: #4b5563;
+  --chart-2: #2f6fae; /* blue */
+  --chart-3: #c4522a; /* brick */
+  --chart-4: #a8893c; /* sand dark */
   /* Funnel stages: charcoal bars on a muted track (12.00 bar on track) */
   --chart-funnel: var(--palette-charcoal);
   --chart-funnel-track: #dde4e9;
@@ -193,7 +199,6 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);

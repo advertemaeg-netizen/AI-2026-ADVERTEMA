@@ -193,9 +193,9 @@ export function ChannelsChart({ data }: { data: AnalyticsData }) {
                 nameKey="channel"
                 innerRadius="60%"
                 outerRadius="90%"
-                paddingAngle={1}
+                // Touching fills are told apart by a 1px card-ground stroke (globals.css)
                 stroke="var(--card)"
-                strokeWidth={2}
+                strokeWidth={1}
               >
                 {slices.map((slice) => (
                   <Cell key={slice.channel} fill={`var(--color-${slice.channel})`} />

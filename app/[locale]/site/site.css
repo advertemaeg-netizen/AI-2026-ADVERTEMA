@@ -2,24 +2,27 @@
  * The marketing site's own layer, on top of the product's tokens
  * (app/globals.css). The dashboard's restraint (the blur budget) is NOT
  * applied here: this page is seen for thirty seconds. What IS kept:
- *   - body text clears AAA (7:1). All text is charcoal, 13.79 on the ground
- *     and 10.90 at worst on the brand gradient. White text sits on charcoal
- *     only; yellow and coral are never text.
+ *   - body text clears AAA (7:1). All text is charcoal: 10.90 at worst on the
+ *     bare gradient (its cream end), 13.29 at worst on a panel over it. White
+ *     text sits on charcoal only; yellow and coral are never text.
  *   - 60fps on a mid-range Android. Only transform and opacity animate, the
  *     field has no filter, and two surfaces blur at most (the header and the
  *     hero conversation).
+ *   - The identity's signature, quieter than the old brand's: light fills,
+ *     very light shadows, thin charcoal lines, short motion that does not
+ *     overshoot.
  *   - Reduced motion zeroes everything: every animation below sits inside
  *     `no-preference`, so with reduce the page is simply its final state.
  */
 
-/* The field: the plain ground for now. The brand gradient (--brand-gradient)
-   replaces the old three blooms in step 2, with the hero */
+/* The field: the identity's one linear gradient, fixed behind the whole site.
+   Periwinkle at the bottom-left (the 35deg start), cream at the top-right */
 .site-field {
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: var(--background);
+  background: var(--brand-gradient);
 }
 
 /* Type: generous, and fluid between a phone and a wide screen */
@@ -54,37 +57,35 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
   line-height: 1.35;
 }
 
-/* Surfaces with real depth and no blur (cheap on a phone) */
+/* Surfaces: a light fill the gradient shows through, a hairline, a very
+   light shadow; no blur (cheap on a phone) */
 .site-panel {
-  background: rgb(247 248 248 / 0.94);
-  border: 1px solid rgb(255 255 255 / 0.95);
+  background: rgb(247 248 248 / 0.7);
+  border: 1px solid rgb(255 255 255 / 0.8);
   border-radius: 1.5rem;
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.9),
-    0 0 0 1px rgb(34 37 39 / 0.06),
-    0 30px 60px -32px rgb(34 37 39 / 0.3),
-    0 10px 22px -14px rgb(34 37 39 / 0.14);
+    0 0 0 1px rgb(34 37 39 / 0.04),
+    0 16px 32px -24px rgb(34 37 39 / 0.16);
 }
 .site-panel-solid {
   background: var(--glass-fill-solid);
 }
 .site-panel-quiet {
-  background: rgb(247 248 248 / 0.8);
-  border: 1px solid var(--border);
+  background: rgb(247 248 248 / 0.55);
+  border: 1px solid rgb(255 255 255 / 0.8);
   border-radius: 1.25rem;
 }
 
 /* The hero conversation: one of the two blurred surfaces */
 .site-phone {
-  background: rgb(247 248 248 / 0.82);
-  border: 1px solid rgb(255 255 255 / 0.95);
+  background: rgb(247 248 248 / 0.72);
+  border: 1px solid rgb(255 255 255 / 0.85);
   border-radius: 2rem;
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.95),
-    0 40px 80px -36px rgb(34 37 39 / 0.36),
-    0 12px 30px -16px rgb(34 37 39 / 0.16);
-  -webkit-backdrop-filter: blur(18px) saturate(1.6);
-  backdrop-filter: blur(18px) saturate(1.6);
+    0 0 0 1px rgb(34 37 39 / 0.04),
+    0 24px 48px -32px rgb(34 37 39 / 0.2);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
 }
 .site-bubble {
   max-width: 85%;
@@ -111,10 +112,10 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
   display: none;
 }
 
-/* The sequence line through the three steps */
+/* The sequence line through the three steps: thin charcoal */
 .site-steps-track {
   position: absolute;
-  background: rgb(34 37 39 / 0.12);
+  background: rgb(34 37 39 / 0.14);
   border-radius: 999px;
 }
 .site-steps-fill {
@@ -129,7 +130,7 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
   /* ---- The hero conversation: one cycle, then it stays ---- */
   .site-convo [data-step] {
     opacity: 0;
-    animation: site-message-in 520ms var(--motion-spring) both;
+    animation: site-message-in 420ms var(--motion-ease-out) both;
     animation-delay: calc(var(--at) * 1ms);
   }
   .site-convo [data-typing] {
@@ -143,14 +144,14 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
     animation-delay: calc(var(--at) * 1ms + var(--i) * 120ms);
   }
   .site-convo [data-confirm] {
-    animation: site-message-in 520ms var(--motion-spring) both, site-pop 640ms var(--motion-spring) both;
+    animation: site-message-in 420ms var(--motion-ease-out) both, site-pop 420ms var(--motion-ease-out) both;
     animation-delay: calc(var(--at) * 1ms), calc(var(--at) * 1ms + 160ms);
   }
 
   /* ---- Entry of the hero itself ---- */
   .site-rise {
-    animation: site-rise 900ms var(--motion-ease-out) both;
-    animation-delay: calc(var(--i, 0) * 90ms);
+    animation: site-rise 700ms var(--motion-ease-out) both;
+    animation-delay: calc(var(--i, 0) * 80ms);
   }
 
   /* ---- Scroll-driven: only where the browser can, otherwise the content just stands ---- */
@@ -173,15 +174,11 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
       animation-timeline: --site-steps;
       animation-range: cover calc(18% + var(--i) * 14%) cover calc(26% + var(--i) * 14%);
     }
-    .site-drift {
-      animation: site-drift linear both;
-      animation-timeline: scroll(root);
-    }
   }
 
-  /* ---- Section 5: the pointer at the widget, three nudges then still ---- */
+  /* ---- Section 5: the pointer at the widget, two nudges then still ---- */
   .site-pointer {
-    animation: site-nudge 1400ms var(--motion-ease-out) 3 both;
+    animation: site-nudge 1400ms var(--motion-ease-out) 2 both;
     animation-delay: 600ms;
   }
 }
@@ -189,7 +186,7 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
 @keyframes site-message-in {
   from {
     opacity: 0;
-    transform: translateY(14px) scale(0.96);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -219,7 +216,7 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
 }
 @keyframes site-pop {
   from {
-    transform: scale(0.6);
+    transform: scale(0.9);
   }
   to {
     transform: scale(1);
@@ -228,7 +225,7 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
 @keyframes site-rise {
   from {
     opacity: 0;
-    transform: translateY(28px);
+    transform: translateY(16px);
   }
   to {
     opacity: 1;
@@ -238,7 +235,7 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
 @keyframes site-reveal {
   from {
     opacity: 0;
-    transform: translateY(48px) scale(0.97);
+    transform: translateY(24px);
   }
   to {
     opacity: 1;
@@ -253,20 +250,12 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
     transform: scale(1, 1);
   }
 }
-@keyframes site-drift {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(-18vh);
-  }
-}
 @keyframes site-nudge {
   0%,
   100% {
     transform: translate(0, 0);
   }
   50% {
-    transform: translate(var(--site-nudge-x, 10px), 10px);
+    transform: translate(var(--site-nudge-x, 6px), 6px);
   }
 }
