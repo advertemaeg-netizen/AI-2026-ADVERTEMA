@@ -2,18 +2,33 @@ import type { Metadata, Viewport } from 'next'
 import { NextIntlClientProvider, hasLocale } from 'next-intl'
 import { setRequestLocale } from 'next-intl/server'
 import { notFound } from 'next/navigation'
-import { Alexandria } from 'next/font/google'
+import { IBM_Plex_Sans_Arabic, Manrope } from 'next/font/google'
 import { Providers } from '@/components/providers'
 import { MARK_SEEN_SCRIPT } from '@/components/brand'
 import { routing } from '@/i18n/routing'
 import '../globals.css'
 
-// Arabic and Latin in one family, variable 100–900: covers every weight in use (400–800).
-// Replaced Cairo on 20 October 2026.
-const alexandria = Alexandria({
-  subsets: ['arabic', 'latin'],
-  variable: '--font-alexandria',
+// Brand v2 (22 October 2026): Manrope for Latin, IBM Plex Sans Arabic for Arabic,
+// only the weights the guidelines list (800 is the logo, which is a file).
+const manrope = Manrope({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
 })
+const plexArabic = IBM_Plex_Sans_Arabic({
+  subsets: ['arabic'],
+  weight: ['400', '500', '600', '700'],
+})
+
+// Both web fonts before either fallback. next/font pairs each face with an
+// Arial-based fallback ("Manrope", "Manrope Fallback"); Arial has Arabic
+// glyphs, so in that order it catches every Arabic letter before Plex is
+// reached (seen in Chrome's platform-font report on 23 October 2026; a machine
+// without Arial hides it). adjustFontFallback: false does not remove it under
+// Turbopack, so the stack is rebuilt from next/font's own names, whatever
+// they are called in a build: web fonts first, fallbacks after.
+const [manropeFace, ...manropeFallbacks] = manrope.style.fontFamily.split(', ')
+const [plexFace, ...plexFallbacks] = plexArabic.style.fontFamily.split(', ')
+const fontStack = [manropeFace, plexFace, ...manropeFallbacks, ...plexFallbacks].join(', ')
 
 // cover: env(safe-area-inset-*) is only non-zero with it (notch, home indicator).
 // resizes-content: on Android the layout shrinks above the keyboard, so a
@@ -55,7 +70,11 @@ export default async function LocaleLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: MARK_SEEN_SCRIPT }} />
       </head>
-      <body className={`${alexandria.variable} font-sans antialiased`} suppressHydrationWarning>
+      <body
+        className="font-sans antialiased"
+        style={{ '--font-stack': fontStack } as React.CSSProperties}
+        suppressHydrationWarning
+      >
         <NextIntlClientProvider>
           <Providers>{children}</Providers>
         </NextIntlClientProvider>

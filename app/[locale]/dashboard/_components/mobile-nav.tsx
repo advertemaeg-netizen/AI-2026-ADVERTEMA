@@ -44,7 +44,7 @@ export function MobileTopBar({
       </Sheet>
 
       <Link href="/dashboard" className="flex min-h-11 min-w-0 flex-1 items-center gap-2 px-1" onAnimationEnd={markSeen}>
-        <BrandMark className="mark-entrance text-brand" />
+        <BrandMark className="mark-entrance text-foreground" />
         <span className="min-w-0">
           <span className="block text-sm leading-tight font-bold">Mudrik AI</span>
           {title && <span className="block truncate text-xs leading-tight text-muted-foreground">{title}</span>}

@@ -1,44 +1,39 @@
 /*
  * The marketing site's own layer, on top of the product's tokens
- * (app/globals.css). The dashboard's restraint (the 15:1 field floor, the
- * blur budget) is NOT applied here: this page is seen for thirty seconds.
- * What IS kept:
- *   - body text clears AAA (7:1). All text here is the ink (#000). The
- *     darkest point of the field is cream with 40% brand at most (#f4b68d,
- *     L≈0.53): black on it is 11.6:1. The brand orange is never under text.
+ * (app/globals.css). The dashboard's restraint (the blur budget) is NOT
+ * applied here: this page is seen for thirty seconds. What IS kept:
+ *   - body text clears AAA (7:1). All text is charcoal, 13.79 on the ground
+ *     and 10.90 at worst on the brand gradient. White text sits on charcoal
+ *     only; yellow and coral are never text.
  *   - 60fps on a mid-range Android. Only transform and opacity animate, the
- *     field is gradients with no filter, and two surfaces blur at most (the
- *     header and the hero conversation).
+ *     field has no filter, and two surfaces blur at most (the header and the
+ *     hero conversation).
  *   - Reduced motion zeroes everything: every animation below sits inside
  *     `no-preference`, so with reduce the page is simply its final state.
  */
 
-/* The field, at full strength: fixed behind the whole site */
+/* The field: the plain ground for now. The brand gradient (--brand-gradient)
+   replaces the old three blooms in step 2, with the hero */
 .site-field {
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background:
-    radial-gradient(48rem 34rem at var(--field-start) -6rem, color-mix(in srgb, var(--palette-brand) 40%, transparent), transparent 70%),
-    radial-gradient(44rem 36rem at var(--field-end) 30%, color-mix(in srgb, var(--palette-tint) 45%, transparent), transparent 72%),
-    radial-gradient(56rem 40rem at 30% 105%, color-mix(in srgb, var(--palette-sage) 32%, transparent), transparent 70%),
-    radial-gradient(40rem 28rem at 55% 45%, rgb(255 255 255 / 0.7), transparent 70%),
-    var(--palette-cream);
+  background: var(--background);
 }
 
 /* Type: generous, and fluid between a phone and a wide screen */
 .site-display {
   font-size: clamp(2.1rem, 1.4rem + 3.2vw, 4.25rem);
   line-height: 1.05;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.02em;
   text-wrap: balance;
 }
 .site-h2 {
   font-size: clamp(1.85rem, 1.3rem + 2.2vw, 3.25rem);
   line-height: 1.12;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.015em;
   text-wrap: balance;
 }
@@ -47,12 +42,13 @@
   line-height: 1.6;
 }
 
-/* Arabic line heights, per locale (Alexandria, 20 October 2026): Arabic needs room for
-   its marks above and below the line; English keeps the values above. Unlayered, so
-   they win over the components' leading-* utilities and the classes above. */
+/* Arabic line heights, per locale (IBM Plex Sans Arabic): the guidelines' body
+   1.6–1.8 (the top, for the site's long reading) and headings 1.3–1.45; English
+   keeps the values above. Unlayered, so they win over the components' leading-*
+   utilities and the classes above. Arabic letter spacing is reset in globals.css. */
 html:lang(ar) body,
 html:lang(ar) :is(p, li, dd, dt, label, .site-lead) {
-  line-height: 1.85;
+  line-height: 1.8;
 }
 html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
   line-height: 1.35;
@@ -60,33 +56,33 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
 
 /* Surfaces with real depth and no blur (cheap on a phone) */
 .site-panel {
-  background: rgb(255 252 242 / 0.94);
+  background: rgb(247 248 248 / 0.94);
   border: 1px solid rgb(255 255 255 / 0.95);
   border-radius: 1.5rem;
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.9),
-    0 0 0 1px rgb(147 55 3 / 0.06),
-    0 30px 60px -32px rgb(147 55 3 / 0.45),
-    0 10px 22px -14px rgb(122 45 2 / 0.22);
+    0 0 0 1px rgb(34 37 39 / 0.06),
+    0 30px 60px -32px rgb(34 37 39 / 0.3),
+    0 10px 22px -14px rgb(34 37 39 / 0.14);
 }
 .site-panel-solid {
   background: var(--glass-fill-solid);
 }
 .site-panel-quiet {
-  background: rgb(255 252 242 / 0.8);
-  border: 1px solid rgb(232 223 199 / 0.9);
+  background: rgb(247 248 248 / 0.8);
+  border: 1px solid var(--border);
   border-radius: 1.25rem;
 }
 
 /* The hero conversation: one of the two blurred surfaces */
 .site-phone {
-  background: rgb(255 252 242 / 0.82);
+  background: rgb(247 248 248 / 0.82);
   border: 1px solid rgb(255 255 255 / 0.95);
   border-radius: 2rem;
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.95),
-    0 40px 80px -36px rgb(147 55 3 / 0.55),
-    0 12px 30px -16px rgb(122 45 2 / 0.25);
+    0 40px 80px -36px rgb(34 37 39 / 0.36),
+    0 12px 30px -16px rgb(34 37 39 / 0.16);
   -webkit-backdrop-filter: blur(18px) saturate(1.6);
   backdrop-filter: blur(18px) saturate(1.6);
 }
@@ -98,14 +94,14 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
 }
 .site-bubble[data-from='visitor'] {
   align-self: flex-end;
-  background: var(--palette-action);
-  color: #fff; /* white on the action brown: 7.5:1 */
+  background: var(--palette-periwinkle);
+  color: var(--palette-charcoal); /* 11.91 */
   border-end-end-radius: 0.35rem;
 }
 .site-bubble[data-from='bot'] {
   align-self: flex-start;
   background: #fff;
-  color: var(--palette-ink);
+  color: var(--palette-charcoal);
   border: 1px solid var(--border);
   border-end-start-radius: 0.35rem;
 }
@@ -118,13 +114,13 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
 /* The sequence line through the three steps */
 .site-steps-track {
   position: absolute;
-  background: rgb(147 55 3 / 0.14);
+  background: rgb(34 37 39 / 0.12);
   border-radius: 999px;
 }
 .site-steps-fill {
   position: absolute;
   inset: 0;
-  background: linear-gradient(var(--site-steps-dir, to bottom), var(--palette-brand), var(--palette-action));
+  background: var(--palette-charcoal);
   border-radius: 999px;
   transform-origin: var(--site-steps-origin, top);
 }

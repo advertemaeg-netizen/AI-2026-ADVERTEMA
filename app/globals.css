@@ -7,155 +7,140 @@
 /*
  * DESIGN TOKENS — the only place a colour, radius, shadow or motion value is
  * written. Components use the semantic names below (bg-primary, text-brand,
- * duration-base…), never a literal. White mode only.
+ * duration-base…), never a literal. White mode only: the identity has no
+ * dark specification, and none is derived.
  *
- * Palette sampled from the logo; contrast measured against the cream
- * background (WCAG 2.x):
- *   ink    #000     on cream 19.9:1
- *   action #933703  on cream 7.1:1, white on it 7.5:1 — buttons, links, active
- *   brand  #E85002  on cream 3.6:1 → LARGE TEXT AND THE LOGO ONLY; never body
- *                   or small text, never under white text (black on it 5.6:1)
- *   sage   #97A87A  positive fills and indicators (black on it 8.2:1)
- *   tint   #DB9558  pale surface washes only
+ * Brand v2 (22 October 2026, .scratch/brand-v2-tokens.md). Contrast measured
+ * against Cloud White, the ground (WCAG 2.x):
+ *   charcoal #222527  13.79 — text, headings, the primary button
+ *   white on charcoal 15.42 — the only white text in the system. White on any
+ *                     warm or light palette colour measures 1.1–2.4: never.
+ *   yellow   #FFE171  ~1.2 as text → a FILL only (selection, signature touches),
+ *                     charcoal on it 11.94. Never a data or a warning colour.
+ *   coral    #FF7162  2.41 as text → a FILL only, charcoal on it 5.72
  */
 :root {
   /* Palette */
-  --palette-cream: #fcf9ea;
-  --palette-ink: #000000;
-  --palette-action: #933703;
-  --palette-action-strong: #7a2d02; /* hover/pressed; white on it 9.5:1 */
-  --palette-brand: #e85002;
-  --palette-sage: #97a87a;
-  --palette-tint: #db9558;
+  --palette-charcoal: #222527;
+  --palette-cloud: #eef3f6; /* the ground of site and dashboard */
+  --palette-surface: #f7f8f8; /* cards and inner surfaces */
+  --palette-yellow: #ffe171; /* signature: a ground, never text */
+  --palette-coral: #ff7162; /* graphics and specific alerts: a fill, never text */
+  --palette-periwinkle: #dbe2f6; /* featured cards; the gradient's start */
+  --palette-sand: #e9dfc1; /* bridges cool to warm */
+  --palette-cream: #f8d585; /* the gradient's warm end */
+
+  /* Periwinkle → sand → cream. Charcoal is 10.90–11.91 anywhere on it */
+  --brand-gradient: linear-gradient(35deg, var(--palette-periwinkle) 0%, var(--palette-sand) 50%, var(--palette-cream) 100%);
 
   /* Surfaces */
-  --background: var(--palette-cream);
-  --foreground: var(--palette-ink);
-  --card: #ffffff;
-  --card-foreground: var(--palette-ink);
-  --popover: #ffffff;
-  --popover-foreground: var(--palette-ink);
-  --muted: #f6f0dc;
-  --muted-foreground: #6b6050; /* ≥4.6:1 on every surface here */
-  --secondary: #f6f0dc;
-  --secondary-foreground: var(--palette-ink);
-  /* The tint wash: hover rows, active nav, selected things */
-  --accent: #f7e6cf;
-  --accent-foreground: var(--palette-ink);
-  --border: #e8dfc7;
-  --input: #b3a584;
-  --ring: var(--palette-action);
+  --background: var(--palette-cloud);
+  --foreground: var(--palette-charcoal); /* 13.79 */
+  --card: var(--palette-surface);
+  --card-foreground: var(--palette-charcoal); /* 14.49 */
+  --popover: var(--palette-surface);
+  --popover-foreground: var(--palette-charcoal);
+  --muted: #dde4e9;
+  --muted-foreground: #4b5563; /* 6.76 on the ground, 7.10 on a card, 5.84 on periwinkle */
+  --secondary: #dde4e9;
+  --secondary-foreground: var(--palette-charcoal);
+  /* Periwinkle: the featured card, hover rows, active nav */
+  --accent: var(--palette-periwinkle);
+  --accent-foreground: var(--palette-charcoal);
+  --border: #c7d0d7; /* 1.40 on the ground: the floor. #dde4e9 (1.15) is invisible */
+  --input: #aeb9c2;
+  --ring: var(--palette-charcoal);
 
   /* Roles */
-  --primary: var(--palette-action);
-  --primary-strong: var(--palette-action-strong);
-  --primary-foreground: #ffffff;
-  --brand: var(--palette-brand);
-  --brand-foreground: var(--palette-ink);
-  /* Page titles: brand orange, large text only (3.4:1 at the field's darkest) */
-  --page-title: var(--palette-brand);
+  --primary: var(--palette-charcoal);
+  --primary-strong: #16181a; /* hover/pressed */
+  --primary-foreground: #ffffff; /* 15.42 */
+  --brand: var(--palette-yellow);
+  --brand-foreground: var(--palette-charcoal); /* 11.94 */
+  --page-title: var(--palette-charcoal);
 
   /*
-   * State tones. Each has an ink (text and icons on cream), a solid (bars,
-   * borders, washes) and a fill + fill-foreground pair (badges).
+   * State tones (the guidelines' five, section 5 of the spec). Each has an
+   * ink (text and icons on the ground), a solid (bars, borders, washes) and a
+   * fill + fill-foreground pair (badges). Inks on the ground / on a card:
+   * positive 6.38/6.70, warning 6.34/6.66, critical 7.43/7.81, info
+   * 7.80/8.20. Hue is never the only signal: every state carries a name or a
+   * glyph. Yellow and coral are NOT warning colours.
    */
-  /* Good: sage. Sage itself is 2.4:1 on cream, so text uses the darker ink */
-  --positive: #56653d; /* 6.0:1 on cream */
-  --positive-solid: var(--palette-sage);
-  --positive-fill: var(--palette-sage);
-  --positive-fill-foreground: var(--palette-ink); /* 8.2:1 */
-  /* Informational (new, upcoming, sent): the action colour on the tint wash */
-  --info: var(--palette-action);
-  --info-fill: var(--accent);
-  --info-fill-foreground: var(--palette-action); /* 6.2:1 */
-  /*
-   * Warning: ochre. Critical and destructive: dusty rose. Muted on purpose —
-   * hue is never the only signal: every state badge also carries a glyph.
-   */
-  --warning: #6e5310; /* ink, 6.8:1 on cream */
-  --warning-solid: #c9a23f;
-  --warning-fill: #c9a23f;
-  --warning-fill-foreground: var(--palette-ink); /* 8.7:1 */
-  --critical: #8e2f45; /* ink, 7.5:1 on cream */
-  --critical-solid: #cf8a94;
-  --critical-fill: #cf8a94;
-  --critical-fill-foreground: var(--palette-ink); /* 7.7:1 */
-  --destructive: #8e2f45; /* white on it 8.0:1 (danger buttons) */
+  --positive: #166534;
+  --positive-solid: #166534;
+  --positive-fill: #dcfce7;
+  --positive-fill-foreground: #166534; /* 6.49 */
+  --info: #1e40af;
+  --info-fill: #dbeafe;
+  --info-fill-foreground: #1e40af; /* 7.15 */
+  --warning: #92400e;
+  --warning-solid: #92400e;
+  --warning-fill: #fef3c7;
+  --warning-fill-foreground: #92400e; /* 6.37 */
+  --critical: #991b1b;
+  --critical-solid: #991b1b;
+  --critical-fill: #fee2e2;
+  --critical-fill-foreground: #991b1b; /* 6.80 */
+  --destructive: #991b1b; /* white on it 8.31 (danger buttons); charcoal would be 1.86 */
   --destructive-foreground: #ffffff;
-  --destructive-fill: #cf8a94;
-  --destructive-fill-foreground: var(--palette-ink); /* 7.7:1 */
+  --destructive-fill: #fee2e2;
+  --destructive-fill-foreground: #991b1b; /* 6.80 */
+  --neutral: #4b5563;
+  --neutral-fill: #f3f4f6;
+  --neutral-fill-foreground: #4b5563; /* 6.87 */
 
   /* Dialog and sheet backdrops */
-  --overlay: rgb(0 0 0 / 0.25);
+  --overlay: rgb(34 37 39 / 0.25);
 
-  /* Categorical series (fixed order — CVD-validated against the card
-     surface: blue, orange, aqua, yellow, magenta). Aqua/yellow sit below 3:1
-     on white, so charts always carry labels or a table view. */
-  --chart-1: #2a78d6;
-  --chart-2: #eb6834;
-  --chart-3: #1baf7a;
-  --chart-4: #eda100;
-  --chart-5: #e87ba4;
-  /* One-hue ordinal ramp (funnel stages), light → dark */
-  --chart-seq-1: #86b6ef;
-  --chart-seq-2: #5598e7;
-  --chart-seq-3: #2a78d6;
-  --chart-seq-4: #1c5cab;
+  /* Categorical series (fixed order), separated by lightness as well as hue.
+     On a card: 14.49, 4.61, 5.19, 4.74, 7.10. On the bare ground #5b6cb8 is
+     4.39 — under 4.5, so charts stay on cards. Yellow is not a data colour. */
+  --chart-1: var(--palette-charcoal);
+  --chart-2: #5b6cb8;
+  --chart-3: #c2341f;
+  --chart-4: #8a6a1e;
+  --chart-5: #4b5563;
+  /* Funnel stages: charcoal bars on a muted track (12.00 bar on track) */
+  --chart-funnel: var(--palette-charcoal);
+  --chart-funnel-track: #dde4e9;
 
   /* Sidebar */
-  --sidebar: #ffffff;
-  --sidebar-foreground: var(--palette-ink);
-  --sidebar-primary: var(--palette-action);
+  --sidebar: var(--palette-surface);
+  --sidebar-foreground: var(--palette-charcoal);
+  --sidebar-primary: var(--palette-charcoal);
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: var(--accent);
-  --sidebar-accent-foreground: var(--palette-ink);
+  --sidebar-accent-foreground: var(--palette-charcoal);
   --sidebar-border: var(--border);
-  --sidebar-ring: var(--palette-action);
+  --sidebar-ring: var(--palette-charcoal);
 
-  /* Shape. Every shadow is warm (the action brown), never grey */
+  /* Shape. Shadows are charcoal and very light */
   --radius: 0.75rem;
-  --shadow-card: 0 1px 2px rgb(147 55 3 / 0.06), 0 1px 1px rgb(122 45 2 / 0.04);
-  --shadow-raised: 0 12px 28px -14px rgb(147 55 3 / 0.28), 0 2px 6px -2px rgb(122 45 2 / 0.08);
+  --shadow-card: 0 1px 2px rgb(34 37 39 / 0.06), 0 1px 1px rgb(34 37 39 / 0.04);
+  --shadow-raised: 0 12px 28px -14px rgb(34 37 39 / 0.2), 0 2px 6px -2px rgb(34 37 39 / 0.06);
   /* The bloom a card or row casts when lifted; lives on a pseudo-element
      whose opacity is what animates (see the lift utilities) */
-  --shadow-bloom: 0 18px 36px -16px rgb(147 55 3 / 0.34), 0 6px 14px -8px rgb(122 45 2 / 0.16);
+  --shadow-bloom: 0 18px 36px -16px rgb(34 37 39 / 0.22), 0 6px 14px -8px rgb(34 37 39 / 0.1);
 
   /*
-   * The background field: a cream base, a white light, faint blooms of sage
-   * and tint off-centre and the deeper warm bloom by the mark (top, start
-   * side). Fixed to the viewport. Black text must keep 19:1 anywhere on it:
-   * alone, a bloom may reach 3% brand, 5% sage or 5% tint over cream, but
-   * they overlap on a phone, so the warm bloom is 2% and sage 4%. The
-   * darkest rendered pixel is measured (1440 and 320 wide), not estimated.
-   */
-  --field-start: 8%; /* the inline-start edge, where the mark sits */
-  --field-end: 92%;
-  --field:
-    radial-gradient(38rem 26rem at var(--field-start) -4rem, color-mix(in srgb, var(--palette-brand) 2%, transparent), transparent 72%),
-    radial-gradient(52rem 38rem at var(--field-end) 22%, color-mix(in srgb, var(--palette-sage) 4%, transparent), transparent 70%),
-    radial-gradient(58rem 40rem at 38% 108%, color-mix(in srgb, var(--palette-tint) 5%, transparent), transparent 70%),
-    radial-gradient(46rem 34rem at 58% 34%, rgb(255 255 255 / 0.75), transparent 70%),
-    var(--palette-cream);
-
-  /*
-   * Glass: a semi-opaque fill, a hairline lighter than the fill, an inner top
-   * highlight and a warm shadow; the solid fill stands in where
+   * Glass: a semi-opaque surface fill, a hairline lighter than the fill, an
+   * inner top highlight and a light shadow; the solid fill stands in where
    * backdrop-filter is missing. The fill's opacity is set by its WORST
-   * backdrop, so muted text on it keeps 4.5:1:
-   *   over the darkest field                      ≥ 0.20
-   *   over action brown (a button, an agent reply) ≥ 0.83
-   *   over action brown under the modal dim         ≥ 0.85
-   *   over pure black (a client's site; widget.js)  ≥ 0.88
-   * 0.86 covers every surface in the app; the widget uses 0.9.
+   * backdrop, so muted text (#4b5563) on it keeps 4.5:1:
+   *   over the ground                               ≥ 0.10
+   *   over charcoal (a button), with or without dim ≥ 0.78
+   *   over pure black (a client's site; widget.js)  ≥ 0.81
+   * 0.86 covers every surface in the app (5.15 even over black).
    */
-  --glass-fill: rgb(255 252 242 / 0.86);
-  --glass-fill-solid: #fffcf2;
+  --glass-fill: rgb(247 248 248 / 0.86);
+  --glass-fill-solid: var(--palette-surface);
   --glass-border: rgb(255 255 255 / 0.95);
   --glass-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.9),
-    0 0 0 1px rgb(147 55 3 / 0.07),
-    0 18px 40px -22px rgb(147 55 3 / 0.3),
-    0 4px 12px -6px rgb(122 45 2 / 0.12);
+    0 0 0 1px rgb(34 37 39 / 0.06),
+    0 18px 40px -22px rgb(34 37 39 / 0.2),
+    0 4px 12px -6px rgb(34 37 39 / 0.08);
   --glass-filter: blur(20px) saturate(1.7);
 
   /*
@@ -184,12 +169,6 @@
   --brand-mark-min: 28px; /* the mark is illegible below this — never smaller */
 }
 
-/* The mark sits on the right in Arabic: its bloom follows it */
-[dir="rtl"] {
-  --field-start: 92%;
-  --field-end: 8%;
-}
-
 @supports (animation-timing-function: linear(0, 1)) {
   :root {
     /* Damped springs sampled over 700ms (ζ 0.52 and ζ 0.72) */
@@ -201,9 +180,11 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-alexandria);
+  /* Manrope, IBM Plex Sans Arabic, then their fallbacks: composed in
+     app/[locale]/layout.tsx, which says why the order matters */
+  --font-sans: var(--font-stack), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-alexandria);
+  --font-heading: var(--font-stack), system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -217,6 +198,8 @@
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+  --color-chart-funnel: var(--chart-funnel);
+  --color-chart-funnel-track: var(--chart-funnel-track);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -250,6 +233,9 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --color-destructive-fill: var(--destructive-fill);
   --color-destructive-fill-foreground: var(--destructive-fill-foreground);
+  --color-neutral: var(--neutral);
+  --color-neutral-fill: var(--neutral-fill);
+  --color-neutral-fill-foreground: var(--neutral-fill-foreground);
   --color-overlay: var(--overlay);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
@@ -364,7 +350,7 @@
 
 /*
  * Glass without the blur: the same fill, hairline, highlight and shadow on a
- * solid surface. The desktop sidebars wear it: they sit over the still field
+ * solid surface. The desktop sidebars wear it: they sit over the still ground
  * only, where blur shows nothing, and with software compositing (a laptop
  * whose GPU Chrome does not use) their blur cost the inbox 58 fps and the
  * leads table 56 while scrolling, against 60 without it.
@@ -389,7 +375,7 @@
 }
 
 /*
- * Something you can point at lifts on the soft spring and casts the warm
+ * Something you can point at lifts on the soft spring and casts the
  * bloom. The bloom is a box-shadow on ::after; only its opacity animates.
  */
 @utility lift {
@@ -503,8 +489,7 @@
   }
 }
 
-/* A page's title: brand orange, which passes (3.4:1 at the field's darkest)
-   only as large text, so this never drops below 24px bold */
+/* A page's title: charcoal, bold, 24px and up */
 @utility page-title {
   font-size: var(--text-3xl);
   line-height: var(--text-3xl--line-height);
@@ -526,25 +511,11 @@
   }
 }
 
-/*
- * The field lives on a fixed layer behind everything: it never scrolls,
- * never repaints on scroll, and the page's own surfaces stay transparent
- * over it.
- */
 html {
   background: var(--background);
 }
 body {
   color: var(--foreground);
-}
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background: var(--field);
-  transform: translateZ(0);
 }
 
 @layer base {
@@ -559,9 +530,31 @@ body::before {
     color-scheme: light;
   }
   ::selection {
-    background: var(--accent);
-    color: var(--palette-ink);
+    background: var(--brand);
+    color: var(--brand-foreground);
   }
+}
+
+/*
+ * Arabic (unlayered, so it wins over utilities): natural letter spacing, and
+ * the guidelines' line heights — body 1.6, headings 1.4 (ranges 1.6–1.8 and
+ * 1.3–1.45). The text-* sizes carry their line height as a variable, so the
+ * dashboard reflows without touching a component; an explicit leading-*
+ * still wins.
+ */
+html:lang(ar) * {
+  letter-spacing: normal;
+}
+html:lang(ar) {
+  --text-xs--line-height: 1.6;
+  --text-sm--line-height: 1.6;
+  --text-base--line-height: 1.6;
+  --text-lg--line-height: 1.6;
+  --text-xl--line-height: 1.4;
+  --text-2xl--line-height: 1.4;
+  --text-3xl--line-height: 1.4;
+  --text-4xl--line-height: 1.4;
+  line-height: 1.6;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -599,9 +592,6 @@ body::before {
   html,
   body {
     background: #fff;
-  }
-  body::before {
-    display: none;
   }
 
   /* keep chart fills and badges */

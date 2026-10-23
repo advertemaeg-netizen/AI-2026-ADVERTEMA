@@ -165,7 +165,7 @@ export function DashboardShell({
       <>
         <div className={cn('p-6 border-b flex items-center justify-between', inSheet && 'p-4 pe-14')}>
           <Link href="/dashboard" className="group flex items-center gap-2.5" onClick={closeMenu} onAnimationEnd={markSeen}>
-            <BrandMark className="mark-entrance text-brand transition-transform duration-base ease-spring group-hover:scale-105" />
+            <BrandMark className="mark-entrance text-foreground transition-transform duration-base ease-spring group-hover:scale-105" />
             <span className="text-lg font-bold tracking-tight">Mudrik AI</span>
           </Link>
           {/* Phones have it in the top bar */}

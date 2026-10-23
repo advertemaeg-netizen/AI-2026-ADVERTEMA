@@ -33,7 +33,7 @@ export function DayTimeline({ title, items }: { title: string; items: string[] }
   return (
     <section className="flex flex-col gap-10">
       <h2 className="site-h2 site-reveal max-w-3xl">{title}</h2>
-      <ol className="relative flex max-w-3xl flex-col gap-5 border-s-4 border-brand/30 ps-6 md:ps-10">
+      <ol className="relative flex max-w-3xl flex-col gap-5 border-s-4 border-primary/30 ps-6 md:ps-10">
         {items.map((item, i) => (
           <li key={i} className="site-panel-quiet site-reveal relative p-5 text-lg leading-relaxed md:p-6" style={{ '--i': i } as React.CSSProperties}>
             {/* The dot sits on the rule, at the line's start edge */}
@@ -77,7 +77,7 @@ export function Tiers({ tiers, cta }: { tiers: { name: string; for: string; body
     <ul className="grid gap-6 md:grid-cols-3">
       {tiers.map((tier, i) => (
         <li key={i} className="site-panel site-reveal flex flex-col gap-4 p-7 md:p-8" style={{ '--i': i } as React.CSSProperties}>
-          <h2 className="text-3xl font-extrabold">{tier.name}</h2>
+          <h2 className="text-3xl font-bold">{tier.name}</h2>
           <p className="font-semibold text-primary">{tier.for}</p>
           <p className="flex-1 leading-relaxed">{tier.body}</p>
           <Link href={cta.href} className="inline-flex min-h-12 items-center justify-center self-start rounded-full border border-primary/30 bg-white/90 px-6 font-semibold text-primary">

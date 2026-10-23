@@ -28,7 +28,7 @@ import { ChartCard } from './chart-card'
 
 /*
  * Chart conventions (see the dataviz method): colors come from theme
- * variables (--chart-*, --chart-seq-*), one series = one color, 2px lines,
+ * variables (--chart-*, --chart-funnel), one series = one color, 2px lines,
  * bars ≤ 24px with a 4px rounded data end, solid hairline grid, a tooltip on
  * every chart and a table view on every card. In RTL the category axis runs
  * right-to-left and the value axis sits on the right.
@@ -280,8 +280,6 @@ export function FunnelChart({ data }: { data: AnalyticsData }) {
     label: t(`charts.funnel.steps.${step.key}`),
     // rate from the previous stage
     rate: i > 0 && all[i - 1].value > 0 ? step.value / all[i - 1].value : null,
-    // ordered stages → one-hue ramp, later stages deeper
-    fill: `var(--chart-seq-${i + 1})`,
   }))
   const config = { value: { label: t('series.count') } } satisfies ChartConfig
   const pct = (r: number | null) => (r === null ? '' : format.number(r, { style: 'percent', maximumFractionDigits: 1 }))
@@ -315,10 +313,15 @@ export function FunnelChart({ data }: { data: AnalyticsData }) {
             width={90}
           />
           <ChartTooltip cursor={false} content={<ChartTooltipContent hideIndicator />} />
-          <Bar isAnimationActive={false} dataKey="value" maxBarSize={BAR_SIZE} radius={rtl ? [4, 0, 0, 4] : [0, 4, 4, 0]}>
-            {steps.map((step) => (
-              <Cell key={step.key} fill={step.fill} />
-            ))}
+          {/* Charcoal bars on a muted track; the stage names carry the order */}
+          <Bar
+            isAnimationActive={false}
+            dataKey="value"
+            fill="var(--chart-funnel)"
+            background={{ fill: 'var(--chart-funnel-track)', radius: 4 }}
+            maxBarSize={BAR_SIZE}
+            radius={rtl ? [4, 0, 0, 4] : [0, 4, 4, 0]}
+          >
             <LabelList dataKey="value" content={barEndLabel(rtl, (v) => format.number(v))} />
           </Bar>
         </BarChart>

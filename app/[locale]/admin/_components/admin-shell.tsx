@@ -69,7 +69,7 @@ export function AdminShell({
       <>
         <div className="p-6 border-b flex items-center justify-between">
           <Link href="/admin" className="group flex items-center gap-2.5" onClick={() => setMenuOpen(false)} onAnimationEnd={markSeen}>
-            <BrandMark className="mark-entrance text-brand transition-transform duration-base ease-spring group-hover:scale-105" />
+            <BrandMark className="mark-entrance text-foreground transition-transform duration-base ease-spring group-hover:scale-105" />
             <span className="text-lg font-bold tracking-tight">Mudrik AI</span>
           </Link>
           {!inSheet && <LanguageSwitcher />}

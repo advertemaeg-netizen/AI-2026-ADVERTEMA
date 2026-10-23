@@ -14,7 +14,7 @@ export type Item = { label: string; body: string }
 export type Cta = { label: string; href: string }
 export const ctaPrimary =
   'inline-flex min-h-12 items-center justify-center rounded-full bg-primary px-6 text-base font-semibold text-primary-foreground shadow-raised'
-// bg-white/90, not less: the action brown on it stays ≥7:1 over the field's darkest point
+// bg-white/90: charcoal on it is ≥13:1 over any ground
 export const ctaSecondary =
   'inline-flex min-h-12 items-center justify-center rounded-full border border-primary/30 bg-white/90 px-6 text-base font-semibold text-primary'
 
@@ -85,9 +85,9 @@ export function How({ title, steps }: { title: string; steps: Item[] }) {
         className={cn(
           'site-steps relative grid gap-10 md:grid-cols-3 md:gap-8',
           // The line: down the start edge on a phone, across the top from md
-          '[--site-steps-dir:to_bottom] [--site-steps-from-x:1] [--site-steps-from-y:0] [--site-steps-origin:top]',
-          'md:[--site-steps-dir:to_right] md:[--site-steps-from-x:0] md:[--site-steps-from-y:1] md:[--site-steps-origin:left]',
-          'rtl:md:[--site-steps-dir:to_left] rtl:md:[--site-steps-origin:right]'
+          '[--site-steps-from-x:1] [--site-steps-from-y:0] [--site-steps-origin:top]',
+          'md:[--site-steps-from-x:0] md:[--site-steps-from-y:1] md:[--site-steps-origin:left]',
+          'rtl:md:[--site-steps-origin:right]'
         )}
       >
         <span aria-hidden className="site-steps-track start-[1.1rem] top-2 bottom-2 w-1 md:start-[8%] md:end-[8%] md:top-[1.1rem] md:bottom-auto md:h-1 md:w-auto">
@@ -138,7 +138,7 @@ export function Try({ title, body }: { title: string; body: string }) {
       <p className="site-lead max-w-2xl">{body}</p>
       {/* The widget sits at the bottom RIGHT of the screen in both languages (widget.js default),
           so the arrow is placed physically, not logically */}
-      <svg aria-hidden viewBox="0 0 48 48" className="site-pointer mt-2 size-14 text-brand" style={{ marginLeft: 'auto', ['--site-nudge-x' as string]: '10px' }}>
+      <svg aria-hidden viewBox="0 0 48 48" className="site-pointer mt-2 size-14 text-foreground" style={{ marginLeft: 'auto', ['--site-nudge-x' as string]: '10px' }}>
         <path d="M8 8 C 30 8, 40 18, 40 40" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
         <path d="M30 34 L40 41 L44 29" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
@@ -162,9 +162,9 @@ export function Paths({
     <section className="flex flex-col gap-10">
       <h2 className="site-h2 site-reveal max-w-3xl">{title}</h2>
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Self-serve: direct and quick. The action colour, white text (7.5:1) */}
+        {/* Self-serve: direct and quick. Charcoal, white text (15.42) */}
         <div className="site-reveal flex flex-col gap-5 rounded-[1.75rem] bg-primary p-8 text-primary-foreground shadow-raised md:p-10" style={{ '--i': 0 } as React.CSSProperties}>
-          <h3 className="text-3xl font-extrabold">{self.label}</h3>
+          <h3 className="text-3xl font-bold">{self.label}</h3>
           <p className="site-lead flex-1">{self.body}</p>
           <a href={self.href} className="inline-flex min-h-12 items-center justify-center self-start rounded-full bg-white px-6 font-semibold text-primary">
             {self.cta}
@@ -172,7 +172,7 @@ export function Paths({
         </div>
         {/* Done for you: considered. More air, a quieter surface */}
         <div className="site-panel site-reveal flex flex-col gap-5 p-8 md:p-10" style={{ '--i': 1 } as React.CSSProperties}>
-          <h3 className="text-3xl font-extrabold">{done.label}</h3>
+          <h3 className="text-3xl font-bold">{done.label}</h3>
           <p className="site-lead flex-1">{done.body}</p>
           <Link href={done.href} className={cn(ctaSecondary, 'self-start')}>
             {done.cta}

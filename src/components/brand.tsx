@@ -7,7 +7,7 @@ const LOCKUP_RATIO = 13389 / 1962
 const MARK_MIN_HEIGHT = 28
 
 /**
- * The mark alone, coloured by CSS (text-brand, text-primary-foreground…): the
+ * The mark alone, coloured by CSS (text-foreground, text-primary-foreground…): the
  * SVG is used as a mask over currentColor, so the file stays the one source.
  */
 export function BrandMark({ height = MARK_MIN_HEIGHT, className }: { height?: number; className?: string }) {
