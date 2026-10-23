@@ -95,7 +95,7 @@ export function BottomNav() {
                 <span
                   className={cn(
                     // The pill is a ::before that fades and springs in: only opacity and transform move
-                    'relative isolate flex h-7 w-12 items-center justify-center before:absolute before:inset-0 before:-z-10 before:rounded-full before:bg-accent before:transition-[opacity,transform] before:duration-(--motion-spring-duration) before:ease-spring',
+                    'relative isolate flex h-7 w-12 items-center justify-center before:absolute before:inset-0 before:-z-10 before:rounded-full before:bg-brand before:transition-[opacity,transform] before:duration-(--motion-spring-duration) before:ease-spring',
                     active ? 'before:scale-100 before:opacity-100' : 'before:scale-75 before:opacity-0'
                   )}
                 >

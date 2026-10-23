@@ -38,7 +38,7 @@ export function SiteHeader({ locale, page }: { locale: string; page: SitePage })
           <ul className="flex items-center gap-1">
             {links.map((link) => (
               <li key={link.href} className="flex-none">
-                <Link href={link.href} aria-current={link.current ? 'page' : undefined} className="rounded-md px-2 py-1.5 text-sm aria-[current=page]:font-semibold">
+                <Link href={link.href} aria-current={link.current ? 'page' : undefined} className="rounded-md px-2 py-1.5 text-sm aria-[current=page]:bg-brand aria-[current=page]:font-semibold aria-[current=page]:text-brand-foreground">
                   {link.label}
                 </Link>
               </li>
@@ -71,7 +71,7 @@ export function SiteHeader({ locale, page }: { locale: string; page: SitePage })
               <ul className="flex flex-col">
                 {links.map((link) => (
                   <li key={link.href}>
-                    <Link href={link.href} aria-current={link.current ? 'page' : undefined} className="block rounded-md px-2 py-3 text-base aria-[current=page]:font-semibold">
+                    <Link href={link.href} aria-current={link.current ? 'page' : undefined} className="block rounded-md px-2 py-3 text-base aria-[current=page]:bg-brand aria-[current=page]:font-semibold aria-[current=page]:text-brand-foreground">
                       {link.label}
                     </Link>
                   </li>

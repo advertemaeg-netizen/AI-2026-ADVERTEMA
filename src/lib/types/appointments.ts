@@ -38,6 +38,17 @@ export function isDayOnlyVisit(visit: { appointment_at: string | null } & DayOnl
 }
 
 /**
+ * A day-only visit nobody has checked: no opening hours checked its day, and
+ * no one on the team confirmed it. The visitor was told it is a request and
+ * that the team will call, so the dashboard never states it as booked.
+ */
+export function isUncheckedDayRequest(
+  visit: { appointment_at: string | null; appointment_confirmed: boolean } & DayOnlyMark
+): boolean {
+  return isDayOnlyVisit(visit) && !visit.ai_appointment?.validated && !visit.appointment_confirmed
+}
+
+/**
  * What an appointment looks like right now, for its badge and actions.
  * request: a day-only visit nobody has checked (no opening hours to check its
  * day against, and no one on the team confirmed it). The visitor was told it
@@ -56,7 +67,7 @@ export function appointmentState(
   // A day-only visit is late only once its day has gone, never at its placing time
   if (isDayOnlyVisit(appointment)) {
     if (day < today) return 'late'
-    if (!appointment.ai_appointment?.validated && !appointment.appointment_confirmed) return 'request'
+    if (isUncheckedDayRequest(appointment)) return 'request'
     return day === today ? 'today' : 'upcoming'
   }
   if (new Date(appointment.appointment_at) < now) return 'late'

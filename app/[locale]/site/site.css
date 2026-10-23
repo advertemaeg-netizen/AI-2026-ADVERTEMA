@@ -2,9 +2,15 @@
  * The marketing site's own layer, on top of the product's tokens
  * (app/globals.css). The dashboard's restraint (the blur budget) is NOT
  * applied here: this page is seen for thirty seconds. What IS kept:
- *   - body text clears AAA (7:1). All text is charcoal: 10.90 at worst on the
- *     bare gradient (its cream end), 13.29 at worst on a panel over it. White
- *     text sits on charcoal only; yellow and coral are never text.
+ *   - body text clears AAA (7:1). All text is charcoal: 13.79 on the ground,
+ *     10.90 at worst on the bare gradient (its cream end), 13.29 at worst on a
+ *     panel over it. White text sits on charcoal only; yellow and coral are
+ *     never text.
+ *   - The guidelines' 65% light / 25% warm / 10% dark: the page is Cloud
+ *     White, and the gradient is a band behind the heroes and the closing
+ *     call only. Spread behind the whole page it measured 52–71% warm, a
+ *     beige wash. Signature yellow is selection and emphasis: the current
+ *     page in the nav and one highlight per screen.
  *   - 60fps on a mid-range Android. Only transform and opacity animate, the
  *     field has no filter, and two surfaces blur at most (the header and the
  *     hero conversation).
@@ -15,14 +21,38 @@
  *     `no-preference`, so with reduce the page is simply its final state.
  */
 
-/* The field: the identity's one linear gradient, fixed behind the whole site.
-   Periwinkle at the bottom-left (the 35deg start), cream at the top-right */
+/* The field: Cloud White, fixed behind the whole site */
 .site-field {
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
+  background: var(--background);
+}
+
+/*
+ * The gradient band: the identity's one linear gradient, full-bleed behind a
+ * centred section (the heroes, the closing call). Periwinkle at the
+ * bottom-left (the 35deg start), cream at the top-right, across the viewport
+ * rather than the section, so all three stops show. The band is 100vw wide,
+ * which counts a desktop scrollbar: the site's body clips the overflow.
+ */
+.site-band {
+  position: relative;
+  isolation: isolate;
+}
+.site-band::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset-block: 0;
+  left: calc(50% - 50vw);
+  width: 100vw;
+  pointer-events: none;
   background: var(--brand-gradient);
+}
+body:has(.site-field) {
+  overflow-x: clip;
 }
 
 /* Type: generous, and fluid between a phone and a wide screen */
@@ -105,6 +135,12 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
   color: var(--palette-charcoal);
   border: 1px solid var(--border);
   border-end-start-radius: 0.35rem;
+}
+/* The hero screen's one highlight: the booking the conversation ends on, in
+   signature yellow (charcoal on it 11.94) */
+.site-bubble[data-confirm] {
+  background: var(--palette-yellow);
+  border-color: var(--palette-yellow);
 }
 
 /* The typing dots exist only as motion: in the final state (and with reduced motion) they are gone */

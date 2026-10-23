@@ -153,7 +153,7 @@ export function LeadView({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="page-title truncate max-md:whitespace-normal">{lead.name || t('unnamed')}</h1>
-            <LeadStatusBadge status={lead.status} />
+            <LeadStatusBadge status={lead.status} visit={lead} />
             {lead.visit_number > 1 && (
               <Badge variant="outline">{t('visits.returning', { number: lead.visit_number })}</Badge>
             )}

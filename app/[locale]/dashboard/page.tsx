@@ -140,7 +140,7 @@ export default async function DashboardPage() {
                       </p>
                       <p className="truncate text-xs text-muted-foreground">{item.client}</p>
                     </div>
-                    {item.kind === 'lead' && <LeadStatusBadge status={item.status} />}
+                    {item.kind === 'lead' && <LeadStatusBadge status={item.status} visit={item.visit} />}
                     <RelativeTime date={item.at} className="shrink-0 text-xs text-muted-foreground" />
                   </Link>
                 </li>

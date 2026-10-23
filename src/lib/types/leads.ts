@@ -28,7 +28,8 @@ export type LeadVisit = {
   status: LeadStatus
   service_requested: string | null
   appointment_at: string | null
-  ai_appointment: Pick<AiAppointment, 'at' | 'day_only'> | null
+  appointment_confirmed: boolean
+  ai_appointment: Pick<AiAppointment, 'at' | 'day_only' | 'validated'> | null
   created_at: string
 }
 
@@ -50,9 +51,16 @@ export type LeadListItem = {
   last_contacted_at: string | null
   follow_up_date: string | null
   confidence_score: number | null
+  /** Read for the status badge: an unchecked day-only visit is a request (isUncheckedDayRequest) */
+  appointment_at: string | null
+  appointment_confirmed: boolean
+  ai_appointment: Pick<AiAppointment, 'at' | 'day_only' | 'validated'> | null
   client: { id: string; name: string }
   conversation: { id: string; channel: { type: ChannelType; name: string } | null } | null
 }
+
+/** What the status badge reads besides the status (LeadStatusBadge) */
+export type LeadStatusVisit = Pick<LeadListItem, 'appointment_at' | 'appointment_confirmed' | 'ai_appointment'>
 
 export type LeadExtractedData = {
   is_lead?: boolean

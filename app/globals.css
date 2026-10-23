@@ -331,7 +331,7 @@
 
 /*
  * Glass, for the surfaces on the list only: top bars, modals and sheets,
- * dropdown and select menus, the dashboard's stat panel (the sidebars use
+ * dropdown and select menus (the sidebars use
  * glass-solid, below). Never on anything that repeats or sits inside a
  * scroll container. The element brings its own border width; this sets the
  * hairline's colour.
@@ -361,7 +361,7 @@
 }
 
 /*
- * Glass that belongs to the page (top bar, stat panel). While a
+ * Glass that belongs to the page (the top bars). While a
  * modal or sheet is open it sits under the dim and drops its blur, so no view
  * composites more than three blurred surfaces.
  */

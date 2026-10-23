@@ -40,7 +40,7 @@ export function NavIndicator({ active }: { active: string }) {
     <span
       ref={ref}
       aria-hidden
-      className="pointer-events-none absolute inset-x-4 top-0 rounded-lg bg-accent opacity-0 transition-[transform,opacity] duration-(--motion-spring-duration) ease-spring before:absolute before:inset-y-1.5 before:start-0 before:w-[3px] before:rounded-full before:bg-primary"
+      className="pointer-events-none absolute inset-x-4 top-0 rounded-lg bg-brand opacity-0 transition-[transform,opacity] duration-(--motion-spring-duration) ease-spring before:absolute before:inset-y-1.5 before:start-0 before:w-[3px] before:rounded-full before:bg-primary"
     />
   )
 }

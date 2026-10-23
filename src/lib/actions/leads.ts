@@ -28,7 +28,7 @@ const EXPORT_TIMEZONE = 'Africa/Cairo'
 
 const LIST_COLUMNS = `
   id, name, phone, service_requested, status, created_at, last_contacted_at,
-  follow_up_date, confidence_score,
+  follow_up_date, confidence_score, appointment_at, appointment_confirmed, ai_appointment,
   client:clients!inner(id, name)`
 
 // The channel filter needs inner joins, otherwise leads without a matching
@@ -93,8 +93,8 @@ export async function getLead(id: string): Promise<{
   const { data: lead, error } = await supabase
     .from('leads')
     .select(
-      `${LIST_COLUMNS}, budget, branch, notes, updated_at, ai_extracted_data, appointment_at, ai_appointment,
-       appointment_confirmed, showed_up, arrival_confirmed_at, no_show_reason, ${conversationEmbed(false)}`
+      `${LIST_COLUMNS}, budget, branch, notes, updated_at, ai_extracted_data,
+       showed_up, arrival_confirmed_at, no_show_reason, ${conversationEmbed(false)}`
     )
     .eq('id', id)
     .maybeSingle<Omit<LeadDetail, 'visit_number' | 'visits'>>()

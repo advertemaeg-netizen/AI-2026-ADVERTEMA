@@ -27,7 +27,7 @@ export function LeadVisitsList({ visits }: { visits: { visit: LeadVisit; number:
           >
             <span className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-medium">{t('visit', { number })}</span>
-              <LeadStatusBadge status={visit.status} />
+              <LeadStatusBadge status={visit.status} visit={visit} />
             </span>
             {visit.service_requested && <span className="truncate">{visit.service_requested}</span>}
             <span className="text-xs text-muted-foreground">

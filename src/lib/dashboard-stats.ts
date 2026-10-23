@@ -1,6 +1,6 @@
 import 'server-only'
 import { getSession } from '@/lib/auth/session'
-import { ACTIVE_LEAD_STATUSES, type LeadStatus } from '@/lib/types/leads'
+import { ACTIVE_LEAD_STATUSES, type LeadStatus, type LeadStatusVisit } from '@/lib/types/leads'
 
 const DAY = 24 * 60 * 60 * 1000
 const PERIOD_DAYS = 30
@@ -8,7 +8,7 @@ const PERIOD_DAYS = 30
 export type StatValue = { value: number; previous: number | null }
 
 export type RecentItem =
-  | { kind: 'lead'; id: string; title: string | null; client: string; status: LeadStatus; at: string }
+  | { kind: 'lead'; id: string; title: string | null; client: string; status: LeadStatus; visit: LeadStatusVisit; at: string }
   | { kind: 'conversation'; id: string; title: string | null; identifier: string | null; client: string; at: string }
 
 /**
@@ -41,7 +41,7 @@ export async function getDashboardStats(clientId: string | null = null) {
     .eq('is_complete', true)
   let recentLeadsQuery = supabase
     .from('leads')
-    .select('id, name, status, created_at, client:clients!inner(name)')
+    .select('id, name, status, created_at, appointment_at, appointment_confirmed, ai_appointment, client:clients!inner(name)')
     .eq('is_complete', true)
   let recentConversationsQuery = supabase
     .from('conversations')
@@ -79,7 +79,7 @@ export async function getDashboardStats(clientId: string | null = null) {
     recentLeadsQuery
       .order('created_at', { ascending: false })
       .limit(5)
-      .returns<{ id: string; name: string | null; status: LeadStatus; created_at: string; client: { name: string } }[]>(),
+      .returns<({ id: string; name: string | null; status: LeadStatus; created_at: string; client: { name: string } } & LeadStatusVisit)[]>(),
     recentConversationsQuery
       .order('last_message_at', { ascending: false })
       .limit(5)
@@ -96,6 +96,7 @@ export async function getDashboardStats(clientId: string | null = null) {
       title: l.name,
       client: l.client.name,
       status: l.status,
+      visit: { appointment_at: l.appointment_at, appointment_confirmed: l.appointment_confirmed, ai_appointment: l.ai_appointment },
       at: l.created_at,
     })),
     ...(recentConversations.data ?? []).map((c) => ({

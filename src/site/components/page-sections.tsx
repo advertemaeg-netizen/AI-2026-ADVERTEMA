@@ -12,8 +12,9 @@ import { ctaPrimary, type Cta, type Item } from '@/site/components/home-sections
 /** A page's opening: the headline, what it means, and the one call */
 export function PageHero({ title, body, cta }: { title: string; body: string; cta?: Cta }) {
   return (
-    <section className="flex max-w-4xl flex-col gap-7 pt-6">
-      <h1 className="site-display site-rise" style={{ '--i': 0 } as React.CSSProperties}>
+    // Full width for the gradient band; the copy keeps its measure. The negative margin takes back the page's top padding
+    <section className="site-band -mt-16 flex flex-col gap-7 py-14 md:py-20">
+      <h1 className="site-display site-rise max-w-4xl" style={{ '--i': 0 } as React.CSSProperties}>
         {title}
       </h1>
       <p className="site-lead site-rise max-w-2xl" style={{ '--i': 1 } as React.CSSProperties}>

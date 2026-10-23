@@ -169,7 +169,7 @@ export function LeadsTable({
                     <span className="truncate text-sm text-muted-foreground">{lead.service_requested}</span>
                   )}
                   <span className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-                    <LeadStatusBadge status={lead.status} />
+                    <LeadStatusBadge status={lead.status} visit={lead} />
                     <span className="truncate">{lead.client.name}</span>
                     <RelativeTime date={lead.created_at} className="shrink-0" />
                   </span>
@@ -250,7 +250,7 @@ export function LeadsTable({
                   </TableCell>
                   <TableCell>{lead.client.name}</TableCell>
                   <TableCell>
-                    <LeadStatusBadge status={lead.status} />
+                    <LeadStatusBadge status={lead.status} visit={lead} />
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {format.dateTime(new Date(lead.created_at), { dateStyle: 'medium' })}
