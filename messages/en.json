@@ -966,7 +966,7 @@
     "states": {
       "upcoming": "Upcoming",
       "today": "Today",
-      "request": "Request · to confirm",
+      "request": "Request — needs confirming",
       "late": "Late",
       "attended": "Showed up",
       "noShow": "No-show"
@@ -996,7 +996,7 @@
       "noShowReason": "No-show — reason: {reason}",
       "noShowNoReason": "Didn’t show up.",
       "fromAnalysis": "Read from the customer's message without a reply from the assistant (an agent had taken over, the message limit was reached, or the reply failed). The customer was told nothing — contact them to confirm it.",
-      "dayRequest": "A visit request nobody has checked: the customer was told someone from the team will call to confirm the day. Confirm or change it once you've spoken."
+      "dayRequest": "A visit request whose day nobody has checked. The customer was told someone from the team will call to confirm the day. Confirm or change it once you've spoken to them."
     },
     "toast": {
       "arrived": "Arrival confirmed",

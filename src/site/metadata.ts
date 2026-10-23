@@ -22,7 +22,8 @@ export function siteMetadata(locale: string, page: SitePage, meta: { metaTitle: 
     description: meta.metaDescription,
     alternates: alternatesFor(locale, page),
     robots: indexable ? { index: true, follow: true } : { index: false, follow: false },
-    icons: { icon: '/brand/mudrik-mark.svg' },
+    // The logo's own M (public/brand/mudrik-favicon.svg): charcoal, white in a dark tab; app/favicon.ico is its fallback
+    icons: { icon: [{ url: '/brand/mudrik-favicon.svg', type: 'image/svg+xml' }] },
     openGraph: {
       type: 'website',
       title: meta.metaTitle,

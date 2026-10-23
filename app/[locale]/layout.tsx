@@ -42,6 +42,9 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: 'Mudrik AI',
   description: 'AI-powered multi-channel conversation management',
+  // The logo's own M, cropped from public/brand/mudrik-logo.svg (the wordmark is illegible at 16px):
+  // charcoal, white in a dark tab. app/favicon.ico is the same M, for browsers without SVG icons
+  icons: { icon: [{ url: '/brand/mudrik-favicon.svg', type: 'image/svg+xml' }] },
 }
 
 export default async function LocaleLayout({
