@@ -5,6 +5,8 @@ import type { AppointmentState } from '@/lib/types/appointments'
 const STATE_VARIANT: Record<AppointmentState, BadgeVariant> = {
   upcoming: 'info',
   today: 'scheduled',
+  // Needs a call from the team: the guidelines' warning (يحتاج متابعة), never a success
+  request: 'warning',
   late: 'warning',
   attended: 'positive',
   noShow: 'destructive',

@@ -395,7 +395,8 @@ describe('3. the booking shape is the business\'s', () => {
 describe('a day-only visit in the dashboard', () => {
   // Placed at 13:00 Cairo on Tuesday 20 October 2026
   const at = '2026-10-20T10:00:00.000Z'
-  const visit = { appointment_at: at, showed_up: null, ai_appointment: { at, day_only: true as const } }
+  // Its day was checked against the branch's hours (an unchecked one is a request, below)
+  const visit = { appointment_at: at, showed_up: null, appointment_confirmed: false, ai_appointment: { at, day_only: true as const, validated: true } }
 
   it('is day-only only while it stays where the assistant placed it: a time the team sets is a real one', () => {
     expect(isDayOnlyVisit(visit)).toBe(true)
@@ -408,6 +409,17 @@ describe('a day-only visit in the dashboard', () => {
     expect(appointmentState(visit, new Date('2026-10-21T08:00:00Z'))).toBe('late')
     // The same instant as an ordinary appointment is late by then
     expect(appointmentState({ ...visit, ai_appointment: null }, new Date('2026-10-20T15:00:00Z'))).toBe('late')
+  })
+
+  it('is a request, never booked or upcoming, while nobody has checked its day; a person confirming it makes it a visit', () => {
+    const unchecked = { ...visit, ai_appointment: { at, day_only: true as const } }
+    expect(appointmentState(unchecked, new Date('2026-10-20T15:00:00Z'))).toBe('request')
+    expect(appointmentState(unchecked, new Date('2026-10-19T09:00:00Z'))).toBe('request')
+    expect(appointmentState({ ...unchecked, ai_appointment: { ...unchecked.ai_appointment, validated: false } }, new Date('2026-10-19T09:00:00Z'))).toBe('request')
+    expect(appointmentState({ ...unchecked, appointment_confirmed: true }, new Date('2026-10-20T15:00:00Z'))).toBe('today')
+    // Its day gone, it is late like any other; arrival marked, it is attended
+    expect(appointmentState(unchecked, new Date('2026-10-21T08:00:00Z'))).toBe('late')
+    expect(appointmentState({ ...unchecked, showed_up: true }, new Date('2026-10-20T15:00:00Z'))).toBe('attended')
   })
 })
 

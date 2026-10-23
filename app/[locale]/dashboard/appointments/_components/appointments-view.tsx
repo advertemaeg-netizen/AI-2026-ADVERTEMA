@@ -163,7 +163,7 @@ export function AppointmentsView({
                                   <Phone />
                                 </a>
                               </Button>
-                              <Button size="icon-sm" variant="ghost" asChild className="text-positive max-md:size-11">
+                              <Button size="icon-sm" variant="ghost" asChild className="max-md:size-11">
                                 <a
                                   href={whatsappHref(appointment.phone)}
                                   target="_blank"

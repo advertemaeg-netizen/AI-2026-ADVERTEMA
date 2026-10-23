@@ -89,7 +89,7 @@ export function PlanPicker({
           </DialogHeader>
           <div className="grid gap-3">
             {contact.whatsapp && (
-              <Button asChild className="bg-positive-fill text-positive-fill-foreground hover:bg-positive-fill/85">
+              <Button asChild>
                 <a
                   href={`https://wa.me/${contact.whatsapp}?text=${encodeURIComponent(message)}`}
                   target="_blank"

@@ -46,7 +46,12 @@ export function AppointmentCard({ lead }: { lead: LeadDetail }) {
   }
 
   const state = lead.appointment_at
-    ? appointmentState({ appointment_at: lead.appointment_at, showed_up: lead.showed_up, ai_appointment: lead.ai_appointment })
+    ? appointmentState({
+        appointment_at: lead.appointment_at,
+        showed_up: lead.showed_up,
+        appointment_confirmed: lead.appointment_confirmed,
+        ai_appointment: lead.ai_appointment,
+      })
     : null
   // A day-only visit: its day and the arrival order are shown, never the time it is stored at
   const dayOnly = isDayOnlyVisit(lead)
@@ -96,6 +101,9 @@ export function AppointmentCard({ lead }: { lead: LeadDetail }) {
           )}
           {fromAnalysis && (
             <p className="text-xs text-warning">{t('section.fromAnalysis')}</p>
+          )}
+          {state === 'request' && (
+            <p className="text-xs text-warning">{t('section.dayRequest')}</p>
           )}
           {ai?.preferred_time && !lead.appointment_at && (
             <p className="text-xs text-muted-foreground">{t('section.requested', { time: ai.preferred_time })}</p>

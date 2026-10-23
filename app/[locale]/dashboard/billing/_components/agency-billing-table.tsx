@@ -1,7 +1,7 @@
 'use client'
 
 import { useFormatter, useLocale, useTranslations } from 'next-intl'
-import { Building2, FilePlus2, Tag } from 'lucide-react'
+import { AlertTriangle, Building2, FilePlus2, Tag } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -102,7 +102,18 @@ export function AgencyBillingTable({ rows }: { rows: ClientBillingRow[] }) {
                           className={cn('h-1.5', LEVEL_CLASS[usageLevel(top.percentage)])}
                           aria-label={tUsage(top.limit_type)}
                         />
-                        <span className="text-muted-foreground">
+                        {/* The bar's colour is never the only signal: past the first threshold, a glyph and the colour's word */}
+                        <span
+                          className={cn(
+                            'inline-flex items-center gap-1',
+                            usageLevel(top.percentage) === 'ok'
+                              ? 'text-muted-foreground'
+                              : usageLevel(top.percentage) === 'warning'
+                                ? 'text-warning'
+                                : 'text-destructive'
+                          )}
+                        >
+                          {usageLevel(top.percentage) !== 'ok' && <AlertTriangle className="size-3.5 shrink-0" aria-hidden />}
                           {t('topUsage', {
                             limit: tUsage(top.limit_type),
                             percentage: format.number(Math.floor(top.percentage ?? 0)),

@@ -181,7 +181,7 @@ export function LeadView({
                   {t('actions.call')}
                 </a>
               </Button>
-              <Button asChild className="bg-positive-fill text-positive-fill-foreground hover:bg-positive-fill/85 max-md:h-12 max-md:text-base max-md:[&_svg]:size-5">
+              <Button asChild className="max-md:h-12 max-md:text-base max-md:[&_svg]:size-5">
                 <a href={whatsappHref(lead.phone)} target="_blank" rel="noopener noreferrer" onClick={recordContact}>
                   <MessageCircle data-icon="inline-start" />
                   {t('actions.whatsapp')}
