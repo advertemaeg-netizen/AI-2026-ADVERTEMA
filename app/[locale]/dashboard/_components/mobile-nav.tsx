@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import { CalendarDays, LayoutDashboard, Menu, MessagesSquare, Users, type LucideIcon } from 'lucide-react'
-import { BrandMark, markSeen } from '@/components/brand'
+import { BrandLogo } from '@/components/brand'
 import { Link, usePathname } from '@/i18n/navigation'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { Button } from '@/components/ui/button'
@@ -43,12 +43,10 @@ export function MobileTopBar({
         </SheetContent>
       </Sheet>
 
-      <Link href="/dashboard" className="flex min-h-11 min-w-0 flex-1 items-center gap-2 px-1" onAnimationEnd={markSeen}>
-        <BrandMark className="mark-entrance text-foreground" />
-        <span className="min-w-0">
-          <span className="block text-sm leading-tight font-bold">Mudrik AI</span>
-          {title && <span className="block truncate text-xs leading-tight text-muted-foreground">{title}</span>}
-        </span>
+      {/* The logo at its minimum width; its margin is its clear space, so the client's name sits past it */}
+      <Link href="/dashboard" className="flex min-h-11 min-w-0 flex-1 items-center">
+        <BrandLogo height={0} className="text-foreground" />
+        {title && <span className="min-w-0 truncate text-xs text-muted-foreground">{title}</span>}
       </Link>
 
       <div className="[&_button]:size-11">

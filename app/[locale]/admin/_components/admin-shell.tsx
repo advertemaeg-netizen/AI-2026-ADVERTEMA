@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { BrainCircuit, Building2, CreditCard, LayoutDashboard, LogOut, Menu, Package, Receipt, Settings, ShieldCheck, type LucideIcon, Scale } from 'lucide-react'
-import { BrandMark, markSeen } from '@/components/brand'
+import { BrandLogo } from '@/components/brand'
 import { navClass, navIconClass, navItemClass } from '@/components/nav-item'
 import { NavIndicator } from '@/components/nav-indicator'
 import { Link, usePathname, useRouter } from '@/i18n/navigation'
@@ -67,10 +67,10 @@ export function AdminShell({
   function sidebar(inSheet: boolean) {
     return (
       <>
-        <div className="p-6 border-b flex items-center justify-between">
-          <Link href="/admin" className="group flex items-center gap-2.5" onClick={() => setMenuOpen(false)} onAnimationEnd={markSeen}>
-            <BrandMark className="mark-entrance text-foreground transition-transform duration-base ease-spring group-hover:scale-105" />
-            <span className="text-lg font-bold tracking-tight">Mudrik AI</span>
+        {/* No padding beside the logo: its margin is its clear space */}
+        <div className="pe-6 border-b flex items-center justify-between">
+          <Link href="/admin" onClick={() => setMenuOpen(false)}>
+            <BrandLogo className="text-foreground" />
           </Link>
           {!inSheet && <LanguageSwitcher />}
         </div>

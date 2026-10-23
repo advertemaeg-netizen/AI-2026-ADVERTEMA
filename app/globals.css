@@ -172,7 +172,6 @@
   /* Layout */
   --page-padding: calc(var(--spacing) * 8);
   --page-padding-compact: calc(var(--spacing) * 4);
-  --brand-mark-min: 28px; /* the mark is illegible below this — never smaller */
 }
 
 @supports (animation-timing-function: linear(0, 1)) {
@@ -289,11 +288,6 @@
   @keyframes slide-in {
     from {
       transform: translateX(var(--slide-from, 0)) scale(0.94);
-    }
-  }
-  @keyframes mark-in {
-    from {
-      transform: scale(0.5) rotate(-12deg);
     }
   }
   /*
@@ -478,19 +472,6 @@
     animation:
       slide-in var(--motion-spring-duration) var(--motion-spring) both,
       fade var(--motion-base) var(--motion-ease-out) both;
-  }
-}
-
-/*
- * The mark's entrance, once per browser session: an inline script in the
- * root layout sets data-mark-seen on <html> for every later page load, and
- * the shell sets it when the animation ends.
- */
-@utility mark-entrance {
-  :root:not([data-mark-seen]) & {
-    animation:
-      mark-in 900ms var(--motion-spring) both,
-      fade var(--motion-slow) var(--motion-ease-out) both;
   }
 }
 

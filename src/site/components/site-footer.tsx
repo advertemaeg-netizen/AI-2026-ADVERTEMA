@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { BrandMark } from '@/components/brand'
+import { BrandLogo } from '@/components/brand'
 import { LEGAL_PAGES, SITE_LEGAL_LINKED, type SitePage } from '@/site/config'
 import { siteCopy } from '@/site/copy'
 import { sitePath } from '@/site/paths'
@@ -39,7 +39,7 @@ export function SiteFooter({ locale }: { locale: string }) {
     <footer className="mt-32 border-t border-border [overflow-wrap:anywhere]">
       <div className={`mx-auto grid max-w-6xl gap-10 px-4 py-12 ${SITE_LEGAL_LINKED ? 'sm:grid-cols-[1.4fr_repeat(3,1fr)]' : 'sm:grid-cols-[1.4fr_repeat(2,1fr)]'}`}>
         <div className="flex flex-col gap-3">
-          <BrandMark className="text-foreground" />
+          <BrandLogo className="text-foreground" />
           <p className="max-w-sm text-sm">{copy.footer.tagline}</p>
         </div>
         {columns.map((column) => (

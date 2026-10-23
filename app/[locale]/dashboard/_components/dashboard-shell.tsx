@@ -30,7 +30,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
-import { BrandMark, markSeen } from '@/components/brand'
+import { BrandLogo } from '@/components/brand'
 import { navClass, navIconClass, navItemClass } from '@/components/nav-item'
 import { NavIndicator } from '@/components/nav-indicator'
 import { clientSections } from '@/components/client-sections'
@@ -163,10 +163,10 @@ export function DashboardShell({
   function sidebar(inSheet: boolean) {
     return (
       <>
-        <div className={cn('p-6 border-b flex items-center justify-between', inSheet && 'p-4 pe-14')}>
-          <Link href="/dashboard" className="group flex items-center gap-2.5" onClick={closeMenu} onAnimationEnd={markSeen}>
-            <BrandMark className="mark-entrance text-foreground transition-transform duration-base ease-spring group-hover:scale-105" />
-            <span className="text-lg font-bold tracking-tight">Mudrik AI</span>
+        {/* No padding beside the logo: its margin is its clear space, and lines it up with the nav */}
+        <div className={cn('pe-6 border-b flex items-center justify-between', inSheet && 'pe-14')}>
+          <Link href="/dashboard" onClick={closeMenu}>
+            <BrandLogo className="text-foreground" />
           </Link>
           {/* Phones have it in the top bar */}
           {!inSheet && <LanguageSwitcher />}

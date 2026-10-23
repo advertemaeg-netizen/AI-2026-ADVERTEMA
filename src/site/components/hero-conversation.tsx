@@ -1,7 +1,7 @@
 'use client'
 
 import { useSyncExternalStore } from 'react'
-import { BrandLockup } from '@/components/brand'
+import { BrandLogo } from '@/components/brand'
 import { demoSlotText, type ClockWords } from '@/site/demo-slot'
 
 /**
@@ -66,7 +66,7 @@ export function HeroConversation({
   return (
     <figure className="site-phone site-convo mx-auto w-full max-w-md p-5">
       <figcaption className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
-        <BrandLockup height={22} />
+        <BrandLogo height={0} className="text-foreground" />
         <span className="text-sm">{label}</span>
       </figcaption>
       <ol className="flex flex-col gap-3 text-[0.95rem]">

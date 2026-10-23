@@ -4,7 +4,6 @@ import { setRequestLocale } from 'next-intl/server'
 import { notFound } from 'next/navigation'
 import { IBM_Plex_Sans_Arabic, Manrope } from 'next/font/google'
 import { Providers } from '@/components/providers'
-import { MARK_SEEN_SCRIPT } from '@/components/brand'
 import { routing } from '@/i18n/routing'
 import '../globals.css'
 
@@ -67,9 +66,6 @@ export default async function LocaleLayout({
       dir={locale === 'ar' ? 'rtl' : 'ltr'}
       suppressHydrationWarning
     >
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: MARK_SEEN_SCRIPT }} />
-      </head>
       <body
         className="font-sans antialiased"
         style={{ '--font-stack': fontStack } as React.CSSProperties}

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { BrandLockup } from '@/components/brand'
+import { BrandLogo } from '@/components/brand'
 import { APP_ORIGIN, type SitePage } from '@/site/config'
 import { siteCopy } from '@/site/copy'
 import { otherLocale, sitePath } from '@/site/paths'
@@ -26,10 +26,11 @@ export function SiteHeader({ locale, page }: { locale: string; page: SitePage })
   const language = { href: sitePath(other, page), label: copy.nav.languageSwitch, lang: other }
   return (
     <header className="glass sticky top-0 z-40">
-      <div className="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3">
-        {/* The lockup's own alt text names the link */}
+      {/* No vertical padding: the logo's margin (its clear space) sets the bar's height */}
+      <div className="mx-auto flex max-w-6xl items-center gap-6 px-4">
+        {/* The logo's own label names the link */}
         <Link href={sitePath(locale, '')} className="shrink-0">
-          <BrandLockup height={28} />
+          <BrandLogo className="text-foreground" />
         </Link>
 
         {/* lg and up: inline (at 768 the Arabic links overran their box by 2px; 820 fit with no slack) */}

@@ -130,9 +130,10 @@ export function JourneyFunnel({ conversations, stats }: { conversations: number;
                 )}
                 <div className="flex items-center gap-3">
                   <span className="w-24 shrink-0 text-sm">{t(`funnel.steps.${step.key}`)}</span>
-                  <div className="h-6 flex-1 overflow-hidden rounded-md bg-chart-funnel-track">
+                  {/* The analytics funnel's shape: the bar grows from the start edge, rounded only at its data end */}
+                  <div className="h-6 flex-1 overflow-hidden rounded-[4px] bg-chart-funnel-track">
                     <div
-                      className="h-full rounded-md bg-chart-funnel"
+                      className="h-full rounded-e-[4px] bg-chart-funnel"
                       style={{ width: `${Math.max((step.value / top) * 100, step.value > 0 ? 2 : 0)}%` }}
                     />
                   </div>

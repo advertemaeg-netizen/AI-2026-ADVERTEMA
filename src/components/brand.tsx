@@ -1,55 +1,32 @@
 import { cn } from '@/lib/utils'
 
-// public/brand/mudrik-mark.svg is 1157 × 700; the lockup 13389 × 1962
-const MARK_RATIO = 1157 / 700
-const LOCKUP_RATIO = 13389 / 1962
-/** The mark is illegible below this height; requests for less get this */
-const MARK_MIN_HEIGHT = 28
+// public/brand/mudrik-logo.svg: the guidelines' file, its viewBox cropped to the
+// wordmark's tight bounds (771.8 × 142.7). The M is 136.1 of that height.
+const LOGO_RATIO = 771.8 / 142.7
+const M_RATIO = 136.1 / 142.7
+/** The guidelines' minimum digital width */
+const LOGO_MIN_WIDTH = 120
 
 /**
- * The mark alone, coloured by CSS (text-foreground, text-primary-foreground…): the
- * SVG is used as a mask over currentColor, so the file stays the one source.
+ * The logo, as the file and nothing else: scaled, never redrawn, no shadow or
+ * border, no animation that turns or stretches it. Coloured by CSS
+ * (text-foreground for charcoal, text-primary-foreground for white): the SVG
+ * is a mask over currentColor, so one file serves both versions. On
+ * signature yellow, use the charcoal one.
+ *
+ * Its clear space, the height of the M on every side, is this element's
+ * margin, so it travels with the logo and is never baked into the file.
+ * Requests under the minimum width get the minimum.
  */
-export function BrandMark({ height = MARK_MIN_HEIGHT, className }: { height?: number; className?: string }) {
-  const h = Math.max(height, MARK_MIN_HEIGHT)
+export function BrandLogo({ height = 24, className }: { height?: number; className?: string }) {
+  const h = Math.max(height, LOGO_MIN_WIDTH / LOGO_RATIO)
+  const mask = 'url(/brand/mudrik-logo.svg) center / contain no-repeat'
   return (
     <span
       role="img"
       aria-label="Mudrik AI"
-      className={cn('inline-block shrink-0 bg-current', className)}
-      style={{
-        height: h,
-        width: Math.round(h * MARK_RATIO),
-        mask: 'url(/brand/mudrik-mark.svg) center / contain no-repeat',
-        WebkitMask: 'url(/brand/mudrik-mark.svg) center / contain no-repeat',
-      }}
-    />
-  )
-}
-
-/**
- * The mark's entrance plays once per browser session (see mark-entrance in
- * app/globals.css). Call this when it ends, so a shell mounted later in the
- * same page load does not play it again.
- */
-export function markSeen() {
-  document.documentElement.setAttribute('data-mark-seen', '')
-}
-
-/** For the root layout's <head>: every page load after the first in a session skips the entrance */
-export const MARK_SEEN_SCRIPT = `(function(){try{var k="mudrik-mark-seen";if(sessionStorage.getItem(k))document.documentElement.setAttribute("data-mark-seen","");else sessionStorage.setItem(k,"1")}catch(e){document.documentElement.setAttribute("data-mark-seen","")}})()`
-
-/** Mark + wordmark in the two brand colours (login, emails) */
-export function BrandLockup({ height = 36, className }: { height?: number; className?: string }) {
-  return (
-    // eslint-disable-next-line @next/next/no-img-element -- a fixed-size SVG; next/image adds nothing
-    <img
-      src="/brand/mudrik-lockup.svg"
-      alt="Mudrik AI"
-      width={Math.round(height * LOCKUP_RATIO)}
-      height={height}
-      className={cn('shrink-0 select-none', className)}
-      draggable={false}
+      className={cn('block shrink-0 bg-current', className)}
+      style={{ height: h, width: h * LOGO_RATIO, margin: Math.ceil(h * M_RATIO), mask, WebkitMask: mask }}
     />
   )
 }
