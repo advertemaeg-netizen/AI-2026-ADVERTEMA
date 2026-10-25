@@ -33,23 +33,40 @@
   /* A deeper periwinkle, for the field only (muted text on it 4.30: never at full strength) */
   --palette-periwinkle-deep: #b4c2f3;
 
-  /* Periwinkle → sand → yellow. Charcoal is 10.9 or more anywhere on it */
-  --brand-gradient: linear-gradient(35deg, var(--palette-periwinkle) 0%, var(--palette-sand) 45%, var(--palette-yellow) 100%);
+  /*
+   * Blue and red (25 October 2026, the owner's choice: colour in place of the
+   * charcoal). Blue is the action colour, red its partner in charts and
+   * accents; text stays charcoal. White on blue 5.17, on blue-strong 6.70.
+   * Red is a data and accent colour; danger keeps its own darker red
+   * (--destructive) and always carries a name or a glyph.
+   */
+  --palette-blue: #2563eb;
+  --palette-blue-strong: #1d4ed8;
+  --palette-navy: #1e3a8a; /* titles: 9.27 on the ground */
+  --palette-blue-tint: #dbeafe; /* selection: blue-strong on it 5.49 */
+  --palette-sky: #93c5fd; /* field only, ≤ 85% */
+  --palette-red: #e11d48;
+  --palette-rose: #f43f5e;
+  --palette-rose-tint: #fecdd3;
+  --palette-rose-soft: #fda4af; /* field only, ≤ 75% */
+
+  /* Blue tint → the ground → rose tint. Charcoal and muted text pass anywhere on it */
+  --brand-gradient: linear-gradient(35deg, var(--palette-blue-tint) 0%, var(--palette-cloud) 48%, var(--palette-rose-tint) 100%);
 
   /*
    * The field behind site and dashboard (25 October 2026: stronger, by the
    * owner's choice). Two fixed layers on <body>: a still base and a layer of
    * colour blooms that drifts slowly (transform only, composited). Muted text
    * (#4b5563) must keep 4.5:1 on its darkest point, so over Cloud White:
-   * yellow, cream, sand and periwinkle may reach 100%, deep periwinkle 85%,
-   * coral 35%. Page titles and their subtitles sit on the bare field.
+   * the blue and rose tints may reach 100%, sky 85%, deep periwinkle 85%,
+   * soft rose 75%. Page titles and their subtitles sit on the bare field.
    */
-  --field-base: linear-gradient(135deg, var(--palette-periwinkle) 0%, var(--palette-cloud) 42%, #f6eed8 70%, var(--palette-cream) 100%);
+  --field-base: linear-gradient(135deg, var(--palette-blue-tint) 0%, var(--palette-cloud) 45%, #fdf2f4 72%, var(--palette-rose-tint) 100%);
   --field-blooms:
-    radial-gradient(34% 30% at 18% 22%, color-mix(in srgb, var(--palette-periwinkle-deep) 80%, transparent), transparent 70%),
-    radial-gradient(30% 28% at 82% 18%, var(--palette-yellow), transparent 70%),
-    radial-gradient(32% 30% at 70% 78%, color-mix(in srgb, var(--palette-coral) 30%, transparent), transparent 72%),
-    radial-gradient(36% 32% at 28% 82%, color-mix(in srgb, var(--palette-yellow) 70%, transparent), transparent 70%),
+    radial-gradient(34% 30% at 18% 22%, color-mix(in srgb, var(--palette-sky) 70%, transparent), transparent 70%),
+    radial-gradient(30% 28% at 82% 18%, color-mix(in srgb, var(--palette-rose-soft) 55%, transparent), transparent 70%),
+    radial-gradient(32% 30% at 70% 80%, color-mix(in srgb, var(--palette-periwinkle-deep) 75%, transparent), transparent 72%),
+    radial-gradient(36% 32% at 24% 84%, color-mix(in srgb, var(--palette-rose-soft) 40%, transparent), transparent 70%),
     radial-gradient(28% 26% at 52% 48%, rgb(255 255 255 / 0.55), transparent 70%);
 
   /* Surfaces */
@@ -70,15 +87,16 @@
   --accent-foreground: var(--palette-charcoal);
   --border: #c7d0d7; /* 1.40 on the ground: the floor. #dde4e9 (1.15) is invisible */
   --input: #aeb9c2;
-  --ring: var(--palette-charcoal);
+  --ring: var(--palette-blue);
 
   /* Roles */
-  --primary: var(--palette-charcoal);
-  --primary-strong: #16181a; /* hover/pressed */
-  --primary-foreground: #ffffff; /* 15.42 */
-  --brand: var(--palette-yellow);
-  --brand-foreground: var(--palette-charcoal); /* 11.94 */
-  --page-title: var(--palette-charcoal);
+  --primary: var(--palette-blue);
+  --primary-strong: var(--palette-blue-strong); /* hover/pressed */
+  --primary-foreground: #ffffff; /* 5.17, 6.70 on hover */
+  /* Selection (the active nav item, tabs, a selected row): the blue tint */
+  --brand: var(--palette-blue-tint);
+  --brand-foreground: var(--palette-blue-strong); /* 5.49 */
+  --page-title: var(--palette-navy);
 
   /*
    * State tones (the guidelines' five, section 5 of the spec). Each has an
@@ -124,23 +142,23 @@
    * a 1px stroke in the card ground separates them. Text in a series colour
    * only for 1 and 2 (≥4.5); 3 and 4 get charcoal labels.
    */
-  --chart-1: var(--palette-charcoal);
-  --chart-2: #2f6fae; /* blue */
-  --chart-3: #c4522a; /* brick */
-  --chart-4: #a8893c; /* sand dark */
-  /* Funnel stages: charcoal bars on a muted track (12.00 bar on track) */
-  --chart-funnel: var(--palette-charcoal);
-  --chart-funnel-track: #dde4e9;
+  --chart-1: var(--palette-blue); /* 5.03 on a card */
+  --chart-2: var(--palette-red); /* 4.57; blue and red are one lightness (1.10): told apart by hue */
+  --chart-3: var(--palette-navy); /* 10.08 */
+  --chart-4: var(--palette-rose); /* 3.57 */
+  /* Funnel stages: blue bars on a blue-tint track (4.24 bar on track) */
+  --chart-funnel: var(--palette-blue);
+  --chart-funnel-track: var(--palette-blue-tint);
 
   /* Sidebar */
   --sidebar: var(--palette-surface);
   --sidebar-foreground: var(--palette-charcoal);
-  --sidebar-primary: var(--palette-charcoal);
-  --sidebar-primary-foreground: #ffffff;
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
   --sidebar-accent: var(--accent);
   --sidebar-accent-foreground: var(--palette-charcoal);
   --sidebar-border: var(--border);
-  --sidebar-ring: var(--palette-charcoal);
+  --sidebar-ring: var(--ring);
 
   /* Shape. Shadows carry a little of the periwinkle, so glass floats on the field */
   --radius: 0.75rem;

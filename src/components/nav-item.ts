@@ -5,7 +5,7 @@ export const navClass = 'group/nav relative flex-1 space-y-1 overflow-y-auto p-4
 
 /**
  * A sidebar link. Hover fades the periwinkle tint in on ::before. The active
- * item is signature yellow (the guidelines' «التحديد»: selection), drawn by
+ * item is the selection blue tint (--brand), drawn by
  * the item only until the NavIndicator takes over.
  */
 export function navItemClass(isActive: boolean, inSheet: boolean) {

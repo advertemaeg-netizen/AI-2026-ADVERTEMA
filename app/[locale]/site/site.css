@@ -138,10 +138,10 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
   border-end-start-radius: 0.35rem;
 }
 /* The hero screen's one highlight: the booking the conversation ends on, in
-   signature yellow (charcoal on it 11.94) */
+   the selection blue tint (charcoal on it 13.6) */
 .site-bubble[data-confirm] {
-  background: var(--palette-yellow);
-  border-color: var(--palette-yellow);
+  background: var(--palette-blue-tint);
+  border-color: var(--palette-blue-tint);
 }
 
 /* The typing dots exist only as motion: in the final state (and with reduced motion) they are gone */
