@@ -2,7 +2,7 @@ import { setRequestLocale } from 'next-intl/server'
 import ar from '../../../messages/ar.json'
 import en from '../../../messages/en.json'
 import { APP_ORIGIN, SITE_WIDGET_CHANNEL_ID } from '@/site/config'
-import { Closing, Features, Hero, How, Paths, PricingTeaser, Problem, Try } from '@/site/components/home-sections'
+import { ChannelsSection, Closing, Features, Hero, How, Paths, PricingTeaser, Problem, ProblemSection, Try } from '@/site/components/home-sections'
 import { SitePage } from '@/site/components/site-page'
 import { WidgetSlot } from '@/site/components/widget-slot'
 import { siteCopy } from '@/site/copy'
@@ -61,9 +61,25 @@ export default async function HomePage({ params }: Props) {
           builtAt: BUILT_AT,
         }}
       />
-      <Problem title={home.problem.title} items={home.problem.items} />
-      <How title={home.how.title} steps={home.how.steps} />
+      {/* The sections brief of 25 October 2026 (home.sections.*) exists in Arabic only so far: the
+          English page keeps the earlier sections until its copy arrives (en.json holds key names). */}
+      {language === 'ar' ? (
+        <>
+          <ProblemSection {...home.sections.problem} />
+          <How
+            className="site-surface py-16 md:py-20"
+            title={home.sections.how.title}
+            steps={home.sections.how.steps.map((step) => ({ label: step.title, body: step.body }))}
+          />
+        </>
+      ) : (
+        <>
+          <Problem title={home.problem.title} items={home.problem.items} />
+          <How title={home.how.title} steps={home.how.steps} />
+        </>
+      )}
       <Features title={home.features.title} items={home.features.items} />
+      {language === 'ar' && <ChannelsSection {...home.sections.channels} />}
       {SHOW_TRY_SECTION && <Try title={home.try.title} body={home.try.body} />}
       <Paths
         title={home.paths.title}

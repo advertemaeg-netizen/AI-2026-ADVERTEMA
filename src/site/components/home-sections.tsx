@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { HeroConversation, type BotTemplates } from '@/site/components/hero-conversation'
 
@@ -74,10 +75,73 @@ export function Problem({ title, items }: { title: string; items: Item[] }) {
   )
 }
 
-/* 3 — how it works: three steps in sequence, a line runs through them as you scroll */
-export function How({ title, steps }: { title: string; steps: Item[] }) {
+/*
+ * 1b — the problem, as the sections brief of 25 October 2026 states it: an
+ * eyebrow, the heading, the lead, four cards two by two, and the closing line
+ * that says it is a problem of tools, not of effort. No icons: the brief rules
+ * out a generic set, and the cards stand on their titles.
+ */
+export function ProblemSection({
+  eyebrow,
+  title,
+  lead,
+  cards,
+  closing,
+}: {
+  eyebrow: string
+  title: string
+  lead: string
+  cards: { title: string; body: string }[]
+  closing: string
+}) {
   return (
     <section className="flex flex-col gap-10">
+      <div className="flex max-w-3xl flex-col gap-4">
+        <p className="site-reveal text-sm font-semibold text-muted-foreground">{eyebrow}</p>
+        <h2 className="site-h2 site-reveal">{title}</h2>
+        <p className="site-lead site-reveal max-w-2xl">{lead}</p>
+      </div>
+      <ul className="grid gap-5 md:grid-cols-2">
+        {cards.map((card, i) => (
+          <li key={i} className="site-panel-quiet site-reveal flex flex-col gap-3 p-7" style={{ '--i': i } as React.CSSProperties}>
+            <h3 className="text-xl font-bold">{card.title}</h3>
+            <p className="leading-relaxed">{card.body}</p>
+          </li>
+        ))}
+      </ul>
+      <p className="site-reveal self-center text-center text-base text-muted-foreground">{closing}</p>
+    </section>
+  )
+}
+
+/*
+ * 4b — the channels, with each one's status stated plainly (the brief's
+ * honesty constraint: only the website widget is live). «متاح الآن» is the
+ * success chip; «قريبًا» is the NEUTRAL chip, never the warning one: a greyed
+ * item reads as planned, an amber one as broken. Which chip is code's
+ * decision (the id), the words are the copy's.
+ */
+export function ChannelsSection({ title, items, note }: { title: string; items: { id: string; name: string; status: string }[]; note: string }) {
+  return (
+    <section className="site-surface flex flex-col gap-8 py-16 md:py-20">
+      <h2 className="site-h2 site-reveal max-w-3xl">{title}</h2>
+      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {items.map((item, i) => (
+          <li key={item.id} className="site-panel-quiet site-reveal flex flex-col items-start gap-3 p-5" style={{ '--i': i } as React.CSSProperties}>
+            <span className="text-lg font-bold">{item.name}</span>
+            <Badge variant={item.id === 'website' ? 'positive' : 'quiet'}>{item.status}</Badge>
+          </li>
+        ))}
+      </ul>
+      <p className="max-w-3xl text-base text-muted-foreground">{note}</p>
+    </section>
+  )
+}
+
+/* 3 — how it works: three steps in sequence, a line runs through them as you scroll */
+export function How({ title, steps, className }: { title: string; steps: Item[]; className?: string }) {
+  return (
+    <section className={cn('flex flex-col gap-10', className)}>
       <h2 className="site-h2 site-reveal max-w-3xl">{title}</h2>
       <ol
         className={cn(

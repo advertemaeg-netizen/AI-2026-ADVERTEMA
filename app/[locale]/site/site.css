@@ -61,6 +61,28 @@ body:has(.site-field)::after {
   border-radius: 1.5rem;
 }
 
+/*
+ * The alternate ground (the sections brief of 25 October 2026): sections
+ * alternate between plain white and this near-white, which carries no warmth
+ * and no gradient. It runs edge to edge behind the section (100vw, which
+ * counts a desktop scrollbar: the site's body clips the overflow).
+ */
+.site-surface {
+  --site-surface: #f7f8f8;
+  position: relative;
+  isolation: isolate;
+}
+.site-surface::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset-block: 0;
+  left: calc(50% - 50vw);
+  width: 100vw;
+  pointer-events: none;
+  background: var(--site-surface);
+}
+
 /* Type: generous, and fluid between a phone and a wide screen */
 .site-display {
   font-size: clamp(2.1rem, 1.4rem + 3.2vw, 4.25rem);

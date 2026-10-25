@@ -145,6 +145,75 @@
       "body": "Enter your information, connect a channel, and watch the bot answer your real customers.",
       "cta_primary": "Create an account",
       "cta_secondary": "Talk to us"
+    },
+    "sections": {
+      "problem": {
+        "eyebrow": "home.sections.problem.eyebrow",
+        "title": "home.sections.problem.title",
+        "lead": "home.sections.problem.lead",
+        "cards": [
+          {
+            "title": "home.sections.problem.cards.0.title",
+            "body": "home.sections.problem.cards.0.body"
+          },
+          {
+            "title": "home.sections.problem.cards.1.title",
+            "body": "home.sections.problem.cards.1.body"
+          },
+          {
+            "title": "home.sections.problem.cards.2.title",
+            "body": "home.sections.problem.cards.2.body"
+          },
+          {
+            "title": "home.sections.problem.cards.3.title",
+            "body": "home.sections.problem.cards.3.body"
+          }
+        ],
+        "closing": "home.sections.problem.closing"
+      },
+      "how": {
+        "title": "home.sections.how.title",
+        "steps": [
+          {
+            "title": "home.sections.how.steps.0.title",
+            "body": "home.sections.how.steps.0.body"
+          },
+          {
+            "title": "home.sections.how.steps.1.title",
+            "body": "home.sections.how.steps.1.body"
+          },
+          {
+            "title": "home.sections.how.steps.2.title",
+            "body": "home.sections.how.steps.2.body"
+          }
+        ]
+      },
+      "channels": {
+        "title": "home.sections.channels.title",
+        "items": [
+          {
+            "id": "website",
+            "name": "home.sections.channels.items.0.name",
+            "status": "home.sections.channels.items.0.status"
+          },
+          {
+            "id": "whatsapp",
+            "name": "home.sections.channels.items.1.name",
+            "status": "home.sections.channels.items.1.status"
+          },
+          {
+            "id": "facebook",
+            "name": "home.sections.channels.items.2.name",
+            "status": "home.sections.channels.items.2.status"
+          },
+          {
+            "id": "instagram",
+            "name": "home.sections.channels.items.3.name",
+            "status": "home.sections.channels.items.3.status"
+          }
+        ],
+        "note": "home.sections.channels.note"
+      }
     }
   },
   "business": {
