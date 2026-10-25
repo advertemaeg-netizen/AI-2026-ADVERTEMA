@@ -32,8 +32,8 @@ export function Hero({
   demo: { language: 'ar' | 'en'; label: string; visitor: string[]; bot: BotTemplates; builtAt: string }
 }) {
   return (
-    // The gradient band reaches up to the header: the negative margin takes back the page's top padding
-    <section className="site-band -mt-10 grid items-center gap-12 py-14 md:-mt-16 md:py-20 lg:grid-cols-[1.15fr_1fr] lg:gap-16">
+    // The block: the page's one large warm shape, with the headline on its calm side and the product on its warm side
+    <section className="site-block grid items-center gap-12 px-6 py-12 md:px-12 md:py-16 lg:grid-cols-[1.15fr_1fr] lg:gap-16">
       <div className="flex flex-col gap-7">
         <h1 className="site-display site-rise" style={{ '--i': 0 } as React.CSSProperties}>
           {title}
@@ -200,8 +200,8 @@ export function PricingTeaser({ title, body, cta }: { title: string; body: strin
 /* 8 — the page ends on the call (the other pages end on one call, without the second) */
 export function Closing({ title, body, primary, secondary }: { title: string; body: string; primary: Cta; secondary?: Cta }) {
   return (
-    // The band stands still; its content rises (a transform on the section would move the band too)
-    <section className="site-band flex flex-col items-center gap-6 py-20 text-center md:py-28">
+    // The second, smaller block; it stands still and its content rises (a transform on the section would move the block too)
+    <section className="site-block site-block-small flex flex-col items-center gap-6 px-6 py-16 text-center md:py-20">
       <h2 className="site-h2 site-reveal max-w-3xl">{title}</h2>
       <p className="site-lead max-w-3xl">{body}</p>
       <div className="flex flex-wrap justify-center gap-3">

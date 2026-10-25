@@ -6,49 +6,59 @@
  *     9.27 at worst on the bare gradient (its peach end), 12 and up on a
  *     panel over it. White text sits on black only; butter, apricot and
  *     peach are never text.
- *   - The page stands on the product's drifting field (globals.css, on
- *     <body>), and the heroes and the closing call get the brand gradient on
- *     top of it, at full strength (25 October 2026: a strong gradient, glass
- *     and strong motion, by the owner's choice).
- *   - 60fps on a mid-range Android. Only transform and opacity animate, the
- *     field has no filter, and one surface blurs (the header, which content
- *     scrolls under): the panels and the conversation are glass without blur.
+ *   - WHITE IS THE GROUND; THE WARM COLOURS ARE A BLOCK, NOT A BACKGROUND
+ *     (the brief of 25 October 2026, after the full-field version shipped
+ *     and read as a sunset). The product's drifting field is switched off
+ *     under the site. The gradient lives in two contained, rounded blocks:
+ *     the hero and, smaller, the closing call. Everything between them is
+ *     plain white. Inside a block the gradient is calm: cream to white over
+ *     most of it, apricot and peach as touches in one corner.
+ *   - 60fps on a mid-range Android. Only transform and opacity animate, and
+ *     one surface blurs (the header, which content scrolls under).
  *   - Reduced motion zeroes everything: every animation below sits inside
  *     `no-preference`, so with reduce the page is simply its final state.
  */
 
-/* The site's own field layer: transparent, so the shared field shows */
+/* The marker the layout renders: the site's pages are the ones whose body has it */
 .site-field {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
+  display: none;
+}
+body:has(.site-field) {
+  background: #fff;
+  overflow-x: clip;
+}
+/* The product's field (globals.css) is off under the site */
+body:has(.site-field)::before,
+body:has(.site-field)::after {
+  display: none;
 }
 
 /*
- * The gradient band: the brand gradient, full-bleed behind a centred section
- * (the heroes, the closing call), fading in and out at its top and bottom so
- * it melts into the field rather than ending on a line. The band is 100vw
- * wide, which counts a desktop scrollbar: the site's body clips the overflow.
+ * The block: a rounded shape on the white page carrying the brand's warm
+ * colours. Cream at the start corner running to white; apricot and peach as
+ * touches in the top corner opposite the headline (the end side), so the
+ * copy sits on the calm part. Black on any point of it is above 11:1.
  */
-.site-band {
+.site-block {
   position: relative;
   isolation: isolate;
+  overflow: hidden;
+  border-radius: 2rem;
+  background:
+    radial-gradient(40% 55% at 100% 0%, color-mix(in srgb, var(--palette-peach) 50%, transparent), transparent 70%),
+    radial-gradient(55% 65% at 90% 18%, color-mix(in srgb, var(--palette-apricot) 55%, transparent), transparent 72%),
+    radial-gradient(45% 60% at 70% 100%, color-mix(in srgb, var(--palette-butter) 35%, transparent), transparent 70%),
+    linear-gradient(35deg, var(--palette-cream) 0%, #fbf7ec 40%, #ffffff 100%);
 }
-.site-band::before {
-  content: '';
-  position: absolute;
-  z-index: -1;
-  inset-block: -4rem;
-  left: calc(50% - 50vw);
-  width: 100vw;
-  pointer-events: none;
-  background: var(--brand-gradient);
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
-  mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
+[dir='rtl'] .site-block {
+  background:
+    radial-gradient(40% 55% at 0% 0%, color-mix(in srgb, var(--palette-peach) 50%, transparent), transparent 70%),
+    radial-gradient(55% 65% at 10% 18%, color-mix(in srgb, var(--palette-apricot) 55%, transparent), transparent 72%),
+    radial-gradient(45% 60% at 30% 100%, color-mix(in srgb, var(--palette-butter) 35%, transparent), transparent 70%),
+    linear-gradient(-35deg, var(--palette-cream) 0%, #fbf7ec 40%, #ffffff 100%);
 }
-body:has(.site-field) {
-  overflow-x: clip;
+.site-block-small {
+  border-radius: 1.5rem;
 }
 
 /* Type: generous, and fluid between a phone and a wide screen */
@@ -83,40 +93,33 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
   line-height: 1.35;
 }
 
-/* Surfaces: glass without blur (cheap on a phone): a white fill the field
-   shows through, the sheen, a white hairline and a warm brown shadow */
+/* Surfaces on the white page: cards. White, a warm hairline (the border
+   token, 1.71 on white), a light warm shadow where a card stands out */
 .site-panel {
-  background: rgb(255 255 255 / 0.58) var(--glass-sheen);
-  border: 1px solid rgb(255 255 255 / 0.85);
+  background: #fff;
+  border: 1px solid var(--border);
   border-radius: 1.5rem;
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.95),
-    0 30px 60px -30px rgb(120 78 30 / 0.4),
-    0 8px 20px -12px rgb(17 17 17 / 0.1);
+    0 1px 2px rgb(17 17 17 / 0.04),
+    0 16px 40px -28px rgb(120 78 30 / 0.3);
 }
 .site-panel-solid {
-  background: rgb(255 255 255 / 0.84) var(--glass-sheen);
+  background: #fff;
 }
 .site-panel-quiet {
-  background: rgb(255 255 255 / 0.44) var(--glass-sheen);
-  border: 1px solid rgb(255 255 255 / 0.8);
+  background: #fff;
+  border: 1px solid var(--border);
   border-radius: 1.25rem;
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.9),
-    0 18px 40px -26px rgb(120 78 30 / 0.32);
 }
 
-/* The hero conversation: glass without blur. It floats, and a blurred
-   surface that moves is re-blurred every frame; over the smooth gradient the
-   blur showed nothing anyway */
+/* The hero conversation: a white card inside the block. It floats (transform only) */
 .site-phone {
-  background: rgb(255 255 255 / 0.66) var(--glass-sheen);
-  border: 1px solid rgb(255 255 255 / 0.9);
+  background: #fff;
+  border: 1px solid var(--border);
   border-radius: 2rem;
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.95),
-    0 50px 100px -40px rgb(120 78 30 / 0.5),
-    0 14px 30px -16px rgb(17 17 17 / 0.16);
+    0 40px 80px -40px rgb(120 78 30 / 0.4),
+    0 10px 24px -14px rgb(17 17 17 / 0.12);
 }
 .site-bubble {
   max-width: 85%;
