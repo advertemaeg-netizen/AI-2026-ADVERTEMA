@@ -2,10 +2,10 @@
  * The marketing site's own layer, on top of the product's tokens
  * (app/globals.css). The dashboard's restraint (the blur budget) is NOT
  * applied here: this page is seen for thirty seconds. What IS kept:
- *   - body text clears AAA (7:1). All text is charcoal: 13.79 on the ground,
- *     10.90 at worst on the bare gradient (its cream end), 13.29 at worst on a
- *     panel over it. White text sits on charcoal only; yellow and coral are
- *     never text.
+ *   - body text clears AAA (7:1). All text is black: 17.33 on the ground,
+ *     9.27 at worst on the bare gradient (its peach end), 12 and up on a
+ *     panel over it. White text sits on black only; butter, apricot and
+ *     peach are never text.
  *   - The page stands on the product's drifting field (globals.css, on
  *     <body>), and the heroes and the closing call get the brand gradient on
  *     top of it, at full strength (25 October 2026: a strong gradient, glass
@@ -84,39 +84,39 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
 }
 
 /* Surfaces: glass without blur (cheap on a phone): a white fill the field
-   shows through, the sheen, a white hairline and a deep periwinkle shadow */
+   shows through, the sheen, a white hairline and a warm brown shadow */
 .site-panel {
-  background: rgb(255 255 255 / 0.55) var(--glass-sheen);
+  background: rgb(255 255 255 / 0.58) var(--glass-sheen);
   border: 1px solid rgb(255 255 255 / 0.85);
   border-radius: 1.5rem;
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.95),
-    0 30px 60px -30px rgb(70 86 160 / 0.45),
-    0 8px 20px -12px rgb(34 37 39 / 0.12);
+    0 30px 60px -30px rgb(120 78 30 / 0.4),
+    0 8px 20px -12px rgb(17 17 17 / 0.1);
 }
 .site-panel-solid {
-  background: rgb(255 255 255 / 0.82) var(--glass-sheen);
+  background: rgb(255 255 255 / 0.84) var(--glass-sheen);
 }
 .site-panel-quiet {
-  background: rgb(255 255 255 / 0.42) var(--glass-sheen);
+  background: rgb(255 255 255 / 0.44) var(--glass-sheen);
   border: 1px solid rgb(255 255 255 / 0.8);
   border-radius: 1.25rem;
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.9),
-    0 18px 40px -26px rgb(70 86 160 / 0.35);
+    0 18px 40px -26px rgb(120 78 30 / 0.32);
 }
 
 /* The hero conversation: glass without blur. It floats, and a blurred
    surface that moves is re-blurred every frame; over the smooth gradient the
    blur showed nothing anyway */
 .site-phone {
-  background: rgb(255 255 255 / 0.6) var(--glass-sheen);
+  background: rgb(255 255 255 / 0.66) var(--glass-sheen);
   border: 1px solid rgb(255 255 255 / 0.9);
   border-radius: 2rem;
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.95),
-    0 50px 100px -40px rgb(70 86 160 / 0.55),
-    0 14px 30px -16px rgb(34 37 39 / 0.18);
+    0 50px 100px -40px rgb(120 78 30 / 0.5),
+    0 14px 30px -16px rgb(17 17 17 / 0.16);
 }
 .site-bubble {
   max-width: 85%;
@@ -126,22 +126,22 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
 }
 .site-bubble[data-from='visitor'] {
   align-self: flex-end;
-  background: var(--palette-periwinkle);
-  color: var(--palette-charcoal); /* 11.91 */
+  background: var(--palette-cream);
+  color: var(--palette-black); /* 15.87 */
   border-end-end-radius: 0.35rem;
 }
 .site-bubble[data-from='bot'] {
   align-self: flex-start;
   background: #fff;
-  color: var(--palette-charcoal);
+  color: var(--palette-black);
   border: 1px solid var(--border);
   border-end-start-radius: 0.35rem;
 }
 /* The hero screen's one highlight: the booking the conversation ends on, in
-   the selection blue tint (charcoal on it 13.6) */
+   the identity's butter (black on it 13.98) */
 .site-bubble[data-confirm] {
-  background: var(--palette-blue-tint);
-  border-color: var(--palette-blue-tint);
+  background: var(--palette-butter);
+  border-color: var(--palette-butter);
 }
 
 /* The typing dots exist only as motion: in the final state (and with reduced motion) they are gone */
@@ -149,16 +149,16 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
   display: none;
 }
 
-/* The sequence line through the three steps: thin charcoal */
+/* The sequence line through the three steps: thin black */
 .site-steps-track {
   position: absolute;
-  background: rgb(34 37 39 / 0.14);
+  background: rgb(17 17 17 / 0.14);
   border-radius: 999px;
 }
 .site-steps-fill {
   position: absolute;
   inset: 0;
-  background: var(--palette-charcoal);
+  background: var(--palette-black);
   border-radius: 999px;
   transform-origin: var(--site-steps-origin, top);
 }

@@ -4,9 +4,9 @@ import { cn } from '@/lib/utils'
 export const navClass = 'group/nav relative flex-1 space-y-1 overflow-y-auto p-4'
 
 /**
- * A sidebar link. Hover fades the periwinkle tint in on ::before. The active
- * item is the selection blue tint (--brand), drawn by
- * the item only until the NavIndicator takes over.
+ * A sidebar link. Hover fades the cream tint in on ::before. The active item
+ * is the selection butter (--brand), drawn by the item only until the
+ * NavIndicator takes over.
  */
 export function navItemClass(isActive: boolean, inSheet: boolean) {
   return cn(

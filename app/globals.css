@@ -10,93 +10,86 @@
  * duration-base…), never a literal. White mode only: the identity has no
  * dark specification, and none is derived.
  *
- * Brand v2 (22 October 2026, .scratch/brand-v2-tokens.md). Contrast measured
- * against Cloud White, the ground (WCAG 2.x):
- *   charcoal #222527  13.79 — text, headings, the primary button
- *   white on charcoal 15.42 — the only white text in the system. White on any
- *                     warm or light palette colour measures 1.1–2.4: never.
- *   yellow   #FFE171  ~1.2 as text → a FILL only (selection, signature touches),
- *                     charcoal on it 11.94. Never a data or a warning colour.
- *   coral    #FF7162  2.41 as text → a FILL only, charcoal on it 5.72
+ * Brand v3 (25 October 2026, the owner's warm table: seven colours). Contrast
+ * measured against Soft White, the ground (WCAG 2.x):
+ *   black    #111111  17.33 — the logo, headings, text, the primary button
+ *   white on black    18.88 — the only white text in the system. White on any
+ *                     warm palette colour measures 1.1–2.3: never.
+ *   butter   #F9DB8D  1.24 as text → a FILL only (selection, the signature),
+ *                     black on it 13.98. Never a data or a warning colour.
+ *   apricot  #FDBB78  1.54 as text → the gradient and fills; black on it 11.29
+ *   peach    #FD9E72  1.87 as text → the gradient's touches; black on it 9.27
+ * Data and accent text need darker companions (below): the table's warm
+ * colours are all lighter than 3:1 on a card.
  */
 :root {
-  /* Palette */
-  --palette-charcoal: #222527;
-  --palette-cloud: #eef3f6; /* the ground of site and dashboard */
-  --palette-surface: #f7f8f8; /* cards and inner surfaces */
-  --palette-yellow: #ffe171; /* signature: a ground, never text */
-  --palette-coral: #ff7162; /* graphics and specific alerts: a fill, never text */
-  --palette-periwinkle: #dbe2f6; /* featured cards; the gradient's start */
-  --palette-sand: #e9dfc1; /* bridges cool to warm */
-  --palette-cream: #f8d585; /* the gradient's warm end */
-
-  /* A deeper periwinkle, for the field only (muted text on it 4.30: never at full strength) */
-  --palette-periwinkle-deep: #b4c2f3;
+  /* Palette: the owner's table, by name */
+  --palette-black: #111111; /* Mudrik Black: the logo, headings, buttons */
+  --palette-white: #f5f5f6; /* Soft White: the ground of site and dashboard */
+  --palette-cream: #f5ebcd; /* Warm Cream: warm grounds, the featured card */
+  --palette-butter: #f9db8d; /* Butter Yellow: the identity's accent, a fill */
+  --palette-apricot: #fdbb78; /* Golden Apricot: the gradient and elements */
+  --palette-peach: #fd9e72; /* Soft Peach: the gradient's touches */
+  --palette-gray: #e7e5df; /* Warm Gray: neutral elements, tracks, inputs */
+  --palette-surface: #fdfcfa; /* a warm white for solid surfaces (menus, popovers) */
 
   /*
-   * Blue and red (25 October 2026, the owner's choice: colour in place of the
-   * charcoal). Blue is the action colour, red its partner in charts and
-   * accents; text stays charcoal. White on blue 5.17, on blue-strong 6.70.
-   * Red is a data and accent colour; danger keeps its own darker red
-   * (--destructive) and always carries a name or a glyph.
+   * Derived, for data only: the table's warm colours are fills, and none of
+   * them clears 3:1 on a card, so charts take their deeper relatives. On a
+   * card: terracotta 4.54, amber 3.64, taupe 4.50. Alerts keep their own
+   * state colours (below); these never signal.
    */
-  --palette-blue: #2563eb;
-  --palette-blue-strong: #1d4ed8;
-  --palette-navy: #1e3a8a; /* titles: 9.27 on the ground */
-  --palette-blue-tint: #dbeafe; /* selection: blue-strong on it 5.49 */
-  --palette-sky: #93c5fd; /* field only, ≤ 85% */
-  --palette-red: #e11d48;
-  --palette-rose: #f43f5e;
-  --palette-rose-tint: #fecdd3;
-  --palette-rose-soft: #fda4af; /* field only, ≤ 75% */
+  --palette-terracotta: #c94f22; /* peach, deepened */
+  --palette-amber: #b7791f; /* apricot, deepened */
+  --palette-taupe: #7d766a; /* warm gray, deepened */
 
-  /* Blue tint → the ground → rose tint. Charcoal and muted text pass anywhere on it */
-  --brand-gradient: linear-gradient(35deg, var(--palette-blue-tint) 0%, var(--palette-cloud) 48%, var(--palette-rose-tint) 100%);
+  /* Cream → butter → apricot → peach, the warm run. Black on its deepest point 9.27, muted text 4.31 */
+  --brand-gradient: linear-gradient(35deg, var(--palette-cream) 0%, var(--palette-butter) 38%, var(--palette-apricot) 72%, var(--palette-peach) 100%);
 
   /*
-   * The field behind site and dashboard (25 October 2026: stronger, by the
-   * owner's choice). Two fixed layers on <body>: a still base and a layer of
-   * colour blooms that drifts slowly (transform only, composited). Muted text
-   * (#4b5563) must keep 4.5:1 on its darkest point, so over Cloud White:
-   * the blue and rose tints may reach 100%, sky 85%, deep periwinkle 85%,
-   * soft rose 75%. Page titles and their subtitles sit on the bare field.
+   * The field behind site and dashboard. Two fixed layers on <body>: a still
+   * base and a layer of colour blooms that drifts slowly (transform only,
+   * composited). Muted text (#4f4a42) must keep 4.5:1 on its darkest point,
+   * so over Soft White: cream and butter may reach 100% (6.50 at worst),
+   * apricot 85% (5.61), peach 60% (5.54). Page titles and their subtitles sit
+   * on the bare field.
    */
-  --field-base: linear-gradient(135deg, var(--palette-blue-tint) 0%, var(--palette-cloud) 45%, #fdf2f4 72%, var(--palette-rose-tint) 100%);
+  --field-base: linear-gradient(135deg, var(--palette-cream) 0%, var(--palette-white) 42%, #fbf4e6 70%, #fbe9d6 100%);
   --field-blooms:
-    radial-gradient(34% 30% at 18% 22%, color-mix(in srgb, var(--palette-sky) 70%, transparent), transparent 70%),
-    radial-gradient(30% 28% at 82% 18%, color-mix(in srgb, var(--palette-rose-soft) 55%, transparent), transparent 70%),
-    radial-gradient(32% 30% at 70% 80%, color-mix(in srgb, var(--palette-periwinkle-deep) 75%, transparent), transparent 72%),
-    radial-gradient(36% 32% at 24% 84%, color-mix(in srgb, var(--palette-rose-soft) 40%, transparent), transparent 70%),
-    radial-gradient(28% 26% at 52% 48%, rgb(255 255 255 / 0.55), transparent 70%);
+    radial-gradient(34% 30% at 18% 22%, color-mix(in srgb, var(--palette-butter) 90%, transparent), transparent 70%),
+    radial-gradient(30% 28% at 82% 18%, color-mix(in srgb, var(--palette-apricot) 70%, transparent), transparent 70%),
+    radial-gradient(32% 30% at 72% 80%, color-mix(in srgb, var(--palette-peach) 55%, transparent), transparent 72%),
+    radial-gradient(36% 32% at 24% 84%, color-mix(in srgb, var(--palette-cream) 100%, transparent), transparent 70%),
+    radial-gradient(28% 26% at 52% 48%, rgb(255 255 255 / 0.6), transparent 70%);
 
   /* Surfaces */
-  --background: var(--palette-cloud);
-  --foreground: var(--palette-charcoal); /* 13.79 */
+  --background: var(--palette-white);
+  --foreground: var(--palette-black); /* 17.33 */
   /* Cards are glass without blur: white over the field, which is only ever
      lighter than the field, so every contrast on the field holds on a card */
-  --card: rgb(255 255 255 / 0.6);
-  --card-foreground: var(--palette-charcoal);
+  --card: rgb(255 255 255 / 0.62);
+  --card-foreground: var(--palette-black);
   --popover: var(--palette-surface);
-  --popover-foreground: var(--palette-charcoal);
-  --muted: #dde4e9;
-  --muted-foreground: #4b5563; /* 6.76 on the ground, 7.10 on a card, 5.84 on periwinkle */
-  --secondary: #dde4e9;
-  --secondary-foreground: var(--palette-charcoal);
-  /* Periwinkle: the featured card, hover rows, active nav */
-  --accent: var(--palette-periwinkle);
-  --accent-foreground: var(--palette-charcoal);
-  --border: #c7d0d7; /* 1.40 on the ground: the floor. #dde4e9 (1.15) is invisible */
-  --input: #aeb9c2;
-  --ring: var(--palette-blue);
+  --popover-foreground: var(--palette-black);
+  --muted: var(--palette-gray);
+  --muted-foreground: #4f4a42; /* warm: 8.06 on the ground, 8.78 on a card, 7.38 on cream, 4.31 on full peach */
+  --secondary: var(--palette-gray);
+  --secondary-foreground: var(--palette-black);
+  /* Cream: the featured card, hover rows, the nav's hover */
+  --accent: var(--palette-cream);
+  --accent-foreground: var(--palette-black);
+  --border: #cbc6b8; /* warm: 1.57 on the ground, 1.71 on a card. The gray (1.07) is invisible */
+  --input: #b5afa0;
+  --ring: var(--palette-black);
 
   /* Roles */
-  --primary: var(--palette-blue);
-  --primary-strong: var(--palette-blue-strong); /* hover/pressed */
-  --primary-foreground: #ffffff; /* 5.17, 6.70 on hover */
-  /* Selection (the active nav item, tabs, a selected row): the blue tint */
-  --brand: var(--palette-blue-tint);
-  --brand-foreground: var(--palette-blue-strong); /* 5.49 */
-  --page-title: var(--palette-navy);
+  --primary: var(--palette-black);
+  --primary-strong: #000000; /* hover/pressed */
+  --primary-foreground: #ffffff; /* 18.88 */
+  /* Selection (the active nav item, tabs, a selected row): butter, the identity's accent, with black on it */
+  --brand: var(--palette-butter);
+  --brand-foreground: var(--palette-black); /* 13.98 */
+  --page-title: var(--palette-black);
 
   /*
    * State tones (the guidelines' five, section 5 of the spec). Each has an
@@ -121,7 +114,7 @@
   --critical-solid: #991b1b;
   --critical-fill: #fee2e2;
   --critical-fill-foreground: #991b1b; /* 6.80 */
-  --destructive: #991b1b; /* white on it 8.31 (danger buttons); charcoal would be 1.86 */
+  --destructive: #991b1b; /* white on it 8.31 (danger buttons); black would be 1.5 */
   --destructive-foreground: #ffffff;
   --destructive-fill: #fee2e2;
   --destructive-fill-foreground: #991b1b; /* 6.80 */
@@ -130,52 +123,53 @@
   --neutral-fill-foreground: #4b5563; /* 6.87 */
 
   /* Dialog and sheet backdrops */
-  --overlay: rgb(34 37 39 / 0.25);
+  --overlay: rgb(17 17 17 / 0.28);
 
   /*
    * Categorical series: four, fixed order. On a ground this light five
    * colours cannot each clear 3:1 against the ground AND against each other,
    * so there is no fifth: a chart that needs more groups its tail as "other".
-   * Fills need 3:1 on the card (14.49, 4.93, 4.30, 3.13; sand dark is 2.98
-   * on the bare ground, so charts stay on cards). Pairs measure 1.15–4.63:
+   * Fills need 3:1 on the card (18.88, 4.54, 3.64, 4.50; amber is 2.89 on
+   * the bare gray, so charts stay on cards). Black is 4.2–5.2 from the other
+   * three; those three are one lightness (1.01–1.25) told apart by hue, so
    * where two fills TOUCH (pie segments, stacked bars, overlapping areas)
    * a 1px stroke in the card ground separates them. Text in a series colour
-   * only for 1 and 2 (≥4.5); 3 and 4 get charcoal labels.
+   * only for 1 and 2 (≥4.5); 3 and 4 get black labels.
    */
-  --chart-1: var(--palette-blue); /* 5.03 on a card */
-  --chart-2: var(--palette-red); /* 4.57; blue and red are one lightness (1.10): told apart by hue */
-  --chart-3: var(--palette-navy); /* 10.08 */
-  --chart-4: var(--palette-rose); /* 3.57 */
-  /* Funnel stages: blue bars on a blue-tint track (4.24 bar on track) */
-  --chart-funnel: var(--palette-blue);
-  --chart-funnel-track: var(--palette-blue-tint);
+  --chart-1: var(--palette-black); /* 18.88 on a card */
+  --chart-2: var(--palette-terracotta); /* 4.54 */
+  --chart-3: var(--palette-amber); /* 3.64 */
+  --chart-4: var(--palette-taupe); /* 4.50 */
+  /* Funnel stages: black bars on the warm gray track (14.99 bar on track) */
+  --chart-funnel: var(--palette-black);
+  --chart-funnel-track: var(--palette-gray);
 
   /* Sidebar */
   --sidebar: var(--palette-surface);
-  --sidebar-foreground: var(--palette-charcoal);
+  --sidebar-foreground: var(--palette-black);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--primary-foreground);
   --sidebar-accent: var(--accent);
-  --sidebar-accent-foreground: var(--palette-charcoal);
+  --sidebar-accent-foreground: var(--palette-black);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
 
-  /* Shape. Shadows carry a little of the periwinkle, so glass floats on the field */
+  /* Shape. Shadows carry a little warm brown, so glass floats on the field */
   --radius: 0.75rem;
   --shadow-card:
     inset 0 1px 0 rgb(255 255 255 / 0.85),
-    0 1px 2px rgb(34 37 39 / 0.05),
-    0 10px 30px -18px rgb(70 86 160 / 0.3);
-  --shadow-raised: 0 18px 40px -18px rgb(70 86 160 / 0.4), 0 3px 8px -3px rgb(34 37 39 / 0.08);
+    0 1px 2px rgb(17 17 17 / 0.05),
+    0 10px 30px -18px rgb(120 78 30 / 0.28);
+  --shadow-raised: 0 18px 40px -18px rgb(120 78 30 / 0.38), 0 3px 8px -3px rgb(17 17 17 / 0.08);
   /* The bloom a card or row casts when lifted; lives on a pseudo-element
      whose opacity is what animates (see the lift utilities) */
-  --shadow-bloom: 0 28px 56px -22px rgb(70 86 160 / 0.45), 0 8px 18px -10px rgb(34 37 39 / 0.12);
+  --shadow-bloom: 0 28px 56px -22px rgb(120 78 30 / 0.42), 0 8px 18px -10px rgb(17 17 17 / 0.12);
 
   /*
    * Glass. Two kinds:
    *   glass       blurred, for surfaces content scrolls UNDER (top bars,
    *               dialogs, menus). Its fill is set by its worst backdrop, so
-   *               muted text keeps 4.5:1 over a charcoal button: ≥ 0.78.
+   *               muted text keeps 4.5:1 over a black button: ≥ 0.78.
    *   glass-solid translucent with no blur, for surfaces over the field only
    *               (sidebars, cards). The field is smooth, so a blur would show
    *               nothing there and cost frames; the field is light enough
@@ -190,9 +184,9 @@
   --glass-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.95),
     inset 0 0 0 1px rgb(255 255 255 / 0.35),
-    0 24px 48px -26px rgb(70 86 160 / 0.4),
-    0 4px 12px -6px rgb(34 37 39 / 0.08);
-  --glass-filter: blur(24px) saturate(1.8);
+    0 24px 48px -26px rgb(120 78 30 / 0.36),
+    0 4px 12px -6px rgb(17 17 17 / 0.08);
+  --glass-filter: blur(24px) saturate(1.6);
 
   /*
    * Motion. Springs, not eases: --motion-spring overshoots ~15% (entries,
@@ -536,7 +530,7 @@
   }
 }
 
-/* A page's title: charcoal, bold, 24px and up */
+/* A page's title: black, bold, 24px and up */
 @utility page-title {
   font-size: var(--text-3xl);
   line-height: var(--text-3xl--line-height);

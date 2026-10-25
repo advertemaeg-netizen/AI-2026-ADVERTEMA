@@ -10,8 +10,8 @@ export type Stat = {
 }
 
 /**
- * The overview's four numbers on ONE panel, the featured card: periwinkle
- * (the guidelines' «البطاقات المميزة»); muted text on it is 5.84. The tiles
+ * The overview's four numbers on ONE panel, the featured card: warm cream
+ * (the guidelines' «البطاقات المميزة»); muted text on it is 7.38. The tiles
  * rise in one after another and their numbers count up.
  */
 export function StatPanel({ stats }: { stats: Stat[] }) {

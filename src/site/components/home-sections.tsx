@@ -160,11 +160,11 @@ export function Paths({
     <section className="flex flex-col gap-10">
       <h2 className="site-h2 site-reveal max-w-3xl">{title}</h2>
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Self-serve: direct and quick. Charcoal, white text (15.42) */}
+        {/* Self-serve: direct and quick. Black, white text (18.88); its call in the identity's butter, black on it (13.98) */}
         <div className="site-reveal flex flex-col gap-5 rounded-[1.75rem] bg-primary p-8 text-primary-foreground md:p-10" style={{ '--i': 0 } as React.CSSProperties}>
           <h3 className="text-3xl font-bold">{self.label}</h3>
           <p className="site-lead flex-1">{self.body}</p>
-          <a href={self.href} className="inline-flex min-h-12 items-center justify-center self-start rounded-full bg-white px-6 font-semibold text-primary">
+          <a href={self.href} className="inline-flex min-h-12 items-center justify-center self-start rounded-full bg-brand px-6 font-semibold text-brand-foreground">
             {self.cta}
           </a>
         </div>
