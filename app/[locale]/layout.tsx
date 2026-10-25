@@ -2,32 +2,17 @@ import type { Metadata, Viewport } from 'next'
 import { NextIntlClientProvider, hasLocale } from 'next-intl'
 import { setRequestLocale } from 'next-intl/server'
 import { notFound } from 'next/navigation'
-import { IBM_Plex_Sans_Arabic, Manrope } from 'next/font/google'
+import { Alexandria } from 'next/font/google'
 import { Providers } from '@/components/providers'
 import { routing } from '@/i18n/routing'
 import '../globals.css'
 
-// Brand v2 (22 October 2026): Manrope for Latin, IBM Plex Sans Arabic for Arabic,
-// only the weights the guidelines list (800 is the logo, which is a file).
-const manrope = Manrope({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-})
-const plexArabic = IBM_Plex_Sans_Arabic({
-  subsets: ['arabic'],
-  weight: ['400', '500', '600', '700'],
-})
-
-// Both web fonts before either fallback. next/font pairs each face with an
-// Arial-based fallback ("Manrope", "Manrope Fallback"); Arial has Arabic
-// glyphs, so in that order it catches every Arabic letter before Plex is
-// reached (seen in Chrome's platform-font report on 23 October 2026; a machine
-// without Arial hides it). adjustFontFallback: false does not remove it under
-// Turbopack, so the stack is rebuilt from next/font's own names, whatever
-// they are called in a build: web fonts first, fallbacks after.
-const [manropeFace, ...manropeFallbacks] = manrope.style.fontFamily.split(', ')
-const [plexFace, ...plexFallbacks] = plexArabic.style.fontFamily.split(', ')
-const fontStack = [manropeFace, plexFace, ...manropeFallbacks, ...plexFallbacks].join(', ')
+// Alexandria, Arabic and Latin in one variable family (100–900). Back on
+// 25 October 2026 by the owner's choice, replacing Manrope + IBM Plex Sans
+// Arabic. One face carries both scripts, so its Arial fallback only shows
+// while the font loads: there is no second web font for it to get in front of.
+const alexandria = Alexandria({ subsets: ['arabic', 'latin'] })
+const fontStack = alexandria.style.fontFamily
 
 // cover: env(safe-area-inset-*) is only non-zero with it (notch, home indicator).
 // resizes-content: on Android the layout shrinks above the keyboard, so a

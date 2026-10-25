@@ -30,14 +30,35 @@
   --palette-sand: #e9dfc1; /* bridges cool to warm */
   --palette-cream: #f8d585; /* the gradient's warm end */
 
-  /* Periwinkle → sand → cream. Charcoal is 10.90–11.91 anywhere on it */
-  --brand-gradient: linear-gradient(35deg, var(--palette-periwinkle) 0%, var(--palette-sand) 50%, var(--palette-cream) 100%);
+  /* A deeper periwinkle, for the field only (muted text on it 4.30: never at full strength) */
+  --palette-periwinkle-deep: #b4c2f3;
+
+  /* Periwinkle → sand → yellow. Charcoal is 10.9 or more anywhere on it */
+  --brand-gradient: linear-gradient(35deg, var(--palette-periwinkle) 0%, var(--palette-sand) 45%, var(--palette-yellow) 100%);
+
+  /*
+   * The field behind site and dashboard (25 October 2026: stronger, by the
+   * owner's choice). Two fixed layers on <body>: a still base and a layer of
+   * colour blooms that drifts slowly (transform only, composited). Muted text
+   * (#4b5563) must keep 4.5:1 on its darkest point, so over Cloud White:
+   * yellow, cream, sand and periwinkle may reach 100%, deep periwinkle 85%,
+   * coral 35%. Page titles and their subtitles sit on the bare field.
+   */
+  --field-base: linear-gradient(135deg, var(--palette-periwinkle) 0%, var(--palette-cloud) 42%, #f6eed8 70%, var(--palette-cream) 100%);
+  --field-blooms:
+    radial-gradient(34% 30% at 18% 22%, color-mix(in srgb, var(--palette-periwinkle-deep) 80%, transparent), transparent 70%),
+    radial-gradient(30% 28% at 82% 18%, var(--palette-yellow), transparent 70%),
+    radial-gradient(32% 30% at 70% 78%, color-mix(in srgb, var(--palette-coral) 30%, transparent), transparent 72%),
+    radial-gradient(36% 32% at 28% 82%, color-mix(in srgb, var(--palette-yellow) 70%, transparent), transparent 70%),
+    radial-gradient(28% 26% at 52% 48%, rgb(255 255 255 / 0.55), transparent 70%);
 
   /* Surfaces */
   --background: var(--palette-cloud);
   --foreground: var(--palette-charcoal); /* 13.79 */
-  --card: var(--palette-surface);
-  --card-foreground: var(--palette-charcoal); /* 14.49 */
+  /* Cards are glass without blur: white over the field, which is only ever
+     lighter than the field, so every contrast on the field holds on a card */
+  --card: rgb(255 255 255 / 0.6);
+  --card-foreground: var(--palette-charcoal);
   --popover: var(--palette-surface);
   --popover-foreground: var(--palette-charcoal);
   --muted: #dde4e9;
@@ -121,33 +142,39 @@
   --sidebar-border: var(--border);
   --sidebar-ring: var(--palette-charcoal);
 
-  /* Shape. Shadows are charcoal and very light */
+  /* Shape. Shadows carry a little of the periwinkle, so glass floats on the field */
   --radius: 0.75rem;
-  --shadow-card: 0 1px 2px rgb(34 37 39 / 0.06), 0 1px 1px rgb(34 37 39 / 0.04);
-  --shadow-raised: 0 12px 28px -14px rgb(34 37 39 / 0.2), 0 2px 6px -2px rgb(34 37 39 / 0.06);
+  --shadow-card:
+    inset 0 1px 0 rgb(255 255 255 / 0.85),
+    0 1px 2px rgb(34 37 39 / 0.05),
+    0 10px 30px -18px rgb(70 86 160 / 0.3);
+  --shadow-raised: 0 18px 40px -18px rgb(70 86 160 / 0.4), 0 3px 8px -3px rgb(34 37 39 / 0.08);
   /* The bloom a card or row casts when lifted; lives on a pseudo-element
      whose opacity is what animates (see the lift utilities) */
-  --shadow-bloom: 0 18px 36px -16px rgb(34 37 39 / 0.22), 0 6px 14px -8px rgb(34 37 39 / 0.1);
+  --shadow-bloom: 0 28px 56px -22px rgb(70 86 160 / 0.45), 0 8px 18px -10px rgb(34 37 39 / 0.12);
 
   /*
-   * Glass: a semi-opaque surface fill, a hairline lighter than the fill, an
-   * inner top highlight and a light shadow; the solid fill stands in where
-   * backdrop-filter is missing. The fill's opacity is set by its WORST
-   * backdrop, so muted text (#4b5563) on it keeps 4.5:1:
-   *   over the ground                               ≥ 0.10
-   *   over charcoal (a button), with or without dim ≥ 0.78
-   *   over pure black (a client's site; widget.js)  ≥ 0.81
-   * 0.86 covers every surface in the app (5.15 even over black).
+   * Glass. Two kinds:
+   *   glass       blurred, for surfaces content scrolls UNDER (top bars,
+   *               dialogs, menus). Its fill is set by its worst backdrop, so
+   *               muted text keeps 4.5:1 over a charcoal button: ≥ 0.78.
+   *   glass-solid translucent with no blur, for surfaces over the field only
+   *               (sidebars, cards). The field is smooth, so a blur would show
+   *               nothing there and cost frames; the field is light enough
+   *               that any fill keeps the contrast.
+   * Both carry a white hairline, an inner top highlight and a soft sheen.
    */
-  --glass-fill: rgb(247 248 248 / 0.86);
-  --glass-fill-solid: var(--palette-surface);
-  --glass-border: rgb(255 255 255 / 0.95);
+  --glass-fill: rgb(255 255 255 / 0.8);
+  --glass-fill-solid: rgb(255 255 255 / 0.5);
+  --glass-fallback: var(--palette-surface);
+  --glass-border: rgb(255 255 255 / 0.9);
+  --glass-sheen: linear-gradient(160deg, rgb(255 255 255 / 0.55), rgb(255 255 255 / 0) 45%);
   --glass-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.9),
-    0 0 0 1px rgb(34 37 39 / 0.06),
-    0 18px 40px -22px rgb(34 37 39 / 0.2),
+    inset 0 1px 0 rgb(255 255 255 / 0.95),
+    inset 0 0 0 1px rgb(255 255 255 / 0.35),
+    0 24px 48px -26px rgb(70 86 160 / 0.4),
     0 4px 12px -6px rgb(34 37 39 / 0.08);
-  --glass-filter: blur(20px) saturate(1.7);
+  --glass-filter: blur(24px) saturate(1.8);
 
   /*
    * Motion. Springs, not eases: --motion-spring overshoots ~15% (entries,
@@ -159,14 +186,17 @@
   --motion-fast: 160ms;
   --motion-base: 280ms;
   --motion-slow: 480ms;
-  --motion-spring-duration: 700ms;
+  --motion-spring-duration: 850ms;
   --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --motion-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --motion-spring: var(--motion-ease-spring);
   --motion-spring-soft: cubic-bezier(0.3, 1.25, 0.6, 1);
-  --motion-enter-distance: 18px;
-  --motion-slide-distance: 28px;
-  --motion-stagger: 60ms;
+  --motion-enter-distance: 36px;
+  --motion-enter-scale: 0.94;
+  --motion-slide-distance: 40px;
+  --motion-stagger: 80ms;
+  --motion-lift: -6px;
+  --motion-field-duration: 26s; /* one drift of the field's blooms */
   --motion-count-duration: 900ms; /* stat numbers counting up */
 
   /* Layout */
@@ -185,8 +215,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  /* Manrope, IBM Plex Sans Arabic, then their fallbacks: composed in
-     app/[locale]/layout.tsx, which says why the order matters */
+  /* Alexandria and its fallback: set on <body> by app/[locale]/layout.tsx */
   --font-sans: var(--font-stack), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-stack), system-ui, sans-serif;
@@ -272,7 +301,19 @@
 
   @keyframes rise {
     from {
-      transform: translateY(var(--motion-enter-distance));
+      transform: translateY(var(--motion-enter-distance)) scale(var(--motion-enter-scale));
+    }
+  }
+  /* The field's blooms: a slow drift and breathe, back and forth */
+  @keyframes field-drift {
+    0% {
+      transform: translate3d(-4%, -3%, 0) scale(1) rotate(0deg);
+    }
+    50% {
+      transform: translate3d(3%, 2%, 0) scale(1.08) rotate(4deg);
+    }
+    100% {
+      transform: translate3d(-2%, 4%, 0) scale(1.03) rotate(-3deg);
     }
   }
   @keyframes pop {
@@ -338,24 +379,26 @@
  */
 @utility glass {
   background-color: var(--glass-fill);
+  background-image: var(--glass-sheen);
   border-color: var(--glass-border);
   box-shadow: var(--glass-shadow);
   -webkit-backdrop-filter: var(--glass-filter);
   backdrop-filter: var(--glass-filter);
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    background-color: var(--glass-fill-solid);
+    background-color: var(--glass-fallback);
   }
 }
 
 /*
- * Glass without the blur: the same fill, hairline, highlight and shadow on a
- * solid surface. The desktop sidebars wear it: they sit over the still ground
- * only, where blur shows nothing, and with software compositing (a laptop
- * whose GPU Chrome does not use) their blur cost the inbox 58 fps and the
- * leads table 56 while scrolling, against 60 without it.
+ * Glass without the blur: a translucent fill the field shows through, the
+ * same hairline, highlight, sheen and shadow. The desktop sidebars wear it:
+ * they sit over the field only, where blur shows nothing, and with software
+ * compositing (a laptop whose GPU Chrome does not use) their blur cost the
+ * inbox 58 fps and the leads table 56 while scrolling, against 60 without it.
  */
 @utility glass-solid {
   background-color: var(--glass-fill-solid);
+  background-image: var(--glass-sheen);
   border-color: var(--glass-border);
   box-shadow: var(--glass-shadow);
 }
@@ -369,7 +412,7 @@
   :root:has([data-slot$="-overlay"][data-state="open"]) & {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
-    background-color: var(--glass-fill-solid);
+    background-color: var(--glass-fallback);
   }
 }
 
@@ -394,7 +437,7 @@
   }
   @media (hover: hover) {
     &:hover {
-      transform: translateY(-3px);
+      transform: translateY(var(--motion-lift)) scale(1.012);
     }
     &:hover::after {
       opacity: 1;
@@ -497,12 +540,55 @@
   }
 }
 
+/*
+ * The field: two fixed layers behind everything. They never scroll and never
+ * repaint on scroll; the blooms drift on the compositor (transform only).
+ * The blooms layer is larger than the screen, so its edges never show.
+ */
 html {
   background: var(--background);
 }
 body {
   color: var(--foreground);
 }
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  pointer-events: none;
+}
+body::before {
+  inset: 0;
+  background: var(--field-base);
+}
+body::after {
+  inset: -20%;
+  background: var(--field-blooms);
+  will-change: transform;
+  animation: field-drift var(--motion-field-duration) ease-in-out infinite alternate;
+}
+
+/*
+ * A page's content enters in a stagger: each block of the page, and each card
+ * in a grid row, rises and scales into place one after another (the page
+ * itself no longer moves as one piece).
+ */
+.page.animate-enter {
+  animation: none;
+}
+.page.animate-enter > *,
+.page.animate-enter > .grid > * {
+  animation: var(--animate-enter);
+}
+.page.animate-enter > :nth-child(2) { animation-delay: calc(var(--motion-stagger) * 1); }
+.page.animate-enter > :nth-child(3) { animation-delay: calc(var(--motion-stagger) * 2); }
+.page.animate-enter > :nth-child(4) { animation-delay: calc(var(--motion-stagger) * 3); }
+.page.animate-enter > :nth-child(5) { animation-delay: calc(var(--motion-stagger) * 4); }
+.page.animate-enter > :nth-child(n + 6) { animation-delay: calc(var(--motion-stagger) * 5); }
+.page.animate-enter > .grid > :nth-child(2) { animation-delay: calc(var(--motion-stagger) * 3); }
+.page.animate-enter > .grid > :nth-child(3) { animation-delay: calc(var(--motion-stagger) * 4); }
+.page.animate-enter > .grid > :nth-child(n + 4) { animation-delay: calc(var(--motion-stagger) * 5); }
 
 @layer base {
   * {
@@ -552,7 +638,12 @@ html:lang(ar) {
     --motion-count-duration: 0ms;
     --motion-stagger: 0ms;
     --motion-enter-distance: 0px;
+    --motion-enter-scale: 1;
     --motion-slide-distance: 0px;
+    --motion-lift: 0px;
+  }
+  body::after {
+    animation: none;
   }
   *,
   *::before,
@@ -578,6 +669,10 @@ html:lang(ar) {
   html,
   body {
     background: #fff;
+  }
+  body::before,
+  body::after {
+    display: none;
   }
 
   /* keep chart fills and badges */

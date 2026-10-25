@@ -77,7 +77,7 @@ export function BottomNav() {
     <nav
       data-slot="bottom-nav"
       aria-label={t('bottomNav')}
-      className="shrink-0 border-t bg-card pb-[env(safe-area-inset-bottom)] md:hidden print:hidden"
+      className="glass-solid shrink-0 border-t pb-[env(safe-area-inset-bottom)] md:hidden print:hidden"
     >
       <ul className="grid grid-cols-4">
         {BOTTOM_ITEMS.map((item) => {

@@ -36,7 +36,7 @@ export function TodayAppointmentsCard({ appointments }: { appointments: Appointm
                   href={`/dashboard/leads/${appointment.id}`}
                   className="flex items-center gap-2 rounded-md text-sm hover:bg-accent/60 max-md:min-h-11"
                 >
-                  <span className={isDayOnlyVisit(appointment) ? 'shrink-0 text-xs font-medium' : 'w-14 shrink-0 font-medium tabular-nums'}>
+                  <span className={isDayOnlyVisit(appointment) ? 'shrink-0 text-xs font-medium' : 'min-w-14 shrink-0 font-medium whitespace-nowrap tabular-nums'}>
                     {/* A day-only visit has no time: what it has instead is the arrival order */}
                     {isDayOnlyVisit(appointment)
                       ? tAppointments('firstCome')

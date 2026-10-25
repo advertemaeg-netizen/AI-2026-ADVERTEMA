@@ -6,36 +6,30 @@
  *     10.90 at worst on the bare gradient (its cream end), 13.29 at worst on a
  *     panel over it. White text sits on charcoal only; yellow and coral are
  *     never text.
- *   - The guidelines' 65% light / 25% warm / 10% dark: the page is Cloud
- *     White, and the gradient is a band behind the heroes and the closing
- *     call only. Spread behind the whole page it measured 52–71% warm, a
- *     beige wash. Signature yellow is selection and emphasis: the current
- *     page in the nav and one highlight per screen.
+ *   - The page stands on the product's drifting field (globals.css, on
+ *     <body>), and the heroes and the closing call get the brand gradient on
+ *     top of it, at full strength (25 October 2026: a strong gradient, glass
+ *     and strong motion, by the owner's choice).
  *   - 60fps on a mid-range Android. Only transform and opacity animate, the
- *     field has no filter, and two surfaces blur at most (the header and the
- *     hero conversation).
- *   - The identity's signature, quieter than the old brand's: light fills,
- *     very light shadows, thin charcoal lines, short motion that does not
- *     overshoot.
+ *     field has no filter, and one surface blurs (the header, which content
+ *     scrolls under): the panels and the conversation are glass without blur.
  *   - Reduced motion zeroes everything: every animation below sits inside
  *     `no-preference`, so with reduce the page is simply its final state.
  */
 
-/* The field: Cloud White, fixed behind the whole site */
+/* The site's own field layer: transparent, so the shared field shows */
 .site-field {
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: var(--background);
 }
 
 /*
- * The gradient band: the identity's one linear gradient, full-bleed behind a
- * centred section (the heroes, the closing call). Periwinkle at the
- * bottom-left (the 35deg start), cream at the top-right, across the viewport
- * rather than the section, so all three stops show. The band is 100vw wide,
- * which counts a desktop scrollbar: the site's body clips the overflow.
+ * The gradient band: the brand gradient, full-bleed behind a centred section
+ * (the heroes, the closing call), fading in and out at its top and bottom so
+ * it melts into the field rather than ending on a line. The band is 100vw
+ * wide, which counts a desktop scrollbar: the site's body clips the overflow.
  */
 .site-band {
   position: relative;
@@ -45,11 +39,13 @@
   content: '';
   position: absolute;
   z-index: -1;
-  inset-block: 0;
+  inset-block: -4rem;
   left: calc(50% - 50vw);
   width: 100vw;
   pointer-events: none;
   background: var(--brand-gradient);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
 }
 body:has(.site-field) {
   overflow-x: clip;
@@ -75,7 +71,7 @@ body:has(.site-field) {
   line-height: 1.6;
 }
 
-/* Arabic line heights, per locale (IBM Plex Sans Arabic): the guidelines' body
+/* Arabic line heights, per locale (Alexandria): the guidelines' body
    1.6–1.8 (the top, for the site's long reading) and headings 1.3–1.45; English
    keeps the values above. Unlayered, so they win over the components' leading-*
    utilities and the classes above. Arabic letter spacing is reset in globals.css. */
@@ -87,35 +83,40 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
   line-height: 1.35;
 }
 
-/* Surfaces: a light fill the gradient shows through, a hairline, a very
-   light shadow; no blur (cheap on a phone) */
+/* Surfaces: glass without blur (cheap on a phone): a white fill the field
+   shows through, the sheen, a white hairline and a deep periwinkle shadow */
 .site-panel {
-  background: rgb(247 248 248 / 0.7);
-  border: 1px solid rgb(255 255 255 / 0.8);
+  background: rgb(255 255 255 / 0.55) var(--glass-sheen);
+  border: 1px solid rgb(255 255 255 / 0.85);
   border-radius: 1.5rem;
   box-shadow:
-    0 0 0 1px rgb(34 37 39 / 0.04),
-    0 16px 32px -24px rgb(34 37 39 / 0.16);
+    inset 0 1px 0 rgb(255 255 255 / 0.95),
+    0 30px 60px -30px rgb(70 86 160 / 0.45),
+    0 8px 20px -12px rgb(34 37 39 / 0.12);
 }
 .site-panel-solid {
-  background: var(--glass-fill-solid);
+  background: rgb(255 255 255 / 0.82) var(--glass-sheen);
 }
 .site-panel-quiet {
-  background: rgb(247 248 248 / 0.55);
+  background: rgb(255 255 255 / 0.42) var(--glass-sheen);
   border: 1px solid rgb(255 255 255 / 0.8);
   border-radius: 1.25rem;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 18px 40px -26px rgb(70 86 160 / 0.35);
 }
 
-/* The hero conversation: one of the two blurred surfaces */
+/* The hero conversation: glass without blur. It floats, and a blurred
+   surface that moves is re-blurred every frame; over the smooth gradient the
+   blur showed nothing anyway */
 .site-phone {
-  background: rgb(247 248 248 / 0.72);
-  border: 1px solid rgb(255 255 255 / 0.85);
+  background: rgb(255 255 255 / 0.6) var(--glass-sheen);
+  border: 1px solid rgb(255 255 255 / 0.9);
   border-radius: 2rem;
   box-shadow:
-    0 0 0 1px rgb(34 37 39 / 0.04),
-    0 24px 48px -32px rgb(34 37 39 / 0.2);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+    inset 0 1px 0 rgb(255 255 255 / 0.95),
+    0 50px 100px -40px rgb(70 86 160 / 0.55),
+    0 14px 30px -16px rgb(34 37 39 / 0.18);
 }
 .site-bubble {
   max-width: 85%;
@@ -166,7 +167,7 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
   /* ---- The hero conversation: one cycle, then it stays ---- */
   .site-convo [data-step] {
     opacity: 0;
-    animation: site-message-in 420ms var(--motion-ease-out) both;
+    animation: site-message-in 640ms var(--motion-spring) both;
     animation-delay: calc(var(--at) * 1ms);
   }
   .site-convo [data-typing] {
@@ -180,14 +181,20 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
     animation-delay: calc(var(--at) * 1ms + var(--i) * 120ms);
   }
   .site-convo [data-confirm] {
-    animation: site-message-in 420ms var(--motion-ease-out) both, site-pop 420ms var(--motion-ease-out) both;
+    animation: site-message-in 640ms var(--motion-spring) both, site-pop 760ms var(--motion-spring) both;
     animation-delay: calc(var(--at) * 1ms), calc(var(--at) * 1ms + 160ms);
   }
 
   /* ---- Entry of the hero itself ---- */
   .site-rise {
-    animation: site-rise 700ms var(--motion-ease-out) both;
-    animation-delay: calc(var(--i, 0) * 80ms);
+    animation:
+      site-rise var(--motion-spring-duration) var(--motion-spring) both,
+      site-fade 600ms var(--motion-ease-out) both;
+    animation-delay: calc(var(--i, 0) * 110ms);
+  }
+  /* The hero conversation floats */
+  .site-phone {
+    animation: site-float 7s ease-in-out infinite alternate;
   }
 
   /* ---- Scroll-driven: only where the browser can, otherwise the content just stands ---- */
@@ -212,9 +219,9 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
     }
   }
 
-  /* ---- Section 5: the pointer at the widget, two nudges then still ---- */
+  /* ---- Section 5: the pointer at the widget, three nudges then still ---- */
   .site-pointer {
-    animation: site-nudge 1400ms var(--motion-ease-out) 2 both;
+    animation: site-nudge 1400ms var(--motion-ease-out) 3 both;
     animation-delay: 600ms;
   }
 }
@@ -222,11 +229,24 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
 @keyframes site-message-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(18px) scale(0.9);
   }
   to {
     opacity: 1;
     transform: none;
+  }
+}
+@keyframes site-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes site-float {
+  from {
+    transform: translateY(0) rotate(-0.6deg);
+  }
+  to {
+    transform: translateY(-14px) rotate(0.6deg);
   }
 }
 @keyframes site-typing {
@@ -252,7 +272,7 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
 }
 @keyframes site-pop {
   from {
-    transform: scale(0.9);
+    transform: scale(0.7);
   }
   to {
     transform: scale(1);
@@ -260,18 +280,16 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
 }
 @keyframes site-rise {
   from {
-    opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(44px) scale(0.94);
   }
   to {
-    opacity: 1;
     transform: none;
   }
 }
 @keyframes site-reveal {
   from {
     opacity: 0;
-    transform: translateY(24px);
+    transform: translateY(72px) scale(0.92);
   }
   to {
     opacity: 1;
@@ -292,6 +310,6 @@ html:lang(ar) :is(h1, h2, h3, .site-display, .site-h2) {
     transform: translate(0, 0);
   }
   50% {
-    transform: translate(var(--site-nudge-x, 6px), 6px);
+    transform: translate(var(--site-nudge-x, 12px), 12px);
   }
 }
