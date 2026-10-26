@@ -77,6 +77,20 @@ const retryConnectionErrors: typeof fetch = async (input, init) => {
     await new Promise((resolve) => setTimeout(resolve, code === 'PGRST000' ? Math.min(200 * attempt, 1000) : 50 * attempt))
   }
 }
+/**
+ * A hang here is the single PGlite connection wedging under a refused
+ * statement (pglite#958), and vitest's timeout says nothing about which one.
+ * Before that timeout fires, say what has been waited on.
+ */
+async function namingTheStatement<T>(work: () => Promise<T>): Promise<T> {
+  const watchdog = setTimeout(() => console.error(`[access-matrix] no answer for 240 s; waiting on: ${lastRequest}`), 240_000)
+  try {
+    return await work()
+  } finally {
+    clearTimeout(watchdog)
+  }
+}
+
 const clientWith = (key: string) =>
   createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -492,9 +506,12 @@ describe('access matrix: who can read and write what', () => {
 
   it('is the snapshot, for every identity, every table, every analytics function', async () => {
     const everyone = Object.keys(clients) as Who[]
-    const matrix: Record<string, Matrix> = {}
-    for (const who of everyone) matrix[who] = await readsFor(who)
-    for (const who of everyone) matrix[who].write = await writesFor(who)
+    const matrix = await namingTheStatement(async () => {
+      const matrix: Record<string, Matrix> = {}
+      for (const who of everyone) matrix[who] = await readsFor(who)
+      for (const who of everyone) matrix[who].write = await writesFor(who)
+      return matrix
+    })
     await expect(JSON.stringify(matrix, null, 2) + '\n').toMatchFileSnapshot('./access-matrix.snapshot.json')
   }, 300_000)
 })
