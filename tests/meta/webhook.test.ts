@@ -10,7 +10,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { config, proxy } from '../../proxy'
 import nextConfig from '../../next.config'
 import { GET, POST } from '../../app/api/webhook/meta/route'
-import { flushAfter, seedClient } from '../harness/helpers'
+import { swallowedMessages } from '@/lib/meta/processed'
+import { flushAfter, seedClient, serviceClient } from '../harness/helpers'
 
 /**
  * Meta's webhook: receive and log, on the app's host, outside any auth.
@@ -194,8 +195,75 @@ describe('POST: a delivery', () => {
         },
       ],
       clients: { [phoneNumberId]: { clientId, channelId: channel!.id } },
+      messages: { 'wamid.ABC123': 'new' },
     })
     for (const forbidden of [SECRET_TEXT, SENDER, 'Sara', '15550001111']) expect(raw).not.toContain(forbidden)
+  })
+
+  // Meta retries on a timeout, on a non-200 and sometimes on a 200 it did not read in time, with the same wamid
+  it('a repeated wamid does nothing: claimed once, the retry logged as a duplicate, one row', async () => {
+    const { supabase, clientId } = await seedClient()
+    const phoneNumberId = `PN-${crypto.randomUUID()}`
+    const { data: channel } = await supabase
+      .from('channels')
+      .insert({ client_id: clientId, type: 'whatsapp', name: 'WhatsApp', external_id: phoneNumberId })
+      .select('id')
+      .single<{ id: string }>()
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const wamid = `wamid.${crypto.randomUUID()}`
+    const payload = whatsappMessage(phoneNumberId)
+    payload.entry[0].changes[0].value.messages[0].id = wamid
+
+    const first = await deliver(payload)
+    const second = await deliver(payload)
+    expect([first.response.status, second.response.status]).toEqual([200, 200])
+
+    const lines = info.mock.calls.filter((call) => call[0] === '[webhook/meta]').map((call) => JSON.parse(String(call[1])))
+    expect(lines.map((line) => line.messages)).toEqual([{ [wamid]: 'new' }, { [wamid]: 'duplicate' }])
+
+    // One row, for the channel the number maps to, closed once processing finished
+    const { data: rows } = await serviceClient().from('processed_meta_messages').select('message_id, channel_id, completed_at').eq('message_id', wamid)
+    expect(rows).toEqual([{ message_id: wamid, channel_id: channel!.id, completed_at: expect.any(String) }])
+  })
+
+  // Insert-first loses a message if processing crashes after the claim: the retry is a duplicate by then.
+  // The right trade, and the silent case is made findable: a claimed row never closed, older than the window
+  it('counts a message claimed and never completed as swallowed, and nothing else', async () => {
+    const { supabase, clientId } = await seedClient()
+    const { data: channel } = await supabase
+      .from('channels')
+      .insert({ client_id: clientId, type: 'whatsapp', name: 'WhatsApp', external_id: `PN-${crypto.randomUUID()}` })
+      .select('id')
+      .single<{ id: string }>()
+    const service = serviceClient()
+    const before = await swallowedMessages(service, 5)
+
+    // Claimed ten minutes ago, never closed: a crash between the claim and the reply
+    const wamid = `wamid.${crypto.randomUUID()}`
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60_000).toISOString()
+    const { error } = await service.from('processed_meta_messages').insert({ message_id: wamid, channel_id: channel!.id, received_at: tenMinutesAgo })
+    expect(error).toBeNull()
+    expect(await swallowedMessages(service, 5)).toBe(before + 1)
+
+    // A fresh open row is not swallowed yet: the window is what tells a crash from a reply in progress
+    const { error: freshError } = await service.from('processed_meta_messages').insert({ message_id: `wamid.${crypto.randomUUID()}`, channel_id: channel!.id })
+    expect(freshError).toBeNull()
+    expect(await swallowedMessages(service, 5)).toBe(before + 1)
+
+    // Closed: no longer counted
+    await service.from('processed_meta_messages').update({ completed_at: new Date().toISOString() }).eq('message_id', wamid)
+    expect(await swallowedMessages(service, 5)).toBe(before)
+  })
+
+  it('claims nothing for a number no client has: the row needs a channel, and nothing could act on it', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const wamid = `wamid.${crypto.randomUUID()}`
+    const payload = whatsappMessage('PN-nobody')
+    payload.entry[0].changes[0].value.messages[0].id = wamid
+    await deliver(payload)
+    expect(logged(info).parsed.messages).toEqual({ [wamid]: 'unmapped' })
+    const { data: rows } = await serviceClient().from('processed_meta_messages').select('message_id').eq('message_id', wamid)
+    expect(rows).toEqual([])
   })
 
   it('logs a WhatsApp status by id and state, its error codes without their text, and says when no client has the number', async () => {
@@ -230,6 +298,7 @@ describe('POST: a delivery', () => {
       { kind: 'status', field: 'messages', messageId: 'wamid.OUT1', status: 'failed', timestamp: '1792569601', errorCodes: [131047] },
     ])
     expect(parsed.clients).toEqual({ 'PN-test-number': 'unmapped' })
+    expect(parsed.messages).toEqual({})
     for (const forbidden of [SECRET_TEXT, SENDER, 'Re-engagement']) expect(raw).not.toContain(forbidden)
   })
 
@@ -268,6 +337,7 @@ describe('POST: a delivery', () => {
       ],
     })
     expect(parsed.clients).toEqual({ 'PAGE-1': 'unmapped' })
+    expect(parsed.messages).toEqual({ m_abc: 'unmapped', m_img: 'unmapped' })
     for (const forbidden of [SECRET_TEXT, psid, 'cdn.example']) expect(raw).not.toContain(forbidden)
   })
 
