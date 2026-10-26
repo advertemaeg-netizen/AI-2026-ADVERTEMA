@@ -331,6 +331,11 @@ async function readsFor(who: Who): Promise<Matrix> {
           const { data, error } = await db.rpc('needs_human_counts')
           return error ? outcome(error) : byKey((data ?? []).map((row: { reason: string; conversations: number }) => [row.reason, Number(row.conversations)]))
         })(),
+    // The deploy guard's function (20261105): the service role alone reads it. Granted wider, this cell goes green and the test red
+    applied_migrations: await (async () => {
+      const { data, error } = await db.rpc('applied_migrations')
+      return error ? outcome(error) : `allowed: ${((data as unknown[] | null) ?? []).length} versions`
+    })(),
     client_team: Object.fromEntries(
       await Promise.all(
         Object.entries(ids.client).map(async ([client, id]) => {

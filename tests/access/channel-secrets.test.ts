@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { createUser, seedClient, serviceClient } from '../harness/helpers'
+import { createUser, seedClient } from '../harness/helpers'
 import { signJwt } from '../harness/jwt'
 
 /**

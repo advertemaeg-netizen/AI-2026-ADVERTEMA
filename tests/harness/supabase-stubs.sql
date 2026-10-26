@@ -10,6 +10,15 @@ create schema auth;
 create schema storage;
 create schema realtime;
 
+-- The Supabase CLI's record of applied migrations (read by applied_migrations(),
+-- 20261105). The harness applies the files itself, so the table stays empty.
+create schema supabase_migrations;
+create table supabase_migrations.schema_migrations (
+  version text primary key,
+  statements text[],
+  name text
+);
+
 -- Preinstalled on Supabase
 create extension pgcrypto with schema extensions;
 

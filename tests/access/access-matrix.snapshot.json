@@ -17,6 +17,7 @@
     },
     "rpc": {
       "needs_human_counts": "refused",
+      "applied_migrations": "refused",
       "client_team": {
         "A1": "refused",
         "A2": "refused",
@@ -316,6 +317,7 @@
     },
     "rpc": {
       "needs_human_counts": "not comparable: the super admin sees every client in the shared test database",
+      "applied_migrations": "refused",
       "client_team": {
         "A1": [
           "clientAdminA1",
@@ -636,6 +638,7 @@
       "needs_human_counts": {
         "no_answer": 2
       },
+      "applied_migrations": "refused",
       "client_team": {
         "A1": [
           "clientAdminA1",
@@ -973,6 +976,7 @@
       "needs_human_counts": {
         "no_answer": 2
       },
+      "applied_migrations": "refused",
       "client_team": {
         "A1": [
           "clientAdminA1",
@@ -1280,6 +1284,7 @@
       "needs_human_counts": {
         "no_answer": 1
       },
+      "applied_migrations": "refused",
       "client_team": {
         "A1": [],
         "A2": [],
@@ -1537,6 +1542,7 @@
     },
     "rpc": {
       "needs_human_counts": {},
+      "applied_migrations": "refused",
       "client_team": {
         "A1": [],
         "A2": [],
@@ -1814,6 +1820,7 @@
       "needs_human_counts": {
         "no_answer": 2
       },
+      "applied_migrations": "refused",
       "client_team": {
         "A1": [
           "clientAdminA1",
@@ -2116,6 +2123,7 @@
       "needs_human_counts": {
         "no_answer": 2
       },
+      "applied_migrations": "refused",
       "client_team": {
         "A1": [
           "clientAdminA1",
@@ -2383,6 +2391,7 @@
     },
     "rpc": {
       "needs_human_counts": {},
+      "applied_migrations": "refused",
       "client_team": {
         "A1": [],
         "A2": [],
