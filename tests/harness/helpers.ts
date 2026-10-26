@@ -4,6 +4,7 @@ import { signJwt } from './jwt'
 
 const realFetch = globalThis.fetch
 const GEMINI_HOST = 'generativelanguage.googleapis.com'
+const GRAPH_HOST = 'graph.facebook.com'
 const OPENAI_EMBEDDINGS_URL = 'https://api.openai.com/v1/embeddings'
 
 export type GeminiCall = {
@@ -59,6 +60,17 @@ export function mockGemini(handler: GeminiHandler) {
   geminiHandler = handler
 }
 
+/** A call to Meta's Graph API (the WhatsApp send), as the code under test made it */
+export type GraphCall = { url: string; method: string; headers: Record<string, string>; body: Record<string, unknown> }
+type GraphHandler = (call: GraphCall) => Response | Promise<Response>
+let graphHandler: GraphHandler | null = null
+export const graphCalls: GraphCall[] = []
+
+/** Answers Graph API calls; the handler may throw to stand for a failed request */
+export function mockGraph(handler: GraphHandler) {
+  graphHandler = handler
+}
+
 /** A Gemini generateContent response carrying `text` */
 export function geminiText(text: string) {
   return Response.json({
@@ -95,6 +107,18 @@ export async function harnessFetch(input: RequestInfo | URL, init?: RequestInit)
     geminiCalls.push(call)
     if (!geminiHandler) throw new Error('Unexpected Gemini call: use mockGemini() in the test')
     return geminiHandler(call)
+  }
+
+  if (url.host === GRAPH_HOST) {
+    const call: GraphCall = {
+      url: url.href,
+      method: (init?.method ?? 'GET').toUpperCase(),
+      headers: Object.fromEntries(new Headers(init?.headers)),
+      body: JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>,
+    }
+    graphCalls.push(call)
+    if (!graphHandler) throw new Error('Unexpected Graph API call: use mockGraph() in the test')
+    return graphHandler(call)
   }
 
   // Embeddings go to OpenAI, as in production; the same mock answers them
@@ -137,6 +161,8 @@ export async function flushAfter() {
 
 export function resetHarness() {
   geminiHandler = null
+  graphHandler = null
+  graphCalls.length = 0
   restInterceptors = []
   restCalls.length = 0
   geminiCalls.length = 0
