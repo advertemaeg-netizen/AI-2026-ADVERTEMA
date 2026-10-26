@@ -370,8 +370,11 @@ describe('what the model is told about the record', () => {
     expect(describeContact({ ...EMPTY_CONTACT, pendingName: 'سامح' })).toContain(PARTIAL_NAME_AR)
   })
 
-  // 26 October 2026: the on-record lines were English in a block that was otherwise Arabic, for every returning visitor
-  it('reads in one language in every mode and every state: not a Latin letter in it', () => {
+  // 26 October 2026: the on-record lines were English in a block that was otherwise Arabic, for every returning visitor.
+  // THE SCOPE IS describeContact AND STOPS THERE. The booking blocks keep their JSON keys in Latin on purpose
+  // ("appointment", "other_answer", "day_type", "needs_team_check", {{appointment}}): widened to the prompt as a
+  // whole, this would fire on correct content, and the fix someone reaches for is to Arabise a JSON key.
+  it('describeContact reads in one language in every mode and every state: not a Latin letter in it', () => {
     const states: Partial<ContactState>[] = [
       {},
       { name: 'كريم سامي' },
