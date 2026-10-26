@@ -3,7 +3,7 @@ import { getTranslations } from 'next-intl/server'
 import { Radio } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { getClient, getClientPermissions } from '@/lib/actions/clients'
-import { getChannels } from '@/lib/actions/channels'
+import { getChannels, getWhatsappSubscription } from '@/lib/actions/channels'
 import { appOrigin } from '@/lib/app-url'
 import { requireClientManager } from '@/lib/auth/guards'
 import { BackToClients, ClientTabs } from '../_components/client-page-nav'
@@ -25,6 +25,18 @@ export default async function ChannelsPage({
     getClientPermissions(),
     appOrigin(),
   ])
+  // A WhatsApp channel's subscription to our app, asked of Meta on each view: a
+  // WABA not subscribed delivers nothing and shows green everywhere else
+  const subscriptions = Object.fromEntries(
+    await Promise.all(
+      channels
+        .filter((channel) => channel.type === 'whatsapp')
+        .map(async (channel) => {
+          const state = await getWhatsappSubscription(channel.id)
+          return [channel.id, state.kind === 'notFound' ? null : state] as const
+        })
+    )
+  )
 
   return (
     <div className="page animate-enter">
@@ -54,7 +66,13 @@ export default async function ChannelsPage({
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {channels.map((channel) => (
-            <ChannelCard key={channel.id} channel={channel} canManage={canManage} appOrigin={origin} />
+            <ChannelCard
+              key={channel.id}
+              channel={channel}
+              canManage={canManage}
+              appOrigin={origin}
+              subscription={subscriptions[channel.id] ?? null}
+            />
           ))}
         </div>
       )}

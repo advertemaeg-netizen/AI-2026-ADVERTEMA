@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { toast } from 'sonner'
-import { Check, Copy, Trash2 } from 'lucide-react'
+import { Check, Copy, Link2, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -26,19 +26,37 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { deleteChannelAction, toggleChannelActive } from '@/lib/actions/channels'
+import { deleteChannelAction, subscribeWhatsappAction, toggleChannelActive } from '@/lib/actions/channels'
+import type { SubscriptionState } from '@/lib/meta/subscription'
 import type { Channel } from '@/lib/types/channels'
 import { CHANNEL_ICONS } from '@/components/channel-icon'
 import { embedCode } from './channel-meta'
+
+/**
+ * A WhatsApp channel's subscription state, as the page read it from Meta.
+ * Four states that never collapse: linked; not linked (messages will not
+ * arrive: the one every other indicator hid on 2026-10-26); not set up on our
+ * side; and the check itself failed (not knowing is not knowing it is
+ * broken). Badge tone and text per state.
+ */
+const SUBSCRIPTION_VIEW = {
+  subscribed: { key: 'subscribed', tone: 'positive' },
+  not_subscribed: { key: 'notSubscribed', tone: 'critical' },
+  not_configured: { key: 'notConfigured', tone: 'warning' },
+  failed: { key: 'failed', tone: 'quiet' },
+} as const
 
 export function ChannelCard({
   channel,
   canManage,
   appOrigin,
+  subscription = null,
 }: {
   channel: Channel
   canManage: boolean
   appOrigin: string
+  /** WhatsApp channels only: the WABA's subscription to our app, read by the page */
+  subscription?: SubscriptionState | null
 }) {
   const t = useTranslations('channels')
   const tCommon = useTranslations('common')
@@ -47,6 +65,8 @@ export function ChannelCard({
   const [isDeleting, startDelete] = useTransition()
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [isLinking, startLink] = useTransition()
+  const [subscriptionNow, setSubscriptionNow] = useState(subscription)
 
   const Icon = CHANNEL_ICONS[channel.type]
   const snippet =
@@ -71,6 +91,20 @@ export function ChannelCard({
       } else {
         toast.error(t(`errors.${result.error}`))
       }
+    })
+  }
+
+  // The connect step (subscribeApp): the state shown is the one Meta reads back after it
+  function handleLink() {
+    startLink(async () => {
+      const result = await subscribeWhatsappAction(channel.id)
+      if (result.kind === 'notFound' || result.kind === 'impersonating') {
+        toast.error(t(`errors.${result.kind === 'impersonating' ? 'impersonating' : 'notFound'}`))
+        return
+      }
+      setSubscriptionNow(result)
+      if (result.kind === 'subscribed') toast.success(t('whatsapp.subscribed.description'))
+      else toast.error(t(`whatsapp.${SUBSCRIPTION_VIEW[result.kind].key}.description`))
     })
   }
 
@@ -110,6 +144,21 @@ export function ChannelCard({
       </CardHeader>
 
       <CardContent className="grid gap-4">
+        {subscriptionNow && (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <Badge variant={SUBSCRIPTION_VIEW[subscriptionNow.kind].tone}>{t(`whatsapp.${SUBSCRIPTION_VIEW[subscriptionNow.kind].key}.badge`)}</Badge>
+              <p className="text-sm text-muted-foreground">{t(`whatsapp.${SUBSCRIPTION_VIEW[subscriptionNow.kind].key}.description`)}</p>
+            </div>
+            {canManage && subscriptionNow.kind === 'not_subscribed' && (
+              <Button variant="outline" size="sm" onClick={handleLink} disabled={isLinking}>
+                <Link2 data-icon="inline-start" />
+                {isLinking ? tCommon('loading') : t('whatsapp.link')}
+              </Button>
+            )}
+          </div>
+        )}
+
         {snippet && (
           <div className="grid gap-2">
             <div className="flex items-center justify-between gap-2">

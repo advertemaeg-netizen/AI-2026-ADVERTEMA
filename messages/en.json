@@ -248,6 +248,25 @@
     "fieldErrors": {
       "nameRequired": "Channel name is required.",
       "nameTooLong": "Name is too long (max 100 characters)."
+    },
+    "whatsapp": {
+      "subscribed": {
+        "badge": "Linked",
+        "description": "The account is linked to the app, and messages arrive."
+      },
+      "notSubscribed": {
+        "badge": "Not linked",
+        "description": "The WhatsApp account is not linked to the app: inbound messages will not arrive."
+      },
+      "notConfigured": {
+        "badge": "Not set up",
+        "description": "The app's settings on the server are incomplete, so the check could not run."
+      },
+      "failed": {
+        "badge": "Check failed",
+        "description": "Meta could not be reached. The link state is unknown."
+      },
+      "link": "Link account"
     }
   },
   "conversations": {
