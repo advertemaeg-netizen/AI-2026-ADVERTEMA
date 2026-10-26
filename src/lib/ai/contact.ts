@@ -1,9 +1,14 @@
 import { isOnlyANumber, normalizePhone, phoneLikeRuns, toLatinDigits } from '@/lib/phone'
 import {
+  APPOINTMENT_NAME_NOT_YET_AR,
   DAY_ONLY_NAME_NOT_YET_AR,
   DAY_ONLY_PHONE_NOT_YET_AR,
+  NAME_ON_RECORD_AR,
   NONE_NAME_NOT_YET_AR,
   NONE_PHONE_NOT_YET_AR,
+  PARTIAL_NAME_AR,
+  PHONE_GIVEN_UP_AR,
+  PHONE_ON_RECORD_AR,
   RECORD_HEADER_AR,
 } from '@/lib/ai/prompts-ar'
 import type { BookingMode, NameStrictness } from '@/lib/types/bot-settings'
@@ -188,33 +193,21 @@ export function missingDetails(name: string | null, phone: string | null): ('nam
  * model.
  */
 export function describeContact(state: ContactState, mode: BookingMode = 'appointment'): string {
-  // Day-only and no booking: the copy owner's Arabic (prompts-ar.ts). With no
-  // booking there is nothing for the system to ask after: the model asks, as
-  // its instructions say. Appointments keep their English lines.
-  const NOT_YET_AR = {
+  // The copy owner's Arabic (prompts-ar.ts), in every mode since 26 October
+  // 2026: one chain of authority reads in one language. Only what the system
+  // asks after differs by booking shape, so the not-yet lines are the
+  // shape's; everything else is said the same way whatever the shape.
+  const notYet = {
+    appointment: { name: APPOINTMENT_NAME_NOT_YET_AR, phone: DAY_ONLY_PHONE_NOT_YET_AR },
     day_only: { name: DAY_ONLY_NAME_NOT_YET_AR, phone: DAY_ONLY_PHONE_NOT_YET_AR },
     none: { name: NONE_NAME_NOT_YET_AR, phone: NONE_PHONE_NOT_YET_AR },
-  }
-  const notYet = (what: 'name' | 'phone') =>
-    mode !== 'appointment'
-      ? NOT_YET_AR[mode][what]
-      : what === 'name'
-        ? "The visitor's name is not on record yet: the system asks for it once the appointment is complete, so don't ask for it yourself."
-        : "The visitor's phone number is not on record yet: the system asks for it after the name, so don't ask for it yourself."
+  }[mode]
   const lines = [
-    state.name
-      ? "The visitor's name is on record: don't ask for it again."
-      : state.pendingName
-        ? "The visitor gave a name that is not a full one: don't ask for it again, whatever they answer; the system takes it as given."
-        : notYet('name'),
-    state.phone
-      ? "The visitor's phone number is on record: don't ask for it again."
-      : state.phoneRejections >= MAX_PHONE_REJECTIONS
-        ? 'The visitor has sent numbers that are not phone numbers, and the team will take their number: do NOT ask for a phone number again.'
-        : notYet('phone'),
+    // On record says it is on record, never what it is: the reply quotes the values through placeholders
+    state.name ? NAME_ON_RECORD_AR : state.pendingName ? PARTIAL_NAME_AR : notYet.name,
+    state.phone ? PHONE_ON_RECORD_AR : state.phoneRejections >= MAX_PHONE_REJECTIONS ? PHONE_GIVEN_UP_AR : notYet.phone,
   ]
-  const header = mode === 'appointment' ? 'What the system holds for this visitor (before their latest message):' : RECORD_HEADER_AR
-  return `${header}\n${lines.map((line) => `- ${line}`).join('\n')}`
+  return `${RECORD_HEADER_AR}\n${lines.map((line) => `- ${line}`).join('\n')}`
 }
 
 /** messages.metadata.contact → the state, tolerant of what older messages hold */

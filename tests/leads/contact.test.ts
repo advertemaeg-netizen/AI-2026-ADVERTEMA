@@ -3,6 +3,13 @@ import ar from '../../messages/ar.json'
 import { formatAppointment, type BookingOutcome } from '@/lib/ai/appointment'
 import { composeReply } from '@/lib/ai/compose'
 import { describeContact, EMPTY_CONTACT, readContact, validateName, type ContactState } from '@/lib/ai/contact'
+import {
+  DAY_ONLY_PHONE_NOT_YET_AR,
+  NAME_ON_RECORD_AR,
+  PARTIAL_NAME_AR,
+  PHONE_GIVEN_UP_AR,
+  PHONE_ON_RECORD_AR,
+} from '@/lib/ai/prompts-ar'
 import { displayPhone, normalizePhone, telHref, whatsappHref } from '@/lib/phone'
 
 const T = ar.botReplies.contact
@@ -347,19 +354,34 @@ describe('a name code has accepted is not asked for again', () => {
 describe('what the model is told about the record', () => {
   it('names what is on record, so it is not asked for again', () => {
     const told = describeContact({ ...EMPTY_CONTACT, name: 'كريم سامي', phone: '+201002847901' })
-    expect(told).toContain("name is on record: don't ask")
-    expect(told).toContain("phone number is on record: don't ask")
+    expect(told).toContain(NAME_ON_RECORD_AR)
+    expect(told).toContain(PHONE_ON_RECORD_AR)
     // The values themselves stay out of the prompt: the reply quotes them through placeholders
     expect(told).not.toContain('01002847901')
     expect(told).not.toContain('كريم')
   })
 
   it('tells the model to stop asking for the phone once the system has', () => {
-    expect(describeContact({ ...EMPTY_CONTACT, phoneRejections: 2 })).toContain('do NOT ask for a phone number again')
-    expect(describeContact({ ...EMPTY_CONTACT, phoneRejections: 1 })).toContain('not on record yet')
+    expect(describeContact({ ...EMPTY_CONTACT, phoneRejections: 2 })).toContain(PHONE_GIVEN_UP_AR)
+    expect(describeContact({ ...EMPTY_CONTACT, phoneRejections: 1 })).toContain(DAY_ONLY_PHONE_NOT_YET_AR)
   })
 
   it('tells the model the name was asked about once', () => {
-    expect(describeContact({ ...EMPTY_CONTACT, pendingName: 'سامح' })).toContain("don't ask for it again, whatever they answer")
+    expect(describeContact({ ...EMPTY_CONTACT, pendingName: 'سامح' })).toContain(PARTIAL_NAME_AR)
+  })
+
+  // 26 October 2026: the on-record lines were English in a block that was otherwise Arabic, for every returning visitor
+  it('reads in one language in every mode and every state: not a Latin letter in it', () => {
+    const states: Partial<ContactState>[] = [
+      {},
+      { name: 'كريم سامي' },
+      { phone: '+201002847901' },
+      { name: 'كريم سامي', phone: '+201002847901' },
+      { pendingName: 'سامح' },
+      { phoneRejections: 2 },
+    ]
+    for (const mode of ['appointment', 'day_only', 'none'] as const) {
+      for (const state of states) expect(describeContact({ ...EMPTY_CONTACT, ...state }, mode)).not.toMatch(/[A-Za-z]/)
+    }
   })
 })
