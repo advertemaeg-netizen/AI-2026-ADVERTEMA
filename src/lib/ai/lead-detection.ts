@@ -9,7 +9,7 @@ import {
   appointmentRequestSchema,
   type HoursInput,
 } from '@/lib/ai/appointment'
-import { recordAppointment } from '@/lib/ai/booking'
+import { leadsOf, recordAppointment } from '@/lib/ai/booking'
 import { validateName, type ContactState } from '@/lib/ai/contact'
 import { normalizePhone } from '@/lib/phone'
 import { claimLeadAnalysis } from '@/lib/subscription-limits'
@@ -243,9 +243,7 @@ export async function detectLead({
     const bookFromAnalysis = async () => {
       if (replied || !analysis.appointment) return
       await recordAppointment({
-        supabase,
-        clientId,
-        conversationId,
+        leads: leadsOf(supabase, clientId, conversationId),
         sourceMessageId,
         request: analysis.appointment,
         autoConfirm: false,

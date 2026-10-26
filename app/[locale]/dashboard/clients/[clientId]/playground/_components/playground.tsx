@@ -10,11 +10,16 @@ import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { testBot } from '@/lib/actions/playground'
 import type { BotSettingsInput } from '@/lib/types/bot-settings'
-import { PLAYGROUND_MAX_MESSAGE_LENGTH, type PlaygroundError } from '@/lib/types/playground'
+import {
+  PLAYGROUND_MAX_MESSAGE_LENGTH,
+  type PlaygroundError,
+  type PlaygroundMessage,
+  type PlaygroundState,
+} from '@/lib/types/playground'
 
 type ChatItem =
   | { id: string; role: 'user'; content: string }
-  | { id: string; role: 'assistant'; content: string; simulatedAppointment?: string }
+  | { id: string; role: 'assistant'; content: string; metadata: Record<string, unknown> | null; simulatedAppointment?: string }
   | { id: string; role: 'error'; error: PlaygroundError }
 
 export function Playground({
@@ -36,6 +41,8 @@ export function Playground({
   const format = useFormatter()
   const [items, setItems] = useState<ChatItem[]>([])
   const [draft, setDraft] = useState('')
+  // What the chat would have written (its lead rows): nothing is stored, so the browser carries it
+  const [state, setState] = useState<PlaygroundState>()
   const [isPending, startTransition] = useTransition()
   const endRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -54,21 +61,27 @@ export function Playground({
     setItems(next)
     setDraft('')
 
-    // Full conversation so far — errors are UI-only and never sent
-    const history = next.flatMap((item) =>
-      item.role === 'error' ? [] : [{ role: item.role, content: item.content }]
+    // Full conversation so far, each reply with its trace — errors are UI-only and never sent
+    const history = next.flatMap((item): PlaygroundMessage[] =>
+      item.role === 'error'
+        ? []
+        : item.role === 'assistant'
+          ? [{ role: item.role, content: item.content, metadata: item.metadata }]
+          : [{ role: item.role, content: item.content }]
     )
 
     startTransition(async () => {
-      const result = await testBot(clientId, history, getSettingsOverride?.())
+      const result = await testBot(clientId, history, getSettingsOverride?.(), state)
       const id = crypto.randomUUID()
       if (result.ok) {
+        setState(result.state)
         setItems((prev) => [
           ...prev,
           {
             id,
             role: 'assistant',
             content: result.reply,
+            metadata: result.metadata,
             simulatedAppointment: result.simulatedAppointment,
           },
         ])
@@ -81,6 +94,7 @@ export function Playground({
 
   function reset() {
     setItems([])
+    setState(undefined)
     setDraft('')
     inputRef.current?.focus()
   }
@@ -136,7 +150,7 @@ export function Playground({
             return (
               <Fragment key={item.id}>
                 <Bubble role="assistant">{item.content}</Bubble>
-                {/* The reply reads as a booking; nothing was booked */}
+                {/* The reply reads as a booking; nothing was stored */}
                 {item.simulatedAppointment && (
                   <p className="max-w-[85%] self-start rounded-md border border-dashed border-warning-solid/60 bg-warning-solid/10 px-3 py-1.5 text-xs text-warning">
                     {t('simulatedAppointment', {

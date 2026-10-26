@@ -145,25 +145,26 @@ describe('an hour with no part of the day', () => {
 })
 
 describe('the playground', () => {
-  it('flags the appointment in its reply as simulated, and books nothing', async () => {
+  it('flags the appointment in its reply as simulated, and stores nothing', async () => {
     models(() => botReply('حجزتلك {{appointment}}.', { day_type: 'weekday', weekday: 'thursday', hour: 6, period: 'evening' }))
     const seeded = await seedClient()
     await setBusinessHours(seeded, '08:00', '23:00')
 
     const result = await testBot(seeded.clientId, [{ role: 'user', content: BOOKING_MESSAGE }])
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       ok: true,
       reply: TEXT.bookedConfirmed.replace('{time}', 'الخميس 8 أكتوبر الساعة 6:00 مساءً'),
       simulatedAppointment: THURSDAY_6PM,
     })
+    // The lead it would have written is in the browser's hands, not the database's
+    expect(result.ok && result.state.leads.map((lead) => [lead.name, lead.appointment_at])).toEqual([['كريم مصطفى', THURSDAY_6PM]])
     expect(await leadsOf(seeded)).toEqual([])
 
     // An ordinary reply carries no such flag
     models(() => botReply('أهلاً بيك، تحت أمرك', null))
-    expect(await testBot(seeded.clientId, [{ role: 'user', content: 'السلام عليكم' }])).toEqual({
-      ok: true,
-      reply: 'أهلاً بيك، تحت أمرك',
-    })
+    const plain = await testBot(seeded.clientId, [{ role: 'user', content: 'السلام عليكم' }])
+    expect(plain).toMatchObject({ ok: true, reply: 'أهلاً بيك، تحت أمرك' })
+    expect(plain).not.toHaveProperty('simulatedAppointment')
   })
 })

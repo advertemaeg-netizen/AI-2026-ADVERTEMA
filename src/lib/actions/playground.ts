@@ -1,27 +1,18 @@
 'use server'
 
-import { NoReplyError, loadBotSettings, runBot, type BotClient } from '@/lib/ai/bot'
-import {
-  confirmsItself,
-  replyLanguage,
-  requestedDayKey,
-  resolveAppointment,
-  resolveDay,
-  withoutTime,
-  type AppointmentResolution,
-  type BookingOutcome,
-} from '@/lib/ai/appointment'
-import { branchInMessage, loadBookingBranches } from '@/lib/ai/branches'
-import { withEvidence } from '@/lib/ai/evidence'
-import { composeReply } from '@/lib/ai/compose'
+import type { BotClient } from '@/lib/ai/bot'
+import { leadsInMemory, type BookableLead } from '@/lib/ai/booking'
+import { replyToMessage, type HistoryRow, type ReplyStore } from '@/lib/ai/reply'
 import { canManage, getSession, isImpersonating } from '@/lib/auth/session'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checkClientLimit, guardLimit } from '@/lib/subscription-limits'
-import { botSettingsSchema, effectiveBookingMode, type BotSettingsInput } from '@/lib/types/bot-settings'
+import { botSettingsSchema, type BotSettingsInput } from '@/lib/types/bot-settings'
 import { UUID_PATTERN } from '@/lib/types/clients'
+import { CLOSED_LEAD_STATUSES } from '@/lib/types/leads'
 import {
   PLAYGROUND_MAX_MESSAGE_LENGTH,
   PLAYGROUND_MAX_MESSAGES,
+  playgroundStateSchema,
   type PlaygroundMessage,
   type PlaygroundResult,
 } from '@/lib/types/playground'
@@ -54,24 +45,68 @@ function isValidHistory(messages: unknown): messages is PlaygroundMessage[] {
         (m.role === 'user' || m.role === 'assistant') &&
         typeof m.content === 'string' &&
         m.content.trim().length > 0 &&
-        m.content.length <= PLAYGROUND_MAX_MESSAGE_LENGTH
+        m.content.length <= PLAYGROUND_MAX_MESSAGE_LENGTH &&
+        (m.metadata === undefined || m.metadata === null || (typeof m.metadata === 'object' && !Array.isArray(m.metadata)))
     ) &&
     messages[messages.length - 1].role === 'user'
   )
 }
 
 /**
- * Runs the client's real assistant (knowledge base + bot settings) on an
- * in-memory conversation. Nothing is stored, but each reply is a real AI
- * call, so it's metered like the widget: refused without an active
- * subscription or past the monthly messages, and counted when it succeeds.
- * `settingsOverride` previews unsaved bot settings; only admins, who could
- * save those settings anyway, may pass it.
+ * THE TEST CHAT'S ROWS, IN MEMORY. The pipeline reads its history from the
+ * chat the browser sent, replies' traces included, and writes its reply row
+ * here, where the caller picks it up; the lead rows have their own in-memory
+ * sink (leadsInMemory). Nothing reaches the database except what a widget
+ * reply also costs: the message count below, and ai_usage inside the model
+ * call. A test chat is never marked for a person and never analysed for a
+ * lead, so no analysis tokens are spent on it.
+ */
+function playgroundStore(clientId: string, messages: PlaygroundMessage[], leads: ReplyStore['leads']) {
+  const store: ReplyStore & { written: { content: string; metadata: Record<string, unknown> } | null } = {
+    written: null,
+    leads,
+    async history(limit) {
+      // Newest first, as the database answers
+      return [...messages]
+        .reverse()
+        .slice(0, limit)
+        .map((m): HistoryRow => ({ role: m.role, content: m.content, metadata: m.metadata ?? null }))
+    },
+    async insertReply(row) {
+      store.written = row
+      return { error: null }
+    },
+    async markForPerson() {},
+    async countMessage() {
+      // Counted like a widget reply. consume_client_message is service-role
+      // only; access to this client was checked before the pipeline ran.
+      const { error } = await createAdminClient().rpc('consume_client_message', { p_client_id: clientId })
+      return { error }
+    },
+    scheduleLeadDetection() {},
+  }
+  return store
+}
+
+const openLead = (rows: BookableLead[]) => rows.find((lead) => !CLOSED_LEAD_STATUSES.includes(lead.status)) ?? null
+
+/**
+ * Runs the client's real assistant on a conversation the browser holds: THE
+ * SAME PIPELINE AS THE WIDGET (replyToMessage), with the same knowledge base
+ * and bot settings. Nothing is stored. The rows the pipeline would have
+ * written (the lead, each reply's trace) come back in `state` and `metadata`,
+ * and the browser sends them with the next message, so a test of several
+ * messages runs as a visitor's chat does. Each reply is a real AI call, so
+ * it's metered like the widget: refused without an active subscription or
+ * past the monthly messages, and counted when it succeeds. `settingsOverride`
+ * previews unsaved bot settings; only admins, who could save those settings
+ * anyway, may pass it.
  */
 export async function testBot(
   clientId: string,
   messages: PlaygroundMessage[],
-  settingsOverride?: BotSettingsInput
+  settingsOverride?: BotSettingsInput,
+  state?: unknown
 ): Promise<PlaygroundResult> {
   if (await isImpersonating()) return { ok: false, error: 'impersonating' }
   const { supabase, profile } = await getSession()
@@ -101,80 +136,57 @@ export async function testBot(
     override = parsed.data
   }
 
+  // The lead rows the chat has written so far, as the browser carried them
+  let leadRows: BookableLead[] = []
+  if (state !== undefined) {
+    const parsed = playgroundStateSchema.safeParse(state)
+    if (!parsed.success) return { ok: false, error: 'validation' }
+    // The shape is the sink's own output, checked loosely above
+    leadRows = parsed.data.leads as BookableLead[]
+  }
+
   try {
-    const settings = override ?? (await loadBotSettings(supabase, clientId))
-    const branches = await loadBookingBranches(supabase, clientId).catch((error) => {
-      console.error('[playground] reading the branches failed', error)
-      return []
-    })
-    const { reply: template, appointment, otherAnswer, branch: reportedBranch } = await runBot({
+    const leads = leadsInMemory(leadRows)
+    const before = openLead(leads.rows)?.appointment_at ?? null
+    const store = playgroundStore(clientId, messages, leads)
+    const outcome = await replyToMessage({
       supabase,
-      clientId,
-      client,
-      settings,
-      history: messages.map((m) => ({ role: m.role, content: m.content })),
+      channel: { client_id: clientId, clients: client },
+      conversationId: null,
+      autoReply: true,
+      userMessage: { id: null },
+      message: messages[messages.length - 1].content,
+      store,
+      source: 'playground',
       // Unsaved settings: the bot settings page's live preview
+      settings: override,
       operation: override ? 'bot_preview' : 'playground',
-      branches,
     })
-    // Nothing is booked from a test chat: the reply shows what a visitor
-    // would get if the requested time were recorded
-    const visitorMessages = messages.filter((m) => m.role === 'user').map((m) => m.content)
-    // Only what the latest message shows a trace of, as the widget takes it.
-    // No draft here: a test chat keeps nothing between messages.
-    const evidenced = appointment ? withEvidence(appointment, visitorMessages.at(-1) ?? '').request : null
-    // The business's booking shape, as the widget applies it (runBot already
-    // drops any booking with none)
-    const mode = effectiveBookingMode(settings)
-    // The branch, as the widget would hold it: the only one, or the latest a
-    // visitor message named (a test chat keeps no draft to hold it in)
-    const several = branches.length > 1
-    const branch = several
-      ? ([...visitorMessages]
-          .reverse()
-          .map((text, i) => branchInMessage(branches, text, i === 0 ? reportedBranch : null))
-          .find(Boolean) ?? null)
-      : (branches[0] ?? null)
-    const hours = branch?.schedule ?? null
-    const resolved: BookingOutcome | AppointmentResolution = !evidenced
-      ? { status: 'none' }
-      : several && !branch
-        ? { status: 'ask_branch', day: requestedDayKey(evidenced), branches: branches.map((b) => b.name) }
-        : mode === 'day_only'
-          ? resolveDay(withoutTime(evidenced), { businessHours: hours })
-          : resolveAppointment(evidenced, { businessHours: hours, hourFromPartOfDay: false })
-    // Nothing is saved from a test chat either: a reply that states what is
-    // on record says there is nothing, as it would to a visitor with no lead
-    const reply = composeReply({
-      template,
-      events: { name: 'none', phone: 'none' },
-      record: { name: null, phone: null },
-      visitorMessages,
-      language: replyLanguage(settings.language, visitorMessages.at(-1) ?? ''),
-      appointmentDecided: Boolean(appointment),
-      otherAnswer,
-      rules: { mode, nameStrictness: settings.name_strictness, branch: several ? (branch?.name ?? null) : null },
-      outcome:
-      resolved.status === 'resolved'
-        ? {
-            status: 'booked',
-            at: resolved.at,
-            // As the widget would: only a time code checked against opening hours is confirmed
-            confirmed: confirmsItself(settings.auto_confirm_appointments, resolved.validated),
-            changed: true,
-            validated: resolved.validated,
-          }
-        : resolved,
-    })
-    // As the widget: empty is a failure only when nothing at all is left to send
-    if (!reply.trim()) throw new NoReplyError()
-    // The reply reads as a booking: the caller has to say it's a rehearsal
-    const simulated = resolved.status === 'resolved' ? { simulatedAppointment: resolved.at } : {}
-    // Counted like a widget reply. consume_client_message is service-role
-    // only; access to this client was checked above.
-    const { error: usageError } = await createAdminClient().rpc('consume_client_message', { p_client_id: clientId })
-    if (usageError) console.error('[playground] counting the message failed', usageError)
-    return { ok: true, reply, ...simulated }
+    switch (outcome.kind) {
+      case 'unavailable':
+        return { ok: false, error: 'aiUnavailable' }
+      case 'fallback':
+        // The admin is told the cause, as before the pipeline, not shown the visitor's fallback text
+        return {
+          ok: false,
+          error:
+            outcome.fallback === 'ai_unavailable' ? 'aiUnavailable' : outcome.reason === 'inactive' ? 'subscriptionInactive' : 'limitReached',
+        }
+      case 'handoff':
+        // autoReply is true above: nothing hands a test chat to a person
+        return { ok: false, error: 'unknown' }
+      case 'reply': {
+        const afterwards = openLead(leads.rows)?.appointment_at ?? null
+        return {
+          ok: true,
+          reply: outcome.reply,
+          metadata: store.written?.metadata ?? null,
+          state: { leads: leads.rows },
+          // The reply reads as a booking: the caller has to say it's a rehearsal
+          ...(afterwards !== null && afterwards !== before ? { simulatedAppointment: afterwards } : {}),
+        }
+      }
+    }
   } catch (error) {
     console.error('[playground] bot failed', error)
     return { ok: false, error: 'aiUnavailable' }
