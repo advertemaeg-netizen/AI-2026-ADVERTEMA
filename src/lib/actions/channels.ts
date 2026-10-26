@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { canManage, getSession, isImpersonating } from '@/lib/auth/session'
 import { appOrigin } from '@/lib/app-url'
+import { subscribeApp, subscribedApps, type SubscriptionState } from '@/lib/meta/subscription'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { checkClientLimit, guardLimit, limitErrorFromDb } from '@/lib/subscription-limits'
 import { UUID_PATTERN } from '@/lib/types/clients'
 import {
@@ -137,4 +139,33 @@ export async function deleteChannelAction(id: string): Promise<ChannelActionResu
 
   revalidatePath(CHANNELS_PATH, 'page')
   return { ok: true }
+}
+
+/**
+ * Whether a WhatsApp channel's WABA is subscribed to our app, asked of Meta
+ * each time: the state to show wherever the channel is inspected. A channel
+ * whose WABA is not subscribed is not connected, whatever else is green
+ * (.scratch/whatsapp-send-design.md §5). The token stays on the server: the
+ * session client only proves the caller may see the channel.
+ */
+export async function getWhatsappSubscription(channelId: string): Promise<SubscriptionState | { kind: 'notFound' }> {
+  const { supabase, profile } = await getSession()
+  if (!profile || !canManage(profile)) return { kind: 'notFound' }
+  if (!UUID_PATTERN.test(channelId)) return { kind: 'notFound' }
+  const { data: channel } = await supabase.from('channels').select('id').eq('id', channelId).eq('type', 'whatsapp').maybeSingle<{ id: string }>()
+  if (!channel) return { kind: 'notFound' }
+  return subscribedApps({ supabase: createAdminClient(), channelId })
+}
+
+/** The connect step: subscribes the channel's WABA to our app and reads the state back */
+export async function subscribeWhatsappAction(channelId: string): Promise<SubscriptionState | { kind: 'notFound' } | { kind: 'impersonating' }> {
+  if (await isImpersonating()) return { kind: 'impersonating' }
+  const { supabase, profile } = await getSession()
+  if (!profile || !canManage(profile)) return { kind: 'notFound' }
+  if (!UUID_PATTERN.test(channelId)) return { kind: 'notFound' }
+  const { data: channel } = await supabase.from('channels').select('id').eq('id', channelId).eq('type', 'whatsapp').maybeSingle<{ id: string }>()
+  if (!channel) return { kind: 'notFound' }
+  const state = await subscribeApp({ supabase: createAdminClient(), channelId })
+  revalidatePath(CHANNELS_PATH, 'page')
+  return state
 }
