@@ -39,7 +39,16 @@ export default defineConfig({
     projects: [
       {
         ...shared,
-        test: { ...shared.test, name: 'access', include: ['tests/access/**/*.test.ts'] },
+        test: {
+          ...shared.test,
+          name: 'access',
+          include: ['tests/access/**/*.test.ts'],
+          // Every request of the project serialised, retried and watched: the
+          // watchdog names a hung statement at 90 s, so no timeout here is
+          // shorter than 120 s (tests/access/instrument.test.ts holds both)
+          setupFiles: [...shared.test.setupFiles, 'tests/harness/access-setup.ts'],
+          testTimeout: 120_000,
+        },
       },
       {
         ...shared,

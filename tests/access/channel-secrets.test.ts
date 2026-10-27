@@ -25,33 +25,18 @@ import { signJwt } from '../harness/jwt'
  * member of the client; anon. The matrix's own refusal-handling applies:
  * in this harness a refused statement sometimes answers 503 PGRST001 and
  * can fail the call after it (pglite#958), so calls are serialised and a
- * connection-type answer is retried before it is read as refused.
+ * connection-type answer is retried before it is read as refused (by the
+ * access project's global fetch, not by this file).
  */
 
 type Who = 'super' | 'superImpersonating' | 'orgAdmin' | 'clientAdmin' | 'teamMember' | 'anon'
 const EVERYONE: Who[] = ['super', 'superImpersonating', 'orgAdmin', 'clientAdmin', 'teamMember', 'anon']
 const TABLES = ['channel_secrets', 'processed_meta_messages'] as const
 
-let queue: Promise<unknown> = Promise.resolve()
-const oneAtATime: typeof fetch = (input, init) => {
-  const run = queue.then(() => retryConnectionErrors(input, init))
-  queue = run.catch(() => undefined)
-  return run
-}
-const retryConnectionErrors: typeof fetch = async (input, init) => {
-  for (let attempt = 1; ; attempt += 1) {
-    const response = await fetch(input, init)
-    if (response.status !== 503) return response
-    const code = /"code"\s*:\s*"(PGRST00[0-3])"/.exec(await response.clone().text())?.[1]
-    const limit = code === 'PGRST000' ? 15 : code ? 3 : 1
-    if (attempt >= limit) return response
-    await new Promise((resolve) => setTimeout(resolve, code === 'PGRST000' ? Math.min(200 * attempt, 1000) : 50 * attempt))
-  }
-}
+// Serialised, retried and watched by the access project's global fetch (tests/harness/access-fetch.ts)
 const clientWith = (key: string) =>
   createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key, {
     auth: { persistSession: false, autoRefreshToken: false },
-    global: { fetch: oneAtATime },
   })
 
 const service = clientWith(process.env.SUPABASE_SECRET_KEY!)

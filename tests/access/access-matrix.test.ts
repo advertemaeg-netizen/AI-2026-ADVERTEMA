@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { randomUUID } from 'node:crypto'
 import { beforeAll, describe, expect, it } from 'vitest'
+import { lastRequest } from '../harness/access-fetch'
 import { createUser } from '../harness/helpers'
 // createUser seeds through the harness's own retrying seed()
 import { signJwt } from '../harness/jwt'
@@ -49,52 +50,14 @@ type Matrix = Record<string, unknown>
  * every time and is recorded refused; one that only stood next to a refusal
  * goes through. A connection error means the statement never ran, so a retry
  * can't run anything twice.
+ *
+ * That retry, the one-request-at-a-time queue and the watchdog that names a
+ * hung statement are the access project's, on the global fetch, for every
+ * client of every access file (tests/harness/access-fetch.ts).
  */
-// The request a failing fixture write was making, for its error message
-let lastRequest = ''
-// ONE REQUEST AT A TIME. PostgREST reaches PGlite over a single connection,
-// and a refused statement takes down whatever runs beside it: ten runs on 22
-// October, one fixture insert issued in parallel with refused deletes failed
-// with PGRST000 and stayed failed. Serialised here, for every client of this
-// file, nothing ever runs beside a refusal.
-let queue: Promise<unknown> = Promise.resolve()
-const oneAtATime: typeof fetch = (input, init) => {
-  const run = queue.then(() => retryConnectionErrors(input, init))
-  queue = run.catch(() => undefined)
-  return run
-}
-const retryConnectionErrors: typeof fetch = async (input, init) => {
-  lastRequest = `${init?.method ?? 'GET'} ${String(input).replace(/^https?:\/\/[^/]+/, '')} ${String(init?.body ?? '').slice(0, 160)}`
-  for (let attempt = 1; ; attempt += 1) {
-    const response = await fetch(input, init)
-    if (response.status !== 503) return response
-    const code = /"code"\s*:\s*"(PGRST00[0-3])"/.exec(await response.clone().text())?.[1]
-    // PGRST000: PostgREST has no connection yet and is backing off (seen
-    // lasting over 150 ms): waited out for up to ~10 s. A refusal never
-    // answers PGRST000, so this can't hide one. PGRST001–003: twice more.
-    const limit = code === 'PGRST000' ? 15 : code ? 3 : 1
-    if (attempt >= limit) return response
-    await new Promise((resolve) => setTimeout(resolve, code === 'PGRST000' ? Math.min(200 * attempt, 1000) : 50 * attempt))
-  }
-}
-/**
- * A hang here is the single PGlite connection wedging under a refused
- * statement (pglite#958), and vitest's timeout says nothing about which one.
- * Before that timeout fires, say what has been waited on.
- */
-async function namingTheStatement<T>(work: () => Promise<T>): Promise<T> {
-  const watchdog = setTimeout(() => console.error(`[access-matrix] no answer for 240 s; waiting on: ${lastRequest}`), 240_000)
-  try {
-    return await work()
-  } finally {
-    clearTimeout(watchdog)
-  }
-}
-
 const clientWith = (key: string) =>
   createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key, {
     auth: { persistSession: false, autoRefreshToken: false },
-    global: { fetch: oneAtATime },
   })
 
 const service = clientWith(process.env.SUPABASE_SECRET_KEY!)
@@ -106,7 +69,7 @@ const tag = randomUUID().slice(0, 8)
 async function must(query: PromiseLike<{ data: unknown; error: { message: string; code?: string } | null; status?: number }>): Promise<{ id: string }> {
   const { data, error, status } = await query
   if (error || data === null || data === undefined) {
-    throw new Error(`fixture: ${status} ${error?.code} ${error?.message ?? 'no row'} — ${lastRequest}`)
+    throw new Error(`fixture: ${status} ${error?.code} ${error?.message ?? 'no row'} — ${lastRequest()}`)
   }
   return data as { id: string }
 }
@@ -511,12 +474,9 @@ describe('access matrix: who can read and write what', () => {
 
   it('is the snapshot, for every identity, every table, every analytics function', async () => {
     const everyone = Object.keys(clients) as Who[]
-    const matrix = await namingTheStatement(async () => {
-      const matrix: Record<string, Matrix> = {}
-      for (const who of everyone) matrix[who] = await readsFor(who)
-      for (const who of everyone) matrix[who].write = await writesFor(who)
-      return matrix
-    })
+    const matrix: Record<string, Matrix> = {}
+    for (const who of everyone) matrix[who] = await readsFor(who)
+    for (const who of everyone) matrix[who].write = await writesFor(who)
     await expect(JSON.stringify(matrix, null, 2) + '\n').toMatchFileSnapshot('./access-matrix.snapshot.json')
   }, 300_000)
 })
