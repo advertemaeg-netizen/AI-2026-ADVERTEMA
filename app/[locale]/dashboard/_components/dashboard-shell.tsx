@@ -38,6 +38,7 @@ import { ClientSwitcher } from '@/components/client-switcher'
 import { canManageClient, isOrgAdmin } from '@/lib/auth/permissions'
 import { endImpersonation } from '@/lib/actions/impersonation'
 import { BottomNav, MobileTopBar } from './mobile-nav'
+import { InstallPrompt } from './install-prompt'
 import type { ClientOption, OrgType } from '@/lib/auth/client-context'
 
 type NavItem = { name: string; href: string; icon: LucideIcon; exact?: boolean }
@@ -259,6 +260,7 @@ export function DashboardShell({
           {children}
         </main>
       </div>
+      <InstallPrompt />
       <BottomNav />
     </div>
   )

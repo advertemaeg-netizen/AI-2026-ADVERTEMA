@@ -65,8 +65,9 @@ const BOTTOM_ITEMS: BottomItem[] = [
   { key: 'appointments', href: '/dashboard/appointments', icon: CalendarDays },
 ]
 
-// Inside a conversation the reply box owns the bottom of the screen
-const CONVERSATION_THREAD = /^\/dashboard\/conversations\/[^/]+$/
+// Inside a conversation the reply box owns the bottom of the screen (the
+// install card hides with the nav, so the two never stack there)
+export const CONVERSATION_THREAD = /^\/dashboard\/conversations\/[^/]+$/
 
 export function BottomNav() {
   const t = useTranslations('mobileNav')

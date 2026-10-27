@@ -68,8 +68,9 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     // widget.js is called from third-party sites and must not get a locale
-    // redirect. /api is matched so the site's hosts can send it to the app's
-    // host; on the app's host the proxy passes it through untouched.
-    '/((?!_next/static|_next/image|favicon.ico|widget\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // redirect, and nor must the web app manifest (public/manifest.webmanifest,
+    // linked from the dashboard). /api is matched so the site's hosts can send
+    // it to the app's host; on the app's host the proxy passes it through untouched.
+    '/((?!_next/static|_next/image|favicon.ico|widget\\.js|manifest\\.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

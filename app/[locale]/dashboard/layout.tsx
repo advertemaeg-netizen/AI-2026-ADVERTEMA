@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { getClientContext } from '@/lib/auth/client-context'
@@ -9,6 +10,24 @@ import { UsageBanner } from './_components/usage-banner'
 import { NeedsHumanBanner } from './_components/needs-human-banner'
 import { DEFAULT_NEEDS_HUMAN_REASON, type NeedsHumanReason } from '@/lib/types/conversations'
 import { ImpersonationBanner } from './_components/impersonation-banner'
+
+/**
+ * Installable as a home-screen app, from the dashboard only: the marketing
+ * site must not advertise the manifest. Chrome reads the manifest
+ * (public/manifest.webmanifest); iOS ignores it for the icon and the
+ * standalone window and takes these tags instead. `icons` replaces the locale
+ * layout's whole object (metadata merges one level deep), so the tab icon is
+ * repeated here.
+ */
+export const metadata: Metadata = {
+  manifest: '/manifest.webmanifest',
+  appleWebApp: { capable: true, title: 'مُدرك', statusBarStyle: 'default' },
+  icons: {
+    icon: [{ url: '/brand/mudrik-favicon.svg', type: 'image/svg+xml' }],
+    // 180×180, opaque, square: iOS applies its own rounded mask
+    apple: [{ url: '/brand/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
+}
 
 const DAY = 24 * 60 * 60 * 1000
 

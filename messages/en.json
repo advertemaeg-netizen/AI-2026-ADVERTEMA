@@ -2039,6 +2039,13 @@
     "leads": "Leads",
     "appointments": "Appointments"
   },
+  "installPrompt": {
+    "title": "Install Mudrik on your device",
+    "iosBody": "Tap Share in Safari, then choose Add to Home Screen.",
+    "androidBody": "Open it straight from your home screen, without a browser.",
+    "install": "Install",
+    "dismiss": "Close"
+  },
   "botReplies": {
     "appointment": {
       "at": "at",
