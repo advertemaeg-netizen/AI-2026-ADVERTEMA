@@ -1,0 +1,29 @@
+{
+  "name": "Mudrik",
+  "short_name": "Mudrik",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/en/dashboard",
+  "scope": "/en/dashboard",
+  "display": "standalone",
+  "background_color": "#f5f5f6",
+  "theme_color": "#111111",
+  "icons": [
+    {
+      "src": "/brand/app-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/brand/app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/brand/app-icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

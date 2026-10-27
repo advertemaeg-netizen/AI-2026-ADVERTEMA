@@ -16,6 +16,20 @@ export interface BeforeInstallPromptEvent extends Event {
   readonly userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>
 }
 
+/**
+ * ONE INSTALLED APP PER LOCALE. The dashboard lives at /ar/dashboard and
+ * /en/dashboard (localePrefix "always"), so each locale has its own manifest,
+ * whose start_url and scope are its dashboard, and its own registration of
+ * the service worker with that same scope: Chrome offers the install prompt
+ * only when a worker with a fetch handler controls the start_url. No trailing
+ * slash: a scope of "/ar/dashboard/" would leave "/ar/dashboard" itself, the
+ * start_url, uncontrolled.
+ */
+export const dashboardAppScope = (locale: string) => `/${locale}/dashboard`
+export const manifestUrl = (locale: string) => `/manifest-${locale}.webmanifest`
+/** public/sw.js: a fetch handler that passes every request to the network */
+export const SERVICE_WORKER_URL = '/sw.js'
+
 /** Where the dismissal is kept; the value is the ISO time of the dismissal */
 export const INSTALL_PROMPT_DISMISSED_KEY = 'mudrik.install-prompt.dismissed'
 

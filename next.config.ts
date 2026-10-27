@@ -14,6 +14,19 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     '/api/knowledge/**/*': ['./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs'],
   },
+  // The dashboard's service worker (public/sw.js), as Next's PWA guide gives it:
+  // never served from a cache, so a changed worker reaches every phone
+  async headers() {
+    return [
+      {
+        source: '/sw.js',
+        headers: [
+          { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+        ],
+      },
+    ]
+  },
   // The admin panel's organizations are its customers now
   async redirects() {
     return [

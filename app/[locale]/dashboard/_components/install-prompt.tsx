@@ -1,12 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { X } from 'lucide-react'
 import { usePathname } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
 import {
+  dashboardAppScope,
   DESKTOP_MEDIA_QUERY,
+  SERVICE_WORKER_URL,
   installPromptMode,
   isIosPlatform,
   isStandalone,
@@ -29,8 +31,19 @@ export function InstallPrompt() {
   const t = useTranslations('installPrompt')
   const pathname = usePathname()
   const [mode, setMode] = useState<InstallPromptMode>('hidden')
+  const locale = useLocale()
   // Android: the captured event, usable once
   const installEvent = useRef<BeforeInstallPromptEvent | null>(null)
+
+  // Without a worker whose fetch handler controls the start_url, Chrome never
+  // fires beforeinstallprompt and the Android card never appears. Scoped to
+  // this locale's dashboard, as its manifest is; it caches nothing (public/sw.js)
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return
+    navigator.serviceWorker
+      .register(SERVICE_WORKER_URL, { scope: dashboardAppScope(locale) })
+      .catch((error) => console.error('[install-prompt] service worker registration failed', error))
+  }, [locale])
 
   useEffect(() => {
     if (readDismissed(window.localStorage) || isStandalone(window)) return
