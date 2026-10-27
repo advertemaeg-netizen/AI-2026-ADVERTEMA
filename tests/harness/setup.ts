@@ -1,5 +1,13 @@
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { afterEach, inject, vi } from 'vitest'
 import { harnessFetch, resetHarness, runAfter } from './helpers'
+
+// Next's server installs this before anything of its own loads
+// (node-environment-baseline.js). Without it Next falls back to a fake storage
+// whose run() throws "AsyncLocalStorage accessed in runtime where it is not
+// available", which is what a test importing next/experimental/testing/server
+// and then running the pipeline met. The real one, as in production.
+;(globalThis as { AsyncLocalStorage?: unknown }).AsyncLocalStorage ??= AsyncLocalStorage
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = inject('supabaseUrl')
 process.env.SUPABASE_SECRET_KEY = inject('supabaseServiceKey')

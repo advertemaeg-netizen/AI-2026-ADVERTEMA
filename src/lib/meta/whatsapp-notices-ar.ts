@@ -11,8 +11,26 @@
  * handoff on the transition only, unavailable never back-to-back, both
  * written to the conversation. The unavailable text is ours, not the
  * client's settings: it has to work when settings failed to load.
+ *
+ * Section 10: what a message that is not text is stored as, and the one
+ * reply it gets. The video and reaction placeholders (27 October 2026) are
+ * checked by codepoint: a character count passes a reversed string.
  */
 
 export const WHATSAPP_HANDOFF_AR = "رسالتك وصلت لحد من الفريق، وهيرد عليك هنا."
 
 export const WHATSAPP_UNAVAILABLE_AR = "معلش، في مشكلة مؤقتة عندنا دلوقتي. الفريق هيتواصل معاك قريب."
+
+/** A message that is not text, as the conversation shows it arrived (dashboard-facing, standard Arabic) */
+export const WHATSAPP_PLACEHOLDER_AR = {
+  voice: "[رسالة صوتية]",
+  image: "[صورة]",
+  file: "[ملف مرفق]",
+  unsupported: "[رسالة غير مدعومة]",
+  video: "[فيديو]",
+  /** Stored so an agent sees it; never answered, and never a confirmation */
+  reaction: "[تفاعل]",
+} as const
+
+/** The one reply to a message that is not text, in the bot's voice: once per run, never while a person has the conversation */
+export const WHATSAPP_UNSUPPORTED_AR = "معلش، أنا بقرا الرسايل المكتوبة بس دلوقتي. ابعتلي اللي محتاجه مكتوب وهساعدك."

@@ -11,7 +11,8 @@ import { config, proxy } from '../../proxy'
 import nextConfig from '../../next.config'
 import { GET, POST } from '../../app/api/webhook/meta/route'
 import { swallowedMessages } from '@/lib/meta/processed'
-import { flushAfter, seedClient, serviceClient } from '../harness/helpers'
+import { flushAfter, geminiText, mockGemini, mockGraph, seedClient, serviceClient, type GeminiCall } from '../harness/helpers'
+import { analyseTranscript, botReply } from '../leads/webhook'
 
 /**
  * Meta's webhook: receive and log, on the app's host, outside any auth.
@@ -97,6 +98,16 @@ describe('GET: the verification handshake', () => {
   })
 })
 
+/** The model answers plainly and Meta accepts the send: the route's own behaviour is what these tests look at */
+function answering() {
+  mockGemini((call: GeminiCall) => {
+    if (call.kind === 'embedding') return Response.json({ error: { message: 'no embeddings in tests' } }, { status: 503 })
+    if (call.kind === 'analysis') return geminiText(JSON.stringify(analyseTranscript(call)))
+    return botReply('أهلاً بيك', null, null)
+  })
+  mockGraph(() => Response.json({ messaging_product: 'whatsapp', messages: [{ id: 'wamid.OUT.1' }] }))
+}
+
 function sign(body: string, secret = APP_SECRET) {
   return `sha256=${createHmac('sha256', secret).update(body).digest('hex')}`
 }
@@ -136,7 +147,8 @@ function whatsappMessage(phoneNumberId: string) {
 }
 
 function logged(spy: { mock: { calls: unknown[][] } }) {
-  const lines = spy.mock.calls.filter((call) => call[0] === '[webhook/meta]').map((call) => String(call[1]))
+  // The delivery's shape line: the one JSON string logged under the prefix (the answering handler logs objects, not strings)
+  const lines = spy.mock.calls.filter((call) => call[0] === '[webhook/meta]' && typeof call[1] === 'string').map((call) => String(call[1]))
   expect(lines).toHaveLength(1)
   return { raw: lines[0], parsed: JSON.parse(lines[0]) }
 }
@@ -178,6 +190,7 @@ describe('POST: a delivery', () => {
       .select('id')
       .single<{ id: string }>()
     const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+    answering()
 
     const { response } = await deliver(whatsappMessage(phoneNumberId))
     expect(response.status).toBe(200)
@@ -194,8 +207,8 @@ describe('POST: a delivery', () => {
           events: [{ kind: 'message', field: 'messages', messageId: 'wamid.ABC123', messageType: 'text', timestamp: '1792569600' }],
         },
       ],
-      clients: { [phoneNumberId]: { clientId, channelId: channel!.id } },
-      messages: { 'wamid.ABC123': 'new' },
+      clients: { [phoneNumberId]: { clientId, channelId: channel!.id, live: true } },
+      messages: { 'wamid.ABC123': 'answered' },
     })
     for (const forbidden of [SECRET_TEXT, SENDER, 'Sara', '15550001111']) expect(raw).not.toContain(forbidden)
   })
@@ -210,6 +223,7 @@ describe('POST: a delivery', () => {
       .select('id')
       .single<{ id: string }>()
     const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+    answering()
     const wamid = `wamid.${crypto.randomUUID()}`
     const payload = whatsappMessage(phoneNumberId)
     payload.entry[0].changes[0].value.messages[0].id = wamid
@@ -218,8 +232,8 @@ describe('POST: a delivery', () => {
     const second = await deliver(payload)
     expect([first.response.status, second.response.status]).toEqual([200, 200])
 
-    const lines = info.mock.calls.filter((call) => call[0] === '[webhook/meta]').map((call) => JSON.parse(String(call[1])))
-    expect(lines.map((line) => line.messages)).toEqual([{ [wamid]: 'new' }, { [wamid]: 'duplicate' }])
+    const lines = info.mock.calls.filter((call) => call[0] === '[webhook/meta]' && typeof call[1] === 'string').map((call) => JSON.parse(String(call[1])))
+    expect(lines.map((line) => line.messages)).toEqual([{ [wamid]: 'answered' }, { [wamid]: 'duplicate' }])
 
     // One row, for the channel the number maps to, closed once processing finished
     const { data: rows } = await serviceClient().from('processed_meta_messages').select('message_id, channel_id, completed_at').eq('message_id', wamid)

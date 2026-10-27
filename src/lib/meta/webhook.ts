@@ -140,3 +140,61 @@ function messagingEvent(event: Json): EventShape {
   const messageType = attachment ? text(attachment.type) : 'text' in message ? 'text' : undefined
   return { kind, messageId: text(message.mid), messageType, timestamp, ...(message.is_echo === true ? { echo: true } : {}) }
 }
+
+/**
+ * AN INBOUND WHATSAPP MESSAGE, WITH ITS CONTENT. For processing only: the
+ * sender's number and the text are what the pipeline needs and exactly what
+ * the log must never carry (deliveryShape is the log's view). Anything that
+ * reads this must keep to the same rule.
+ */
+export type InboundWhatsAppMessage = {
+  /** The WhatsApp phone_number_id the message arrived on: the channel's external_id */
+  businessId: string
+  /** The wamid, exactly as Meta sent it */
+  messageId: string
+  /** The sender's number as Meta gives it: digits, no "+" (e.g. "2010…") */
+  from: string
+  /** text, image, audio, interactive… */
+  type: string
+  /** The text body, for a text message */
+  text?: string
+  /** For a reaction: the emoji ("" when one is taken back) and the wamid it was put on */
+  reaction?: { emoji: string; messageId?: string }
+  /** The sender's WhatsApp profile name, when the delivery carries it */
+  profileName?: string
+  timestamp?: string
+}
+
+export function inboundWhatsAppMessages(payload: unknown): InboundWhatsAppMessage[] {
+  const body = isObject(payload) ? payload : {}
+  if (text(body.object) !== 'whatsapp_business_account') return []
+  const out: InboundWhatsAppMessage[] = []
+  for (const entry of list(body.entry)) {
+    for (const change of list(entry.changes)) {
+      const value = isObject(change.value) ? change.value : {}
+      const metadata = isObject(value.metadata) ? value.metadata : {}
+      const businessId = text(metadata.phone_number_id)
+      if (!businessId) continue
+      const names = new Map(list(value.contacts).map((c) => [text(c.wa_id), text(isObject(c.profile) ? c.profile.name : undefined)]))
+      for (const message of list(value.messages)) {
+        const messageId = text(message.id)
+        const from = text(message.from)
+        const type = text(message.type)
+        if (!messageId || !from || !type) continue
+        const textBody = isObject(message.text) ? text(message.text.body) : undefined
+        const reaction = isObject(message.reaction) ? message.reaction : undefined
+        out.push({
+          businessId,
+          messageId,
+          from,
+          type,
+          ...(textBody !== undefined ? { text: textBody } : {}),
+          ...(reaction ? { reaction: { emoji: text(reaction.emoji) ?? '', ...(text(reaction.message_id) ? { messageId: text(reaction.message_id) } : {}) } } : {}),
+          ...(names.get(from) ? { profileName: names.get(from) } : {}),
+          ...(text(message.timestamp) !== undefined ? { timestamp: text(message.timestamp) } : {}),
+        })
+      }
+    }
+  }
+  return out
+}

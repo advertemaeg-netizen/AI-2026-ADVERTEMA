@@ -1,14 +1,22 @@
 import { after, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { handleInboundWhatsAppMessage, type InboundChannel } from '@/lib/meta/inbound'
 import { claimMessages, completeMessages, type MessageClaim } from '@/lib/meta/processed'
-import { CHANNEL_TYPE, deliveryShape, signatureDigest, signatureMatches, type DeliveryShape } from '@/lib/meta/webhook'
+import {
+  CHANNEL_TYPE,
+  deliveryShape,
+  inboundWhatsAppMessages,
+  signatureDigest,
+  signatureMatches,
+  type DeliveryShape,
+} from '@/lib/meta/webhook'
 
 /**
- * Meta's webhook: WhatsApp, Messenger and Instagram deliveries. Receive,
- * claim and log. Nothing here replies, calls the model, or writes a
- * conversation or a lead yet; what it does do is decide, once per message
- * id, whether this delivery is the first of it (processed_meta_messages),
- * so that when the reply path is wired a retry does nothing.
+ * Meta's webhook: WhatsApp, Messenger and Instagram deliveries. The GET is
+ * the subscription handshake; the POST verifies the signature, answers 200,
+ * and after the response claims every inbound message id once, answers each
+ * new WhatsApp text through the one reply pipeline, and logs the shape of
+ * the delivery: never its text or its sender.
  *
  * It lives on the app's host, https://app.mudrik-ai.com/api/webhook/meta. The
  * site's hosts answer every /api path with a 307 to that host
@@ -53,15 +61,17 @@ export async function POST(request: NextRequest) {
     return new Response('Unauthorized', { status: 401 })
   }
 
-  // 200 now, the work after: Meta's timeout is short and it retries anything
-  // slow or non-200. Safe here because the container is long-running: after()
-  // work is not cut off with the response.
+  // 200 now, the work after: Meta's timeout is short and the model is not,
+  // and it retries anything slow or non-200. Safe here because the container
+  // is long-running: after() work is not cut off with the response. If
+  // processing throws it is caught inside and never becomes a non-200: the
+  // 200 has already gone.
   after(() => processDelivery(raw))
   return new Response(null, { status: 200 })
 }
 
 /** What became of each inbound message id in a delivery */
-type Disposition = 'new' | 'duplicate' | 'unmapped' | 'unclaimed'
+type Disposition = 'new' | 'duplicate' | 'unmapped' | 'unclaimed' | 'inactive' | 'reaction' | 'not_text' | 'answered' | 'failed'
 
 async function processDelivery(raw: Buffer) {
   try {
@@ -106,10 +116,26 @@ async function processDelivery(raw: Buffer) {
       console.error('[webhook/meta] claiming the delivery failed; nothing acted on', error)
     }
 
-    console.info('[webhook/meta]', JSON.stringify({ ...shape, clients, messages }))
+    // THE REPLY: each new WhatsApp message, in order: a text through the one
+    // pipeline, anything else stored as what it is and answered once.
+    // A failure on one message is logged and the next is still answered; its
+    // row is closed either way, so the retry Meta sends is a duplicate (a
+    // dropped reply is the trade insert-first makes, and it is findable).
+    for (const message of inboundWhatsAppMessages(payload)) {
+      if (!fresh.has(message.messageId)) continue
+      const mapped = clients[message.businessId]
+      if (typeof mapped !== 'object') continue
+      try {
+        const result = await handleInboundWhatsAppMessage({ supabase, channel: mapped.channel, message })
+        messages[message.messageId] = result.kind
+      } catch (error) {
+        messages[message.messageId] = 'failed'
+        console.error('[webhook/meta] answering a message failed', { channelId: mapped.channelId, messageId: message.messageId, error })
+      }
+    }
 
-    // Processing is done for the new ones (today: claimed and logged; the
-    // reply path goes between the claim and this line)
+    console.info('[webhook/meta]', JSON.stringify({ ...shape, clients: loggable(clients), messages }))
+
     try {
       await completeMessages(supabase, fresh)
     } catch (error) {
@@ -120,9 +146,27 @@ async function processDelivery(raw: Buffer) {
   }
 }
 
-type Mapped = { clientId: string; channelId: string }
+type Mapped = { clientId: string; channelId: string; channel: InboundChannel }
 
-/** Which of our channels each business id belongs to, when one is set up with it as external_id */
+/** The log's view of the mapping: ids, and whether the channel is live */
+function loggable(clients: Record<string, Mapped | string>) {
+  return Object.fromEntries(
+    Object.entries(clients).map(([id, value]) => [
+      id,
+      typeof value === 'object' ? { clientId: value.clientId, channelId: value.channelId, live: value.channel.is_active && value.channel.clients?.status === 'active' } : value,
+    ])
+  )
+}
+
+/**
+ * Which of our channels each business id belongs to, when one is set up
+ * with it as external_id. Rows are read with their state (is_active, the
+ * client's and organization's), and WHEN TWO CHANNELS CARRY THE SAME ID THE
+ * ACTIVE ONE IS CHOSEN: a deactivated row must never be the one a lookup
+ * picks (the placeholder channel of 2026-10-02 next to the live one). An
+ * inactive-only match is still mapped, as inactive, so the delivery is
+ * logged as such rather than as unknown.
+ */
 async function clientsFor(supabase: ReturnType<typeof createAdminClient>, shape: DeliveryShape): Promise<Record<string, Mapped | string>> {
   const type = CHANNEL_TYPE[shape.channel]
   const ids = [...new Set(shape.entries.flatMap((entry) => (entry.businessId ? [entry.businessId] : [])))]
@@ -130,18 +174,20 @@ async function clientsFor(supabase: ReturnType<typeof createAdminClient>, shape:
 
   const { data, error } = await supabase
     .from('channels')
-    .select('id, client_id, external_id')
+    .select('id, client_id, external_id, is_active, clients(name, industry, description, status, organizations(is_active))')
     .eq('type', type)
     .in('external_id', ids)
-    .returns<{ id: string; client_id: string; external_id: string }[]>()
+    .order('is_active', { ascending: false })
+    .returns<(InboundChannel & { external_id: string })[]>()
   if (error) {
     console.error('[webhook/meta] looking up the channel failed', error)
     return Object.fromEntries(ids.map((id) => [id, 'lookup failed']))
   }
   return Object.fromEntries(
     ids.map((id) => {
+      // Ordered active first above; find() takes the first
       const channel = data.find((row) => row.external_id === id)
-      return [id, channel ? { clientId: channel.client_id, channelId: channel.id } : 'unmapped']
+      return [id, channel ? { clientId: channel.client_id, channelId: channel.id, channel } : 'unmapped']
     })
   )
 }

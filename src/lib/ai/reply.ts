@@ -199,6 +199,7 @@ export async function replyToMessage({
   source,
   settings: givenSettings,
   operation = 'chat_reply',
+  knownContact = null,
 }: {
   /** Reads the client's settings, branches, limit and knowledge; rows go through `store` */
   supabase: SupabaseClient
@@ -220,12 +221,23 @@ export async function replyToMessage({
   settings?: BotSettingsInput
   /** What the reply's tokens are logged as (ai_usage) */
   operation?: Parameters<typeof runBot>[0]['operation']
+  /**
+   * What the transport knows before the first word: on WhatsApp the sender's
+   * number arrives with the delivery. It fills what the conversation has not
+   * established yet, exactly as if the visitor had typed it, so the model is
+   * told it is on record and code never asks for it. Nothing the
+   * conversation already holds is overwritten.
+   */
+  knownContact?: Pick<ContactState, 'phone'> | null
 }): Promise<ReplyOutcome> {
   const recent = await store.history(BOT_HISTORY_LIMIT)
 
   // Newest first here: the name and number as the latest reply left them
-  const previousContact =
+  const established =
     recent.map((m) => (m.role === 'assistant' ? parseContactState(m.metadata?.contact) : null)).find(Boolean) ?? EMPTY_CONTACT
+  // The transport's own knowledge fills only what is still empty
+  const previousContact: ContactState =
+    knownContact?.phone && !established.phone ? { ...established, phone: knownContact.phone } : established
   // The partial booking as the latest bot reply left it (one with a booking
   // trace: a fallback message says nothing about it). No draft on that reply
   // means there was none: an older one ended there. The lead row's own
