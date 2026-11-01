@@ -9,6 +9,16 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
  * page-scoped id that identifies the person), no contact names. Only Meta's
  * own ids, the business's ids (the WhatsApp phone_number_id, the page id) and
  * types and timestamps. Anything added here must keep to that.
+ *
+ * ONE EXCEPTION, FOR A TEST WINDOW ONLY: while META_TEST_ID_HASH_SECRET is
+ * set, the person ids on a Messenger or Instagram delivery (a sender, a
+ * recipient, a commenter's from.id) are logged as a 12-hex keyed hash of the
+ * id, never the id. Two hashes are equal exactly when the ids are, which is
+ * all the receive-only test needs (is a commenter's id the id their DM
+ * carries?). The secret exists for that test alone, is not the app secret,
+ * and is thrown away after it, so the hashes cannot be matched again. Unset,
+ * no person field is logged at all. An id equal to the entry's own (the Page
+ * or the Instagram account, a business id) is logged as 'business'.
  */
 
 const SIGNATURE = /^sha256=([0-9a-f]{64})$/
@@ -45,7 +55,33 @@ export type EventShape = {
   echo?: true
   /** As Meta sent it: seconds (WhatsApp) or milliseconds (Messenger) */
   timestamp?: string | number
+  /** Messenger/Instagram message: whether it carries text (a story mention may or may not); never the text */
+  hasText?: boolean
+  /** Instagram: a reply to the business's story */
+  storyReply?: true
+  /** Instagram: the person deleted the message */
+  deleted?: true
+  /** Messenger/Instagram: who sent and who received, as a Party (see idParty) */
+  sender?: Party
+  recipient?: Party
+  /** A Page feed or Instagram comment change: Meta's own values, never the content */
+  item?: string
+  verb?: string
+  commentId?: string
+  postId?: string
+  parentId?: string
+  mediaId?: string
+  mediaProductType?: string
+  /** The change's author as a Party, the names of the keys its from carries (never their values), and the id's length */
+  from?: Party
+  fromKeys?: string[]
+  fromIdLength?: number
+  /** The names of the keys the change's value carries, never their values: the delivery's shape */
+  valueKeys?: string[]
 }
+
+/** 'business' for the entry's own id (the Page or the Instagram account), otherwise a 12-hex keyed hash of the id */
+export type Party = string
 
 export type EntryShape = {
   /** WhatsApp: the business account (WABA) id; Messenger/Instagram: the page or account id */
@@ -85,7 +121,7 @@ const stamp = (value: unknown) => (typeof value === 'string' || typeof value ===
  * The delivery reduced to what may be logged. Every field is picked by name,
  * so anything Meta adds later stays out of the log until it is chosen here.
  */
-export function deliveryShape(payload: unknown): DeliveryShape {
+export function deliveryShape(payload: unknown, options: { idHashSecret?: string } = {}): DeliveryShape {
   const body = isObject(payload) ? payload : {}
   const object = text(body.object) ?? 'unknown'
   const channel = CHANNELS[object] ?? 'unknown'
@@ -94,9 +130,68 @@ export function deliveryShape(payload: unknown): DeliveryShape {
     const entryId = text(entry.id)
     const time = typeof entry.time === 'number' ? entry.time : undefined
     if (channel === 'whatsapp') return { entryId, time, ...whatsappEntry(entry) }
-    return { entryId, businessId: entryId, time, events: list(entry.messaging).map(messagingEvent) }
+    const party = idParty(entryId, options.idHashSecret)
+    return {
+      entryId,
+      businessId: entryId,
+      time,
+      events: [...list(entry.messaging).map((event) => messagingEvent(event, party)), ...entryChanges(entry).map((change) => changeEvent(change, party))],
+    }
   })
   return { object, channel, entries }
+}
+
+/**
+ * How a person id is logged: 'business' when it is the entry's own, the
+ * keyed hash while the test secret is set, otherwise not at all.
+ */
+function idParty(entryId: string | undefined, secret: string | undefined) {
+  return (id: unknown): Party | undefined => {
+    const value = typeof id === 'string' ? id : typeof id === 'number' ? String(id) : undefined
+    if (value === undefined) return undefined
+    if (value === entryId) return 'business'
+    if (!secret) return undefined
+    return createHmac('sha256', secret).update(value).digest('hex').slice(0, 12)
+  }
+}
+
+/**
+ * A Page or Instagram entry's changes. Instagram's documented shape for
+ * Business Login puts one change's field and value on the entry itself, not
+ * in changes[]; both are read, so whichever arrives is seen.
+ */
+function entryChanges(entry: Json): Json[] {
+  const changes = list(entry.changes)
+  if (typeof entry.field === 'string') changes.push({ field: entry.field, value: entry.value })
+  return changes
+}
+
+function changeEvent(change: Json, party: (id: unknown) => Party | undefined): EventShape {
+  const field = text(change.field)
+  const value = isObject(change.value) ? change.value : {}
+  const from = isObject(value.from) ? value.from : undefined
+  const media = isObject(value.media) ? value.media : {}
+  // Instagram names a comment's id comment_id on one login path and id on the other
+  const commentId = text(value.comment_id) ?? (field === 'comments' || field === 'live_comments' ? text(value.id) : undefined)
+  const fromId = from ? (typeof from.id === 'string' || typeof from.id === 'number' ? String(from.id) : undefined) : undefined
+  const sender = from ? party(from.id) : undefined
+  const shape: EventShape = {
+    kind: 'change',
+    field,
+    item: text(value.item),
+    verb: text(value.verb),
+    commentId,
+    postId: text(value.post_id),
+    parentId: text(value.parent_id),
+    mediaId: text(media.id) ?? text(value.media_id),
+    mediaProductType: text(media.media_product_type),
+    hasText: typeof value.message === 'string' ? value.message.length > 0 : typeof value.text === 'string' ? value.text.length > 0 : undefined,
+    ...(sender ? { from: sender } : {}),
+    ...(from ? { fromKeys: Object.keys(from).sort() } : {}),
+    ...(fromId !== undefined ? { fromIdLength: fromId.length } : {}),
+    valueKeys: Object.keys(value).sort(),
+  }
+  return Object.fromEntries(Object.entries(shape).filter(([, v]) => v !== undefined)) as EventShape
 }
 
 function whatsappEntry(entry: Json): { businessId?: string; events: EventShape[] } {
@@ -130,7 +225,7 @@ function whatsappEntry(entry: Json): { businessId?: string; events: EventShape[]
   return { businessId, events }
 }
 
-function messagingEvent(event: Json): EventShape {
+function messagingEvent(event: Json, party: (id: unknown) => Party | undefined): EventShape {
   const kind = MESSAGING_KINDS.find((key) => key in event) ?? 'unknown'
   const timestamp = stamp(event.timestamp)
   if (kind !== 'message' || !isObject(event.message)) return { kind, timestamp }
@@ -138,7 +233,21 @@ function messagingEvent(event: Json): EventShape {
   const message = event.message
   const attachment = list(message.attachments)[0]
   const messageType = attachment ? text(attachment.type) : 'text' in message ? 'text' : undefined
-  return { kind, messageId: text(message.mid), messageType, timestamp, ...(message.is_echo === true ? { echo: true } : {}) }
+  const replyTo = isObject(message.reply_to) ? message.reply_to : {}
+  const sender = party(isObject(event.sender) ? event.sender.id : undefined)
+  const recipient = party(isObject(event.recipient) ? event.recipient.id : undefined)
+  return {
+    kind,
+    messageId: text(message.mid),
+    messageType,
+    timestamp,
+    hasText: typeof message.text === 'string' && message.text.length > 0,
+    ...(message.is_echo === true ? { echo: true } : {}),
+    ...(isObject(replyTo.story) ? { storyReply: true } : {}),
+    ...(message.is_deleted === true ? { deleted: true } : {}),
+    ...(sender ? { sender } : {}),
+    ...(recipient ? { recipient } : {}),
+  }
 }
 
 /**

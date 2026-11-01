@@ -344,10 +344,11 @@ describe('POST: a delivery', () => {
       entryId: 'PAGE-1',
       businessId: 'PAGE-1',
       time: 1792569600000,
+      // No test secret is set, so the person is not logged at all; the Page, a business id, is
       events: [
-        { kind: 'message', messageId: 'm_abc', messageType: 'text', timestamp: 1792569600000 },
+        { kind: 'message', messageId: 'm_abc', messageType: 'text', timestamp: 1792569600000, hasText: true, recipient: 'business' },
         { kind: 'read', timestamp: 1792569600500 },
-        { kind: 'message', messageId: 'm_img', messageType: 'image', timestamp: 1792569601000 },
+        { kind: 'message', messageId: 'm_img', messageType: 'image', timestamp: 1792569601000, hasText: false, recipient: 'business' },
       ],
     })
     expect(parsed.clients).toEqual({ 'PAGE-1': 'unmapped' })
@@ -369,5 +370,188 @@ describe('POST: a delivery', () => {
     expect(response.status).toBe(200)
     expect(info).not.toHaveBeenCalled()
     expect(JSON.stringify(warn.mock.calls)).not.toContain(SENDER)
+  })
+})
+
+/**
+ * The receive-only test's view: comments and feed changes, story replies and
+ * mentions, and person ids as a keyed hash only while the test secret is set.
+ * What may never appear: the text, the commenter's name or username, a
+ * person's id, a media URL.
+ */
+describe('POST: Page feed and Instagram deliveries, for the receive-only test', () => {
+  const HASH_SECRET = 'throwaway-hash-secret-for-tests'
+  const PAGE = 'PAGE-77'
+  const IG = '17841400000000077'
+  const PERSON = '7431122334455667'
+  const IGSID = '526999888777666'
+  const NAME = 'Mona Fathy'
+  const USERNAME = 'mona.f'
+  const hash = (id: string, secret = HASH_SECRET) => createHmac('sha256', secret).update(id).digest('hex').slice(0, 12)
+
+  function feedComment(verb: string, fromId: string, extra: Record<string, unknown> = {}) {
+    return {
+      object: 'page',
+      entry: [
+        {
+          id: PAGE,
+          time: 1792569600,
+          changes: [
+            {
+              field: 'feed',
+              value: {
+                item: 'comment',
+                verb,
+                comment_id: `${PAGE}_post1_c1`,
+                post_id: `${PAGE}_post1`,
+                parent_id: `${PAGE}_post1`,
+                from: { id: fromId, name: NAME },
+                created_time: 1792569600,
+                ...extra,
+              },
+            },
+          ],
+        },
+      ],
+    }
+  }
+
+  it('logs a Facebook comment by item, verb and Meta’s ids, its author as a hash, and never the text, name or id', async () => {
+    vi.stubEnv('META_TEST_ID_HASH_SECRET', HASH_SECRET)
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+    await deliver(feedComment('add', PERSON, { message: SECRET_TEXT }))
+    const { raw, parsed } = logged(info)
+    expect(parsed.channel).toBe('messenger')
+    expect(parsed.entries[0].events).toEqual([
+      {
+        kind: 'change',
+        field: 'feed',
+        item: 'comment',
+        verb: 'add',
+        commentId: `${PAGE}_post1_c1`,
+        postId: `${PAGE}_post1`,
+        parentId: `${PAGE}_post1`,
+        hasText: true,
+        from: hash(PERSON),
+        fromKeys: ['id', 'name'],
+        fromIdLength: PERSON.length,
+        valueKeys: ['comment_id', 'created_time', 'from', 'item', 'message', 'parent_id', 'post_id', 'verb'],
+      },
+    ])
+    // A comment is not a message: nothing is claimed, nothing answers it
+    expect(parsed.messages).toEqual({})
+    for (const forbidden of [SECRET_TEXT, NAME, PERSON]) expect(raw).not.toContain(forbidden)
+  })
+
+  it.each(['edited', 'remove'])('logs a Facebook comment %s the same way, so it can be matched to the comment it changes', async (verb) => {
+    vi.stubEnv('META_TEST_ID_HASH_SECRET', HASH_SECRET)
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+    await deliver(feedComment(verb, PERSON, verb === 'edited' ? { message: SECRET_TEXT } : {}))
+    const { raw, parsed } = logged(info)
+    expect(parsed.entries[0].events[0]).toMatchObject({ kind: 'change', item: 'comment', verb, commentId: `${PAGE}_post1_c1`, from: hash(PERSON) })
+    for (const forbidden of [SECRET_TEXT, NAME, PERSON]) expect(raw).not.toContain(forbidden)
+  })
+
+  it('logs the Page’s own comment as business, in the clear', async () => {
+    vi.stubEnv('META_TEST_ID_HASH_SECRET', HASH_SECRET)
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+    await deliver(feedComment('add', PAGE, { message: 'placeholder' }))
+    expect(logged(info).parsed.entries[0].events[0].from).toBe('business')
+  })
+
+  it('logs an Instagram comment in either documented shape, and its author hashes to the same value as their DM sender', async () => {
+    vi.stubEnv('META_TEST_ID_HASH_SECRET', HASH_SECRET)
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const media = { id: 'MEDIA-1', media_product_type: 'FEED' }
+    // Facebook Login / Unified Login: changes[], comment_id
+    await deliver({
+      object: 'instagram',
+      entry: [{ id: IG, time: 1792569600, changes: [{ field: 'comments', value: { from: { id: IGSID, username: USERNAME }, comment_id: 'C-1', text: SECRET_TEXT, media } }] }],
+    })
+    // Business Login for Instagram: field and value on the entry, id
+    await deliver({
+      object: 'instagram',
+      entry: [{ id: IG, time: 1792569601, field: 'comments', value: { id: 'C-2', from: { id: IGSID, username: USERNAME }, text: SECRET_TEXT, media } }],
+    })
+    // The same person's DM
+    await deliver({
+      object: 'instagram',
+      entry: [{ id: IG, time: 1792569602, messaging: [{ sender: { id: IGSID }, recipient: { id: IG }, timestamp: 1792569602000, message: { mid: 'ig_m1', text: SECRET_TEXT } }] }],
+    })
+
+    const lines = info.mock.calls.filter((call) => call[0] === '[webhook/meta]' && typeof call[1] === 'string').map((call) => String(call[1]))
+    expect(lines).toHaveLength(3)
+    const [first, second, dm] = lines.map((line) => JSON.parse(line).entries[0].events[0])
+    expect(first).toMatchObject({ kind: 'change', field: 'comments', commentId: 'C-1', mediaId: 'MEDIA-1', mediaProductType: 'FEED', hasText: true, fromKeys: ['id', 'username'] })
+    expect(second).toMatchObject({ kind: 'change', field: 'comments', commentId: 'C-2', mediaId: 'MEDIA-1', hasText: true })
+    expect(dm).toMatchObject({ kind: 'message', messageId: 'ig_m1', hasText: true, sender: hash(IGSID), recipient: 'business' })
+    expect(first.from).toBe(dm.sender)
+    expect(second.from).toBe(dm.sender)
+    for (const forbidden of [SECRET_TEXT, USERNAME, IGSID]) expect(lines.join('\n')).not.toContain(forbidden)
+  })
+
+  it('logs a story mention with whether it carries text, a story reply as such, and never the CDN URL or the text', async () => {
+    vi.stubEnv('META_TEST_ID_HASH_SECRET', HASH_SECRET)
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const CDN = 'https://lookaside.example/story/123'
+    await deliver({
+      object: 'instagram',
+      entry: [
+        {
+          id: IG,
+          time: 1792569600,
+          messaging: [
+            { sender: { id: IGSID }, recipient: { id: IG }, timestamp: 1, message: { mid: 'mention-bare', attachments: [{ type: 'story_mention', payload: { url: CDN } }] } },
+            { sender: { id: IGSID }, recipient: { id: IG }, timestamp: 2, message: { mid: 'mention-text', text: SECRET_TEXT, attachments: [{ type: 'story_mention', payload: { url: CDN } }] } },
+            { sender: { id: IGSID }, recipient: { id: IG }, timestamp: 3, message: { mid: 'story-reply', text: SECRET_TEXT, reply_to: { story: { url: CDN, id: 'STORY-1' } } } },
+          ],
+        },
+      ],
+    })
+    const { raw, parsed } = logged(info)
+    expect(parsed.entries[0].events).toEqual([
+      { kind: 'message', messageId: 'mention-bare', messageType: 'story_mention', timestamp: 1, hasText: false, sender: hash(IGSID), recipient: 'business' },
+      { kind: 'message', messageId: 'mention-text', messageType: 'story_mention', timestamp: 2, hasText: true, sender: hash(IGSID), recipient: 'business' },
+      { kind: 'message', messageId: 'story-reply', messageType: 'text', timestamp: 3, hasText: true, storyReply: true, sender: hash(IGSID), recipient: 'business' },
+    ])
+    for (const forbidden of [SECRET_TEXT, IGSID, CDN, 'lookaside']) expect(raw).not.toContain(forbidden)
+  })
+
+  it('logs an echo of a message to the person with them as the hashed recipient', async () => {
+    vi.stubEnv('META_TEST_ID_HASH_SECRET', HASH_SECRET)
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+    await deliver({
+      object: 'page',
+      entry: [{ id: PAGE, time: 1, messaging: [{ sender: { id: PAGE }, recipient: { id: PERSON }, timestamp: 1, message: { mid: 'm_echo', is_echo: true, app_id: 123, text: 'placeholder' } }] }],
+    })
+    const { raw, parsed } = logged(info)
+    expect(parsed.entries[0].events[0]).toMatchObject({ kind: 'message', messageId: 'm_echo', echo: true, sender: 'business', recipient: hash(PERSON) })
+    expect(raw).not.toContain(PERSON)
+  })
+
+  it('without the test secret logs no person field at all, and the business still as business', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+    await deliver({
+      object: 'instagram',
+      entry: [
+        {
+          id: IG,
+          time: 1,
+          changes: [{ field: 'comments', value: { from: { id: IGSID, username: USERNAME }, comment_id: 'C-9', text: SECRET_TEXT } }],
+          messaging: [{ sender: { id: IGSID }, recipient: { id: IG }, timestamp: 1, message: { mid: 'ig_m9', text: SECRET_TEXT } }],
+        },
+      ],
+    })
+    const { raw, parsed } = logged(info)
+    const [dm, comment] = parsed.entries[0].events
+    expect(dm.sender).toBeUndefined()
+    expect(dm.recipient).toBe('business')
+    expect(comment.from).toBeUndefined()
+    expect(comment.fromKeys).toEqual(['id', 'username'])
+    for (const forbidden of [SECRET_TEXT, USERNAME, IGSID]) expect(raw).not.toContain(forbidden)
+  })
+
+  it('hashes the same id differently under another secret: thrown away, the test’s hashes cannot be matched again', () => {
+    expect(hash(IGSID, 'another-secret')).not.toBe(hash(IGSID))
   })
 })

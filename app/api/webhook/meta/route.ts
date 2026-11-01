@@ -82,7 +82,8 @@ async function processDelivery(raw: Buffer) {
       console.warn('[webhook/meta] signed delivery is not JSON', { bytes: raw.length })
       return
     }
-    const shape = deliveryShape(payload)
+    // The test secret, while it is set (src/lib/meta/webhook.ts says why it exists and when it goes)
+    const shape = deliveryShape(payload, { idHashSecret: process.env.META_TEST_ID_HASH_SECRET || undefined })
     const supabase = createAdminClient()
     const clients = await clientsFor(supabase, shape)
 
