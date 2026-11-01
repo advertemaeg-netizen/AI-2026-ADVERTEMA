@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getSession } from '@/lib/auth/session'
+import { getSession, isImpersonating } from '@/lib/auth/session'
 import { isSuperAdmin } from '@/lib/auth/permissions'
 import {
   fetchClientSubscriptionDetails,
@@ -16,6 +16,7 @@ import type { OrgType } from '@/lib/types/admin'
 import {
   BILLED_TO,
   changePlanSchema,
+  clientActivationSchema,
   CLIENT_LIMIT_TYPES,
   customPricingSchema,
   INVOICE_STATUSES,
@@ -27,6 +28,7 @@ import {
   type BilledTo,
   type BillingActionResult,
   type ChangePlanInput,
+  type ClientActivationInput,
   type ClientSubscriptionRow,
   type CustomPricingInput,
   type Invoice,
@@ -249,6 +251,42 @@ export async function extendPeriod(organizationId: string, days: number): Promis
     })
     .eq('organization_id', organizationId)
   if (error) return fail(error, 'extendPeriod')
+
+  revalidateBilling()
+  return { ok: true }
+}
+
+/**
+ * Activates or deactivates any client's subscription (an agency's client or
+ * a direct business), directly, without an invoice. Status and period only:
+ * plan, custom price, invoices and usage counters stay as they are. The
+ * database records who did it and when (client_subscription_events).
+ */
+export async function setClientSubscriptionActive(
+  clientId: string,
+  input: ClientActivationInput
+): Promise<BillingActionResult> {
+  if (!UUID_PATTERN.test(clientId)) return { ok: false, error: 'notFound' }
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
+  const session = await superAdminSession()
+  if (!session) return { ok: false, error: 'forbidden' }
+
+  const parsed = clientActivationSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, error: 'validation', field: firstField(parsed.error) }
+  const { active, period_end, note } = parsed.data
+  if (period_end && Date.parse(period_end) <= Date.now()) return { ok: false, error: 'validation', field: 'period_end' }
+
+  const { data, error } = await session.supabase.rpc('set_client_subscription_active', {
+    p_client_id: clientId,
+    p_active: active,
+    p_period_end: period_end,
+    p_note: note || null,
+  })
+  if (error) return fail(error, 'setClientSubscriptionActive')
+  if (data === 'not_found') return { ok: false, error: 'notFound' }
+  if (data === 'invalid') return { ok: false, error: 'validation' }
+  if (data === 'invalid_status') return { ok: false, error: 'invalidStatus' }
+  if (data !== 'ok') return { ok: false, error: 'forbidden' }
 
   revalidateBilling()
   return { ok: true }

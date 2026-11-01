@@ -345,6 +345,23 @@ export const changeClientPlanSchema = z.object({
 
 export type ChangeClientPlanInput = z.infer<typeof changeClientPlanSchema>
 
+/**
+ * A super admin activating (or deactivating) a client's subscription
+ * directly, without an invoice. Both fields optional: blank is simply
+ * active. The end date is the period's end as the cards show it, not a
+ * cut-off (see 20261107100000_client_subscription_activation.sql), and
+ * only an activation has one.
+ */
+export const clientActivationSchema = z
+  .object({
+    active: z.boolean(),
+    period_end: z.iso.datetime({ offset: true }).nullable(),
+    note: z.string().trim().max(500).nullable(),
+  })
+  .refine((v) => v.active || v.period_end === null, { path: ['period_end'] })
+
+export type ClientActivationInput = z.infer<typeof clientActivationSchema>
+
 export const markPaidSchema = z.object({
   payment_method: z.enum(PAYMENT_METHODS),
   payment_reference: z.string().trim().max(120).nullable(),

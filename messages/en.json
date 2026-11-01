@@ -1267,7 +1267,8 @@
         "conversations": "Conversations",
         "leads": "Leads",
         "createdAt": "Created",
-        "lastActivity": "Last activity"
+        "lastActivity": "Last activity",
+        "subscriptions": "Their subscriptions"
       },
       "users": {
         "title": "Members",
@@ -1519,7 +1520,9 @@
         "pricingSet": "Custom price saved",
         "pricingRemoved": "Custom price removed",
         "extended": "Period extended",
-        "reset": "Usage reset"
+        "reset": "Usage reset",
+        "activated": "Subscription activated",
+        "deactivated": "Subscription deactivated"
       },
       "errors": {
         "forbidden": "You don’t have permission to do this",
@@ -1538,7 +1541,21 @@
         "invoices": "Invoices",
         "invoicesCount": "{count, plural, =0 {No invoices} one {# invoice} other {# invoices}}",
         "none": "This customer has no subscription.",
-        "directNote": "Direct business: no agency subscription; it pays for its business plan."
+        "directNote": "Direct business: no agency subscription; it pays for its business plan.",
+        "inactive": "Not active: the bot answers with the fallback message. Activate it above, or record a paid invoice below."
+      },
+      "activation": {
+        "activate": "Activate",
+        "deactivate": "Deactivate",
+        "activateTitle": "Activate {name}’s subscription",
+        "activateDescription": "Active from now, without an invoice. The plan, custom price and usage stay as they are.",
+        "periodEnd": "Period end (optional)",
+        "periodEndHint": "Shown as the renewal date. It doesn’t switch the subscription off on that day: deactivate to do that. Blank: the next monthly message reset.",
+        "note": "Note (optional)",
+        "activateSubmit": "Activate",
+        "deactivateTitle": "Deactivate {name}’s subscription",
+        "deactivateDescription": "From now on the bot answers with the fallback message and nothing new can be added. The plan, custom price and usage stay as they are.",
+        "deactivateSubmit": "Deactivate"
       },
       "tabs": {
         "label": "Subscription level",

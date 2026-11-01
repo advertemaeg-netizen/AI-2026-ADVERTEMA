@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { SubscriptionStatusBadge } from '@/components/billing/status-badges'
+import { ClientActivationActions } from '@/components/billing/client-activation-actions'
 import { usageLevel } from '@/components/billing/usage-bars'
 import { useMoney } from '@/components/billing/use-money'
 import { cn } from '@/lib/utils'
@@ -97,6 +98,9 @@ export function ClientSubscriptionsTable({
                 <TableHead>{t('columns.status')}</TableHead>
                 <TableHead className="min-w-48">{t('columns.usage')}</TableHead>
                 <TableHead>{t('columns.renewal')}</TableHead>
+                <TableHead>
+                  <span className="sr-only">{t('actionsLabel')}</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -168,6 +172,14 @@ export function ClientSubscriptionsTable({
                       {row.status === 'trialing' && row.trial_ends_at
                         ? t('trialUntil', { date: date(row.trial_ends_at) })
                         : date(row.current_period_end)}
+                    </TableCell>
+                    <TableCell className="text-end">
+                      <ClientActivationActions
+                        variant="menu"
+                        clientId={row.client_id}
+                        clientName={row.client_name}
+                        status={row.status}
+                      />
                     </TableCell>
                   </TableRow>
                 )

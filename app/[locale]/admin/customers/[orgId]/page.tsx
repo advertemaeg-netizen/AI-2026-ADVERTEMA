@@ -23,6 +23,7 @@ import { ToggleOrgButton } from './_components/toggle-org-button'
 import { ImpersonateButton } from '../../_components/impersonate-button'
 import { ClientPlanPicker } from '@/components/billing/client-plan-picker'
 import { ClientPricingActions } from '@/components/billing/client-pricing-actions'
+import { ClientActivationActions } from '@/components/billing/client-activation-actions'
 
 const CLIENT_STATUS_VARIANT: Record<ClientStatus, 'default' | 'secondary' | 'outline'> = {
   active: 'default',
@@ -186,9 +187,20 @@ export default async function AdminCustomerPage({ params }: PageProps<'/[locale]
       )}
 
       <Card>
-        <CardHeader>
-          <CardTitle>{t('clients.title')}</CardTitle>
-          <CardDescription>{t('clients.count', { count: clients.length })}</CardDescription>
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
+          <div className="grid gap-1">
+            <CardTitle>{t('clients.title')}</CardTitle>
+            <CardDescription>{t('clients.count', { count: clients.length })}</CardDescription>
+          </div>
+          {/* An agency's clients are activated from the client subscriptions table, filtered to this agency */}
+          {org.org_type === 'agency' && clients.length > 0 && (
+            <Link
+              href={`/admin/subscriptions?tab=clients&org=${org.id}`}
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              {t('clients.subscriptions')}
+            </Link>
+          )}
         </CardHeader>
         <CardContent>
           {clients.length === 0 ? (
@@ -340,14 +352,18 @@ async function DirectBilling({
           <h2 className="text-xl font-semibold tracking-tight">{tBilling('title')}</h2>
           <p className="text-sm text-muted-foreground">{tBilling('directNote')}</p>
         </div>
-        <ClientPricingActions
-          clientId={clientId}
-          clientName={clientName}
-          basePrice={plan.price_monthly}
-          hasCustomPricing={!!custom}
-        />
+        <div className="flex flex-wrap gap-2">
+          <ClientActivationActions clientId={clientId} clientName={clientName} status={details.subscription.status} />
+          <ClientPricingActions
+            clientId={clientId}
+            clientName={clientName}
+            basePrice={plan.price_monthly}
+            hasCustomPricing={!!custom}
+          />
+        </div>
       </div>
-      <CurrentPlanCard details={details} title={tBilling('plan')} />
+      {/* The card's default notice is the customer's ("contact us"); the super admin is told what activates it */}
+      <CurrentPlanCard details={details} title={tBilling('plan')} inactiveNotice={tBilling('inactive')} />
       {custom && !custom.applies && <p className="text-sm text-warning">{tBilling('pricingNotApplied')}</p>}
       <Card>
         <CardHeader>
