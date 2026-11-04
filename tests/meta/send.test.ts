@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { MAX_TEXT_LENGTH, OUTSIDE_WINDOW_CODE, sendWhatsAppText } from '@/lib/meta/send'
+import { MAX_TEXT_LENGTH, MESSENGER_MAX_TEXT_LENGTH, OUTSIDE_WINDOW_CODE, sendMessengerText, sendWhatsAppText } from '@/lib/meta/send'
 import { graphCalls, mockGraph, seedClient, serviceClient } from '../harness/helpers'
 
 /**
@@ -160,5 +160,49 @@ describe('sendWhatsAppText', () => {
       reason: 'too_long',
     })
     expect(graphCalls).toHaveLength(0)
+  })
+})
+
+describe('sendMessengerText', () => {
+  const PSID = '7431122334455667'
+
+  async function pageWithToken(externalId: string | null = `PAGE-${crypto.randomUUID()}`) {
+    const seeded = await seedClient()
+    const service = serviceClient()
+    const { data: channel, error } = await service
+      .from('channels')
+      .insert({ client_id: seeded.clientId, type: 'facebook', name: 'Messenger', external_id: externalId })
+      .select('id')
+      .single<{ id: string }>()
+    if (error) throw error
+    await service.from('channel_secrets').insert({ channel_id: channel.id, access_token: TOKEN })
+    return { service, channelId: channel.id, pageId: externalId }
+  }
+
+  it('the 24-hour window is error 10 with subcode 2018278 only: error 10 with another subcode is an ordinary refusal, retried', async () => {
+    const { service, channelId } = await pageWithToken()
+    consoleOutput()
+    mockGraph(() => Response.json({ error: { code: 10, error_subcode: 2018278 } }, { status: 400 }))
+    expect(await sendMessengerText({ supabase: service, channelId, to: PSID, body: BODY })).toEqual({ kind: 'outside_window', status: 400 })
+    expect(graphCalls).toHaveLength(1)
+
+    graphCalls.length = 0
+    mockGraph(() => Response.json({ error: { code: 10, error_subcode: 2018108 } }, { status: 400 }))
+    expect(await sendMessengerText({ supabase: service, channelId, to: PSID, body: BODY })).toEqual({ kind: 'failed', status: 400, code: 10, attempts: 2 })
+    expect(graphCalls).toHaveLength(2)
+  })
+
+  it('attempts nothing past Messenger’s length (under 2000 characters), and nothing without a Page id', async () => {
+    const { service, channelId } = await pageWithToken()
+    consoleOutput()
+    mockGraph(() => Response.json({ recipient_id: PSID, message_id: 'm_1' }))
+
+    expect(await sendMessengerText({ supabase: service, channelId, to: PSID, body: 'ع'.repeat(MESSENGER_MAX_TEXT_LENGTH) })).toEqual({ kind: 'sent', messageId: 'm_1' })
+    expect(await sendMessengerText({ supabase: service, channelId, to: PSID, body: 'ع'.repeat(2000) })).toEqual({ kind: 'unsendable', reason: 'too_long' })
+    expect(graphCalls).toHaveLength(1)
+
+    const noPage = await pageWithToken(null)
+    expect(await sendMessengerText({ supabase: noPage.service, channelId: noPage.channelId, to: PSID, body: BODY })).toEqual({ kind: 'not_configured', missing: 'page_id' })
+    expect(graphCalls).toHaveLength(1)
   })
 })

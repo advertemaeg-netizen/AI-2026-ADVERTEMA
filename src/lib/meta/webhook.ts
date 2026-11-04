@@ -307,3 +307,106 @@ export function inboundWhatsAppMessages(payload: unknown): InboundWhatsAppMessag
   }
   return out
 }
+
+/**
+ * A MESSENGER EVENT, WITH ITS CONTENT. For processing only, under the same
+ * rule as InboundWhatsAppMessage: the PSID and the text are what the
+ * pipeline needs and exactly what the log must never carry.
+ *
+ *   message   a person wrote to the Page: answered through the pipeline
+ *   echo      the Page sent a message: ours (a reply we sent) or a person at
+ *             the clinic answering from the Page inbox. Which, is decided by
+ *             the ids we sent (inbound.ts), never by a field of the echo
+ *   reaction  a person reacted to a message: stored, never answered
+ *
+ * `claimId` is what processed_meta_messages records, so a retry does
+ * nothing: the mid for a message or an echo. A reaction has no id of its
+ * own (its mid is the message reacted to), so it is claimed by that mid, the
+ * action, the emoji and the event's timestamp, all Meta's values, which a
+ * retry repeats. No person id goes into a claim.
+ *
+ * Read receipts, deliveries, postbacks (we send no buttons), referrals and
+ * optins are not events here: they carry nothing to answer.
+ */
+export type InboundMessengerEvent =
+  | {
+      kind: 'message'
+      /** The Page the message arrived on: the channel's external_id */
+      pageId: string
+      claimId: string
+      messageId: string
+      /** The sender's page-scoped id (PSID) */
+      from: string
+      /** text, or the first attachment's type: image, audio, video, file, sticker, fallback… */
+      type: string
+      text?: string
+    }
+  | {
+      kind: 'echo'
+      pageId: string
+      claimId: string
+      messageId: string
+      /** The PSID the Page's message went to */
+      to: string
+      type: string
+      text?: string
+    }
+  | {
+      kind: 'reaction'
+      pageId: string
+      claimId: string
+      from: string
+      /** The emoji ('' when Meta sends none), react or unreact, and the mid it was put on */
+      reaction: { emoji: string; action: string; messageId: string }
+    }
+
+export function inboundMessengerEvents(payload: unknown): InboundMessengerEvent[] {
+  const body = isObject(payload) ? payload : {}
+  if (text(body.object) !== 'page') return []
+  const out: InboundMessengerEvent[] = []
+  for (const entry of list(body.entry)) {
+    const pageId = text(entry.id)
+    if (!pageId) continue
+    for (const event of list(entry.messaging)) {
+      const sender = isObject(event.sender) ? idOf(event.sender.id) : undefined
+      const recipient = isObject(event.recipient) ? idOf(event.recipient.id) : undefined
+      if (isObject(event.message)) {
+        const message = event.message
+        const messageId = text(message.mid)
+        if (!messageId || message.is_deleted === true) continue
+        const type = messengerType(message)
+        const textBody = typeof message.text === 'string' ? message.text : undefined
+        if (message.is_echo === true) {
+          if (!recipient || recipient === pageId) continue
+          out.push({ kind: 'echo', pageId, claimId: messageId, messageId, to: recipient, type, ...(textBody !== undefined ? { text: textBody } : {}) })
+        } else {
+          // A message from the Page itself without the echo flag is not a person writing to it
+          if (!sender || sender === pageId) continue
+          out.push({ kind: 'message', pageId, claimId: messageId, messageId, from: sender, type, ...(textBody !== undefined ? { text: textBody } : {}) })
+        }
+        continue
+      }
+      if (isObject(event.reaction)) {
+        const reaction = event.reaction
+        const messageId = text(reaction.mid)
+        if (!messageId || !sender || sender === pageId) continue
+        const action = text(reaction.action) ?? 'react'
+        const emoji = text(reaction.emoji) ?? ''
+        const timestamp = stamp(event.timestamp) ?? ''
+        out.push({ kind: 'reaction', pageId, claimId: `reaction:${messageId}:${action}:${emoji}:${timestamp}`, from: sender, reaction: { emoji, action, messageId } })
+      }
+    }
+  }
+  return out
+}
+
+const idOf = (value: unknown) => (typeof value === 'string' ? value : typeof value === 'number' ? String(value) : undefined)
+
+/** A Messenger message's type: its first attachment's (a sticker is an image carrying a sticker_id), or text */
+function messengerType(message: Json): string {
+  const attachment = list(message.attachments)[0]
+  if (!attachment) return 'text'
+  const payload = isObject(attachment.payload) ? attachment.payload : {}
+  if ('sticker_id' in payload) return 'sticker'
+  return text(attachment.type) ?? 'unsupported'
+}
