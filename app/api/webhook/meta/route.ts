@@ -1,10 +1,12 @@
 import { after, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { handleInstagramComment, type CommentDisposition } from '@/lib/meta/comments'
 import { handleInboundMessengerEvent, handleInboundWhatsAppMessage, type InboundChannel } from '@/lib/meta/inbound'
 import { claimMessages, completeMessages, type MessageClaim } from '@/lib/meta/processed'
 import {
   CHANNEL_TYPE,
   deliveryShape,
+  inboundInstagramComments,
   inboundMessengerEvents,
   inboundWhatsAppMessages,
   signatureDigest,
@@ -165,7 +167,26 @@ async function processDelivery(raw: Buffer) {
       }
     }
 
-    console.info('[webhook/meta]', JSON.stringify({ ...shape, clients: loggable(clients), messages }))
+    // INSTAGRAM COMMENTS: each claimed in meta_comment_replies by the handler,
+    // before anything acts (src/lib/meta/comments.ts holds the order). The
+    // client's switch is read there: off, nothing is stored or claimed.
+    const comments: Record<string, CommentDisposition['kind'] | 'unmapped' | 'failed'> = {}
+    for (const comment of inboundInstagramComments(payload)) {
+      const mapped = clients[comment.accountId]
+      if (typeof mapped !== 'object') {
+        comments[comment.commentId] = 'unmapped'
+        continue
+      }
+      try {
+        const result = await handleInstagramComment({ supabase, channel: mapped.channel, comment })
+        comments[comment.commentId] = result.kind
+      } catch (error) {
+        comments[comment.commentId] = 'failed'
+        console.error('[webhook/meta] handling an Instagram comment failed', { channelId: mapped.channelId, commentId: comment.commentId, error })
+      }
+    }
+
+    console.info('[webhook/meta]', JSON.stringify({ ...shape, clients: loggable(clients), messages, ...(Object.keys(comments).length ? { comments } : {}) }))
 
     try {
       await completeMessages(supabase, fresh)
@@ -205,7 +226,7 @@ async function clientsFor(supabase: ReturnType<typeof createAdminClient>, shape:
 
   const { data, error } = await supabase
     .from('channels')
-    .select('id, client_id, external_id, is_active, clients(name, industry, description, status, organizations(is_active))')
+    .select('id, client_id, external_id, is_active, clients(name, industry, description, status, comment_replies_enabled, organizations(is_active))')
     .eq('type', type)
     .in('external_id', ids)
     .order('is_active', { ascending: false })

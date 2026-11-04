@@ -7,11 +7,13 @@ import { signJwt } from '../harness/jwt'
  * NOBODY BUT THE SERVER READS A CHANNEL'S TOKEN (26 October 2026).
  *
  * channel_secrets holds the access token that sends messages as the client;
- * processed_meta_messages holds Meta's delivery ids. Both are service-role
- * only: row level security on with no policy, and every table privilege
- * revoked from anon and authenticated (20261102100000, 20261103100000). The
- * point of the tables is that no authenticated role can read them, so this
- * is the test that fails the day one can.
+ * processed_meta_messages holds Meta's delivery ids; meta_comment_replies
+ * the claim on each comment and what was done with it. All three are
+ * service-role only: row level security on with no policy, and every table
+ * privilege revoked from anon and authenticated (20261102100000,
+ * 20261103100000, 20261109100000). The point of the tables is that no
+ * authenticated role can read them, so this is the test that fails the day
+ * one can.
  *
  * Frozen the way the access matrix is: for every identity, every statement,
  * recorded as allowed or refused and compared to a snapshot — and, since a
@@ -31,7 +33,7 @@ import { signJwt } from '../harness/jwt'
 
 type Who = 'super' | 'superImpersonating' | 'orgAdmin' | 'clientAdmin' | 'teamMember' | 'anon'
 const EVERYONE: Who[] = ['super', 'superImpersonating', 'orgAdmin', 'clientAdmin', 'teamMember', 'anon']
-const TABLES = ['channel_secrets', 'processed_meta_messages'] as const
+const TABLES = ['channel_secrets', 'processed_meta_messages', 'meta_comment_replies'] as const
 
 // Serialised, retried and watched by the access project's global fetch (tests/harness/access-fetch.ts)
 const clientWith = (key: string) =>
@@ -61,6 +63,8 @@ beforeAll(async () => {
   if (secretError) throw secretError
   const { error: processedError } = await service.from('processed_meta_messages').insert({ message_id: `wamid.fixture.${channelId}`, channel_id: channelId })
   if (processedError) throw processedError
+  const { error: commentError } = await service.from('meta_comment_replies').insert({ comment_id: `comment.fixture.${channelId}`, channel_id: channelId })
+  if (commentError) throw commentError
 
   const superAdmin = await createUser('super_admin', null, 'super')
   const impersonating = await createUser('super_admin', null, 'super impersonating')
@@ -97,12 +101,14 @@ const outcome = (error: unknown, rows: unknown[] | null | undefined): Cell =>
 /** Every statement an identity could try, as allowed or refused. Writes are probes that leave nothing behind */
 async function statementsFor(who: Who, table: (typeof TABLES)[number]) {
   const db = clients[who]
-  const key = table === 'channel_secrets' ? 'channel_id' : 'message_id'
-  const fixture = table === 'channel_secrets' ? channelId : `wamid.fixture.${channelId}`
+  const key = table === 'channel_secrets' ? 'channel_id' : table === 'processed_meta_messages' ? 'message_id' : 'comment_id'
+  const fixture = table === 'channel_secrets' ? channelId : table === 'processed_meta_messages' ? `wamid.fixture.${channelId}` : `comment.fixture.${channelId}`
   const probe: Record<string, string> =
     table === 'channel_secrets'
       ? { channel_id: secondChannelId, access_token: `probe-${who}` }
-      : { message_id: `wamid.probe.${who}.${channelId}`, channel_id: secondChannelId }
+      : table === 'processed_meta_messages'
+        ? { message_id: `wamid.probe.${who}.${channelId}`, channel_id: secondChannelId }
+        : { comment_id: `comment.probe.${who}.${channelId}`, channel_id: secondChannelId }
 
   const select = await db.from(table).select('*')
   const selectOne = await db.from(table).select('*').eq(key, fixture)

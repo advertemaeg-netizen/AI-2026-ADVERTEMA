@@ -79,7 +79,15 @@ export type InboundChannel = {
   id: string
   client_id: string
   is_active: boolean
-  clients: { name: string; industry: string | null; description: string | null; status: string; organizations: { is_active: boolean } | null } | null
+  clients: {
+    name: string
+    industry: string | null
+    description: string | null
+    status: string
+    /** Comment replies in the clinic's name: off unless switched on for this client */
+    comment_replies_enabled?: boolean
+    organizations: { is_active: boolean } | null
+  } | null
 }
 
 /** A disabled channel, client or organization: the message is not stored and nothing is answered, as on the website (403) */
@@ -270,7 +278,7 @@ async function handleInbound(supabase: SupabaseClient, channel: InboundChannel, 
  * 'comments'), because on Facebook a commenter's id is their PSID and the
  * public side must never read the private one.
  */
-async function conversationFor(supabase: SupabaseClient, channel: InboundChannel, contact: string, profileName?: string) {
+export async function conversationFor(supabase: SupabaseClient, channel: InboundChannel, contact: string, profileName?: string) {
   const { data: existing, error } = await supabase
     .from('conversations')
     .select('id, auto_reply_enabled')

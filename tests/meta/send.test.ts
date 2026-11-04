@@ -179,10 +179,16 @@ describe('sendMessengerText', () => {
     return { service, channelId: channel.id, pageId: externalId }
   }
 
-  it('the 24-hour window is error 10 with subcode 2018278 only: error 10 with another subcode is an ordinary refusal, retried', async () => {
+  it('the 24-hour window is error 10 with subcode 2018278 or 2534022: error 10 with another subcode is an ordinary refusal, retried', async () => {
     const { service, channelId } = await pageWithToken()
     consoleOutput()
     mockGraph(() => Response.json({ error: { code: 10, error_subcode: 2018278 } }, { status: 400 }))
+    expect(await sendMessengerText({ supabase: service, channelId, to: PSID, body: BODY })).toEqual({ kind: 'outside_window', status: 400 })
+    expect(graphCalls).toHaveLength(1)
+
+    // 2534022 has the same meaning in Meta's table, platform unstated: the window too (decided 2026-11-04)
+    graphCalls.length = 0
+    mockGraph(() => Response.json({ error: { code: 10, error_subcode: 2534022 } }, { status: 400 }))
     expect(await sendMessengerText({ supabase: service, channelId, to: PSID, body: BODY })).toEqual({ kind: 'outside_window', status: 400 })
     expect(graphCalls).toHaveLength(1)
 

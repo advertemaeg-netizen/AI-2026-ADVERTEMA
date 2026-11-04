@@ -410,3 +410,66 @@ function messengerType(message: Json): string {
   if ('sticker_id' in payload) return 'sticker'
   return text(attachment.type) ?? 'unsupported'
 }
+
+/**
+ * AN INSTAGRAM COMMENT, WITH ITS CONTENT. For processing only, under the same
+ * rule as the other inbound types: the commenter's id, username and text are
+ * what the reply path needs and what the log must never carry.
+ *
+ * Only the `comments` field. `mentions` (comments on OTHER people's media
+ * that tag the account) and `live_comments` are never comments here: a
+ * clinic does not reply under a stranger's post, on any switch.
+ *
+ * The comment's id is `comment_id` in Meta's Unified-login example and `id`
+ * in what Instagram actually delivered to us (2026-11-04): both are read.
+ */
+export type InboundInstagramComment = {
+  /** The Instagram account the comment is on: the channel's external_id */
+  accountId: string
+  commentId: string
+  /** Set when the comment answers another comment */
+  parentId?: string
+  mediaId?: string
+  mediaProductType?: string
+  /** Present on an ad's comments */
+  adId?: string
+  /** The commenter's Instagram-scoped id, and username (public, as it shows under the post) */
+  from: { id: string; username?: string }
+  text?: string
+}
+
+export function inboundInstagramComments(payload: unknown): InboundInstagramComment[] {
+  const body = isObject(payload) ? payload : {}
+  if (text(body.object) !== 'instagram') return []
+  const out: InboundInstagramComment[] = []
+  for (const entry of list(body.entry)) {
+    const accountId = text(entry.id)
+    if (!accountId) continue
+    for (const change of entryChanges(entry)) {
+      if (text(change.field) !== 'comments') continue
+      const value = isObject(change.value) ? change.value : {}
+      const from = isObject(value.from) ? value.from : {}
+      const fromId = idOf(from.id)
+      const commentId = text(value.comment_id) ?? text(value.id)
+      if (!commentId || !fromId) continue
+      const media = isObject(value.media) ? value.media : {}
+      const parentId = text(value.parent_id)
+      const mediaId = text(media.id) ?? text(value.media_id)
+      const mediaProductType = text(media.media_product_type)
+      const adId = text(media.ad_id)
+      const username = text(from.username)
+      const commentText = text(value.text)
+      out.push({
+        accountId,
+        commentId,
+        ...(parentId ? { parentId } : {}),
+        ...(mediaId ? { mediaId } : {}),
+        ...(mediaProductType ? { mediaProductType } : {}),
+        ...(adId ? { adId } : {}),
+        from: { id: fromId, ...(username ? { username } : {}) },
+        ...(commentText !== undefined ? { text: commentText } : {}),
+      })
+    }
+  }
+  return out
+}
