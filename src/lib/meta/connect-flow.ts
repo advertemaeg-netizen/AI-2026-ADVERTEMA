@@ -133,5 +133,6 @@ export function accountsSummary(pages: PageGrant[]) {
     tasks: page.tasks === null ? 'absent' : pageOffered(page.tasks) ? 'messaging' : 'no_messaging',
     instagram: page.instagram?.id ?? null,
     pageToken: page.pageToken ? 'present' : 'absent',
+    seenIn: page.seenIn,
   }))
 }

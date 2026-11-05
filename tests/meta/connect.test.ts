@@ -71,15 +71,38 @@ const offeredPage = (): RawPage => ({ id: PAGE, name: 'عيادة النور', t
 /** The same Page, carried in by its Instagram account: no tasks field */
 const carriedPage = (): RawPage => ({ id: PAGE, name: 'عيادة النور', access_token: PAGE_TOKEN, instagram_business_account: { id: IG, username: 'alnoor' } })
 
-type Meta = { pages: RawPage[]; scopes: string[]; igBlocked: boolean }
+/**
+ * What Meta shows. `pages`: assigned_pages; `accounts`: /me/accounts, the same
+ * list unless a test says otherwise (in DEUTSCHHACK it was empty while
+ * assigned_pages had the Page). `pageSize`: rows per page of either list.
+ */
+type Meta = { pages: RawPage[]; accounts: RawPage[] | null; pageSize: number; scopes: string[]; igBlocked: boolean; verifyFails: boolean }
 let meta: Meta
+const SYSTEM_USER = '122093772141549073'
+
+/** One page of a list, by the `after` cursor (here: the next row's index), with paging.next when more remain */
+function listAnswer(rows: RawPage[], call: GraphCall) {
+  const from = Number(new URL(call.url).searchParams.get('after') ?? 0)
+  const slice = rows.slice(from, from + meta.pageSize)
+  const more = from + meta.pageSize < rows.length
+  return Response.json({
+    data: slice,
+    paging: { cursors: { before: String(from), after: String(from + slice.length) }, ...(more ? { next: 'https://graph.facebook.com/v26.0/next?access_token=never-fetched' } : {}) },
+  })
+}
 
 function graph(call: GraphCall): Response {
   const path = new URL(call.url).pathname.replace(/^\/v\d+\.\d+\//, '')
   if (path === 'oauth/access_token') return Response.json({ access_token: SYSTEM_TOKEN, token_type: 'bearer' })
   if (path === 'debug_token') return Response.json({ data: { is_valid: true, app_id: APP_ID, type: 'SYSTEM_USER', expires_at: 0, scopes: meta.scopes } })
-  if (path === 'me/accounts') return Response.json({ data: meta.pages, paging: { cursors: { before: 'b', after: 'a' } } })
+  if (path === 'me') return Response.json({ id: SYSTEM_USER })
+  if (path === `${SYSTEM_USER}/assigned_pages`) return listAnswer(meta.pages, call)
+  if (path === 'me/accounts') return listAnswer(meta.accounts ?? meta.pages, call)
   const [objectId, edge] = path.split('/')
+  // The read that verifies a token just before it is stored
+  if (!edge && call.method === 'GET') {
+    return meta.verifyFails ? Response.json({ error: { code: 190, message: 'Invalid OAuth access token' } }, { status: 400 }) : Response.json({ id: objectId })
+  }
   if (edge === 'subscribed_apps' && call.method === 'POST') return Response.json({ success: true })
   if (edge === 'subscribed_apps') {
     const fields = String(lastSubscribe(objectId)?.body.subscribed_fields ?? '').split(',').filter(Boolean)
@@ -113,7 +136,7 @@ beforeEach(async () => {
   }
   // The website channel, paused: its seat is free, so a pick of two fits the trial plan
   await admin.from('channels').update({ is_active: false }).eq('id', seeded.channelId)
-  meta = { pages: [carriedPage()], scopes: [...REQUIRED_SCOPES, 'public_profile'], igBlocked: false }
+  meta = { pages: [carriedPage()], accounts: null, pageSize: 100, scopes: [...REQUIRED_SCOPES, 'public_profile'], igBlocked: false, verifyFails: false }
   mockGraph(graph)
   signInAs(world.orgAdmin)
 })
@@ -178,9 +201,9 @@ describe('which Pages the clinic offered', () => {
 
   it('makes a carried-in Page a choice for its Instagram account only, and drops a Page with neither', () => {
     const pages: PageGrant[] = [
-      { id: 'P1', name: 'Offered', tasks: OFFERED_TASKS, pageToken: 't', instagram: null },
-      { id: 'P2', name: 'Carried', tasks: null, pageToken: 't', instagram: { id: 'IG2', username: 'two' } },
-      { id: 'P3', name: 'Neither', tasks: null, pageToken: 't', instagram: null },
+      { id: 'P1', name: 'Offered', tasks: OFFERED_TASKS, pageToken: 't', instagram: null, seenIn: ['assigned'] },
+      { id: 'P2', name: 'Carried', tasks: null, pageToken: 't', instagram: { id: 'IG2', username: 'two' }, seenIn: ['assigned'] },
+      { id: 'P3', name: 'Neither', tasks: null, pageToken: 't', instagram: null, seenIn: ['assigned'] },
     ]
     expect(connectOptions(pages)).toEqual([
       { pageId: 'P1', pageName: 'Offered', messenger: true, instagram: null },
@@ -269,6 +292,58 @@ describe('the return from Meta', () => {
     // Every token went in a header or a body, never a URL
     for (const call of graphCalls) expect(call.url).not.toMatch(/not-a-real-token|secret-not-real|CODE/)
     expect(graphCalls.find((c) => c.url.endsWith('/oauth/access_token'))?.body).toMatchObject({ code: 'CODE', redirect_uri: 'https://app.test/api/oauth/meta/callback' })
+  })
+})
+
+describe('reading the grant', () => {
+  it('finds the Instagram-only clinic when /me/accounts is empty (DEUTSCHHACK, 2026-11-05)', async () => {
+    meta.accounts = []
+    const pendingId = await loginToPicker()
+    const view = await getMetaConnectPicker(pendingId, world.clientId)
+    expect(view?.options).toEqual([{ pageId: PAGE, pageName: 'عيادة النور', messenger: null, instagram: { username: 'alnoor', availability: 'available' } }])
+  })
+
+  it('keeps a Page only /me/accounts shows: the union, not one list', async () => {
+    const other: RawPage = { id: `${PAGE}9`, name: 'Second', tasks: OFFERED_TASKS, access_token: PAGE_TOKEN }
+    meta.accounts = [carriedPage(), other]
+    const pendingId = await loginToPicker()
+    const view = await getMetaConnectPicker(pendingId, world.clientId)
+    expect(view?.options.map((o) => o.pageId).sort()).toEqual([PAGE, other.id].sort())
+  })
+
+  it('offers Messenger only when both lists say MESSAGING: a disagreement offers less', async () => {
+    meta.pages = [offeredPage()]
+    meta.accounts = [carriedPage()]
+    const pendingId = await loginToPicker()
+    const view = await getMetaConnectPicker(pendingId, world.clientId)
+    expect(view?.options[0].messenger).toBeNull()
+    expect(await completeMetaConnect(pendingId, world.clientId, { pageId: PAGE, messenger: true, instagram: false })).toEqual({ ok: false, status: 'forbidden' })
+  })
+
+  it('reads every page of the list by its cursor, never the paging URL', async () => {
+    meta.pageSize = 1
+    const second: RawPage = { id: `${PAGE}8`, name: 'Second', tasks: OFFERED_TASKS, access_token: PAGE_TOKEN }
+    meta.pages = [carriedPage(), second]
+    const pendingId = await loginToPicker()
+    const view = await getMetaConnectPicker(pendingId, world.clientId)
+    expect(view?.options.map((o) => o.pageId)).toEqual([PAGE, second.id])
+    expect(graphCalls.some((c) => c.url.includes('never-fetched'))).toBe(false)
+    expect(graphCalls.filter((c) => c.url.includes('/assigned_pages')).map((c) => new URL(c.url).searchParams.get('after'))).toEqual([null, '1'])
+  })
+
+  it('refuses a list longer than it reads rather than cut it short', async () => {
+    meta.pageSize = 1
+    meta.pages = Array.from({ length: 11 }, (_, i) => ({ id: `${PAGE}${i}`, name: `P${i}`, access_token: PAGE_TOKEN, instagram_business_account: { id: `${IG}${i}`, username: `p${i}` } }))
+    const landed = await returnFromMeta({ code: 'CODE', state: (await start()).searchParams.get('state')! })
+    expect(landed.searchParams.get('connect')).toBe('metaError')
+    expect(await pendingRows()).toEqual([])
+  })
+
+  it('never stores a token it has not just seen work: no channel, no secret', async () => {
+    const pendingId = await loginToPicker()
+    meta.verifyFails = true
+    expect(await completeMetaConnect(pendingId, world.clientId, { pageId: PAGE, messenger: false, instagram: true })).toEqual({ ok: false, status: 'metaError' })
+    expect(await metaChannels()).toEqual([])
   })
 })
 
@@ -458,9 +533,11 @@ describe('the connect’s log', () => {
       session: 'ok',
       exchange: 'ok',
       token: 'ok',
+      assignedReturned: 1,
       accountsReturned: 1,
+      disagree: [],
       // The Page carried in by its Instagram account: no tasks, kept for its Instagram account only
-      accounts: [{ page: PAGE, tasks: 'absent', instagram: IG, pageToken: 'present' }],
+      accounts: [{ page: PAGE, tasks: 'absent', instagram: IG, pageToken: 'present', seenIn: ['assigned', 'accounts'] }],
       options: 1,
       messengerOffered: 0,
       instagramOffered: 1,

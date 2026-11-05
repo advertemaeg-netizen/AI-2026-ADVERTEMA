@@ -6,9 +6,17 @@ import 'server-only'
  *
  * What the token tells us, proven on real logins (runs 1–4b, 2026-11-05):
  *
- *   - /me/accounts is the listing. It follows what the clinic granted, not the
- *     whole business (an unpicked Page in the same portfolio never appeared).
- *   - It returns every account EVER granted to the app's system user in that
+ *   - THE LIST IS /{system-user}/assigned_pages, with the wider fields: the
+ *     Page, its tasks, its Page token and its linked Instagram account in one
+ *     call. /me/accounts is NOT complete: for an Instagram-only grant in
+ *     DEUTSCHHACK it returned {"data": []}, minutes apart, while
+ *     assigned_pages returned the Page and both the Page and the Instagram
+ *     account were readable (2026-11-05; in Mudrik Sandbox the same grant
+ *     shape listed the Page in both, cause unknown). /me/accounts stays in
+ *     the union as a second witness: one call, and it costs nothing to be
+ *     wrong about. Neither list ever reached outside the grant (an unpicked
+ *     Page in the same portfolio appeared in neither).
+ *   - The grant holds every account EVER granted to the app's system user in that
  *     business, not the current pick (grants accumulate; Meta's own dialog
  *     pre-ticks them as "Previously shared"). Nothing in it tells a new grant
  *     from an old one. So the clinic picks, after the return, in our picker.
@@ -17,15 +25,20 @@ import 'server-only'
  *     token, although the clinic never offered the Page and cannot see it in
  *     its own access list on Meta.
  *   - A Page the clinic granted carries `tasks`; a Page carried in by its
- *     Instagram account has NO `tasks` field (five observations, three
- *     logins).
+ *     Instagram account has NO `tasks` field, in both lists (Page B over five
+ *     runs; confirmed on Page A, an independent Page, 2026-11-05).
  *
  * THE RULE: we connect only what the clinic offered. A Page is offered for
  * Messenger only when it carries `tasks` including MESSAGING. A missing field
  * is absence, never "unknown", and there is no fallback that offers it: if
  * Meta stops sending `tasks`, every Page looks un-offered and the picker
  * offers no Messenger at all. Under-offering is the safe direction, and it is
- * the whole argument for building on an undocumented field.
+ * the whole argument for building on an undocumented field. When the two
+ * lists both show a Page, it is offered only if BOTH show MESSAGING.
+ *
+ * Every page of both lists is read, by cursor. A list longer than we read is
+ * a failure, never a quiet truncation: a shorter list than reality is how the
+ * right account goes missing.
  *
  * Tokens travel in the Authorization header or a POST body, never a query
  * string. Paging follows `paging.cursors.after` with the header token; a
@@ -37,8 +50,9 @@ import 'server-only'
 const GRAPH = 'https://graph.facebook.com/v26.0'
 const DIALOG = 'https://www.facebook.com/v26.0/dialog/oauth'
 const TIMEOUT_MS = 15_000
-/** /me/accounts pages read at most (100 Pages each); a business with more is not a clinic */
-const MAX_PAGES = 5
+/** Pages of results read per list at most (100 Pages each); a grant with more is refused, not cut short */
+const MAX_PAGES = 10
+const PAGE_FIELDS_QUERY = 'id,name,tasks,access_token,instagram_business_account{id,username}'
 
 /** The configuration's permissions (1018979181243946): all must be granted */
 export const REQUIRED_SCOPES = [
@@ -57,13 +71,15 @@ export const PAGE_FIELDS = ['feed', 'messages', 'message_echoes', 'message_react
 /** Instagram: proven 2026-11-04 and 2026-11-05 */
 export const INSTAGRAM_FIELDS = ['messages', 'comments'] as const
 
-/** A Page as /me/accounts returned it. `tasks` null when the field is absent */
+/** A Page as the grant shows it. `tasks` null when the field is absent */
 export type PageGrant = {
   id: string
   name: string
   tasks: string[] | null
   pageToken: string | null
   instagram: { id: string; username: string | null } | null
+  /** Which lists showed it, for the log */
+  seenIn: ('assigned' | 'accounts')[]
 }
 
 /** One choice in the picker: a Page, and what of it may be connected. No token */
@@ -191,42 +207,103 @@ type RawPage = {
   instagram_business_account?: { id?: unknown; username?: unknown }
 }
 
-/**
- * Every Page the token can see, with its tasks, its Page token and its linked
- * Instagram account. null when Meta refused or a page of results failed: a
- * partial list would hide an account, so there is none.
- */
-export async function listPages(token: string): Promise<PageGrant[] | null> {
+function parsePage(raw: RawPage, source: 'assigned' | 'accounts'): PageGrant | null {
+  if (typeof raw.id !== 'string') return null
+  const ig = raw.instagram_business_account
+  return {
+    id: raw.id,
+    name: typeof raw.name === 'string' ? raw.name : raw.id,
+    // Absent stays absent: only an array is tasks
+    tasks: Array.isArray(raw.tasks) ? raw.tasks.filter((t): t is string => typeof t === 'string') : null,
+    pageToken: typeof raw.access_token === 'string' && raw.access_token ? raw.access_token : null,
+    instagram: ig && typeof ig.id === 'string' ? { id: ig.id, username: typeof ig.username === 'string' ? ig.username : null } : null,
+    seenIn: [source],
+  }
+}
+
+type ListRead = { ok: true; pages: PageGrant[] } | { ok: false; reason: 'refused' | 'truncated' }
+
+/** Every page of one list, by cursor. More than MAX_PAGES pages is a failure, not a shorter list */
+async function readList(path: string, token: string, source: 'assigned' | 'accounts'): Promise<ListRead> {
   const pages: PageGrant[] = []
   let after: string | null = null
   for (let read = 0; read < MAX_PAGES; read += 1) {
-    const query: Record<string, string> = { fields: 'id,name,tasks,access_token,instagram_business_account{id,username}', limit: '100' }
+    const query: Record<string, string> = { fields: PAGE_FIELDS_QUERY, limit: '100' }
     if (after) query.after = after
-    const answer = await call('me/accounts', { token, query })
+    const answer = await call(path, { token, query })
     if (!answer.ok) {
-      failed('me/accounts refused', answer, { read })
-      return null
+      failed(`${source} refused`, answer, { read })
+      return { ok: false, reason: 'refused' }
     }
     for (const raw of Array.isArray(answer.body.data) ? (answer.body.data as RawPage[]) : []) {
-      if (typeof raw.id !== 'string') continue
-      const ig = raw.instagram_business_account
-      pages.push({
-        id: raw.id,
-        name: typeof raw.name === 'string' ? raw.name : raw.id,
-        // Absent stays absent: only an array is tasks
-        tasks: Array.isArray(raw.tasks) ? raw.tasks.filter((t): t is string => typeof t === 'string') : null,
-        pageToken: typeof raw.access_token === 'string' && raw.access_token ? raw.access_token : null,
-        instagram: ig && typeof ig.id === 'string' ? { id: ig.id, username: typeof ig.username === 'string' ? ig.username : null } : null,
-      })
+      const page = parsePage(raw, source)
+      if (page) pages.push(page)
     }
     // The cursor, never paging.next: that URL carries the token
     const paging = answer.body.paging as { cursors?: { after?: unknown }; next?: unknown } | undefined
     const cursor = typeof paging?.cursors?.after === 'string' ? paging.cursors.after : null
-    if (!cursor || !paging?.next) return pages
+    if (!cursor || !paging?.next) return { ok: true, pages }
     after = cursor
   }
-  console.warn('[meta/connect] me/accounts truncated', { pages: pages.length })
-  return pages
+  console.warn('[meta/connect] list longer than read: refused, not cut short', { source, pages: pages.length })
+  return { ok: false, reason: 'truncated' }
+}
+
+export type GrantRead =
+  | { ok: true; pages: PageGrant[]; assigned: number; accounts: number; disagree: string[] }
+  | { ok: false; reason: 'no_system_user' | 'assigned_refused' | 'assigned_truncated' | 'accounts_refused' | 'accounts_truncated' }
+
+/**
+ * Every Page the grant reaches: the union of assigned_pages and /me/accounts,
+ * each read to the end. For a Page both show, the offer stands only if both
+ * show MESSAGING (any disagreement offers less), and its token and Instagram
+ * link come from assigned_pages. Either list failing fails the read: a
+ * partial view would hide an account and say "nothing to connect".
+ */
+export async function readGrant(token: string): Promise<GrantRead> {
+  const me = await call('me', { token, query: { fields: 'id' } })
+  const systemUserId = me.ok && typeof me.body.id === 'string' ? me.body.id : null
+  if (!systemUserId) {
+    if (!me.ok) failed('me refused', me)
+    return { ok: false, reason: 'no_system_user' }
+  }
+  const assigned = await readList(`${systemUserId}/assigned_pages`, token, 'assigned')
+  if (!assigned.ok) return { ok: false, reason: assigned.reason === 'refused' ? 'assigned_refused' : 'assigned_truncated' }
+  const accounts = await readList('me/accounts', token, 'accounts')
+  if (!accounts.ok) return { ok: false, reason: accounts.reason === 'refused' ? 'accounts_refused' : 'accounts_truncated' }
+
+  const byId = new Map<string, PageGrant>()
+  const disagree: string[] = []
+  for (const page of assigned.pages) if (!byId.has(page.id)) byId.set(page.id, page)
+  for (const page of accounts.pages) {
+    const known = byId.get(page.id)
+    if (!known) {
+      byId.set(page.id, page)
+      continue
+    }
+    known.seenIn.push('accounts')
+    // Both must offer it; otherwise it takes the reading that does not
+    if (pageOffered(known.tasks) !== pageOffered(page.tasks)) {
+      disagree.push(page.id)
+      if (!pageOffered(page.tasks)) known.tasks = page.tasks
+    }
+    known.pageToken ??= page.pageToken
+    known.instagram ??= page.instagram
+  }
+  return { ok: true, pages: [...byId.values()], assigned: assigned.pages.length, accounts: accounts.pages.length, disagree }
+}
+
+/**
+ * Seen to work just now: the token reads the account it is about to be
+ * stored for. Done where a token is stored and nowhere else: we never save a
+ * token we have not just watched answer.
+ */
+export async function verifyAccess({ objectId, token }: { objectId: string; token: string }): Promise<boolean> {
+  const answer = await call(objectId, { token, query: { fields: 'id' } })
+  if (answer.ok && String(answer.body.id) === objectId) return true
+  if (!answer.ok) failed('token did not read its account', answer, { objectId })
+  else console.warn('[meta/connect] token read another account', { objectId })
+  return false
 }
 
 export type SubscribeResult = { kind: 'subscribed' } | { kind: 'failed'; step: 'subscribe' | 'read'; status: number | null; code: number | null }

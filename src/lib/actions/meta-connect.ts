@@ -5,7 +5,7 @@ import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { canManage, getSession } from '@/lib/auth/session'
 import { appOrigin } from '@/lib/app-url'
-import { dialogUrl, listPages, pageOffered } from '@/lib/meta/connect'
+import { dialogUrl, pageOffered, readGrant, verifyAccess } from '@/lib/meta/connect'
 import {
   CONNECT_TTL_MS,
   PENDING_COLUMNS,
@@ -200,9 +200,9 @@ export async function completeMetaConnect(pendingId: string, clientId: string, s
   if (!selection.messenger && !selection.instagram) return done({ ok: false, status: 'forbidden' }, { refused: 'nothing_ticked' })
 
   // The Page token is read now, from Meta, and the Page must still be the clinic's own offer
-  const pages = await listPages(systemToken)
-  if (!pages) return done({ ok: false, status: 'metaError' }, { accounts: 'listing_failed' })
-  const page = pages.find((p) => p.id === option.pageId)
+  const grant = await readGrant(systemToken)
+  if (!grant.ok) return done({ ok: false, status: 'metaError' }, { grant: grant.reason })
+  const page = grant.pages.find((p) => p.id === option.pageId)
 
   const admin = createAdminClient()
   const planned: Planned[] = []
@@ -236,6 +236,13 @@ export async function completeMetaConnect(pendingId: string, clientId: string, s
     if (check && check.limit !== null) {
       const free = check.limit - check.used
       if (free < needed) return done({ ok: false, status: needed === 2 && free === 1 ? 'limitReachedTwo' : 'limitReached' }, { seats: { needed, free } })
+    }
+  }
+
+  // Every token, seen to work on its account just now, before anything is created or stored
+  for (const item of planned) {
+    if (!(await verifyAccess({ objectId: item.externalId, token: item.token }))) {
+      return done({ ok: false, status: 'metaError' }, { refused: 'token_did_not_verify', type: item.type, account: item.externalId })
     }
   }
 

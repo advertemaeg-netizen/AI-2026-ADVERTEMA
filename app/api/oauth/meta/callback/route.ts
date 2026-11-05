@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { appOrigin } from '@/lib/app-url'
 import { canManage, getSession } from '@/lib/auth/session'
-import { checkToken, connectOptions, exchangeCode, listPages, pageOffered } from '@/lib/meta/connect'
+import { checkToken, connectOptions, exchangeCode, pageOffered, readGrant, verifyAccess } from '@/lib/meta/connect'
 import {
   CONNECT_TTL_MS,
   PENDING_COLUMNS,
@@ -27,7 +27,8 @@ import type { ConnectStatus } from '@/lib/types/meta-connect'
  *      login was not started for.
  *   3. The code is exchanged server to server, same redirect_uri.
  *   4. The token: valid, ours, a system user's, every permission granted.
- *      Then the accounts it can see (/me/accounts).
+ *      Then the Pages the grant reaches (readGrant: assigned_pages, with
+ *      /me/accounts as a second witness, every page of both).
  *   5–6. A reconnect refreshes its own channel here, if its account is among
  *      them, and subscribes it again; it never moves to another account. A
  *      new connect keeps the token server-side and sends the clinic to the
@@ -109,9 +110,10 @@ export async function GET(request: NextRequest) {
   if (check.kind !== 'ok') return finish('metaError', { token: check.kind })
   trace.token = 'ok'
 
-  const pages = await listPages(token)
-  if (!pages) return finish('metaError', { accounts: 'listing_failed' })
-  Object.assign(trace, { accountsReturned: pages.length, accounts: accountsSummary(pages) })
+  const grant = await readGrant(token)
+  if (!grant.ok) return finish('metaError', { grant: grant.reason })
+  const pages = grant.pages
+  Object.assign(trace, { assignedReturned: grant.assigned, accountsReturned: grant.accounts, pages: pages.length, disagree: grant.disagree, accounts: accountsSummary(pages) })
 
   if (pending.channel_id) {
     // A reconnect: the channel keeps its account, or nothing changes
@@ -132,6 +134,8 @@ export async function GET(request: NextRequest) {
       channelToken = pages.some((p) => p.instagram?.id === channel.external_id) ? token : null
     }
     if (!channelToken) return finish('notShared', { reconnect: 'account_not_shared' })
+    // Never store a token we have not just seen work
+    if (!(await verifyAccess({ objectId: channel.external_id, token: channelToken }))) return finish('metaError', { reconnect: 'token_did_not_verify' })
 
     const attached = await attachToken({
       admin,
