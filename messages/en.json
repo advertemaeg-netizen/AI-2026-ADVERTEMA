@@ -252,7 +252,7 @@
     "whatsapp": {
       "subscribed": {
         "badge": "Linked",
-        "description": "The account is linked to the app, and messages arrive."
+        "description": "The WhatsApp number is linked to Mudrik."
       },
       "notSubscribed": {
         "badge": "Not linked",
@@ -266,7 +266,125 @@
         "badge": "Check failed",
         "description": "Meta could not be reached. The link state is unknown."
       },
-      "link": "Link account"
+      "link": "Link account",
+      "number": {
+        "registered": {
+          "badge": "Number registered",
+          "description": "The number is ready to send and receive messages."
+        },
+        "notRegistered": {
+          "badge": "Number not registered",
+          "description": "The connection worked, but the number still needs registering. Contact us and we will finish it."
+        }
+      }
+    },
+    "connection": {
+      "connected": {
+        "badge": "Connected",
+        "description": "The account is linked to Mudrik."
+      },
+      "tokenInvalid": {
+        "badge": "Connection expired",
+        "description": "Mudrik no longer has access to this account. Choose Reconnect and sign in again."
+      },
+      "checkFailed": {
+        "badge": "Check failed",
+        "description": "We could not reach Meta just now, so the state is unknown. Refresh in a little while."
+      },
+      "notConfigured": {
+        "badge": "Setup incomplete",
+        "description": "Something is missing on our side. Contact us and we will fix it."
+      },
+      "reconnect": {
+        "button": "Reconnect"
+      }
+    },
+    "instagram": {
+      "comments": {
+        "live": {
+          "badge": "Comment replies on",
+          "description": "Mudrik replies to comments and sends the commenter a private message."
+        },
+        "off": {
+          "badge": "Comment replies off",
+          "description": "Comments reach Mudrik, but no reply is sent. We turn this on for you — contact us if you want it."
+        },
+        "notSubscribed": {
+          "badge": "Comments not connected",
+          "description": "Instagram comments are not reaching Mudrik. Reconnect the account."
+        }
+      },
+      "messages": {
+        "allowed": {
+          "badge": "Messages allowed",
+          "description": "The Instagram account allows Mudrik to access direct messages."
+        },
+        "blocked": {
+          "badge": "Messages blocked",
+          "description": "The Instagram account blocks access to messages from outside the app. Comments are unaffected.",
+          "steps": "Open the Facebook Page linked to this account, then Settings → Linked accounts → Instagram, and turn on “Allow access to Instagram messages in Inbox”."
+        },
+        "notSubscribed": {
+          "badge": "Messages not connected",
+          "description": "Instagram messages are not reaching Mudrik. Reconnect the account."
+        }
+      }
+    },
+    "facebook": {
+      "messages": {
+        "subscribed": {
+          "badge": "Messages connected",
+          "description": "Messenger messages reach Mudrik."
+        },
+        "notSubscribed": {
+          "badge": "Messages not connected",
+          "description": "Messenger messages are not reaching Mudrik. Reconnect the Page."
+        }
+      },
+      "comments": {
+        "subscribed": {
+          "badge": "Comments connected",
+          "description": "Comments on the Page reach Mudrik."
+        },
+        "notSubscribed": {
+          "badge": "Comments not connected",
+          "description": "Comments on the Page are not reaching Mudrik. Reconnect the Page."
+        }
+      }
+    },
+    "addChannel": {
+      "instagram": {
+        "title": "Instagram",
+        "description": "You will go to Meta to choose an Instagram account and approve access, then come back here.",
+        "button": "Connect Instagram"
+      },
+      "facebook": {
+        "title": "Facebook Page",
+        "description": "You will go to Meta to choose a Page and approve access, then come back here.",
+        "button": "Connect Page"
+      },
+      "whatsapp": {
+        "title": "WhatsApp",
+        "description": "Meta will open a window where you choose a WhatsApp number and approve access, without leaving this page.",
+        "button": "Connect WhatsApp"
+      }
+    },
+    "connect": {
+      "connected": "Connected.",
+      "reconnected": "Connection refreshed.",
+      "connectedMessagesBlocked": "Connected, but messages are blocked by the Instagram account. See the card.",
+      "cancelled": "Connection cancelled.",
+      "expired": "The link expired or was already used. Start again.",
+      "forbidden": "You do not have permission to add channels for this client.",
+      "missingPermission": "A permission was turned off in Meta's dialog. Start again and approve all of them.",
+      "noAccount": "No account was chosen in Meta's dialog.",
+      "multipleAccounts": "More than one account was chosen. Pick one at a time.",
+      "accountOnOtherClient": "This account is connected to another client. Contact us and we will disconnect it.",
+      "subscribeFailed": "Connected, but linking the account to Mudrik failed. Try again.",
+      "metaError": "Meta returned an error. Try again, and contact us if it repeats.",
+      "noPhoneNumber": "Signup finished without a number. Start again and choose one.",
+      "registerFailed": "Connected, but registering the number failed. Contact us and we will finish it.",
+      "payment": "One thing left: add a payment method in WhatsApp Manager so messages can be sent."
     }
   },
   "conversations": {
@@ -1352,6 +1470,16 @@
       "note": "Note",
       "imported": "Imported draft",
       "view": "View"
+    },
+    "commentReplies": {
+      "label": "Automatic comment replies",
+      "on": "Comment replies turned on.",
+      "off": "Comment replies turned off.",
+      "confirm": {
+        "title": "Turn on comment replies?",
+        "button": "Turn on",
+        "description": "Mudrik will reply publicly to comments on {client} and send each commenter a private message. Public replies are visible to everyone."
+      }
     }
   },
   "subscription": {

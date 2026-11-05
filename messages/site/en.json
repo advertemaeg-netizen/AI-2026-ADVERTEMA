@@ -345,5 +345,13 @@
       "updated": "Last updated: [[date]]"
     },
     "draftNotice": "Draft — this page is under legal review and has not been approved."
+  },
+  "dataDeletion": {
+    "title": "Delete your data",
+    "body": "To delete your data from Mudrik, email us at [[email]]. If you are clinic staff, write from the address registered with us. If you contacted a clinic through Mudrik, tell us the clinic's name and the number or account you messaged it from, and we will verify and delete. We delete conversations, contact details and any uploaded files, and confirm within thirty days. Billing records are kept as the law requires.",
+    "status": {
+      "title": "Deletion request status",
+      "body": "Request [[code]]. Status: [[status]]."
+    }
   }
 }
