@@ -4,6 +4,8 @@
  */
 export const CONNECT_STATUS_MESSAGES = {
   connected: 'connect.connected',
+  connectedPaused: 'connect.connectedPaused',
+  connectedPausedMessagesBlocked: 'connect.connectedPausedMessagesBlocked',
   reconnected: 'connect.reconnected',
   connectedMessagesBlocked: 'connect.connectedMessagesBlocked',
   cancelled: 'connect.cancelled',
@@ -26,9 +28,9 @@ export const CONNECT_STATUS_MESSAGES = {
 export type ConnectStatus = keyof typeof CONNECT_STATUS_MESSAGES
 
 /** The statuses that are good news (a success toast rather than an error) */
-export const CONNECT_SUCCESS: readonly ConnectStatus[] = ['connected', 'reconnected']
+export const CONNECT_SUCCESS: readonly ConnectStatus[] = ['connected', 'connectedPaused', 'reconnected']
 /** Connected, with something the clinic must know */
-export const CONNECT_WARNING: readonly ConnectStatus[] = ['connectedMessagesBlocked', 'subscribeFailed', 'cancelled']
+export const CONNECT_WARNING: readonly ConnectStatus[] = ['connectedMessagesBlocked', 'connectedPausedMessagesBlocked', 'subscribeFailed', 'cancelled']
 
 export function isConnectStatus(value: unknown): value is ConnectStatus {
   return typeof value === 'string' && Object.hasOwn(CONNECT_STATUS_MESSAGES, value)

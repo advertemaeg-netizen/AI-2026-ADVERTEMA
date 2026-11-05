@@ -20,7 +20,16 @@ import {
 } from '@/lib/types/meta-connect'
 
 /** Statuses that end the pick: back to the channels page, which shows them */
-const LEAVES: readonly ConnectStatus[] = ['connected', 'reconnected', 'connectedMessagesBlocked', 'subscribeFailed', 'expired', 'cancelled']
+const LEAVES: readonly ConnectStatus[] = [
+  'connected',
+  'connectedPaused',
+  'connectedPausedMessagesBlocked',
+  'reconnected',
+  'connectedMessagesBlocked',
+  'subscribeFailed',
+  'expired',
+  'cancelled',
+]
 
 export function ConnectPicker({ view }: { view: PickerView }) {
   const t = useTranslations('channels')

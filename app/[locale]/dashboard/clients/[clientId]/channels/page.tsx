@@ -75,6 +75,7 @@ export default async function ChannelsPage({
             <ChannelCard
               key={channel.id}
               channel={channel}
+              clientName={client.name}
               canManage={canManage}
               appOrigin={origin}
               subscription={subscriptions[channel.id] ?? null}

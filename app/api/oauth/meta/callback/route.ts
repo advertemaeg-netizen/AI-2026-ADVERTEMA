@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
       token: channelToken,
       appId: config.appId,
     })
-    return finish(attachedStatus([attached], true))
+    return finish(attachedStatus([attached], false))
   }
 
   const options = connectOptions(pages)

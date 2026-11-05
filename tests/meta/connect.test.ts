@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { GET as callback } from '../../app/api/oauth/meta/callback/route'
 import { cancelMetaConnect, completeMetaConnect, getMetaConnectPicker, startMetaConnect } from '@/lib/actions/meta-connect'
+import { toggleChannelActive } from '@/lib/actions/channels'
 import { canManageClient } from '@/lib/auth/permissions'
 import { INSTAGRAM_FIELDS, PAGE_FIELDS, REQUIRED_SCOPES, connectOptions, pageOffered, type PageGrant } from '@/lib/meta/connect'
 import { createUser, graphCalls, mockGraph, seedClient, serviceClient, userClient, type GraphCall, type TestUser } from '../harness/helpers'
@@ -146,6 +147,16 @@ async function secretOf(channelId: string) {
   return data?.access_token ?? null
 }
 
+/** Active website channels until `free` seats are left on the client's plan */
+async function fillSeats(free = 0) {
+  const { data } = await admin.rpc('client_usage', { p_client_id: world.clientId })
+  const seats = (data as { limit_type: string; used: number; limit_value: number | null }[]).find((u) => u.limit_type === 'channels')!
+  expect(seats.limit_value).not.toBeNull()
+  for (let i = seats.used; i < seats.limit_value! - free; i += 1) {
+    await admin.from('channels').insert({ client_id: world.clientId, type: 'website', name: `filler ${i}` })
+  }
+}
+
 /** A full login up to the picker; returns the pending row's id */
 async function loginToPicker() {
   const dialog = await start()
@@ -280,9 +291,9 @@ describe('the picker', () => {
     meta.pages = [offeredPage()]
     const pendingId = await loginToPicker()
     const result = await completeMetaConnect(pendingId, world.clientId, { pageId: PAGE, messenger: false, instagram: true })
-    expect(result).toEqual({ ok: true, status: 'connected' })
+    expect(result).toEqual({ ok: true, status: 'connectedPaused' })
     const channels = await metaChannels()
-    expect(channels).toEqual([{ id: expect.any(String), type: 'instagram', external_id: IG, is_active: true, name: '@alnoor' }])
+    expect(channels).toEqual([{ id: expect.any(String), type: 'instagram', external_id: IG, is_active: false, name: '@alnoor' }])
     expect(await secretOf(channels[0].id)).toBe(SYSTEM_TOKEN)
     expect(lastSubscribe(IG)?.body.subscribed_fields).toBe(INSTAGRAM_FIELDS.join(','))
     expect(lastSubscribe(PAGE)).toBeUndefined()
@@ -300,11 +311,11 @@ describe('the picker', () => {
     meta.pages = [offeredPage()]
     const pendingId = await loginToPicker()
     const result = await completeMetaConnect(pendingId, world.clientId, { pageId: PAGE, messenger: true, instagram: true })
-    expect(result).toEqual({ ok: true, status: 'connected' })
+    expect(result).toEqual({ ok: true, status: 'connectedPaused' })
     const channels = await metaChannels()
-    expect(channels.map((c) => [c.type, c.external_id])).toEqual([
-      ['facebook', PAGE],
-      ['instagram', IG],
+    expect(channels.map((c) => [c.type, c.external_id, c.is_active])).toEqual([
+      ['facebook', PAGE, false],
+      ['instagram', IG, false],
     ])
     expect(await secretOf(channels[0].id)).toBe(PAGE_TOKEN)
     expect(lastSubscribe(PAGE)?.body.subscribed_fields).toBe(PAGE_FIELDS.join(','))
@@ -321,6 +332,32 @@ describe('the picker', () => {
     expect(await metaChannels()).toEqual([])
   })
 
+  it('creates a new channel paused: nothing answers anyone until it is turned on from its card', async () => {
+    const pendingId = await loginToPicker()
+    await completeMetaConnect(pendingId, world.clientId, { pageId: PAGE, messenger: false, instagram: true })
+    const [channel] = await metaChannels()
+    expect(channel.is_active).toBe(false)
+    // Turning it on is the deliberate step, and it takes a seat like any other
+    expect(await toggleChannelActive(channel.id, true)).toEqual({ ok: true })
+    expect((await metaChannels())[0].is_active).toBe(true)
+  })
+
+  it('refuses turning a connected channel on when the plan has no seat left', async () => {
+    const pendingId = await loginToPicker()
+    await completeMetaConnect(pendingId, world.clientId, { pageId: PAGE, messenger: false, instagram: true })
+    const [channel] = await metaChannels()
+    await fillSeats()
+    expect(await toggleChannelActive(channel.id, true)).toEqual({ ok: false, error: 'limitReached' })
+    expect((await metaChannels())[0].is_active).toBe(false)
+  })
+
+  it('keeps a refreshed live channel live: only new channels start paused', async () => {
+    const { data: live } = await admin.from('channels').insert({ client_id: world.clientId, type: 'instagram', name: '@alnoor', external_id: IG, is_active: true }).select('id').single<{ id: string }>()
+    const pendingId = await loginToPicker()
+    expect(await completeMetaConnect(pendingId, world.clientId, { pageId: PAGE, messenger: false, instagram: true })).toEqual({ ok: true, status: 'reconnected' })
+    expect(await metaChannels()).toEqual([expect.objectContaining({ id: live!.id, is_active: true })])
+  })
+
   it('refreshes this client’s own channel rather than adding a second', async () => {
     const { data: existing } = await admin.from('channels').insert({ client_id: world.clientId, type: 'instagram', name: '@alnoor', external_id: IG }).select('id').single<{ id: string }>()
     const pendingId = await loginToPicker()
@@ -333,12 +370,7 @@ describe('the picker', () => {
   it('checks both seats before creating either: one free seat for two channels is limitReachedTwo', async () => {
     meta.pages = [offeredPage()]
     await admin.from('channels').update({ is_active: true }).eq('id', world.websiteChannelId)
-    const { data } = await admin.rpc('client_usage', { p_client_id: world.clientId })
-    const seats = (data as { limit_type: string; used: number; limit_value: number | null }[]).find((u) => u.limit_type === 'channels')!
-    expect(seats.limit_value).not.toBeNull()
-    for (let i = seats.used; i < seats.limit_value! - 1; i += 1) {
-      await admin.from('channels').insert({ client_id: world.clientId, type: 'website', name: `filler ${i}` })
-    }
+    await fillSeats(1)
     const pendingId = await loginToPicker()
     const result = await completeMetaConnect(pendingId, world.clientId, { pageId: PAGE, messenger: true, instagram: true })
     expect(result).toEqual({ ok: false, status: 'limitReachedTwo' })
@@ -348,7 +380,7 @@ describe('the picker', () => {
   it('says when messages are blocked by the Instagram account (#200)', async () => {
     meta.igBlocked = true
     const pendingId = await loginToPicker()
-    expect(await completeMetaConnect(pendingId, world.clientId, { pageId: PAGE, messenger: false, instagram: true })).toEqual({ ok: true, status: 'connectedMessagesBlocked' })
+    expect(await completeMetaConnect(pendingId, world.clientId, { pageId: PAGE, messenger: false, instagram: true })).toEqual({ ok: true, status: 'connectedPausedMessagesBlocked' })
   })
 
   it('drops the token on cancel', async () => {

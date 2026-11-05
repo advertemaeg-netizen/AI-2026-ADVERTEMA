@@ -153,6 +153,12 @@ type Planned = { type: 'facebook' | 'instagram'; externalId: string; name: strin
  * only for a Page the clinic itself granted, and an account held by any other
  * client (active or paused) is refused before the database's index sees it.
  * Both seats are checked before either channel is created.
+ *
+ * A NEW CHANNEL IS CREATED PAUSED. It does not answer anyone until someone
+ * who has checked what the bot says turns it on from its card: a clinic that
+ * connects at eleven at night must not have the bot talking to patients
+ * (user, 2026-11-05; the same principle as the comment switch). A channel
+ * that is refreshed keeps the state it had.
  */
 export async function completeMetaConnect(pendingId: string, clientId: string, selection: PickerSelection): Promise<CompleteConnectResult> {
   const caller = await manager(clientId)
@@ -214,7 +220,7 @@ export async function completeMetaConnect(pendingId: string, clientId: string, s
       // As the user: row level security decides, as for any channel they add
       const { data, error } = await caller.supabase
         .from('channels')
-        .insert({ client_id: clientId, type: item.type, name: item.name.slice(0, 100), external_id: item.externalId, is_active: true })
+        .insert({ client_id: clientId, type: item.type, name: item.name.slice(0, 100), external_id: item.externalId, is_active: false })
         .select('id')
         .single<{ id: string }>()
       if (error) return { ok: false, status: insertError(error) }
@@ -232,7 +238,7 @@ export async function completeMetaConnect(pendingId: string, clientId: string, s
 
   await admin.from('meta_connect_pending').delete().eq('id', pending.id)
   revalidatePath(CHANNELS_PATH, 'page')
-  return { ok: true, status: attachedStatus(results, needed === 0) }
+  return { ok: true, status: attachedStatus(results, needed > 0) }
 }
 
 function insertError(error: { code?: string; message: string; hint?: string | null }): ConnectStatus {

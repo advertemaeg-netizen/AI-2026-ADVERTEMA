@@ -111,6 +111,16 @@ export async function toggleChannelActive(
   if (!canManage(profile)) return { ok: false, error: 'forbidden' }
   if (!UUID_PATTERN.test(id)) return { ok: false, error: 'notFound' }
 
+  // Turning a paused channel on takes a seat: checked here, and by the database (20261112100000)
+  if (isActive) {
+    const { data: channel } = await supabase.from('channels').select('client_id, is_active').eq('id', id).maybeSingle<{ client_id: string; is_active: boolean }>()
+    if (!channel) return { ok: false, error: 'notFound' }
+    if (!channel.is_active) {
+      const blocked = await guardLimit(checkClientLimit(supabase, channel.client_id, 'channels'))
+      if (blocked) return { ok: false, error: blocked }
+    }
+  }
+
   const { data, error } = await supabase
     .from('channels')
     .update({ is_active: isActive })

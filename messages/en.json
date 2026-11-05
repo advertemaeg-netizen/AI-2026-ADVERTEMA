@@ -382,7 +382,9 @@
       "reconnect": {
         "notShared": "This channel's account was not among the ones you shared this time, so the channel is unchanged. To refresh it, connect again and select the same account."
       },
-      "limitReachedTwo": "The plan does not have room for two channels. Tick one, or upgrade the plan."
+      "limitReachedTwo": "The plan does not have room for two channels. Tick one, or upgrade the plan.",
+      "connectedPaused": "Connected. The channel is paused and is not answering anyone — turn it on from its card when you are ready.",
+      "connectedPausedMessagesBlocked": "Connected. The channel is paused and is not answering anyone — turn it on from its card when you are ready. Note that Instagram messages are blocked by the account's own setting; comments are unaffected."
     },
     "picker": {
       "title": "Choose the account for {client}",
@@ -402,6 +404,18 @@
       "nothingSelected": "Tick at least one.",
       "confirm": "Connect",
       "cancel": "Cancel"
+    },
+    "channel": {
+      "paused": {
+        "description": "This channel is paused and is not answering anyone."
+      },
+      "switchOn": {
+        "confirm": {
+          "title": "Turn this channel on?",
+          "description": "Mudrik will start answering messages for {client} on this channel immediately. Make sure the bot settings and knowledge base are right before you turn it on.",
+          "button": "Turn on"
+        }
+      }
     }
   },
   "conversations": {

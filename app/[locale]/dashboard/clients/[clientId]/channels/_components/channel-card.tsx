@@ -39,6 +39,13 @@ import { embedCode } from './channel-meta'
  * side; and the check itself failed (not knowing is not knowing it is
  * broken). Badge tone and text per state.
  */
+/**
+ * Channels that talk to people on a Meta account. Turning one on asks first:
+ * it is the moment a bot starts answering real people (a connected Meta
+ * channel is created paused, .scratch/messenger-instagram-design.md §12).
+ */
+const META_TYPES: readonly Channel['type'][] = ['facebook', 'instagram']
+
 const SUBSCRIPTION_VIEW = {
   subscribed: { key: 'subscribed', tone: 'positive' },
   not_subscribed: { key: 'notSubscribed', tone: 'critical' },
@@ -48,11 +55,14 @@ const SUBSCRIPTION_VIEW = {
 
 export function ChannelCard({
   channel,
+  clientName,
   canManage,
   appOrigin,
   subscription = null,
 }: {
   channel: Channel
+  /** For the turn-on confirmation of a Meta channel */
+  clientName: string
   canManage: boolean
   appOrigin: string
   /** WhatsApp channels only: the WABA's subscription to our app, read by the page */
@@ -67,16 +77,28 @@ export function ChannelCard({
   const [copied, setCopied] = useState(false)
   const [isLinking, startLink] = useTransition()
   const [subscriptionNow, setSubscriptionNow] = useState(subscription)
+  const [switchOnOpen, setSwitchOnOpen] = useState(false)
+  const isMeta = META_TYPES.includes(channel.type)
 
   const Icon = CHANNEL_ICONS[channel.type]
   const snippet =
     channel.type === 'website' ? embedCode(appOrigin, channel.id) : null
 
   function handleToggle(checked: boolean) {
+    // A Meta channel is turned on only through the confirmation
+    if (checked && isMeta) {
+      setSwitchOnOpen(true)
+      return
+    }
+    toggle(checked)
+  }
+
+  function toggle(checked: boolean) {
     startToggle(async () => {
       const result = await toggleChannelActive(channel.id, checked)
       if (result.ok) toast.success(checked ? t('toast.activated') : t('toast.deactivated'))
       else toast.error(t(`errors.${result.error}`))
+      setSwitchOnOpen(false)
     })
   }
 
@@ -144,6 +166,8 @@ export function ChannelCard({
       </CardHeader>
 
       <CardContent className="grid gap-4">
+        {isMeta && !channel.is_active && <p className="text-sm text-muted-foreground">{t('channel.paused.description')}</p>}
+
         {subscriptionNow && (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2">
@@ -188,6 +212,30 @@ export function ChannelCard({
               />
               {t('toggleLabel')}
             </label>
+
+            {isMeta && (
+              <AlertDialog open={switchOnOpen} onOpenChange={(next) => !isToggling && setSwitchOnOpen(next)}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t('channel.switchOn.confirm.title')}</AlertDialogTitle>
+                    <AlertDialogDescription>{t('channel.switchOn.confirm.description', { client: clientName })}</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isToggling}>{tCommon('cancel')}</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={(e) => {
+                        // Keep the dialog open until the server responds
+                        e.preventDefault()
+                        toggle(true)
+                      }}
+                      disabled={isToggling}
+                    >
+                      {isToggling ? tCommon('loading') : t('channel.switchOn.confirm.button')}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
 
             <AlertDialog open={deleteOpen} onOpenChange={(next) => !isDeleting && setDeleteOpen(next)}>
               <AlertDialogTrigger asChild>

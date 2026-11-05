@@ -102,9 +102,14 @@ export async function attachToken({
   return { subscribed: subscription.kind === 'subscribed', messagesBlocked }
 }
 
-/** The one status for a connect that attached one or two channels */
-export function attachedStatus(results: AttachResult[], refreshedOnly: boolean): ConnectStatus {
+/**
+ * The one status for a connect that attached one or two channels. `created`:
+ * a new channel was made, and a new channel is always PAUSED, so the clinic
+ * is told it is not answering yet.
+ */
+export function attachedStatus(results: AttachResult[], created: boolean): ConnectStatus {
   if (results.some((r) => !r.subscribed)) return 'subscribeFailed'
-  if (results.some((r) => r.messagesBlocked)) return 'connectedMessagesBlocked'
-  return refreshedOnly ? 'reconnected' : 'connected'
+  const blocked = results.some((r) => r.messagesBlocked)
+  if (created) return blocked ? 'connectedPausedMessagesBlocked' : 'connectedPaused'
+  return blocked ? 'connectedMessagesBlocked' : 'reconnected'
 }
