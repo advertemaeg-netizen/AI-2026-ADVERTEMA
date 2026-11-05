@@ -1,7 +1,7 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { appOrigin } from '@/lib/app-url'
-import { INSTAGRAM_FIELDS, PAGE_FIELDS, instagramMessagesBlocked, subscribe, type ConnectOption } from '@/lib/meta/connect'
+import { INSTAGRAM_FIELDS, PAGE_FIELDS, instagramMessagesBlocked, pageOffered, subscribe, type ConnectOption, type PageGrant } from '@/lib/meta/connect'
 import type { ConnectStatus, PickerAvailability } from '@/lib/types/meta-connect'
 
 /**
@@ -112,4 +112,26 @@ export function attachedStatus(results: AttachResult[], created: boolean): Conne
   const blocked = results.some((r) => r.messagesBlocked)
   if (created) return blocked ? 'connectedPausedMessagesBlocked' : 'connectedPaused'
   return blocked ? 'connectedMessagesBlocked' : 'reconnected'
+}
+
+/**
+ * THE CONNECT'S LOG: one line per decision, in the webhook logger's shape (a
+ * tag, then one JSON object), so a connect that misbehaved for a real clinic
+ * can be read back step by step. What goes in: the step, the outcome and why,
+ * counts, and the ids the webhook log already prints (our client, channel and
+ * pending ids; Meta's Page and Instagram account ids). Never a token, a code,
+ * a state, an app secret, a name or a username.
+ */
+export function logConnect(fields: Record<string, unknown>) {
+  console.info('[oauth/meta]', JSON.stringify(fields))
+}
+
+/** What /me/accounts returned, per Page, as the tasks rule reads it: no names, no tokens */
+export function accountsSummary(pages: PageGrant[]) {
+  return pages.map((page) => ({
+    page: page.id,
+    tasks: page.tasks === null ? 'absent' : pageOffered(page.tasks) ? 'messaging' : 'no_messaging',
+    instagram: page.instagram?.id ?? null,
+    pageToken: page.pageToken ? 'present' : 'absent',
+  }))
 }

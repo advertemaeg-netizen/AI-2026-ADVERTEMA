@@ -417,3 +417,57 @@ describe('a reconnect', () => {
     expect(await secretOf(channel!.id)).toBe('OLD-token')
   })
 })
+
+describe('the connect’s log', () => {
+  /** Every [oauth/meta] line written while `run` ran, parsed */
+  async function logged(run: () => Promise<unknown>) {
+    const lines: string[] = []
+    const spy = vi.spyOn(console, 'info').mockImplementation((...args: unknown[]) => {
+      if (args[0] === '[oauth/meta]') lines.push(String(args[1]))
+    })
+    try {
+      await run()
+    } finally {
+      spy.mockRestore()
+    }
+    return lines
+  }
+
+  it('says why a state was refused: missing, unknown or used', async () => {
+    const missing = await logged(() => callback(new NextRequest('https://app.test/api/oauth/meta/callback')))
+    expect(missing.map((l) => JSON.parse(l))).toEqual([{ step: 'callback', state: 'missing', outcome: 'expired' }])
+    const unknown = await logged(() => returnFromMeta({ code: 'CODE', state: 'never-issued' }))
+    expect(unknown.map((l) => JSON.parse(l))).toEqual([{ step: 'callback', state: 'unknown_or_used', outcome: 'expired' }])
+  })
+
+  it('walks a whole connect: what Meta returned, what the tasks rule kept, what was picked — and never a secret', async () => {
+    meta.pages = [carriedPage()]
+    let state = ''
+    const lines = await logged(async () => {
+      const dialog = await start()
+      state = dialog.searchParams.get('state')!
+      const landed = await returnFromMeta({ code: 'CODE', state })
+      const pendingId = landed.pathname.split('/').at(-1)!
+      await getMetaConnectPicker(pendingId, world.clientId)
+      await completeMetaConnect(pendingId, world.clientId, { pageId: PAGE, messenger: false, instagram: true })
+    })
+    const events = lines.map((l) => JSON.parse(l) as Record<string, unknown>)
+    expect(events.map((e) => `${e.step}:${e.outcome}`)).toEqual(['start:sent_to_meta', 'callback:picker', 'picker:shown', 'pick:connectedPaused'])
+    expect(events[1]).toMatchObject({
+      state: 'accepted',
+      session: 'ok',
+      exchange: 'ok',
+      token: 'ok',
+      accountsReturned: 1,
+      // The Page carried in by its Instagram account: no tasks, kept for its Instagram account only
+      accounts: [{ page: PAGE, tasks: 'absent', instagram: IG, pageToken: 'present' }],
+      options: 1,
+      messengerOffered: 0,
+      instagramOffered: 1,
+    })
+    expect(events[3]).toMatchObject({ picked: { page: PAGE, messenger: false, instagram: true }, newChannels: 1, attached: [{ type: 'instagram', account: IG, created: true, subscribed: true }] })
+    for (const line of lines) {
+      for (const secret of [SYSTEM_TOKEN, PAGE_TOKEN, ENV.META_APP_SECRET, 'CODE', state, 'عيادة النور', 'alnoor']) expect(line).not.toContain(secret)
+    }
+  })
+})
