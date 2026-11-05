@@ -8,10 +8,11 @@ import { signJwt } from '../harness/jwt'
  *
  * channel_secrets holds the access token that sends messages as the client;
  * processed_meta_messages holds Meta's delivery ids; meta_comment_replies
- * the claim on each comment and what was done with it. All three are
- * service-role only: row level security on with no policy, and every table
- * privilege revoked from anon and authenticated (20261102100000,
- * 20261103100000, 20261109100000). The point of the tables is that no
+ * the claim on each comment and what was done with it; meta_connect_pending
+ * the system-user token between Meta's return and the clinic's pick. All four
+ * are service-role only: row level security on with no policy, and every
+ * table privilege revoked from anon and authenticated (20261102100000,
+ * 20261103100000, 20261109100000, 20261111100000). The point of the tables is that no
  * authenticated role can read them, so this is the test that fails the day
  * one can.
  *
@@ -33,7 +34,7 @@ import { signJwt } from '../harness/jwt'
 
 type Who = 'super' | 'superImpersonating' | 'orgAdmin' | 'clientAdmin' | 'teamMember' | 'anon'
 const EVERYONE: Who[] = ['super', 'superImpersonating', 'orgAdmin', 'clientAdmin', 'teamMember', 'anon']
-const TABLES = ['channel_secrets', 'processed_meta_messages', 'meta_comment_replies'] as const
+const TABLES = ['channel_secrets', 'processed_meta_messages', 'meta_comment_replies', 'meta_connect_pending'] as const
 
 // Serialised, retried and watched by the access project's global fetch (tests/harness/access-fetch.ts)
 const clientWith = (key: string) =>
@@ -45,10 +46,15 @@ const service = clientWith(process.env.SUPABASE_SECRET_KEY!)
 let clients: Record<Who, SupabaseClient>
 let channelId: string
 let secondChannelId: string
+let clientId: string
+let pendingUserId: string
+const pendingId = crypto.randomUUID()
+const inTenMinutes = () => new Date(Date.now() + 600_000).toISOString()
 
 beforeAll(async () => {
   const seeded = await seedClient()
   channelId = seeded.channelId
+  clientId = seeded.clientId
   // A second channel, for the insert probes: a probe that succeeded would otherwise collide with the fixture row
   const { data: second, error: secondError } = await service
     .from('channels')
@@ -65,6 +71,17 @@ beforeAll(async () => {
   if (processedError) throw processedError
   const { error: commentError } = await service.from('meta_comment_replies').insert({ comment_id: `comment.fixture.${channelId}`, channel_id: channelId })
   if (commentError) throw commentError
+  pendingUserId = (await createUser('org_admin', seeded.organizationId, 'connecting')).id
+  const { error: pendingError } = await service.from('meta_connect_pending').insert({
+    id: pendingId,
+    user_id: pendingUserId,
+    client_id: clientId,
+    channel_id: channelId,
+    locale: 'ar',
+    access_token: 'SYS-not-a-real-token',
+    expires_at: inTenMinutes(),
+  })
+  if (pendingError) throw pendingError
 
   const superAdmin = await createUser('super_admin', null, 'super')
   const impersonating = await createUser('super_admin', null, 'super impersonating')
@@ -101,14 +118,27 @@ const outcome = (error: unknown, rows: unknown[] | null | undefined): Cell =>
 /** Every statement an identity could try, as allowed or refused. Writes are probes that leave nothing behind */
 async function statementsFor(who: Who, table: (typeof TABLES)[number]) {
   const db = clients[who]
-  const key = table === 'channel_secrets' ? 'channel_id' : table === 'processed_meta_messages' ? 'message_id' : 'comment_id'
-  const fixture = table === 'channel_secrets' ? channelId : table === 'processed_meta_messages' ? `wamid.fixture.${channelId}` : `comment.fixture.${channelId}`
-  const probe: Record<string, string> =
-    table === 'channel_secrets'
-      ? { channel_id: secondChannelId, access_token: `probe-${who}` }
-      : table === 'processed_meta_messages'
-        ? { message_id: `wamid.probe.${who}.${channelId}`, channel_id: secondChannelId }
-        : { comment_id: `comment.probe.${who}.${channelId}`, channel_id: secondChannelId }
+  const { key, fixture, probe, change } = {
+    channel_secrets: { key: 'channel_id', fixture: channelId, probe: { channel_id: secondChannelId, access_token: `probe-${who}` }, change: { waba_id: 'changed' } },
+    processed_meta_messages: {
+      key: 'message_id',
+      fixture: `wamid.fixture.${channelId}`,
+      probe: { message_id: `wamid.probe.${who}.${channelId}`, channel_id: secondChannelId },
+      change: { received_at: new Date().toISOString() },
+    },
+    meta_comment_replies: {
+      key: 'comment_id',
+      fixture: `comment.fixture.${channelId}`,
+      probe: { comment_id: `comment.probe.${who}.${channelId}`, channel_id: secondChannelId },
+      change: { received_at: new Date().toISOString() },
+    },
+    meta_connect_pending: {
+      key: 'id',
+      fixture: pendingId,
+      probe: { id: crypto.randomUUID(), user_id: pendingUserId, client_id: clientId, locale: 'en', expires_at: inTenMinutes() },
+      change: { access_token: 'changed' },
+    },
+  }[table] as { key: string; fixture: string; probe: Record<string, string>; change: Record<string, string> }
 
   const select = await db.from(table).select('*')
   const selectOne = await db.from(table).select('*').eq(key, fixture)
@@ -116,7 +146,7 @@ async function statementsFor(who: Who, table: (typeof TABLES)[number]) {
   await service.from(table).delete().eq(key, probe[key])
   const update = await db
     .from(table)
-    .update(table === 'channel_secrets' ? { waba_id: 'changed' } : { received_at: new Date().toISOString() }, { count: 'exact' })
+    .update(change, { count: 'exact' })
     .eq(key, fixture)
   const del = await db.from(table).delete({ count: 'exact' }).eq(key, fixture)
   return {
@@ -158,6 +188,8 @@ describe('channel_secrets and processed_meta_messages are the server\'s alone', 
     expect(secret).toEqual({ access_token: 'EAAG-not-a-real-token', waba_id: '1234567890' })
     const { data: processed } = await service.from('processed_meta_messages').select('message_id').eq('channel_id', channelId)
     expect(processed).toEqual([{ message_id: `wamid.fixture.${channelId}` }])
+    const { data: pending } = await service.from('meta_connect_pending').select('id, access_token').eq('channel_id', channelId)
+    expect(pending).toEqual([{ id: pendingId, access_token: 'SYS-not-a-real-token' }])
   }, 120_000)
 
   it('a repeated delivery id is refused by the key, which is the whole idempotency mechanism', async () => {

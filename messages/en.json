@@ -353,20 +353,15 @@
       }
     },
     "addChannel": {
-      "instagram": {
-        "title": "Instagram",
-        "description": "You will go to Meta to choose an Instagram account and approve access, then come back here.",
-        "button": "Connect Instagram"
-      },
-      "facebook": {
-        "title": "Facebook Page",
-        "description": "You will go to Meta to choose a Page and approve access, then come back here.",
-        "button": "Connect Page"
-      },
       "whatsapp": {
         "title": "WhatsApp",
         "description": "Meta will open a window where you choose a WhatsApp number and approve access, without leaving this page.",
         "button": "Connect WhatsApp"
+      },
+      "meta": {
+        "title": "Facebook and Instagram",
+        "description": "You will go to Meta to choose your Page and Instagram account and approve access, then come back here to choose what to connect.",
+        "button": "Connect Facebook and Instagram"
       }
     },
     "connect": {
@@ -377,14 +372,36 @@
       "expired": "The link expired or was already used. Start again.",
       "forbidden": "You do not have permission to add channels for this client.",
       "missingPermission": "A permission was turned off in Meta's dialog. Start again and approve all of them.",
-      "noAccount": "No account was chosen in Meta's dialog.",
       "multipleAccounts": "More than one account was chosen. Pick one at a time.",
       "accountOnOtherClient": "This account is connected to another client. Contact us and we will disconnect it.",
       "subscribeFailed": "Connected, but linking the account to Mudrik failed. Try again.",
       "metaError": "Meta returned an error. Try again, and contact us if it repeats.",
       "noPhoneNumber": "Signup finished without a number. Start again and choose one.",
       "registerFailed": "Connected, but registering the number failed. Contact us and we will finish it.",
-      "payment": "One thing left: add a payment method in WhatsApp Manager so messages can be sent."
+      "payment": "One thing left: add a payment method in WhatsApp Manager so messages can be sent.",
+      "reconnect": {
+        "notShared": "This channel's account was not among the ones you shared this time, so the channel is unchanged. To refresh it, connect again and select the same account."
+      },
+      "limitReachedTwo": "The plan does not have room for two channels. Tick one, or upgrade the plan."
+    },
+    "picker": {
+      "title": "Choose the account for {client}",
+      "instruction": "These are all the accounts Mudrik can see, including ones you shared before. Choose the one for this clinic and tick what you want connected.",
+      "linkedInstagram": "Instagram: @{username}",
+      "noInstagram": "No Instagram account is linked to this Page.",
+      "channel": {
+        "messenger": "Messenger messages",
+        "instagram": "Instagram"
+      },
+      "alreadyConnected": {
+        "badge": "Already connected",
+        "description": "Picking this refreshes the existing channel; it does not add a second one."
+      },
+      "empty": "There are no accounts we can connect. Go back to Meta and choose the clinic's Page or its Instagram account.",
+      "allUnavailable": "All of these accounts are connected to other clients. Contact us and we will sort it out.",
+      "nothingSelected": "Tick at least one.",
+      "confirm": "Connect",
+      "cancel": "Cancel"
     }
   },
   "conversations": {

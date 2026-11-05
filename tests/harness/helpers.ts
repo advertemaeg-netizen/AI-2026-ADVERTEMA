@@ -53,6 +53,15 @@ export function uniqueViolation(index: string) {
   )
 }
 
+/** A Graph call's body: JSON (the sends), or a form (the connect calls: code exchange, debug_token, subscribed_apps) */
+function graphBody(init?: RequestInit): Record<string, unknown> {
+  const raw = String(init?.body ?? '')
+  if (!raw) return {}
+  const type = new Headers(init?.headers).get('content-type') ?? ''
+  if (type.includes('application/x-www-form-urlencoded')) return Object.fromEntries(new URLSearchParams(raw))
+  return JSON.parse(raw) as Record<string, unknown>
+}
+
 /** Every request the code under test sent to the model */
 export const geminiCalls: GeminiCall[] = []
 
@@ -114,7 +123,7 @@ export async function harnessFetch(input: RequestInfo | URL, init?: RequestInit)
       url: url.href,
       method: (init?.method ?? 'GET').toUpperCase(),
       headers: Object.fromEntries(new Headers(init?.headers)),
-      body: JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>,
+      body: graphBody(init),
     }
     graphCalls.push(call)
     if (!graphHandler) throw new Error('Unexpected Graph API call: use mockGraph() in the test')

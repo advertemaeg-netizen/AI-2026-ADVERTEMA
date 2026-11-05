@@ -9,11 +9,16 @@ import { requireClientManager } from '@/lib/auth/guards'
 import { BackToClients, ClientTabs } from '../_components/client-page-nav'
 import { AddChannelDialog } from './_components/add-channel-dialog'
 import { ChannelCard } from './_components/channel-card'
+import { ConnectStatusToast } from './_components/connect-status'
+import { isConnectStatus } from '@/lib/types/meta-connect'
+import { metaConfig } from '@/lib/meta/connect-flow'
 
 export default async function ChannelsPage({
   params,
+  searchParams,
 }: PageProps<'/[locale]/dashboard/clients/[clientId]/channels'>) {
   const { locale, clientId } = await params
+  const { connect } = await searchParams
   // Also in the layout, but layouts don't re-run on client-side navigation
   await requireClientManager(locale)
   const client = await getClient(clientId)
@@ -51,10 +56,11 @@ export default async function ChannelsPage({
             {canManage ? t('description') : t('readOnly')}
           </p>
         </div>
-        {canManage && <AddChannelDialog clientId={clientId} />}
+        {canManage && <AddChannelDialog clientId={clientId} metaConnect={metaConfig() !== null} />}
       </div>
 
       <ClientTabs clientId={clientId} />
+      {isConnectStatus(connect) && <ConnectStatusToast status={connect} />}
 
       {channels.length === 0 ? (
         <Card>
