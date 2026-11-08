@@ -9,7 +9,7 @@ import { NEEDS_HUMAN_REASONS, type NeedsHumanReason } from '@/lib/types/conversa
 /**
  * Conversations where the visitor got no real answer, by cause. Each cause
  * is a different job for the client (reply and wait for us, upgrade, pay, add
- * content), so each gets its own line.
+ * content, send a failed reply again), so each gets its own line.
  */
 export function NeedsHumanBanner({ counts }: { counts: Partial<Record<NeedsHumanReason, number>> }) {
   const t = useTranslations('conversations.needsHuman')
@@ -30,8 +30,9 @@ export function NeedsHumanBanner({ counts }: { counts: Partial<Record<NeedsHuman
       <div className="grid flex-1 gap-0.5">
         {reasons.map((reason) => (
           <p key={reason}>
-            <span className="font-medium">{t(`banner.${reason}`, { count: counts[reason]! })}</span>{' '}
-            {t(`action.${reason}`)}
+            <span className="font-medium">{t(`banner.${reason}`, { count: counts[reason]! })}</span>
+            {/* Every reason has its action today; a reason added without one shows its line alone */}
+            {t.has(`action.${reason}`) && <> {t(`action.${reason}`)}</>}
           </p>
         ))}
         <p>

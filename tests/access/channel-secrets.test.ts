@@ -9,10 +9,12 @@ import { signJwt } from '../harness/jwt'
  * channel_secrets holds the access token that sends messages as the client;
  * processed_meta_messages holds Meta's delivery ids; meta_comment_replies
  * the claim on each comment and what was done with it; meta_connect_pending
- * the system-user token between Meta's return and the clinic's pick. All four
- * are service-role only: row level security on with no policy, and every
- * table privilege revoked from anon and authenticated (20261102100000,
- * 20261103100000, 20261109100000, 20261111100000). The point of the tables is that no
+ * the system-user token between Meta's return and the clinic's pick;
+ * meta_pending_statuses a WhatsApp status held until its send records the
+ * id. All five are service-role only: row level security on with no policy,
+ * and every table privilege revoked from anon and authenticated
+ * (20261102100000, 20261103100000, 20261109100000, 20261111100000,
+ * 20261113100000). The point of the tables is that no
  * authenticated role can read them, so this is the test that fails the day
  * one can.
  *
@@ -34,7 +36,7 @@ import { signJwt } from '../harness/jwt'
 
 type Who = 'super' | 'superImpersonating' | 'orgAdmin' | 'clientAdmin' | 'teamMember' | 'anon'
 const EVERYONE: Who[] = ['super', 'superImpersonating', 'orgAdmin', 'clientAdmin', 'teamMember', 'anon']
-const TABLES = ['channel_secrets', 'processed_meta_messages', 'meta_comment_replies', 'meta_connect_pending'] as const
+const TABLES = ['channel_secrets', 'processed_meta_messages', 'meta_comment_replies', 'meta_connect_pending', 'meta_pending_statuses'] as const
 
 // Serialised, retried and watched by the access project's global fetch (tests/harness/access-fetch.ts)
 const clientWith = (key: string) =>
@@ -71,6 +73,8 @@ beforeAll(async () => {
   if (processedError) throw processedError
   const { error: commentError } = await service.from('meta_comment_replies').insert({ comment_id: `comment.fixture.${channelId}`, channel_id: channelId })
   if (commentError) throw commentError
+  const { error: statusError } = await service.from('meta_pending_statuses').insert({ message_id: `wamid.held.${channelId}`, channel_id: channelId, status: 'failed', error_codes: [131047] })
+  if (statusError) throw statusError
   pendingUserId = (await createUser('org_admin', seeded.organizationId, 'connecting')).id
   const { error: pendingError } = await service.from('meta_connect_pending').insert({
     id: pendingId,
@@ -131,6 +135,12 @@ async function statementsFor(who: Who, table: (typeof TABLES)[number]) {
       fixture: `comment.fixture.${channelId}`,
       probe: { comment_id: `comment.probe.${who}.${channelId}`, channel_id: secondChannelId },
       change: { received_at: new Date().toISOString() },
+    },
+    meta_pending_statuses: {
+      key: 'message_id',
+      fixture: `wamid.held.${channelId}`,
+      probe: { message_id: `wamid.held.probe.${who}.${channelId}`, channel_id: secondChannelId, status: 'failed' },
+      change: { status: 'changed' },
     },
     meta_connect_pending: {
       key: 'id',

@@ -240,8 +240,27 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
         })
         .select('id')
         .single<{ id: string }>()
-      if (error) throw error
-      conversationId = created.id
+      if (error?.code === '23505') {
+        // The visitor already has a conversation here: two first messages
+        // sent before the first answer brought its id back, or an id the
+        // widget no longer holds. One per visitor (conversations_one_per_contact,
+        // 20261114100000): this message joins it, and the answer hands the
+        // widget its id
+        const { data: theirs, error: findError } = await supabase
+          .from('conversations')
+          .select('id, auto_reply_enabled')
+          .eq('channel_id', channel.id)
+          .eq('contact_identifier', visitorId)
+          .eq('thread', 'dm')
+          .maybeSingle<{ id: string; auto_reply_enabled: boolean }>()
+        if (findError) throw findError
+        if (!theirs) throw error
+        conversationId = theirs.id
+        autoReply = theirs.auto_reply_enabled
+      } else {
+        if (error) throw error
+        conversationId = created.id
+      }
     }
 
     const { data: userMessage, error: userMessageError } = await supabase

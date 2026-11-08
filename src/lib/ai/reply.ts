@@ -1,7 +1,7 @@
 import { after } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { aiFailureReason, replyModel, type ChatTurn } from '@/lib/ai/provider'
-import { BOT_HISTORY_LIMIT, NoReplyError, loadBotSettings, runBot, type BotClient } from '@/lib/ai/bot'
+import { BOT_HISTORY_LIMIT, NoReplyError, loadBotSettings, runBot, type BotClient, type Surface } from '@/lib/ai/bot'
 import { detectLead } from '@/lib/ai/lead-detection'
 import {
   APPOINTMENT_PLACEHOLDER,
@@ -200,6 +200,7 @@ export async function replyToMessage({
   settings: givenSettings,
   operation = 'chat_reply',
   knownContact = null,
+  surface = 'website',
 }: {
   /** Reads the client's settings, branches, limit and knowledge; rows go through `store` */
   supabase: SupabaseClient
@@ -229,6 +230,8 @@ export async function replyToMessage({
    * conversation already holds is overwritten.
    */
   knownContact?: Pick<ContactState, 'phone'> | null
+  /** Where the conversation is: the website (and the playground, which shows the widget), or a Meta transport */
+  surface?: Surface
 }): Promise<ReplyOutcome> {
   const recent = await store.history(BOT_HISTORY_LIMIT)
 
@@ -308,7 +311,8 @@ export async function replyToMessage({
   }
 
   // A human agent has taken over: store the message, skip the AI. The
-  // agent's reply reaches the widget over Realtime broadcast. Visitors often
+  // agent's reply reaches the widget over Realtime broadcast, or goes out
+  // through the Meta transport (src/lib/agent-reply.ts). Visitors often
   // share their details at this point, so still look for a lead.
   if (!autoReply) {
     scheduleLeadDetection(history)
@@ -411,6 +415,7 @@ export async function replyToMessage({
       knownContact: previousContact,
       heldRequest: held,
       branches,
+      surface,
     })
     raw = result.raw
 

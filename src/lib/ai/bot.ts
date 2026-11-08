@@ -201,6 +201,27 @@ const BOOKING_ORDERS: Record<BookingMode, string> = {
   none: '',
 }
 
+/**
+ * Where a conversation is. Until 2026-11-08 every prompt said the website's
+ * widget and the welcome message it opens with, on WhatsApp and Messenger
+ * too, where no welcome message is ever sent: the model was told it had
+ * said something it had not. Only the widget opens with one.
+ */
+export type Surface = 'website' | 'whatsapp' | 'messenger' | 'instagram'
+
+function surfaceContext(surface: Surface, welcomeMessage: string) {
+  switch (surface) {
+    case 'website':
+      return `chatting with a visitor through the chat widget on the business's website. The chat opened with this welcome message from you: "${welcomeMessage}"`
+    case 'whatsapp':
+      return 'chatting with a person who wrote to the business on WhatsApp.'
+    case 'messenger':
+      return "chatting with a person who wrote to the business's Facebook Page on Messenger."
+    case 'instagram':
+      return "chatting with a person in the business's Instagram direct messages."
+  }
+}
+
 export function buildSystemPrompt(
   client: BotClient,
   settings: BotSettingsInput,
@@ -211,7 +232,9 @@ export function buildSystemPrompt(
   /** A time (or, day-only, a day) asked for earlier is held for the visitor's details */
   heldRequest = false,
   /** The client's active branches: their hours are the ones stated, and the ones booked from */
-  branches: BookingBranch[] = []
+  branches: BookingBranch[] = [],
+  /** Where the conversation is: the prompt says so, and claims no opening message that was not sent */
+  surface: Surface = 'website'
 ) {
   const mode = effectiveBookingMode(settings)
   const guidelines = [
@@ -231,7 +254,7 @@ export function buildSystemPrompt(
     settings.system_prompt,
     `Context: you are the assistant for "${client.name}"${
       client.industry ? `, a business in the ${client.industry} sector` : ''
-    }, chatting with a visitor through the chat widget on the business's website. The chat opened with this welcome message from you: "${settings.welcome_message}"`,
+    }, ${surfaceContext(surface, settings.welcome_message)}`,
     client.description ? `About the business:\n${client.description}` : '',
     // The branches' hours, the same record the booking is checked against.
     // bot_settings.business_hours is no longer stated: a second schedule the
@@ -362,6 +385,7 @@ export async function runBot({
   knownContact = null,
   heldRequest = false,
   branches,
+  surface = 'website',
 }: {
   supabase: SupabaseClient
   clientId: string
@@ -377,6 +401,8 @@ export async function runBot({
   heldRequest?: boolean
   /** The client's active branches, when the caller has them; read here otherwise */
   branches?: BookingBranch[]
+  /** Where the conversation is (buildSystemPrompt) */
+  surface?: Surface
 }): Promise<{
   reply: string
   appointment: AppointmentRequest | null
@@ -406,7 +432,8 @@ export async function runBot({
       (await loadBookingBranches(supabase, clientId).catch((error) => {
         console.error('[bot] reading the branches failed', error)
         return []
-      }))
+      })),
+    surface
   )
 
   const generationStarted = performance.now()

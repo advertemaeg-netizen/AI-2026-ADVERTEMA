@@ -237,15 +237,19 @@ async function ownReason(supabase: SupabaseClient, comment: InboundInstagramComm
 
 /** The person's comment thread on this channel: (channel, commenter id, 'comments'), never the DM */
 async function commentThreadFor(supabase: SupabaseClient, channel: InboundChannel, comment: InboundInstagramComment) {
-  const { data: existing, error } = await supabase
-    .from('conversations')
-    .select('id')
-    .eq('channel_id', channel.id)
-    .eq('contact_identifier', comment.from.id)
-    .eq('thread', 'comments')
-    .maybeSingle<{ id: string }>()
-  if (error) throw error
-  if (existing) return existing.id
+  const find = async () => {
+    const { data, error } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('channel_id', channel.id)
+      .eq('contact_identifier', comment.from.id)
+      .eq('thread', 'comments')
+      .maybeSingle<{ id: string }>()
+    if (error) throw error
+    return data?.id ?? null
+  }
+  const existing = await find()
+  if (existing) return existing
   const { data: created, error: insertError } = await supabase
     .from('conversations')
     .insert({
@@ -260,7 +264,14 @@ async function commentThreadFor(supabase: SupabaseClient, channel: InboundChanne
     })
     .select('id')
     .single<{ id: string }>()
-  if (insertError) throw insertError
+  if (insertError) {
+    // Two comments from one person at once: the other one opened the thread first (20261114100000)
+    if (insertError.code === '23505') {
+      const winner = await find()
+      if (winner) return winner
+    }
+    throw insertError
+  }
   return created.id
 }
 

@@ -2,6 +2,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ContactState } from '@/lib/ai/contact'
 import { conversationStore, replyToMessage, type ReplyOutcome, type ReplyStore } from '@/lib/ai/reply'
+import { recordResult, type RowMetadata } from '@/lib/meta/delivery'
 import { sendMessengerText, sendWhatsAppText, type SendResult } from '@/lib/meta/send'
 import type { InboundMessengerEvent, InboundWhatsAppMessage } from '@/lib/meta/webhook'
 import {
@@ -250,6 +251,7 @@ async function handleInbound(supabase: SupabaseClient, channel: InboundChannel, 
     store,
     source: SOURCE,
     knownContact: message.knownContact,
+    surface: transport.name,
   })
 
   let send: Sent = 'none'
@@ -271,7 +273,9 @@ async function handleInbound(supabase: SupabaseClient, channel: InboundChannel, 
 
 /**
  * The sender's direct-message conversation on this channel, by the id Meta
- * gives (the number, or the PSID); opened on their first message. THE KEY IS
+ * gives (the number, or the PSID); opened on their first message. One per
+ * person: the database refuses a second (conversations_one_per_contact), so
+ * two first messages at once both land in the one that was opened. THE KEY IS
  * (channel, contact, thread 'dm') and nothing else: never the id alone, never
  * a lookup that turns one id into another. A comment thread with the same
  * person on the same channel is a different conversation (thread
@@ -279,15 +283,19 @@ async function handleInbound(supabase: SupabaseClient, channel: InboundChannel, 
  * public side must never read the private one.
  */
 export async function conversationFor(supabase: SupabaseClient, channel: InboundChannel, contact: string, profileName?: string) {
-  const { data: existing, error } = await supabase
-    .from('conversations')
-    .select('id, auto_reply_enabled')
-    .eq('channel_id', channel.id)
-    .eq('contact_identifier', contact)
-    .eq('thread', 'dm')
-    .maybeSingle<{ id: string; auto_reply_enabled: boolean }>()
-  if (error) throw error
-  if (existing) return { conversationId: existing.id, autoReply: existing.auto_reply_enabled }
+  const find = async () => {
+    const { data, error } = await supabase
+      .from('conversations')
+      .select('id, auto_reply_enabled')
+      .eq('channel_id', channel.id)
+      .eq('contact_identifier', contact)
+      .eq('thread', 'dm')
+      .maybeSingle<{ id: string; auto_reply_enabled: boolean }>()
+    if (error) throw error
+    return data ? { conversationId: data.id, autoReply: data.auto_reply_enabled } : null
+  }
+  const existing = await find()
+  if (existing) return existing
 
   const { data: created, error: insertError } = await supabase
     .from('conversations')
@@ -301,7 +309,15 @@ export async function conversationFor(supabase: SupabaseClient, channel: Inbound
     })
     .select('id')
     .single<{ id: string }>()
-  if (insertError) throw insertError
+  if (insertError) {
+    // Two messages from one person at once: the other one opened it first
+    // (conversations_one_per_contact, 20261114100000). That one is theirs
+    if (insertError.code === '23505') {
+      const winner = await find()
+      if (winner) return winner
+    }
+    throw insertError
+  }
   return { conversationId: created.id, autoReply: true }
 }
 
@@ -332,8 +348,8 @@ async function sendRow(supabase: SupabaseClient, transport: Transport, channelId
     console.error(`[${SOURCE}] a reply was sent without its row id: its send is not recorded`, { channelId, conversationId, send: result.kind })
     return result.kind
   }
-  if (result.kind === 'sent') await recordSent(supabase, conversationId, rowId, transport, result.messageId)
-  else await markUndelivered(supabase, conversationId, rowId, transport, result)
+  // A WhatsApp status that came before this answer is applied here (src/lib/meta/delivery.ts)
+  await recordResult(supabase, rowId, transport.name, result)
   return result.kind
 }
 
@@ -387,43 +403,6 @@ async function notice(supabase: SupabaseClient, transport: Transport, channelId:
   return sendRow(supabase, transport, channelId, conversationId, row.id, to, body)
 }
 
-type RowMetadata = Record<string, unknown> & { send?: SendRecord }
-
-async function rowMetadata(supabase: SupabaseClient, rowId: string) {
-  const { data, error } = await supabase.from('messages').select('metadata').eq('id', rowId).maybeSingle<{ metadata: RowMetadata | null }>()
-  if (error) throw error
-  return data ? (data.metadata ?? {}) : null
-}
-
-/** Meta took the message: the row records the outbound id, which is how its echo is known as ours */
-async function recordSent(supabase: SupabaseClient, conversationId: string, rowId: string, transport: Transport, messageId: string | null) {
-  const metadata = await rowMetadata(supabase, rowId)
-  if (!metadata) return
-  const { error } = await supabase
-    .from('messages')
-    .update({ metadata: { ...metadata, send: { transport: transport.name, state: 'sent', messageId } } })
-    .eq('id', rowId)
-  if (error) console.error(`[${SOURCE}] recording the sent reply failed`, { conversationId, messageId: rowId, error })
-}
-
-/**
- * The reply row the customer never received, marked so the dashboard can
- * show it (metadata.delivery), and its send recorded as failed. Visibility
- * only: no retry, no queue. A row its echo already proved delivered (the
- * send timed out after Meta took it) is left as delivered.
- */
-async function markUndelivered(supabase: SupabaseClient, conversationId: string, rowId: string, transport: Transport, result: Exclude<SendResult, { kind: 'sent' }>) {
-  const metadata = await rowMetadata(supabase, rowId)
-  if (!metadata) return
-  if (metadata.send?.state === 'sent') return
-  const delivery = { transport: transport.name, failed: result.kind, at: new Date().toISOString(), ...('code' in result ? { code: result.code } : {}), ...('status' in result ? { status: result.status } : {}) }
-  const { error } = await supabase
-    .from('messages')
-    .update({ metadata: { ...metadata, delivery, send: { transport: transport.name, state: 'failed' } } })
-    .eq('id', rowId)
-  if (error) console.error(`[${SOURCE}] marking the undelivered reply failed`, { conversationId, messageId: rowId, error })
-}
-
 type OutboundRow = { id: string; content: string; metadata: RowMetadata | null }
 
 /**
@@ -457,7 +436,8 @@ async function handleEcho(supabase: SupabaseClient, channel: InboundChannel, ech
     .from('messages')
     .select('id, content, metadata')
     .eq('conversation_id', conversationId)
-    .eq('role', 'assistant')
+    // A person's reply from the dashboard is sent by us too, and echoed like the bot's
+    .in('role', ['assistant', 'agent'])
     .order('created_at', { ascending: false })
     .limit(50)
     .returns<OutboundRow[]>()

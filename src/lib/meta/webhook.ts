@@ -309,6 +309,52 @@ export function inboundWhatsAppMessages(payload: unknown): InboundWhatsAppMessag
 }
 
 /**
+ * A WHATSAPP STATUS: what became of a message we sent (sent, delivered, read,
+ * failed), keyed by the wamid our send recorded. For processing only: the
+ * recipient's number is how the row's conversation is found, and the log
+ * never carries it (deliveryShape logs the status and its codes).
+ */
+export type InboundWhatsAppStatus = {
+  /** The WhatsApp phone_number_id the message went from: the channel's external_id */
+  businessId: string
+  /** The outbound wamid */
+  messageId: string
+  status: string
+  /** The recipient's number as Meta gives it (the conversation's contact_identifier) */
+  recipientId?: string
+  /** The status's error codes, never their text */
+  errorCodes: number[]
+}
+
+export function inboundWhatsAppStatuses(payload: unknown): InboundWhatsAppStatus[] {
+  const body = isObject(payload) ? payload : {}
+  if (text(body.object) !== 'whatsapp_business_account') return []
+  const out: InboundWhatsAppStatus[] = []
+  for (const entry of list(body.entry)) {
+    for (const change of list(entry.changes)) {
+      const value = isObject(change.value) ? change.value : {}
+      const metadata = isObject(value.metadata) ? value.metadata : {}
+      const businessId = text(metadata.phone_number_id)
+      if (!businessId) continue
+      for (const status of list(value.statuses)) {
+        const messageId = text(status.id)
+        const state = text(status.status)
+        if (!messageId || !state) continue
+        const recipientId = idOf(status.recipient_id)
+        out.push({
+          businessId,
+          messageId,
+          status: state,
+          ...(recipientId ? { recipientId } : {}),
+          errorCodes: list(status.errors).flatMap((error) => (typeof error.code === 'number' ? [error.code] : [])),
+        })
+      }
+    }
+  }
+  return out
+}
+
+/**
  * A MESSENGER EVENT, WITH ITS CONTENT. For processing only, under the same
  * rule as InboundWhatsAppMessage: the PSID and the text are what the
  * pipeline needs and exactly what the log must never carry.

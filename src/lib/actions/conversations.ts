@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { canManage, getSession, isImpersonating } from '@/lib/auth/session'
 import { recordImpersonationAction } from '@/lib/auth/impersonation'
 import { getConversationLeads } from '@/lib/lead-visits'
+import { deliverAgentReply, loadForReply, replyAvailability, transportName } from '@/lib/agent-reply'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { UUID_PATTERN } from '@/lib/types/clients'
 import { rangeStart, searchTerm } from '@/lib/list-filters'
 import {
@@ -13,7 +15,11 @@ import {
   type ConversationFilters,
   type ConversationListItem,
   type ConversationStatus,
+  RETRYABLE_FAILURES,
+  isStuck,
   type Message,
+  type MessageSend,
+  type ReplyAvailability,
   type TeamMember,
 } from '@/lib/types/conversations'
 import type { LeadVisit } from '@/lib/types/leads'
@@ -31,12 +37,13 @@ const LIST_COLUMNS = `
 
 const DETAIL_COLUMNS = `
   id, status, contact_name, contact_identifier, last_message_at,
-  last_message_preview, last_message_role, assigned_to, needs_human_since, needs_human_reason, created_at, auto_reply_enabled,
+  last_message_preview, last_message_role, assigned_to, needs_human_since, needs_human_reason, created_at, auto_reply_enabled, thread,
   client:clients!inner(id, name, industry, status),
   channel:channels!inner(id, type, name)
 `
 
-const MESSAGE_COLUMNS = 'id, conversation_id, role, content, sender_id, created_at'
+// The send state and a bot reply's failure only: the rest of metadata stays on the server
+const MESSAGE_COLUMNS = 'id, conversation_id, role, content, sender_id, created_at, send:metadata->send, delivery:metadata->delivery'
 
 export async function getConversations(
   filters: ConversationFilters = {}
@@ -72,6 +79,8 @@ export async function getConversation(id: string): Promise<{
   messages: Message[]
   team: TeamMember[]
   leads: LeadVisit[]
+  /** Whether the reply box is open, and when the 24-hour window closes */
+  reply: ReplyAvailability
 } | null> {
   if (!UUID_PATTERN.test(id)) return null
   const { supabase, profile } = await getSession()
@@ -102,14 +111,34 @@ export async function getConversation(id: string): Promise<{
   }
   if (teamResult.error) console.error('[conversations] client_team', teamResult.error)
 
+  // The user can see the conversation (read above under RLS); its channel's
+  // state and token are read with the service role, which alone may
+  const admin = createAdminClient()
+  const forReply = await loadForReply(admin, id)
+  const reply: ReplyAvailability = forReply ? await replyAvailability(admin, forReply) : { blocked: null, windowEndsAt: null }
+
   return {
     conversation,
     messages: messagesResult.data,
     team: (teamResult.data as TeamMember[] | null) ?? [],
     leads,
+    reply,
   }
 }
 
+/**
+ * A person's reply from the inbox. On the website it is saved and the widget
+ * fetches it; on WhatsApp, Messenger and Instagram it is saved as 'sending',
+ * sent through the channel's transport, and returned with what became of it
+ * (src/lib/agent-reply.ts). A failed send is a state on the row, not a toast:
+ * the conversation is marked for a person by the database
+ * (agent_send_outcome), and the box still hands the conversation over (the
+ * insert turns auto-reply off, whatever the send then does).
+ *
+ * The insert is the user's own, under RLS: it is what proves they may write
+ * in this conversation. The send runs with the service role: the token is
+ * readable by it alone.
+ */
 export async function sendAgentMessage(
   conversationId: string,
   content: string
@@ -122,11 +151,27 @@ export async function sendAgentMessage(
   const text = content.trim()
   if (!text || text.length > MAX_MESSAGE_LENGTH) return { ok: false, error: 'validation' }
 
+  // Visible to the user first, then read whole with the service role
+  const { data: visible } = await supabase.from('conversations').select('id').eq('id', conversationId).maybeSingle<{ id: string }>()
+  if (!visible) return { ok: false, error: 'notFound' }
+  const admin = createAdminClient()
+  const conversation = await loadForReply(admin, conversationId)
+  if (!conversation) return { ok: false, error: 'notFound' }
+  // A public comment thread: a reply here would land in the person's private messages
+  if (conversation.thread === 'comments') return { ok: false, error: 'forbidden' }
+  const transport = transportName(conversation.channel.type)
+
   // RLS only allows role='agent' + sender_id = current user, and only on
   // conversations this user can see
   const { data: message, error } = await supabase
     .from('messages')
-    .insert({ conversation_id: conversationId, role: 'agent', content: text, sender_id: profile.id })
+    .insert({
+      conversation_id: conversationId,
+      role: 'agent',
+      content: text,
+      sender_id: profile.id,
+      ...(transport ? { metadata: { transport, send: { transport, state: 'sending' } } } : {}),
+    })
     .select(MESSAGE_COLUMNS)
     .single<Message>()
 
@@ -143,8 +188,66 @@ export async function sendAgentMessage(
     .eq('id', conversationId)
     .eq('status', 'new')
 
+  const sent = transport ? await deliverAndRead(admin, conversation, message) : message
   revalidatePath(INBOX_PATH, 'page')
-  return { ok: true, data: message }
+  return { ok: true, data: sent }
+}
+
+/** Sends the row and reads it back with what became of it */
+async function deliverAndRead(admin: ReturnType<typeof createAdminClient>, conversation: NonNullable<Awaited<ReturnType<typeof loadForReply>>>, message: Message) {
+  try {
+    await deliverAgentReply(admin, conversation, message.id, message.content)
+  } catch (error) {
+    // Left 'sending': the inbox shows it as stuck after a few minutes, with "send again"
+    console.error('[conversations] delivering an agent reply failed', { messageId: message.id, error })
+  }
+  const { data } = await admin.from('messages').select(MESSAGE_COLUMNS).eq('id', message.id).maybeSingle<Message>()
+  return data ?? message
+}
+
+/**
+ * "Send again", on a reply that failed for a reason that might have passed
+ * (refused, or stuck mid-send). Not on the others: outside the window,
+ * paused, disconnected and too long fail the same way until something
+ * changes, and their line says what. The same row is sent again, so the
+ * conversation shows one message; the state moves to 'sending' only if it
+ * is still what the user saw, so a double click sends once.
+ */
+export async function retryAgentMessage(messageId: string): Promise<ConversationActionResult<Message>> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
+  const { supabase, profile } = await getSession()
+  if (!profile) return { ok: false, error: 'unauthorized' }
+  if (!UUID_PATTERN.test(messageId)) return { ok: false, error: 'notFound' }
+
+  const { data: visible } = await supabase
+    .from('messages')
+    .select(MESSAGE_COLUMNS)
+    .eq('id', messageId)
+    .eq('role', 'agent')
+    .maybeSingle<Message>()
+  if (!visible) return { ok: false, error: 'notFound' }
+
+  const send = visible.send
+  const stuck = isStuck(visible)
+  const failure = stuck ? 'stuck' : send?.state === 'failed' ? send.reason : undefined
+  if (!send || !failure || !RETRYABLE_FAILURES.includes(failure)) return { ok: false, error: 'validation' }
+
+  const admin = createAdminClient()
+  const conversation = await loadForReply(admin, visible.conversation_id)
+  if (!conversation || conversation.thread === 'comments') return { ok: false, error: 'notFound' }
+  const { data: row } = await admin.from('messages').select('metadata').eq('id', messageId).maybeSingle<{ metadata: Record<string, unknown> | null }>()
+  const sending: MessageSend = { transport: send.transport, state: 'sending', at: new Date().toISOString() }
+  const { data: claimed } = await admin
+    .from('messages')
+    .update({ metadata: { ...(row?.metadata ?? {}), send: sending } })
+    .eq('id', messageId)
+    .eq('metadata->send->>state', send.state)
+    .select('id')
+  if (!claimed || claimed.length === 0) return { ok: false, error: 'validation' }
+
+  const sent = await deliverAndRead(admin, conversation, { ...visible, send: sending })
+  revalidatePath(INBOX_PATH, 'page')
+  return { ok: true, data: sent }
 }
 
 export async function updateConversationStatus(

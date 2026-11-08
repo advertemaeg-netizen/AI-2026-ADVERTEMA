@@ -425,19 +425,22 @@
         "service_down": "Needs a reply: service down",
         "limit_reached": "Needs a reply: out of messages",
         "inactive": "Needs a reply: subscription inactive",
-        "no_answer": "Needs a reply: missing answer"
+        "no_answer": "Needs a reply: missing answer",
+        "send_failed": "Reply not delivered"
       },
       "banner": {
         "service_down": "{count, plural, one {# conversation} other {# conversations}} the assistant could not answer because of a problem on our side.",
         "limit_reached": "{count, plural, one {# conversation} other {# conversations}} left unanswered because the plan's monthly messages are used up.",
         "inactive": "{count, plural, one {# conversation} other {# conversations}} left unanswered because the subscription is inactive.",
-        "no_answer": "{count, plural, one {# conversation} other {# conversations}} the assistant had no answer for in the knowledge base."
+        "no_answer": "{count, plural, one {# conversation} other {# conversations}} the assistant had no answer for in the knowledge base.",
+        "send_failed": "{count, plural, one {# conversation has} other {# conversations have}} a reply from your team that did not reach the visitor."
       },
       "action": {
-        "service_down": "This is on us and we are fixing it — reply to the visitors from the inbox.",
-        "limit_reached": "Upgrade the plan so the assistant replies again, and reply to the visitors from the inbox.",
-        "inactive": "Activate the subscription so the assistant replies again, and reply to the visitors from the inbox.",
-        "no_answer": "Reply to the visitors, and add the missing information to the knowledge base."
+        "service_down": "This is on us and we are fixing it — reply to the visitors from the inbox. A reply on WhatsApp, Facebook and Instagram can’t go through more than 24 hours after the visitor’s last message.",
+        "limit_reached": "Upgrade the plan so the assistant replies again, and reply to the visitors from the inbox. A reply on WhatsApp, Facebook and Instagram can’t go through more than 24 hours after the visitor’s last message.",
+        "inactive": "Activate the subscription so the assistant replies again, and reply to the visitors from the inbox. A reply on WhatsApp, Facebook and Instagram can’t go through more than 24 hours after the visitor’s last message.",
+        "no_answer": "Reply to the visitors, and add the missing information to the knowledge base. A reply on WhatsApp, Facebook and Instagram can’t go through more than 24 hours after the visitor’s last message.",
+        "send_failed": "Try sending it again from the inbox. A reply on WhatsApp, Facebook and Instagram can’t go through more than 24 hours after the visitor’s last message."
       },
       "open": "Open conversations"
     },
@@ -524,6 +527,25 @@
       "off": "Team is handling this chat",
       "onHint": "The AI assistant replies to the visitor automatically. It stops as soon as you reply manually.",
       "offHint": "Auto-reply is off because an agent replied manually. Turn it on to let the AI continue."
+    },
+    "message": {
+      "sending": "Sending…",
+      "failed": "Not delivered",
+      "retry": "Send again"
+    },
+    "fail": {
+      "outsideWindow": "More than 24 hours have passed since the visitor’s last message, and the platform does not allow a reply after that.",
+      "paused": "The channel is paused, so the message was not sent. Turn it on from the channel card and try again.",
+      "disconnected": "The channel is not connected right now. Reconnect it from the channels page.",
+      "tooLong": "The message is longer than this channel allows. Shorten it and send again.",
+      "refused": "The platform refused the message. Try sending it again.",
+      "stuck": "Sending stopped partway. Try sending it again."
+    },
+    "box": {
+      "paused": "The channel is paused. Turn it on to reply.",
+      "disconnected": "The channel is not connected. Reconnect it from the channels page.",
+      "outsideWindow": "More than 24 hours have passed since the visitor’s last message. You can’t reply here until they write again.",
+      "commentThread": "This is a public comment. A private reply is sent from the same person’s messages conversation."
     }
   },
   "knowledge": {

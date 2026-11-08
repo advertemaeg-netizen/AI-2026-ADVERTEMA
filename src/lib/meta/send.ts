@@ -205,6 +205,27 @@ const INSTAGRAM_PRIVATE_REPLY: Platform = {
   withRecipient: true,
 }
 
+/**
+ * Instagram (Unified login): a direct message to a person, by their
+ * Instagram-scoped id. POST {ig-account-id}/messages on graph.facebook.com,
+ * recipient {id}, the same endpoint, token and byte limit as the private
+ * reply. Inside the window, like Messenger's RESPONSE; outside it, Meta
+ * answers error 10 and it is reported as outside_window, never retried.
+ */
+const INSTAGRAM_DM: Platform = {
+  log: '[instagram/send]',
+  fits: (text) => Buffer.byteLength(text, 'utf8') <= INSTAGRAM_MAX_TEXT_BYTES,
+  url: (id) => `${INSTAGRAM_GRAPH}/${id}/messages`,
+  missingId: 'instagram_account_id',
+  body: (to, text) => ({ recipient: { id: to }, message: { text } }),
+  messageId: (answer) => (typeof answer.message_id === 'string' ? answer.message_id : null),
+  outsideWindow: (error) => isMetaOutsideWindow(error),
+}
+
+export function sendInstagramText(args: SendArgs): Promise<SendResult> {
+  return send(INSTAGRAM_DM, args)
+}
+
 /** The private reply to an Instagram comment; `sent` carries the commenter's Instagram-scoped id (recipientId) */
 export function sendInstagramPrivateReply({ supabase, channelId, commentId, body }: { supabase: SupabaseClient; channelId: string; commentId: string; body: string }): Promise<SendResult> {
   return send(INSTAGRAM_PRIVATE_REPLY, { supabase, channelId, to: commentId, body })

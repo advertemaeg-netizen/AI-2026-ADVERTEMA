@@ -1,7 +1,8 @@
 import { after, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { handleInstagramComment, type CommentDisposition } from '@/lib/meta/comments'
-import { handleInboundMessengerEvent, handleInboundWhatsAppMessage, type InboundChannel } from '@/lib/meta/inbound'
+import { handleInboundMessengerEvent, handleInboundWhatsAppMessage, isLive, type InboundChannel } from '@/lib/meta/inbound'
+import { applyWhatsAppStatus, type StatusDisposition } from '@/lib/meta/delivery'
 import { claimMessages, completeMessages, type MessageClaim } from '@/lib/meta/processed'
 import {
   CHANNEL_TYPE,
@@ -9,6 +10,7 @@ import {
   inboundInstagramComments,
   inboundMessengerEvents,
   inboundWhatsAppMessages,
+  inboundWhatsAppStatuses,
   signatureDigest,
   signatureMatches,
   type DeliveryShape,
@@ -151,6 +153,26 @@ async function processDelivery(raw: Buffer) {
       }
     }
 
+    // WHATSAPP STATUSES: a message we sent that WhatsApp accepted and then
+    // could not deliver (the closed window above all) is marked failed on its
+    // row, so the inbox does not show it as sent (src/lib/meta/delivery.ts).
+    // Not claimed: applying a failure twice changes nothing.
+    const statuses: Record<string, StatusDisposition | 'unmapped' | 'failed'> = {}
+    for (const status of inboundWhatsAppStatuses(payload)) {
+      if (status.status !== 'failed') continue
+      const mapped = clients[status.businessId]
+      if (typeof mapped !== 'object') {
+        statuses[status.messageId] = 'unmapped'
+        continue
+      }
+      try {
+        statuses[status.messageId] = await applyWhatsAppStatus(supabase, mapped.channelId, status)
+      } catch (error) {
+        statuses[status.messageId] = 'failed'
+        console.error('[webhook/meta] applying a status failed', { channelId: mapped.channelId, messageId: status.messageId, error })
+      }
+    }
+
     // MESSENGER: each new message answered, each echo told apart (ours or a
     // person's), each reaction stored, in order. A failure on one is logged
     // and the next is still handled, as for WhatsApp.
@@ -186,7 +208,10 @@ async function processDelivery(raw: Buffer) {
       }
     }
 
-    console.info('[webhook/meta]', JSON.stringify({ ...shape, clients: loggable(clients), messages, ...(Object.keys(comments).length ? { comments } : {}) }))
+    console.info(
+      '[webhook/meta]',
+      JSON.stringify({ ...shape, clients: loggable(clients), messages, ...(Object.keys(statuses).length ? { statuses } : {}), ...(Object.keys(comments).length ? { comments } : {}) })
+    )
 
     try {
       await completeMessages(supabase, fresh)
@@ -200,12 +225,12 @@ async function processDelivery(raw: Buffer) {
 
 type Mapped = { clientId: string; channelId: string; channel: InboundChannel }
 
-/** The log's view of the mapping: ids, and whether the channel is live */
+/** The log's view of the mapping: ids, and whether the channel is live by the same test the handlers apply (isLive) */
 function loggable(clients: Record<string, Mapped | string>) {
   return Object.fromEntries(
     Object.entries(clients).map(([id, value]) => [
       id,
-      typeof value === 'object' ? { clientId: value.clientId, channelId: value.channelId, live: value.channel.is_active && value.channel.clients?.status === 'active' } : value,
+      typeof value === 'object' ? { clientId: value.clientId, channelId: value.channelId, live: isLive(value.channel) } : value,
     ])
   )
 }

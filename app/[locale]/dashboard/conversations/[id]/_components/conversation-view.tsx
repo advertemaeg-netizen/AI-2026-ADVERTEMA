@@ -24,15 +24,24 @@ import { RelativeTime } from '@/components/relative-time'
 import { cn } from '@/lib/utils'
 import {
   assignConversation,
+  retryAgentMessage,
   sendAgentMessage,
   setConversationAutoReply,
   updateConversationStatus,
 } from '@/lib/actions/conversations'
 import {
   CONVERSATION_STATUSES,
+  REPLY_LIMITS,
+  REPLY_WINDOW_MS,
+  RETRYABLE_FAILURES,
+  fitsChannel,
+  isStuck,
   type ConversationDetail,
   type ConversationStatus,
   type Message,
+  type ReplyAvailability,
+  type ReplyBlock,
+  type SendFailure,
   type TeamMember,
 } from '@/lib/types/conversations'
 import type { LeadVisit } from '@/lib/types/leads'
@@ -41,14 +50,74 @@ import { LeadVisitsList } from '../../../leads/_components/lead-visits-list'
 
 const UNASSIGNED = 'unassigned'
 
+/**
+ * A message added, or a newer view of one already shown. The send's final
+ * state can reach the page (the action's answer) before Realtime delivers the
+ * 'sending' it passed through: a 'sending' from the same attempt never
+ * overwrites a state that came after it. A "send again" is a new attempt
+ * (send.at), so its 'sending' does.
+ */
 function upsertMessage(list: Message[], message: Message) {
-  if (list.some((m) => m.id === message.id)) return list
-  return [...list, message].sort((a, b) => a.created_at.localeCompare(b.created_at))
+  const current = list.find((m) => m.id === message.id)
+  if (!current) return [...list, message].sort((a, b) => a.created_at.localeCompare(b.created_at))
+  const stale =
+    message.send?.state === 'sending' && current.send && current.send.state !== 'sending' && (current.send.at ?? null) === (message.send.at ?? null)
+  if (stale) return list
+  return list.map((m) => (m.id === message.id ? { ...m, ...message } : m))
+}
+
+/** A Realtime row: the send state and a bot reply's failure, out of its metadata */
+function fromRow(row: Record<string, unknown>): Message {
+  const metadata = (row.metadata ?? null) as { send?: Message['send']; delivery?: Message['delivery'] } | null
+  return {
+    id: row.id as string,
+    conversation_id: row.conversation_id as string,
+    role: row.role as Message['role'],
+    content: row.content as string,
+    sender_id: (row.sender_id ?? null) as string | null,
+    created_at: row.created_at as string,
+    send: metadata?.send ?? null,
+    delivery: metadata?.delivery ?? null,
+  }
+}
+
+const isReaction = (row: Record<string, unknown>) => {
+  const metadata = (row.metadata ?? null) as Record<string, unknown> | null
+  return metadata?.whatsapp_type === 'reaction' || metadata?.messenger_type === 'reaction' || metadata?.instagram_type === 'reaction'
+}
+
+/** A bot reply marked undelivered before failures carried a reason: its kind, as a reason */
+const LEGACY_FAILURE: Record<string, SendFailure> = { outside_window: 'outside_window', not_configured: 'disconnected' }
+
+/** Why an outbound message did not reach the person, or null when it did (or is on its way) */
+function failureOf(message: Message, now: number): SendFailure | 'stuck' | null {
+  if (message.role !== 'agent' && message.role !== 'assistant') return null
+  if (isStuck(message, now)) return 'stuck'
+  if (message.send?.state === 'failed') return message.send.reason ?? LEGACY_FAILURE[message.delivery?.failed ?? ''] ?? 'refused'
+  if (message.delivery?.failed && message.send?.state !== 'sent') return LEGACY_FAILURE[message.delivery.failed] ?? 'refused'
+  return null
+}
+
+const FAILURE_KEY: Record<SendFailure | 'stuck', string> = {
+  outside_window: 'outsideWindow',
+  paused: 'paused',
+  disconnected: 'disconnected',
+  too_long: 'tooLong',
+  refused: 'refused',
+  stuck: 'stuck',
+}
+
+const BLOCK_KEY: Record<ReplyBlock, string> = {
+  paused: 'paused',
+  disconnected: 'disconnected',
+  outside_window: 'outsideWindow',
+  comment_thread: 'commentThread',
 }
 
 export function ConversationView({
   initialConversation,
   initialMessages,
+  reply,
   team,
   leads,
   canManage,
@@ -56,6 +125,8 @@ export function ConversationView({
 }: {
   initialConversation: ConversationDetail
   initialMessages: Message[]
+  /** Whether the reply box is open, and when the 24-hour window closes (src/lib/agent-reply.ts) */
+  reply: ReplyAvailability
   team: TeamMember[]
   /** Every lead this conversation produced, oldest first */
   leads: LeadVisit[]
@@ -64,6 +135,7 @@ export function ConversationView({
 }) {
   const t = useTranslations('conversations')
   const tChannels = useTranslations('channels')
+  const tClientNav = useTranslations('clientNav')
   const format = useFormatter()
   const contactLabel = useContactLabel()
 
@@ -72,7 +144,22 @@ export function ConversationView({
   const [draft, setDraft] = useState('')
   const [isSending, startSending] = useTransition()
   const [isUpdating, startUpdating] = useTransition()
+  const [isRetrying, startRetrying] = useTransition()
   const endRef = useRef<HTMLDivElement>(null)
+
+  // The window moves on its own: it closes while the page is open, and a
+  // new message from the person opens it again
+  const onMeta = conversation.channel.type !== 'website' && conversation.thread === 'dm'
+  const [windowEndsAt, setWindowEndsAt] = useState(reply.windowEndsAt)
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(timer)
+  }, [])
+  const outsideWindow = windowEndsAt ? now >= new Date(windowEndsAt).getTime() : reply.blocked === 'outside_window'
+  const blocked: ReplyBlock | null = reply.blocked && reply.blocked !== 'outside_window' ? reply.blocked : onMeta && outsideWindow ? 'outside_window' : null
+  const limit = REPLY_LIMITS[conversation.channel.type]
+  const tooLong = !fitsChannel(conversation.channel.type, draft.trim())
 
   const teamById = useMemo(() => new Map(team.map((member) => [member.id, member])), [team])
   const memberName = (id: string | null) => {
@@ -96,7 +183,24 @@ export function ConversationView({
           table: 'messages',
           filter: `conversation_id=eq.${conversation.id}`,
         },
-        (payload) => setMessages((prev) => upsertMessage(prev, payload.new as Message))
+        (payload) => {
+          const row = payload.new as Record<string, unknown>
+          setMessages((prev) => upsertMessage(prev, fromRow(row)))
+          if (row.role === 'user' && !isReaction(row)) {
+            setWindowEndsAt(new Date(new Date(row.created_at as string).getTime() + REPLY_WINDOW_MS).toISOString())
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversation.id}`,
+        },
+        // A send's state moving: sending → sent or failed, here or in a teammate's inbox
+        (payload) => setMessages((prev) => upsertMessage(prev, fromRow(payload.new as Record<string, unknown>)))
       )
       .on(
         'postgres_changes',
@@ -131,7 +235,7 @@ export function ConversationView({
 
   function send() {
     const text = draft.trim()
-    if (!text || isSending) return
+    if (!text || isSending || blocked || tooLong) return
 
     startSending(async () => {
       const result = await sendAgentMessage(conversation.id, text)
@@ -147,6 +251,17 @@ export function ConversationView({
         auto_reply_enabled: false,
         status: prev.status === 'new' ? 'in_progress' : prev.status,
       }))
+    })
+  }
+
+  function retry(messageId: string) {
+    startRetrying(async () => {
+      const result = await retryAgentMessage(messageId)
+      if (!result.ok) {
+        toast.error(t(`errors.${result.error}`))
+        return
+      }
+      setMessages((prev) => upsertMessage(prev, result.data))
     })
   }
 
@@ -409,14 +524,32 @@ export function ConversationView({
                     dateStyle: 'short',
                     timeStyle: 'short',
                   })}
+                  failure={failureOf(message, now)}
+                  onRetry={message.role === 'agent' && !isRetrying ? () => retry(message.id) : undefined}
                 />
               ))}
               <div ref={endRef} />
             </div>
           </ScrollArea>
 
+          {blocked && (
+            <p role="status" className="border-t bg-muted/50 px-4 py-2 text-sm text-muted-foreground max-md:px-2">
+              {t(`box.${BLOCK_KEY[blocked]}`)}
+              {(blocked === 'paused' || blocked === 'disconnected') && canManage && (
+                <>
+                  {' '}
+                  <Link href={`/dashboard/clients/${conversation.client.id}/channels`} className="underline underline-offset-4">
+                    {tClientNav('channels')}
+                  </Link>
+                </>
+              )}
+            </p>
+          )}
           <form
-            className="flex items-end gap-2 border-t p-4 max-md:p-2 max-md:pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+            className={cn(
+              'flex items-end gap-2 p-4 max-md:p-2 max-md:pb-[max(0.5rem,env(safe-area-inset-bottom))]',
+              !blocked && 'border-t'
+            )}
             onSubmit={(e) => {
               e.preventDefault()
               send()
@@ -434,14 +567,23 @@ export function ConversationView({
               placeholder={t('replyPlaceholder')}
               aria-label={t('replyPlaceholder')}
               rows={2}
-              maxLength={4000}
+              // Instagram counts bytes, which the attribute cannot: tooLong says so below
+              maxLength={'chars' in limit ? limit.chars : 4000}
+              disabled={blocked !== null}
+              aria-invalid={tooLong || undefined}
+              aria-describedby={tooLong ? 'reply-too-long' : undefined}
               className="max-h-40 min-h-10 resize-none max-md:max-h-32 max-md:min-h-11"
             />
-            <Button type="submit" disabled={!draft.trim() || isSending} className="max-md:size-11 max-md:px-0">
+            <Button type="submit" disabled={!draft.trim() || isSending || blocked !== null || tooLong} className="max-md:size-11 max-md:px-0">
               <SendHorizontal data-icon="inline-start" className="rtl:rotate-180" />
               <span className="max-md:sr-only">{isSending ? t('sending') : t('send')}</span>
             </Button>
           </form>
+          {tooLong && !blocked && (
+            <p id="reply-too-long" className="px-4 pb-2 text-xs text-destructive max-md:px-2">
+              {t('fail.tooLong')}
+            </p>
+          )}
         </section>
 
         <aside className="hidden min-h-0 space-y-4 overflow-y-auto border-s p-4 lg:block">
@@ -465,11 +607,18 @@ function MessageBubble({
   message,
   senderLabel,
   time,
+  failure,
+  onRetry,
 }: {
   message: Message
   senderLabel: string
   time: string
+  /** Why it did not reach the person; null when it did or is on its way */
+  failure: SendFailure | 'stuck' | null
+  /** "Send again", offered on a person's reply whose failure might have passed */
+  onRetry?: () => void
 }) {
+  const t = useTranslations('conversations')
   if (message.role === 'system') {
     return (
       <p className="self-center rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
@@ -503,6 +652,20 @@ function MessageBubble({
       >
         {message.content}
       </div>
+      {failure ? (
+        // On the row, so it is still there tomorrow: never only a toast
+        <div className="grid max-w-full justify-items-end gap-1 text-end text-xs text-destructive">
+          <span className="font-medium">{t('message.failed')}</span>
+          <span>{t(`fail.${FAILURE_KEY[failure]}`)}</span>
+          {onRetry && RETRYABLE_FAILURES.includes(failure) && (
+            <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+              {t('message.retry')}
+            </Button>
+          )}
+        </div>
+      ) : (
+        message.send?.state === 'sending' && <span className="text-xs text-muted-foreground">{t('message.sending')}</span>
+      )}
     </div>
   )
 }
