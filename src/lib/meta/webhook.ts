@@ -407,8 +407,25 @@ export type InboundMessengerEvent =
     }
 
 export function inboundMessengerEvents(payload: unknown): InboundMessengerEvent[] {
+  return messagingEvents(payload, 'page')
+}
+
+/**
+ * AN INSTAGRAM DIRECT MESSAGE, WITH ITS CONTENT: the same shape as
+ * Messenger's (entry.messaging, mid, is_echo, attachments), keyed by the
+ * Instagram account instead of the Page (`pageId` here is the account id,
+ * the channel's external_id) and by the person's Instagram-scoped id. Echoes
+ * arrive on the `messages` field (seen on the review clinic, 2026-11-08,
+ * sender the account itself, recipient the person). A story mention is a
+ * message whose attachment type is story_mention.
+ */
+export function inboundInstagramEvents(payload: unknown): InboundMessengerEvent[] {
+  return messagingEvents(payload, 'instagram')
+}
+
+function messagingEvents(payload: unknown, object: 'page' | 'instagram'): InboundMessengerEvent[] {
   const body = isObject(payload) ? payload : {}
-  if (text(body.object) !== 'page') return []
+  if (text(body.object) !== object) return []
   const out: InboundMessengerEvent[] = []
   for (const entry of list(body.entry)) {
     const pageId = text(entry.id)

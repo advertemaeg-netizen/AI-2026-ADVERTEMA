@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ContactState } from '@/lib/ai/contact'
 import { conversationStore, replyToMessage, type ReplyOutcome, type ReplyStore } from '@/lib/ai/reply'
 import { recordResult, type RowMetadata } from '@/lib/meta/delivery'
-import { sendMessengerText, sendWhatsAppText, type SendResult } from '@/lib/meta/send'
+import { fetchInstagramUsername, sendInstagramText, sendMessengerText, sendWhatsAppText, type SendResult } from '@/lib/meta/send'
 import type { InboundMessengerEvent, InboundWhatsAppMessage } from '@/lib/meta/webhook'
 import {
   WHATSAPP_HANDOFF_AR,
@@ -105,18 +105,21 @@ export type InboundDisposition =
   | { kind: 'reaction'; conversationId: string }
   | { kind: 'not_text'; type: string; conversationId: string; send: Sent }
   | { kind: 'answered'; conversationId: string; outcome: ReplyOutcome['kind']; send: Sent }
-  /** Messenger: the echo of a message we sent */
+  /** Messenger or Instagram: the echo of a message we sent */
   | { kind: 'echo_ours'; conversationId: string }
-  /** Messenger: a person at the clinic answered from the Page inbox; stored as theirs, and the bot stands down */
+  /** Messenger or Instagram: a person at the clinic answered from the Page inbox or the Instagram app; stored as theirs, and the bot stands down */
   | { kind: 'echo_agent'; conversationId: string }
+  /** Instagram: a story mention, out of this build (.scratch/agent-reply-decisions.md §3.5): claimed, not stored, not answered */
+  | { kind: 'story_mention' }
 
 type Transport = {
-  name: 'whatsapp' | 'messenger'
+  name: 'whatsapp' | 'messenger' | 'instagram'
   send(args: { supabase: SupabaseClient; channelId: string; to: string; body: string }): Promise<SendResult>
 }
 
 const WHATSAPP: Transport = { name: 'whatsapp', send: sendWhatsAppText }
 const MESSENGER: Transport = { name: 'messenger', send: sendMessengerText }
+const INSTAGRAM: Transport = { name: 'instagram', send: sendInstagramText }
 
 /** What a transport hands the shared handler: the sender, what arrived, and what is known of them */
 type Inbound = {
@@ -139,6 +142,10 @@ function placeholderFor(type: string): keyof typeof WHATSAPP_PLACEHOLDER_AR {
   // A clip is something to watch, not a file to open
   if (type === 'video') return 'video'
   if (type === 'document' || type === 'file') return 'file'
+  // Instagram's names for a shared post and a shared reel (Meta's documented
+  // types, not all seen live yet: anything else stays 'unsupported')
+  if (type === 'share' || type === 'ig_post') return 'share'
+  if (type === 'ig_reel' || type === 'reel') return 'reel'
   return 'unsupported'
 }
 
@@ -164,6 +171,90 @@ export function handleInboundWhatsAppMessage({
   })
 }
 
+/**
+ * AN INSTAGRAM DIRECT MESSAGE: the same pipeline as WhatsApp and Messenger.
+ * No welcome message: a cold DM opens the person's conversation and is
+ * answered, exactly as a cold WhatsApp message is. A DM after the comment
+ * opener lands in the conversation the opener opened (the same key: the
+ * commenter's id is the id their DM carries).
+ *
+ * ECHOES: OURS OR A PERSON'S AT THE CLINIC, BY THE IDS WE RECORDED, as on
+ * Messenger (handleEcho), never by the payload. They arrive on this webhook
+ * (the review clinic's log, 2026-11-08), our own opener among them, and the
+ * id our send records was checked there to be the echo's mid. Ours is
+ * ignored; anything else is a person answering from the Instagram app: it is
+ * stored as theirs and the bot stands down.
+ *
+ * Story mentions are out of this build (§3.5): claimed, logged, left.
+ *
+ * THE NAME. A conversation that has no name takes the username from the
+ * person's comment thread on this channel; with none, the profile is fetched
+ * once, when the conversation is opened. If that fails, the inbox's
+ * "visitor" plus the id stays.
+ */
+export async function handleInboundInstagramEvent({
+  supabase,
+  channel,
+  event,
+}: {
+  supabase: SupabaseClient
+  channel: InboundChannel
+  event: InboundMessengerEvent
+}): Promise<InboundDisposition> {
+  if (!isLive(channel)) return { kind: 'inactive' }
+  if (event.kind === 'echo') {
+    // Ours or a person's at the clinic, by the ids we recorded (handleEcho): the
+    // id our send records is the echo's mid, checked on the review clinic's log
+    // for the comment opener, 2026-11-08
+    const profileName = await nameInstagramConversation(supabase, channel, event.to)
+    return handleEcho(supabase, channel, event, INSTAGRAM, profileName ?? undefined)
+  }
+  if (event.kind === 'message' && event.type === 'story_mention') {
+    console.info(`[${SOURCE}] instagram story mention left`, { channelId: channel.id, messageId: event.messageId, hasText: Boolean(event.text?.trim()) })
+    return { kind: 'story_mention' }
+  }
+  const profileName = await nameInstagramConversation(supabase, channel, event.from)
+  if (event.kind === 'reaction') {
+    return handleInbound(supabase, channel, INSTAGRAM, { messageId: event.claimId, from: event.from, type: 'reaction', reaction: event.reaction, knownContact: null, ...(profileName ? { profileName } : {}) })
+  }
+  return handleInbound(supabase, channel, INSTAGRAM, {
+    messageId: event.messageId,
+    from: event.from,
+    type: event.type,
+    ...(event.text !== undefined ? { text: event.text } : {}),
+    ...(profileName ? { profileName } : {}),
+    knownContact: null,
+  })
+}
+
+/**
+ * The name for the person's DM conversation, read before it is found or
+ * opened. An existing conversation with a name keeps it. One without a name
+ * takes the comment thread's username now (filled in here); a conversation
+ * about to be opened takes the comment thread's, or else the fetched
+ * profile's (returned, for conversationFor to write). Never overwrites a name.
+ */
+async function nameInstagramConversation(supabase: SupabaseClient, channel: InboundChannel, igsid: string): Promise<string | null> {
+  const { data: rows, error } = await supabase
+    .from('conversations')
+    .select('id, thread, contact_name')
+    .eq('channel_id', channel.id)
+    .eq('contact_identifier', igsid)
+    .returns<{ id: string; thread: string; contact_name: string | null }[]>()
+  if (error) throw error
+  const dm = rows.find((r) => r.thread === 'dm')
+  if (dm?.contact_name) return null
+  const fromComments = rows.find((r) => r.thread === 'comments')?.contact_name?.trim() || null
+  if (dm) {
+    if (fromComments) {
+      const { error: updateError } = await supabase.from('conversations').update({ contact_name: fromComments.slice(0, 100) }).eq('id', dm.id).is('contact_name', null)
+      if (updateError) console.error(`[${SOURCE}] naming the instagram conversation failed`, { channelId: channel.id, conversationId: dm.id, error: updateError })
+    }
+    return null
+  }
+  return fromComments ?? (await fetchInstagramUsername({ supabase, channelId: channel.id, igsid }))
+}
+
 export function handleInboundMessengerEvent({
   supabase,
   channel,
@@ -175,7 +266,7 @@ export function handleInboundMessengerEvent({
 }): Promise<InboundDisposition> {
   switch (event.kind) {
     case 'echo':
-      return handleEcho(supabase, channel, event)
+      return handleEcho(supabase, channel, event, MESSENGER)
     case 'reaction':
       return handleInbound(supabase, channel, MESSENGER, { messageId: event.claimId, from: event.from, type: 'reaction', reaction: event.reaction, knownContact: null })
     case 'message':
@@ -208,7 +299,12 @@ async function handleInbound(supabase: SupabaseClient, channel: InboundChannel, 
     return { kind: 'reaction', conversationId }
   }
 
-  const isText = message.type === 'text' && Boolean(message.text?.trim())
+  // ANY TYPED WORDS GO TO THE PIPELINE, whatever they came with: a shared
+  // post, a reel, an image with a line under it. A placeholder is for a
+  // message with nothing to read, not for one whose attachment we cannot
+  // open. (Until 2026-11-08 a Messenger image with typed words dropped the
+  // words: a bug, not a choice.)
+  const isText = Boolean(message.text?.trim())
   if (!isText) {
     // Stored as what it is, so the conversation shows it arrived
     const { error } = await supabase
@@ -224,7 +320,8 @@ async function handleInbound(supabase: SupabaseClient, channel: InboundChannel, 
 
   const { data: userMessage, error: userMessageError } = await supabase
     .from('messages')
-    .insert({ conversation_id: conversationId, role: 'user', content: text })
+    // What the words came with is kept beside them, out of the content the model reads
+    .insert({ conversation_id: conversationId, role: 'user', content: text, ...(message.type !== 'text' ? { metadata: { [typeKey]: message.type } } : {}) })
     .select('id')
     .single<{ id: string }>()
   if (userMessageError) throw userMessageError
@@ -428,9 +525,15 @@ type OutboundRow = { id: string; content: string; metadata: RowMetadata | null }
  * silence the bot on the conversations it is answering: that is why the
  * intent is recorded before the send.
  */
-async function handleEcho(supabase: SupabaseClient, channel: InboundChannel, echo: Extract<InboundMessengerEvent, { kind: 'echo' }>): Promise<InboundDisposition> {
+async function handleEcho(
+  supabase: SupabaseClient,
+  channel: InboundChannel,
+  echo: Extract<InboundMessengerEvent, { kind: 'echo' }>,
+  transport: Transport,
+  profileName?: string
+): Promise<InboundDisposition> {
   if (!isLive(channel)) return { kind: 'inactive' }
-  const { conversationId } = await conversationFor(supabase, channel, echo.to)
+  const { conversationId } = await conversationFor(supabase, channel, echo.to, profileName)
 
   const { data: rows, error } = await supabase
     .from('messages')
@@ -461,7 +564,7 @@ async function handleEcho(supabase: SupabaseClient, channel: InboundChannel, ech
     delete rest.delivery
     const { error: updateError } = await supabase
       .from('messages')
-      .update({ metadata: { ...rest, send: { transport: MESSENGER.name, state: 'sent', messageId: echo.messageId } } })
+      .update({ metadata: { ...rest, send: { transport: transport.name, state: 'sent', messageId: echo.messageId } } })
       .eq('id', inFlight.id)
     if (updateError) throw updateError
     console.info(`[${SOURCE}] echo of ours, before its send was recorded`, { channelId: channel.id, conversationId, messageId: echo.messageId })
@@ -471,7 +574,7 @@ async function handleEcho(supabase: SupabaseClient, channel: InboundChannel, ech
   const content = echoed || WHATSAPP_PLACEHOLDER_AR[placeholderFor(echo.type)]
   const { error: insertError } = await supabase
     .from('messages')
-    .insert({ conversation_id: conversationId, role: 'agent', content, metadata: { transport: MESSENGER.name, echo: true, messageId: echo.messageId, messenger_type: echo.type } })
+    .insert({ conversation_id: conversationId, role: 'agent', content, metadata: { transport: transport.name, echo: true, messageId: echo.messageId, [`${transport.name}_type`]: echo.type } })
   if (insertError) throw insertError
   console.info(`[${SOURCE}] echo of a person at the clinic`, { channelId: channel.id, conversationId, messageId: echo.messageId })
   return { kind: 'echo_agent', conversationId }

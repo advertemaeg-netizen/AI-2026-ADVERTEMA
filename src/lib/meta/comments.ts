@@ -150,7 +150,7 @@ export async function handleInstagramComment({
     const result = await sendInstagramPrivateReply({ supabase, channelId: channel.id, commentId: comment.commentId, body: opener })
     privateReply = result.kind
     if (result.kind === 'sent') {
-      const dmConversationId = await openDm(supabase, channel, result, opener, comment.commentId)
+      const dmConversationId = await openDm(supabase, channel, result, opener, comment)
       await record(supabase, comment.commentId, { private_state: 'sent', private_message_id: result.messageId, dm_conversation_id: dmConversationId })
       console.info(`[${SOURCE}] comment private reply sent`, {
         channelId: channel.id,
@@ -310,12 +310,21 @@ async function alreadyRepliedOnPost(supabase: SupabaseClient, threadId: string, 
  * thread 'dm', with the opener as its row. It may carry the originating
  * comment's id as context; never the private side's history on the public one.
  */
-async function openDm(supabase: SupabaseClient, channel: InboundChannel, result: Extract<SendResult, { kind: 'sent' }>, opener: string, commentId: string) {
+async function openDm(supabase: SupabaseClient, channel: InboundChannel, result: Extract<SendResult, { kind: 'sent' }>, opener: string, comment: InboundInstagramComment) {
+  const { commentId } = comment
   if (!result.recipientId) {
     console.error(`[${SOURCE}] a private reply went without a recipient id: its DM is not opened here`, { channelId: channel.id, commentId })
     return null
   }
-  const { conversationId } = await conversationFor(supabase, channel, result.recipientId)
+  // Named after the commenter, as their comment thread is: one patient must not read as
+  // "@username" in one row and "visitor 87…" in the next (seen live, 2026-11-08)
+  const username = comment.from.username?.trim().slice(0, 100) || undefined
+  const { conversationId } = await conversationFor(supabase, channel, result.recipientId, username)
+  if (username) {
+    // A DM they opened before commenting has no name yet: it takes this one, and never replaces one
+    const { error: nameError } = await supabase.from('conversations').update({ contact_name: username }).eq('id', conversationId).is('contact_name', null)
+    if (nameError) console.error(`[${SOURCE}] naming the DM failed`, { channelId: channel.id, conversationId, error: nameError })
+  }
   const { error } = await supabase.from('messages').insert({
     conversation_id: conversationId,
     role: 'assistant',

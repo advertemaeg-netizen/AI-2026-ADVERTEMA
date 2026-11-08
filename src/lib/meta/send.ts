@@ -80,7 +80,18 @@ type Platform = {
   outsideWindow(error: GraphError): boolean
   /** Instagram's private reply: the answer's recipient_id is the commenter's Instagram-scoped id, kept */
   withRecipient?: true
+  /** Instagram: the limit is bytes, and a text past NEAR_LIMIT of it is logged even when it fits */
+  bytesLimit?: number
 }
+
+/**
+ * Instagram's limit is bytes, so an Arabic reply that reads short can still
+ * be refused. Every Instagram send past 80% of the limit is logged with its
+ * byte count, sent or not: the near misses say whether replies need
+ * splitting before a refused one says it for us (decided 2026-11-08: one
+ * near miss in rig testing and splitting gets built).
+ */
+const NEAR_LIMIT = 0.8
 
 const WHATSAPP: Platform = {
   log: '[whatsapp/send]',
@@ -143,6 +154,10 @@ export function sendMessengerText(args: SendArgs): Promise<SendResult> {
 async function send(platform: Platform, { supabase, channelId, to, body }: SendArgs): Promise<SendResult> {
   const text = body.trim()
   if (!text) return reported(platform, channelId, { kind: 'unsendable', reason: 'empty' })
+  if (platform.bytesLimit) {
+    const bytes = Buffer.byteLength(text, 'utf8')
+    if (bytes > platform.bytesLimit * NEAR_LIMIT) console.warn(`${platform.log} near the byte limit`, { channelId, bytes, limit: platform.bytesLimit, fits: bytes <= platform.bytesLimit })
+  }
   if (!platform.fits(text)) return reported(platform, channelId, { kind: 'unsendable', reason: 'too_long' })
 
   const credentials = await channelCredentials(supabase, channelId)
@@ -203,6 +218,7 @@ const INSTAGRAM_PRIVATE_REPLY: Platform = {
   messageId: (answer) => (typeof answer.message_id === 'string' ? answer.message_id : null),
   outsideWindow: (error) => isMetaOutsideWindow(error),
   withRecipient: true,
+  bytesLimit: INSTAGRAM_MAX_TEXT_BYTES,
 }
 
 /**
@@ -220,6 +236,7 @@ const INSTAGRAM_DM: Platform = {
   body: (to, text) => ({ recipient: { id: to }, message: { text } }),
   messageId: (answer) => (typeof answer.message_id === 'string' ? answer.message_id : null),
   outsideWindow: (error) => isMetaOutsideWindow(error),
+  bytesLimit: INSTAGRAM_MAX_TEXT_BYTES,
 }
 
 export function sendInstagramText(args: SendArgs): Promise<SendResult> {
@@ -282,6 +299,37 @@ export async function postInstagramCommentReply({ supabase, channelId, commentId
   const code = typeof answer.error?.code === 'number' ? answer.error.code : null
   console.warn(`${log} refused, not retried`, { channelId, commentId, status: response.status, code })
   return { kind: 'failed', status: response.status, code }
+}
+
+/**
+ * The Instagram username of a person who wrote to the account, by their
+ * Instagram-scoped id: GET /{igsid}?fields=username with the channel's
+ * token. For naming the conversation when no comment of theirs gave it.
+ * Meta answers this only for someone who has messaged the account, and
+ * before Advanced Access only for people with a role on the app. Null on
+ * any failure, logged by status and code; never retried, never the username
+ * in the log.
+ */
+export async function fetchInstagramUsername({ supabase, channelId, igsid }: { supabase: SupabaseClient; channelId: string; igsid: string }): Promise<string | null> {
+  const log = '[instagram/profile]'
+  const { token } = await channelCredentials(supabase, channelId)
+  if (!token) {
+    console.warn(`${log} not_configured`, { channelId })
+    return null
+  }
+  try {
+    const response = await fetch(`${INSTAGRAM_GRAPH}/${encodeURIComponent(igsid)}?fields=username`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS),
+    })
+    const answer = (await response.json().catch(() => ({}))) as { username?: unknown; error?: GraphError }
+    if (response.ok && typeof answer.username === 'string' && answer.username.trim()) return answer.username.trim()
+    console.warn(`${log} no username`, { channelId, status: response.status, code: typeof answer.error?.code === 'number' ? answer.error.code : null })
+    return null
+  } catch (cause) {
+    console.warn(`${log} request failed`, { channelId, cause: cause instanceof Error ? cause.name : String(cause) })
+    return null
+  }
 }
 
 /** Every outcome that is not a send is written to the log by kind, with nothing of the message in it */

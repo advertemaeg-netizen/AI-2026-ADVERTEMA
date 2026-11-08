@@ -1,13 +1,14 @@
 import { after, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { handleInstagramComment, type CommentDisposition } from '@/lib/meta/comments'
-import { handleInboundMessengerEvent, handleInboundWhatsAppMessage, isLive, type InboundChannel } from '@/lib/meta/inbound'
+import { handleInboundInstagramEvent, handleInboundMessengerEvent, handleInboundWhatsAppMessage, isLive, type InboundChannel } from '@/lib/meta/inbound'
 import { applyWhatsAppStatus, type StatusDisposition } from '@/lib/meta/delivery'
 import { claimMessages, completeMessages, type MessageClaim } from '@/lib/meta/processed'
 import {
   CHANNEL_TYPE,
   deliveryShape,
   inboundInstagramComments,
+  inboundInstagramEvents,
   inboundMessengerEvents,
   inboundWhatsAppMessages,
   inboundWhatsAppStatuses,
@@ -20,8 +21,9 @@ import {
  * Meta's webhook: WhatsApp, Messenger and Instagram deliveries. The GET is
  * the subscription handshake; the POST verifies the signature, answers 200,
  * and after the response claims every inbound message id once, answers each
- * new WhatsApp and Messenger message through the one reply pipeline (and
- * tells the Page's echoes apart: ours, or a person's at the clinic), and logs
+ * new WhatsApp, Messenger and Instagram message through the one reply
+ * pipeline (and tells the Page's echoes apart: ours, or a person's at the
+ * clinic), and logs
  * the shape of the delivery: never its text or its sender.
  *
  * It lives on the app's host, https://app.mudrik-ai.com/api/webhook/meta. The
@@ -77,7 +79,7 @@ export async function POST(request: NextRequest) {
 }
 
 /** What became of each inbound message id in a delivery */
-type Disposition = 'new' | 'duplicate' | 'unmapped' | 'unclaimed' | 'inactive' | 'reaction' | 'not_text' | 'answered' | 'echo_ours' | 'echo_agent' | 'failed'
+type Disposition = 'new' | 'duplicate' | 'unmapped' | 'unclaimed' | 'inactive' | 'reaction' | 'not_text' | 'answered' | 'echo_ours' | 'echo_agent' | 'story_mention' | 'failed'
 
 async function processDelivery(raw: Buffer) {
   try {
@@ -103,10 +105,11 @@ async function processDelivery(raw: Buffer) {
     // how that is seen.
     const inbound: MessageClaim[] = []
     const messages: Record<string, Disposition> = {}
-    // Messenger's events are claimed by the parsed events, which include the
-    // Page's echoes and the reactions: both are acted on, so both are claimed
-    const messenger = inboundMessengerEvents(payload)
-    for (const event of messenger) {
+    // Messenger's and Instagram's events are claimed by the parsed events,
+    // which include the account's echoes and the reactions: all are acted
+    // on, so all are claimed
+    const messaging = shape.channel === 'messenger' ? inboundMessengerEvents(payload) : shape.channel === 'instagram' ? inboundInstagramEvents(payload) : []
+    for (const event of messaging) {
       const mapped = clients[event.pageId]
       if (typeof mapped !== 'object') {
         messages[event.claimId] = 'unmapped'
@@ -115,7 +118,7 @@ async function processDelivery(raw: Buffer) {
       inbound.push({ messageId: event.claimId, channelId: mapped.channelId })
       messages[event.claimId] = 'unclaimed'
     }
-    for (const entry of shape.channel === 'messenger' ? [] : shape.entries) {
+    for (const entry of shape.channel === 'whatsapp' ? shape.entries : []) {
       const mapped = entry.businessId ? clients[entry.businessId] : undefined
       for (const event of entry.events) {
         if (event.kind !== 'message' || !event.messageId || event.echo) continue
@@ -173,19 +176,21 @@ async function processDelivery(raw: Buffer) {
       }
     }
 
-    // MESSENGER: each new message answered, each echo told apart (ours or a
-    // person's), each reaction stored, in order. A failure on one is logged
-    // and the next is still handled, as for WhatsApp.
-    for (const event of messenger) {
+    // MESSENGER AND INSTAGRAM: each new message answered, each echo told
+    // apart (ours or a person's, by the ids we recorded), each reaction
+    // stored, in order. A failure on one is logged and the next is still
+    // handled, as for WhatsApp.
+    const handle = shape.channel === 'instagram' ? handleInboundInstagramEvent : handleInboundMessengerEvent
+    for (const event of messaging) {
       if (!fresh.has(event.claimId)) continue
       const mapped = clients[event.pageId]
       if (typeof mapped !== 'object') continue
       try {
-        const result = await handleInboundMessengerEvent({ supabase, channel: mapped.channel, event })
+        const result = await handle({ supabase, channel: mapped.channel, event })
         messages[event.claimId] = result.kind
       } catch (error) {
         messages[event.claimId] = 'failed'
-        console.error('[webhook/meta] handling a Messenger event failed', { channelId: mapped.channelId, messageId: event.claimId, error })
+        console.error(`[webhook/meta] handling a ${shape.channel} event failed`, { channelId: mapped.channelId, messageId: event.claimId, error })
       }
     }
 
