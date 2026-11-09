@@ -1,0 +1,37 @@
+
+ RUN  v4.1.11 /home/ahmed/advertema-ai
+
+stderr | tests/access/instrument.test.ts > the access instrument > fires before any timeout of the access project
+[access] test failed with a request still waiting: GET /channel_secrets?select=*  (waiting 0 s)
+
+ ✓ |access| tests/access/instrument.test.ts > the access instrument > is the global fetch every access file reaches 12ms
+ ✓ |access| tests/access/instrument.test.ts > the access instrument > cannot be bypassed: no access file brings its own fetch or replaces the global 5ms
+ ✓ |access| tests/access/instrument.test.ts > the access instrument > names the request it is waiting on once WATCHDOG_MS passes without an answer 29ms
+ × |access| tests/access/instrument.test.ts > the access instrument > fires before any timeout of the access project 22ms
+   → expected [ [ 'access-matrix.test.ts', 60000 ] ] to deeply equal []
+ ✓ |access| tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > exist, hold the fixture rows for the service role, and keep them through the probes 135ms
+ ✓ |access| tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuses every statement on channel_secrets from every identity 21232ms
+stderr | tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuses every statement on processed_meta_messages from every identity
+[access] test failed with a request still waiting: GET /rest/v1/processed_meta_messages?select=*  (waiting 1 s)
+
+ × |access| tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuses every statement on processed_meta_messages from every identity 180012ms
+   → Test timed out in 180000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+stderr | tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuses every statement on meta_comment_replies from every identity
+[access] test failed with a request still waiting: GET /rest/v1/meta_comment_replies?select=*&comment_id=eq.comment.fixture.873c3e52-023d-4c75-9e2b-699f46c6b02f  (waiting 1 s)
+
+ × |access| tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuses every statement on meta_comment_replies from every identity 180002ms
+   → Test timed out in 180000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+stderr | tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuses every statement on meta_connect_pending from every identity
+[access] test failed with a request still waiting: GET /rest/v1/meta_connect_pending?select=*&id=eq.257c3703-2e57-469d-8680-f0a731c49778  (waiting 12 s)
+
+ × |access| tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuses every statement on meta_connect_pending from every identity 180002ms
+   → Test timed out in 180000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+stderr | tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuses every statement on meta_pending_statuses from every identity
+[access] test failed with a request still waiting: GET /rest/v1/meta_pending_statuses?select=*  (waiting 11 s)
+
+ × |access| tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuses every statement on meta_pending_statuses from every identity 180003ms
+   → Test timed out in 180000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".

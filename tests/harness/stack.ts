@@ -1,5 +1,5 @@
 import { spawn, execFileSync, type ChildProcess } from 'node:child_process'
-import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { appendFileSync, chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import path from 'node:path'
 import { PGlite } from '@electric-sql/pglite'
@@ -92,12 +92,54 @@ export async function createDatabase() {
   return db
 }
 
-export async function startStack(): Promise<Stack> {
+/**
+ * HARNESS_LOG_DIR=<dir> writes PostgREST's debug log (its connection pool's
+ * events among it) to a timestamped file there, one per project, out of the
+ * run's own output: half the evidence for which side stops reconnecting in
+ * the access project's stuck state (tests/harness/access-fetch.ts). Cheap
+ * enough for a full check (about 5 MB a project).
+ *
+ * HARNESS_SOCKET_LOG=1, with it, adds pglite-socket's debug log. ONLY FOR A
+ * PROJECT RUN ON ITS OWN (`vitest run --project access`): its lines go
+ * through the one process's console.log, so with two projects every
+ * server's lines land in whichever file was set up last, and the volume
+ * (240 MB in one full check, 2026-11-09) slows the run enough to change what
+ * is measured. No protocol hex dump (SOCKET_DEBUG still gives that). Both
+ * unset, nothing changes.
+ */
+function harnessLog(label: string) {
+  const dir = process.env.HARNESS_LOG_DIR
+  if (!dir) return null
+  mkdirSync(dir, { recursive: true })
+  const file = (name: string) => {
+    const where = path.join(dir, `${label}-${name}.log`)
+    return (text: string) => appendFileSync(where, text.split('\n').filter(Boolean).map((line) => `${new Date().toISOString()} ${line}\n`).join(''))
+  }
+  return { postgrest: file('postgrest'), socket: file('socket') }
+}
+
+/** pglite-socket's debug lines (console.log, with these prefixes) to the socket log; anything else as before */
+const SOCKET_LINE = /^\[(PGLiteSocketServer|PGLiteSocketHandler#\d+|QueryQueueManager)\]/
+function routeSocketDebug(write: (text: string) => void) {
+  const original = console.log
+  console.log = (...args: unknown[]) => {
+    if (typeof args[0] === 'string' && SOCKET_LINE.test(args[0])) write(args.map((a) => (typeof a === 'string' ? a : JSON.stringify(a))).join(' '))
+    else original(...args)
+  }
+  return () => {
+    console.log = original
+  }
+}
+
+export async function startStack(label = 'harness'): Promise<Stack> {
   const bin = await postgrestBinary()
   const db = await createDatabase()
+  const log = harnessLog(label)
+  const socketLog = log && process.env.HARNESS_SOCKET_LOG ? log.socket : null
+  const unroute = socketLog ? routeSocketDebug(socketLog) : () => {}
 
   const dbPort = await freePort()
-  const socket = new PGLiteSocketServer({ db, port: dbPort, host: '127.0.0.1', debug: !!process.env.SOCKET_DEBUG, inspect: !!process.env.SOCKET_DEBUG })
+  const socket = new PGLiteSocketServer({ db, port: dbPort, host: '127.0.0.1', debug: !!process.env.SOCKET_DEBUG || !!socketLog, inspect: !!process.env.SOCKET_DEBUG })
   await socket.start()
 
   const apiPort = await freePort()
@@ -116,7 +158,7 @@ export async function startStack(): Promise<Stack> {
       PGRST_DB_POOL: '1',
       PGRST_DB_CHANNEL_ENABLED: 'false',
       PGRST_DB_PREPARED_STATEMENTS: 'false',
-      ...(process.env.HARNESS_DEBUG ? { PGRST_LOG_LEVEL: 'debug' } : {}),
+      ...(process.env.HARNESS_DEBUG || log ? { PGRST_LOG_LEVEL: 'debug' } : {}),
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
@@ -124,6 +166,7 @@ export async function startStack(): Promise<Stack> {
   const collect = (chunk: Buffer) => {
     output += chunk
     if (process.env.HARNESS_DEBUG) process.stderr.write(chunk)
+    log?.postgrest(String(chunk))
   }
   postgrest.stdout!.on('data', collect)
   postgrest.stderr!.on('data', collect)
@@ -132,6 +175,7 @@ export async function startStack(): Promise<Stack> {
     postgrest.kill()
     await socket.stop()
     await db.close()
+    unroute()
   }
 
   const url = `http://127.0.0.1:${apiPort}`

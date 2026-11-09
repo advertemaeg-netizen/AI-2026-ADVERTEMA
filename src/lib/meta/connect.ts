@@ -59,6 +59,10 @@ export const REQUIRED_SCOPES = [
   'pages_show_list',
   'pages_manage_metadata',
   'pages_messaging',
+  // The public reply under a Page comment, as the Page (POST /{comment-id}/comments).
+  // Added 2026-11-09, before any clinic was live: the configuration must ask for it
+  // first, or no login can grant it and every connect is refused
+  'pages_manage_engagement',
   'pages_read_engagement',
   'pages_read_user_content',
   'instagram_basic',

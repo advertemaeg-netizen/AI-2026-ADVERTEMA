@@ -536,3 +536,64 @@ export function inboundInstagramComments(payload: unknown): InboundInstagramComm
   }
   return out
 }
+
+/**
+ * A FACEBOOK PAGE COMMENT, WITH ITS CONTENT. For processing only, under the
+ * same rule as the other inbound types: the commenter's id, name and text are
+ * what the reply path needs and what the log must never carry.
+ *
+ * The Page's `feed` field carries far more than comments: posts, statuses,
+ * photos, videos, shares, reactions, likes, visitor posts, ratings, mentions,
+ * and every comment's edits, removals, hides and unhides. Only a comment
+ * being ADDED is one here (item 'comment', verb 'add'); everything else stays
+ * in the log (deliveryShape) and nothing acts on it. Chosen by name, so a
+ * verb or item nobody has thought of is ignored, never handled by accident.
+ *
+ * NESTING IS NOT INSTAGRAM'S. A top-level Facebook comment's parent_id is the
+ * POST id (seen on the review clinic's Page, twice, 2026-11-08/09); only a
+ * reply inside a comment's thread has another comment as its parent. So
+ * `parent_id` being present means nothing here: compare it with post_id.
+ */
+export type InboundFacebookComment = {
+  /** The Page the comment is on: the channel's external_id */
+  pageId: string
+  commentId: string
+  postId: string
+  /** As Meta sent it: the post id for a top-level comment, a comment id for a reply in a thread */
+  parentId?: string
+  /** The commenter's page-scoped id (their Messenger PSID) and display name */
+  from: { id: string; name?: string }
+  text?: string
+}
+
+export function inboundFacebookComments(payload: unknown): InboundFacebookComment[] {
+  const body = isObject(payload) ? payload : {}
+  if (text(body.object) !== 'page') return []
+  const out: InboundFacebookComment[] = []
+  for (const entry of list(body.entry)) {
+    const pageId = text(entry.id)
+    if (!pageId) continue
+    for (const change of entryChanges(entry)) {
+      if (text(change.field) !== 'feed') continue
+      const value = isObject(change.value) ? change.value : {}
+      if (text(value.item) !== 'comment' || text(value.verb) !== 'add') continue
+      const from = isObject(value.from) ? value.from : {}
+      const fromId = idOf(from.id)
+      const commentId = text(value.comment_id)
+      const postId = text(value.post_id)
+      if (!commentId || !postId || !fromId) continue
+      const parentId = text(value.parent_id)
+      const name = text(from.name)
+      const message = text(value.message)
+      out.push({
+        pageId,
+        commentId,
+        postId,
+        ...(parentId ? { parentId } : {}),
+        from: { id: fromId, ...(name ? { name } : {}) },
+        ...(message !== undefined ? { text: message } : {}),
+      })
+    }
+  }
+  return out
+}

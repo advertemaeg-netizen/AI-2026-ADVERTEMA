@@ -1,12 +1,13 @@
 import { after, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { handleInstagramComment, type CommentDisposition } from '@/lib/meta/comments'
+import { handleFacebookComment, handleInstagramComment, type CommentDisposition } from '@/lib/meta/comments'
 import { handleInboundInstagramEvent, handleInboundMessengerEvent, handleInboundWhatsAppMessage, isLive, type InboundChannel } from '@/lib/meta/inbound'
 import { applyWhatsAppStatus, type StatusDisposition } from '@/lib/meta/delivery'
 import { claimMessages, completeMessages, type MessageClaim } from '@/lib/meta/processed'
 import {
   CHANNEL_TYPE,
   deliveryShape,
+  inboundFacebookComments,
   inboundInstagramComments,
   inboundInstagramEvents,
   inboundMessengerEvents,
@@ -194,22 +195,27 @@ async function processDelivery(raw: Buffer) {
       }
     }
 
-    // INSTAGRAM COMMENTS: each claimed in meta_comment_replies by the handler,
-    // before anything acts (src/lib/meta/comments.ts holds the order). The
+    // COMMENTS, Instagram's and the Facebook Page's: each claimed in
+    // meta_comment_replies by the handler, before anything acts
+    // (src/lib/meta/comments.ts holds the order, the same for both). The
     // client's switch is read there: off, nothing is stored or claimed.
     const comments: Record<string, CommentDisposition['kind'] | 'unmapped' | 'failed'> = {}
-    for (const comment of inboundInstagramComments(payload)) {
+    const incoming = [
+      ...inboundInstagramComments(payload).map((comment) => ({ accountId: comment.accountId, commentId: comment.commentId, handle: (channel: InboundChannel) => handleInstagramComment({ supabase, channel, comment }) })),
+      ...inboundFacebookComments(payload).map((comment) => ({ accountId: comment.pageId, commentId: comment.commentId, handle: (channel: InboundChannel) => handleFacebookComment({ supabase, channel, comment }) })),
+    ]
+    for (const comment of incoming) {
       const mapped = clients[comment.accountId]
       if (typeof mapped !== 'object') {
         comments[comment.commentId] = 'unmapped'
         continue
       }
       try {
-        const result = await handleInstagramComment({ supabase, channel: mapped.channel, comment })
+        const result = await comment.handle(mapped.channel)
         comments[comment.commentId] = result.kind
       } catch (error) {
         comments[comment.commentId] = 'failed'
-        console.error('[webhook/meta] handling an Instagram comment failed', { channelId: mapped.channelId, commentId: comment.commentId, error })
+        console.error('[webhook/meta] handling a comment failed', { channelId: mapped.channelId, commentId: comment.commentId, error })
       }
     }
 

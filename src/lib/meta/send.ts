@@ -243,6 +243,30 @@ export function sendInstagramText(args: SendArgs): Promise<SendResult> {
   return send(INSTAGRAM_DM, args)
 }
 
+/**
+ * Facebook: the private reply to a comment on the Page. POST
+ * {page-id}/messages with the Page token, recipient {comment_id}, as
+ * Messenger's send (v25.0, its character limit). Meta allows one per comment,
+ * within 7 days, so the one retry cannot send twice. The answer's
+ * recipient_id is the commenter's PSID: their Messenger id (the same person's
+ * comment and Messenger message hashed equal on the review clinic's Page,
+ * 2026-11-09), kept.
+ */
+const FACEBOOK_PRIVATE_REPLY: Platform = {
+  log: '[facebook/private-reply]',
+  fits: (text) => text.length <= MESSENGER_MAX_TEXT_LENGTH,
+  url: (id) => `${GRAPH}/${id}/messages`,
+  missingId: 'page_id',
+  body: (commentId, text) => ({ recipient: { comment_id: commentId }, message: { text } }),
+  messageId: (answer) => (typeof answer.message_id === 'string' ? answer.message_id : null),
+  outsideWindow: (error) => isMetaOutsideWindow(error),
+  withRecipient: true,
+}
+
+export function sendFacebookPrivateReply({ supabase, channelId, commentId, body }: { supabase: SupabaseClient; channelId: string; commentId: string; body: string }): Promise<SendResult> {
+  return send(FACEBOOK_PRIVATE_REPLY, { supabase, channelId, to: commentId, body })
+}
+
 /** The private reply to an Instagram comment; `sent` carries the commenter's Instagram-scoped id (recipientId) */
 export function sendInstagramPrivateReply({ supabase, channelId, commentId, body }: { supabase: SupabaseClient; channelId: string; commentId: string; body: string }): Promise<SendResult> {
   return send(INSTAGRAM_PRIVATE_REPLY, { supabase, channelId, to: commentId, body })
@@ -255,21 +279,34 @@ export type PublicReplyResult =
   | { kind: 'unsendable'; reason: 'empty' | 'too_long' }
 
 /**
- * A PUBLIC reply to an Instagram comment: POST /{ig-comment-id}/replies with
- * the message. ATTEMPTED EXACTLY ONCE: a retry after a timeout that Meta in
- * fact accepted would post the reply twice, in public. A reply that did not
- * go is logged and left; the private reply, which matters more, went first.
- * The answer's id is our reply's comment id, recorded so the reply is known
- * as ours when Instagram delivers it back.
+ * A PUBLIC reply to a comment, in the clinic's name. ATTEMPTED EXACTLY ONCE:
+ * a retry after a timeout that Meta in fact accepted would post the reply
+ * twice, in public. A reply that did not go is logged and left; the private
+ * reply, which matters more, went first. The answer's id is our reply's
+ * comment id, recorded so the reply is known as ours when it comes back.
+ *   Instagram  POST /{ig-comment-id}/replies (v26.0), 1000 bytes
+ *   Facebook   POST /{comment-id}/comments (v25.0), as the Page:
+ *              needs pages_manage_engagement
  */
-export async function postInstagramCommentReply({ supabase, channelId, commentId, body }: { supabase: SupabaseClient; channelId: string; commentId: string; body: string }): Promise<PublicReplyResult> {
-  const log = '[instagram/public-reply]'
+export function postInstagramCommentReply(args: { supabase: SupabaseClient; channelId: string; commentId: string; body: string }): Promise<PublicReplyResult> {
+  return postCommentReply({ log: '[instagram/public-reply]', url: (id) => `${INSTAGRAM_GRAPH}/${id}/replies`, fits: (text) => Buffer.byteLength(text, 'utf8') <= INSTAGRAM_MAX_TEXT_BYTES }, args)
+}
+
+export function postFacebookCommentReply(args: { supabase: SupabaseClient; channelId: string; commentId: string; body: string }): Promise<PublicReplyResult> {
+  return postCommentReply({ log: '[facebook/public-reply]', url: (id) => `${GRAPH}/${id}/comments`, fits: (text) => text.length <= MESSENGER_MAX_TEXT_LENGTH }, args)
+}
+
+async function postCommentReply(
+  where: { log: string; url: (commentId: string) => string; fits: (text: string) => boolean },
+  { supabase, channelId, commentId, body }: { supabase: SupabaseClient; channelId: string; commentId: string; body: string }
+): Promise<PublicReplyResult> {
+  const { log } = where
   const text = body.trim()
   if (!text) {
     console.warn(`${log} unsendable`, { channelId, commentId, reason: 'empty' })
     return { kind: 'unsendable', reason: 'empty' }
   }
-  if (Buffer.byteLength(text, 'utf8') > INSTAGRAM_MAX_TEXT_BYTES) {
+  if (!where.fits(text)) {
     console.warn(`${log} unsendable`, { channelId, commentId, reason: 'too_long' })
     return { kind: 'unsendable', reason: 'too_long' }
   }
@@ -280,7 +317,7 @@ export async function postInstagramCommentReply({ supabase, channelId, commentId
   }
   let response: Response
   try {
-    response = await fetch(`${INSTAGRAM_GRAPH}/${commentId}/replies`, {
+    response = await fetch(where.url(commentId), {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: text }),
@@ -299,6 +336,53 @@ export async function postInstagramCommentReply({ supabase, channelId, commentId
   const code = typeof answer.error?.code === 'number' ? answer.error.code : null
   console.warn(`${log} refused, not retried`, { channelId, commentId, status: response.status, code })
   return { kind: 'failed', status: response.status, code }
+}
+
+/** A read of one field set from the Graph API with the channel's token: the answer, or null on any failure (logged by status and code) */
+async function graphRead(log: string, supabase: SupabaseClient, channelId: string, path: string): Promise<Record<string, unknown> | null> {
+  const { token } = await channelCredentials(supabase, channelId)
+  if (!token) {
+    console.warn(`${log} not_configured`, { channelId })
+    return null
+  }
+  try {
+    const response = await fetch(`${GRAPH}/${path}`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS) })
+    const answer = (await response.json().catch(() => ({}))) as Record<string, unknown> & { error?: GraphError }
+    if (response.ok) return answer
+    console.warn(`${log} refused`, { channelId, status: response.status, code: typeof answer.error?.code === 'number' ? answer.error.code : null })
+    return null
+  } catch (cause) {
+    console.warn(`${log} request failed`, { channelId, cause: cause instanceof Error ? cause.name : String(cause) })
+    return null
+  }
+}
+
+/**
+ * Whether a post on the Page is the Page's own: GET /{post-id}?fields=from.
+ * A Page's feed carries other people's posts to it, and their post ids start
+ * with the Page id too, so only the author decides. 'page' or 'other'; null
+ * when it cannot be read (then nothing is answered: unknown is never ours).
+ * Needs pages_read_engagement (own posts) and pages_read_user_content
+ * (visitor posts).
+ */
+export async function fetchFacebookPostOwner({ supabase, channelId, pageId, postId }: { supabase: SupabaseClient; channelId: string; pageId: string; postId: string }): Promise<'page' | 'other' | null> {
+  const answer = await graphRead('[facebook/post-author]', supabase, channelId, `${encodeURIComponent(postId)}?fields=from`)
+  const from = answer && typeof answer.from === 'object' && answer.from !== null ? (answer.from as { id?: unknown }) : null
+  const id = typeof from?.id === 'string' ? from.id : typeof from?.id === 'number' ? String(from.id) : null
+  if (!id) return null
+  return id === pageId ? 'page' : 'other'
+}
+
+/**
+ * Whether a comment is hidden: GET /{comment-id}?fields=is_hidden. A
+ * clinic's moderation (its own hiding, or the Page's word and profanity
+ * filters, which hide on arrival) is never overridden: a hidden comment gets
+ * no private message and no public reply. Null when it cannot be read (then
+ * nothing is sent either).
+ */
+export async function fetchFacebookCommentHidden({ supabase, channelId, commentId }: { supabase: SupabaseClient; channelId: string; commentId: string }): Promise<boolean | null> {
+  const answer = await graphRead('[facebook/comment-hidden]', supabase, channelId, `${encodeURIComponent(commentId)}?fields=is_hidden`)
+  return answer && typeof answer.is_hidden === 'boolean' ? answer.is_hidden : null
 }
 
 /**

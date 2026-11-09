@@ -1,0 +1,63 @@
+
+ RUN  v4.1.11 /home/ahmed/advertema-ai
+
+stderr | tests/access/instrument.test.ts > the access instrument > fires before any timeout of the access project
+[access] test failed with a request still waiting: GET /channel_secrets?select=*  (waiting 0 s)
+
+ ✓ |access| tests/access/instrument.test.ts > the access instrument > is the global fetch every access file reaches 6ms
+ ✓ |access| tests/access/instrument.test.ts > the access instrument > cannot be bypassed: no access file brings its own fetch or replaces the global 3ms
+ ✓ |access| tests/access/instrument.test.ts > the access instrument > names the request it is waiting on once WATCHDOG_MS passes without an answer 15ms
+ × |access| tests/access/instrument.test.ts > the access instrument > fires before any timeout of the access project 19ms
+   → expected [ [ 'access-matrix.test.ts', 60000 ] ] to deeply equal []
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > sees the same clients through accessible_client_ids() as through has_client_access() 427ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > reads, as anon 16436ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > reads, as super 1082ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > reads, as superImpersonatingA 1300ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > reads, as orgAdminA 1143ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > reads, as orgAdminB 1156ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > reads, as orgAdminX 1089ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > reads, as clientAdminA1 1116ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > reads, as teamA1 1119ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > reads, as teamA_noClient 1117ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > writes, as anon 23018ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > writes, as super 2695ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > writes, as superImpersonatingA 21751ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > writes, as orgAdminA 3812ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > writes, as orgAdminB 4193ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > writes, as orgAdminX 4576ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > writes, as clientAdminA1 4639ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > writes, as teamA1 4186ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > writes, as teamA_noClient 4672ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > is the snapshot, for every identity, every table, every analytics function 8ms
+ ✓ |access| tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > exist, hold the fixture rows for the service role, and keep them through the probes 54ms
+ ✓ |access| tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuses every statement on channel_secrets from every identity 16122ms
+ ✓ |access| tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuses every statement on processed_meta_messages from every identity 16025ms
+stderr | tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuses every statement on meta_comment_replies from every identity
+[access] test failed with a request still waiting: GET /rest/v1/meta_comment_replies?select=*&comment_id=eq.comment.fixture.c70f7f6e-8abb-4ff0-ac0b-c2d6958357e5  (waiting 11 s)
+
+ × |access| tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuses every statement on meta_comment_replies from every identity 180011ms
+   → Test timed out in 180000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+stderr | tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuses every statement on meta_connect_pending from every identity
+[access] test failed with a request still waiting: PATCH /rest/v1/meta_connect_pending?id=eq.95a842f0-2d26-4c21-813c-4bd147cc0892 {"access_token":"changed"} (waiting 10 s)
+
+ × |access| tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuses every statement on meta_connect_pending from every identity 180003ms
+   → Test timed out in 180000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+stderr | tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuses every statement on meta_pending_statuses from every identity
+[access] test failed with a request still waiting: GET /rest/v1/meta_pending_statuses?select=*&message_id=eq.wamid.held.c70f7f6e-8abb-4ff0-ac0b-c2d6958357e5  (waiting 10 s)
+
+ × |access| tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuses every statement on meta_pending_statuses from every identity 180003ms
+   → Test timed out in 180000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+stderr | tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuses every statement on meta_post_authors from every identity
+[access] test failed with a request still waiting: GET /rest/v1/meta_pending_statuses?select=*  (waiting 9 s)
+
+stderr | tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuse every statement from every identity: the snapshot, and every cell read back as refused
+[access] test failed with a request still waiting: GET /rest/v1/meta_pending_statuses?select=*  (waiting 9 s)
+
+ × |access| tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuses every statement on meta_post_authors from every identity 180003ms
+   → Test timed out in 180000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ × |access| tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuse every statement from every identity: the snapshot, and every cell read back as refused 27ms
+   → Snapshot `channel_secrets and processed_meta_messages are the server's alone > refuse every statement from every identity: the snapshot, and every cell read back as refused 1` mismatched

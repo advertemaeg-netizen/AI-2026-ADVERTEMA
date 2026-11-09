@@ -275,6 +275,14 @@ describe('the return from Meta', () => {
     expect(await pendingRows()).toEqual([])
   })
 
+  it('refuses a token without pages_manage_engagement: a Page channel could not post its public comment replies', async () => {
+    expect(REQUIRED_SCOPES).toContain('pages_manage_engagement')
+    meta.scopes = [...REQUIRED_SCOPES.filter((s) => s !== 'pages_manage_engagement'), 'public_profile']
+    const landed = await returnFromMeta({ code: 'CODE', state: (await start()).searchParams.get('state')! })
+    expect(landed.searchParams.get('connect')).toBe('missingPermission')
+    expect(await pendingRows()).toEqual([])
+  })
+
   it('lands on empty when the token sees nothing to connect', async () => {
     meta.pages = [{ id: PAGE, name: 'No offer, no Instagram', access_token: PAGE_TOKEN }]
     const landed = await returnFromMeta({ code: 'CODE', state: (await start()).searchParams.get('state')! })

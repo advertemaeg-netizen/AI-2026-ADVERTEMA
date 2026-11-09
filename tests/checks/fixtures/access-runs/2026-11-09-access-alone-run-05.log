@@ -1,0 +1,78 @@
+
+ RUN  v4.1.11 /home/ahmed/advertema-ai
+
+stderr | tests/access/instrument.test.ts > the access instrument > fires before any timeout of the access project
+[access] test failed with a request still waiting: GET /channel_secrets?select=*  (waiting 0 s)
+
+ ✓ |access| tests/access/instrument.test.ts > the access instrument > is the global fetch every access file reaches 8ms
+ ✓ |access| tests/access/instrument.test.ts > the access instrument > cannot be bypassed: no access file brings its own fetch or replaces the global 4ms
+ ✓ |access| tests/access/instrument.test.ts > the access instrument > names the request it is waiting on once WATCHDOG_MS passes without an answer 22ms
+ × |access| tests/access/instrument.test.ts > the access instrument > fires before any timeout of the access project 12ms
+   → expected [ [ 'access-matrix.test.ts', 60000 ] ] to deeply equal []
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > sees the same clients through accessible_client_ids() as through has_client_access() 438ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > reads, as anon 16203ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > reads, as super 1068ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > reads, as superImpersonatingA 1203ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > reads, as orgAdminA 1178ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > reads, as orgAdminB 1177ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > reads, as orgAdminX 1066ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > reads, as clientAdminA1 1063ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > reads, as teamA1 1053ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > reads, as teamA_noClient 1074ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > writes, as anon 22784ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > writes, as super 3094ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > writes, as superImpersonatingA 21263ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > writes, as orgAdminA 3873ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > writes, as orgAdminB 4152ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > writes, as orgAdminX 4539ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > writes, as clientAdminA1 4483ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > writes, as teamA1 4097ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > writes, as teamA_noClient 4584ms
+ ✓ |access| tests/access/access-matrix.test.ts > access matrix: who can read and write what > is the snapshot, for every identity, every table, every analytics function 10ms
+ ✓ |access| tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > exist, hold the fixture rows for the service role, and keep them through the probes 53ms
+ ✓ |access| tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuses every statement on channel_secrets from every identity 16038ms
+ ✓ |access| tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuses every statement on processed_meta_messages from every identity 15756ms
+ ✓ |access| tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuses every statement on meta_comment_replies from every identity 15908ms
+ ✓ |access| tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuses every statement on meta_connect_pending from every identity 15652ms
+ ✓ |access| tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuses every statement on meta_pending_statuses from every identity 15757ms
+ ✓ |access| tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuses every statement on meta_post_authors from every identity 15687ms
+ ✓ |access| tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > refuse every statement from every identity: the snapshot, and every cell read back as refused 40ms
+ ✓ |access| tests/access/channel-secrets.test.ts > channel_secrets and processed_meta_messages are the server's alone > a repeated delivery id is refused by the key, which is the whole idempotency mechanism 16ms
+ ✓ |access| tests/access/applied-migrations.test.ts > applied_migrations() > answers the service role with the version list, as a JSON array of strings 78ms
+ ✓ |access| tests/access/applied-migrations.test.ts > applied_migrations() > is refused to a signed-in super admin 311ms
+ ✓ |access| tests/access/table-guards.test.ts > every table of the public schema > has row level security 90ms
+ ✓ |access| tests/access/table-guards.test.ts > every table of the public schema > is read-only to a super admin impersonating an organization, unless named as an exception 18ms
+ ✓ |access| tests/access/table-guards.test.ts > every table of the public schema > holds no client data among the exceptions 16ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |access| tests/access/instrument.test.ts > the access instrument > fires before any timeout of the access project
+AssertionError: expected [ [ 'access-matrix.test.ts', 60000 ] ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   [
++     "access-matrix.test.ts",
++     60000,
++   ],
++ ]
+
+ ❯ tests/access/instrument.test.ts:65:19
+     63|         .filter(([, ms]) => ms <= WATCHDOG_MS)
+     64|     )
+     65|     expect(short).toEqual([])
+       |                   ^
+     66|     expect(files.filter((f) => /setConfig\(/.test(source(f)))).toEqual…
+     67|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 4 passed (5)
+      Tests  1 failed | 37 passed (38)
+   Start at  02:49:53
+   Duration  205.30s (transform 234ms, setup 676ms, import 425ms, tests 195.27s, environment 1ms)
+

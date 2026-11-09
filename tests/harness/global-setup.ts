@@ -10,7 +10,7 @@ declare module 'vitest' {
 
 // One database for the whole run; tests seed their own organization
 export default async function setup(project: TestProject) {
-  const stack = await startStack()
+  const stack = await startStack(project.name)
   project.provide('supabaseUrl', stack.url)
   project.provide('supabaseServiceKey', stack.serviceKey)
   return () => stack.stop()
