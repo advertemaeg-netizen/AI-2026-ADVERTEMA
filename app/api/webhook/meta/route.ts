@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { handleFacebookComment, handleInstagramComment, type CommentDisposition } from '@/lib/meta/comments'
 import { handleInboundInstagramEvent, handleInboundMessengerEvent, handleInboundWhatsAppMessage, isLive, type InboundChannel } from '@/lib/meta/inbound'
 import { applyWhatsAppStatus, type StatusDisposition } from '@/lib/meta/delivery'
+import { pauseRemovedWaba } from '@/lib/meta/whatsapp-removal'
 import { claimMessages, completeMessages, type MessageClaim } from '@/lib/meta/processed'
 import {
   CHANNEL_TYPE,
@@ -12,6 +13,7 @@ import {
   inboundInstagramEvents,
   inboundMessengerEvents,
   inboundWhatsAppMessages,
+  inboundWhatsAppPartnerRemovals,
   inboundWhatsAppStatuses,
   signatureDigest,
   signatureMatches,
@@ -177,6 +179,18 @@ async function processDelivery(raw: Buffer) {
       }
     }
 
+    // WHATSAPP: A BUSINESS REMOVED OUR ACCESS (account_update, PARTNER_REMOVED).
+    // Its channels are paused and say why. Not claimed: pausing twice changes nothing.
+    const removals: Record<string, number | 'failed'> = {}
+    for (const { wabaId } of inboundWhatsAppPartnerRemovals(payload)) {
+      try {
+        removals[wabaId] = await pauseRemovedWaba(supabase, wabaId)
+      } catch (error) {
+        removals[wabaId] = 'failed'
+        console.error('[webhook/meta] pausing a removed WABA failed', { wabaId, error })
+      }
+    }
+
     // MESSENGER AND INSTAGRAM: each new message answered, each echo told
     // apart (ours or a person's, by the ids we recorded), each reaction
     // stored, in order. A failure on one is logged and the next is still
@@ -221,7 +235,7 @@ async function processDelivery(raw: Buffer) {
 
     console.info(
       '[webhook/meta]',
-      JSON.stringify({ ...shape, clients: loggable(clients), messages, ...(Object.keys(statuses).length ? { statuses } : {}), ...(Object.keys(comments).length ? { comments } : {}) })
+      JSON.stringify({ ...shape, clients: loggable(clients), messages, ...(Object.keys(statuses).length ? { statuses } : {}), ...(Object.keys(removals).length ? { removals } : {}), ...(Object.keys(comments).length ? { comments } : {}) })
     )
 
     try {

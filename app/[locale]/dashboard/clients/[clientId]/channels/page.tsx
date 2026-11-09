@@ -10,8 +10,15 @@ import { BackToClients, ClientTabs } from '../_components/client-page-nav'
 import { AddChannelDialog } from './_components/add-channel-dialog'
 import { ChannelCard } from './_components/channel-card'
 import { ConnectStatusToast } from './_components/connect-status'
+import { whatsappConfig } from '@/lib/meta/whatsapp-connect'
 import { isConnectStatus } from '@/lib/types/meta-connect'
 import { metaConfig } from '@/lib/meta/connect-flow'
+
+/** Embedded Signup's two public ids for the popup, when it is configured: never the app secret */
+function whatsappSignup() {
+  const config = whatsappConfig()
+  return config ? { appId: config.appId, configId: config.configId } : null
+}
 
 export default async function ChannelsPage({
   params,
@@ -56,7 +63,7 @@ export default async function ChannelsPage({
             {canManage ? t('description') : t('readOnly')}
           </p>
         </div>
-        {canManage && <AddChannelDialog clientId={clientId} metaConnect={metaConfig() !== null} />}
+        {canManage && <AddChannelDialog clientId={clientId} metaConnect={metaConfig() !== null} whatsappConnect={whatsappSignup()} />}
       </div>
 
       <ClientTabs clientId={clientId} />

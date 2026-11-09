@@ -276,6 +276,22 @@
           "badge": "Number not registered",
           "description": "The connection worked, but the number still needs registering. Contact us and we will finish it."
         }
+      },
+      "connect": {
+        "button": "Connect WhatsApp",
+        "notice": "Use a number that is not on the WhatsApp Business app. The number you connect is removed from the app and will no longer work there: Mudrik answers on it.",
+        "cancelled": "Connection cancelled."
+      },
+      "error": {
+        "takenByOther": "This number is connected to another client of ours. If it is yours, contact us.",
+        "missingPermission": "A permission is missing. Start again and accept every permission.",
+        "registerFailed": "Registering the number failed. Try again, and contact us if it keeps happening.",
+        "subscribeFailed": "The number is registered, but the connection did not finish. Try again: you do not need to start over.",
+        "channelLimit": "You have reached your plan’s channel limit. Remove a channel or upgrade the plan."
+      },
+      "card": {
+        "namePending": "WhatsApp is still reviewing the display name. Replies work as usual.",
+        "removedByBusiness": "Mudrik’s access was removed in WhatsApp. The channel is paused until access is given back."
       }
     },
     "connection": {

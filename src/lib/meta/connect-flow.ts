@@ -58,7 +58,7 @@ export type Occupancy = { availability: PickerAvailability; channelId: string | 
  * channel of this client means the pick refreshes that channel, the live one
  * first.
  */
-export async function occupancy(admin: SupabaseClient, clientId: string, type: 'facebook' | 'instagram', externalId: string): Promise<Occupancy> {
+export async function occupancy(admin: SupabaseClient, clientId: string, type: 'facebook' | 'instagram' | 'whatsapp', externalId: string): Promise<Occupancy> {
   const { data, error } = await admin
     .from('channels')
     .select('id, client_id, is_active, created_at')

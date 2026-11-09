@@ -3,7 +3,8 @@
 import { randomBytes } from 'node:crypto'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
-import { canManage, getSession } from '@/lib/auth/session'
+import { getSession } from '@/lib/auth/session'
+import { manager } from '@/lib/meta/connect-manager'
 import { appOrigin } from '@/lib/app-url'
 import { dialogUrl, pageOffered, readGrant, verifyAccess } from '@/lib/meta/connect'
 import {
@@ -35,18 +36,6 @@ import type {
 const CHANNELS_PATH = '/[locale]/dashboard/clients/[clientId]/channels'
 
 /** The caller, allowed to manage this client's channels, or why not */
-async function manager(
-  clientId: string
-): Promise<{ ok: false; error: 'forbidden' | 'impersonating' } | { ok: true; supabase: Awaited<ReturnType<typeof getSession>>['supabase']; profile: NonNullable<Awaited<ReturnType<typeof getSession>>['profile']>; client: { id: string; name: string } }> {
-  const { supabase, profile, impersonation } = await getSession()
-  if (!profile) return { ok: false, error: 'forbidden' }
-  if (impersonation) return { ok: false, error: 'impersonating' }
-  if (!canManage(profile) || !UUID_PATTERN.test(clientId)) return { ok: false, error: 'forbidden' }
-  // RLS: only clients this user can see
-  const { data: client } = await supabase.from('clients').select('id, name').eq('id', clientId).maybeSingle<{ id: string; name: string }>()
-  if (!client) return { ok: false, error: 'forbidden' }
-  return { ok: true, supabase, profile, client }
-}
 
 /**
  * Starts a Page and Instagram login for a client, or a reconnect of one of

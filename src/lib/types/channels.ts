@@ -13,6 +13,8 @@ export type Channel = {
   webhook_url: string | null
   is_active: boolean
   created_at: string
+  /** WhatsApp: what the card must say beyond on or paused (display name under review; access removed by the business) */
+  connection_notice?: 'name_pending' | 'removed_by_business' | null
 }
 
 export type ChannelActionError =

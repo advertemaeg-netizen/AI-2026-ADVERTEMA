@@ -155,6 +155,9 @@ async function call(path: string, init: { token?: string; form?: Record<string, 
   return { ok: true, body }
 }
 
+/** The connect's Graph call, for the WhatsApp connect (src/lib/meta/whatsapp-connect.ts): tokens in a header or a body, never a URL */
+export const connectGraph = call
+
 function failed(log: string, answer: Extract<Answer, { ok: false }>, extra: Record<string, unknown> = {}) {
   console.warn(`[meta/connect] ${log}`, { status: answer.status, code: answer.code, ...extra })
 }
@@ -162,10 +165,16 @@ function failed(log: string, answer: Extract<Answer, { ok: false }>, extra: Reco
 /**
  * Callback step 3: the code for the system-user token, server to server, with
  * the identical redirect_uri. The secret and the code go in a POST body.
+ *
+ * redirectUri null: a code from the JavaScript SDK's popup (WhatsApp's
+ * Embedded Signup), which Meta's Tech Provider guide exchanges with
+ * client_id, client_secret and code only. If Meta ever refuses that with
+ * 36008 ("Error validating verification code"), the redirect_uri is the
+ * first thing to try (2026-11-09).
  */
-export async function exchangeCode({ code, redirectUri, appId, appSecret }: { code: string; redirectUri: string; appId: string; appSecret: string }): Promise<string | null> {
+export async function exchangeCode({ code, redirectUri, appId, appSecret }: { code: string; redirectUri: string | null; appId: string; appSecret: string }): Promise<string | null> {
   const answer = await call('oauth/access_token', {
-    form: { client_id: appId, client_secret: appSecret, redirect_uri: redirectUri, code },
+    form: { client_id: appId, client_secret: appSecret, ...(redirectUri !== null ? { redirect_uri: redirectUri } : {}), code },
   })
   if (!answer.ok) {
     failed('code exchange refused', answer)
@@ -174,7 +183,8 @@ export async function exchangeCode({ code, redirectUri, appId, appSecret }: { co
   return typeof answer.body.access_token === 'string' && answer.body.access_token ? answer.body.access_token : null
 }
 
-export type TokenCheck = { kind: 'ok' } | { kind: 'invalid' } | { kind: 'missingPermission'; missing: string[] } | { kind: 'failed' }
+/** ok: the token's assets per permission, from granular_scopes (Meta's ids; empty when it names none) */
+export type TokenCheck = { kind: 'ok'; targets: Record<string, string[]> } | { kind: 'invalid' } | { kind: 'missingPermission'; missing: string[] } | { kind: 'failed' }
 
 /**
  * Callback step 4: the token is valid, is ours, is a system user's, and holds
@@ -183,24 +193,40 @@ export type TokenCheck = { kind: 'ok' } | { kind: 'invalid' } | { kind: 'missing
  * POST body with method=GET, never the query string; our app token in the
  * header.
  */
-export async function checkToken({ token, appId, appSecret }: { token: string; appId: string; appSecret: string }): Promise<TokenCheck> {
+export async function checkToken({
+  token,
+  appId,
+  appSecret,
+  required = REQUIRED_SCOPES,
+}: {
+  token: string
+  appId: string
+  appSecret: string
+  /** The configuration's permissions: the Page and Instagram one's unless given (WhatsApp's is its own) */
+  required?: readonly string[]
+}): Promise<TokenCheck> {
   const answer = await call('debug_token', { token: `${appId}|${appSecret}`, form: { method: 'GET', input_token: token } })
   if (!answer.ok) {
     failed('debug_token refused', answer)
     return { kind: 'failed' }
   }
-  const data = (answer.body.data ?? {}) as { is_valid?: unknown; app_id?: unknown; type?: unknown; scopes?: unknown }
+  const data = (answer.body.data ?? {}) as { is_valid?: unknown; app_id?: unknown; type?: unknown; scopes?: unknown; granular_scopes?: unknown }
   if (data.is_valid !== true || String(data.app_id) !== appId || data.type !== 'SYSTEM_USER') {
     console.warn('[meta/connect] token rejected', { isValid: data.is_valid, appMatches: String(data.app_id) === appId, type: data.type })
     return { kind: 'invalid' }
   }
   const scopes = Array.isArray(data.scopes) ? (data.scopes as unknown[]).filter((s): s is string => typeof s === 'string') : []
-  const missing = REQUIRED_SCOPES.filter((scope) => !scopes.includes(scope))
+  const missing = required.filter((scope) => !scopes.includes(scope))
   if (missing.length > 0) {
     console.warn('[meta/connect] permissions missing', { missing })
     return { kind: 'missingPermission', missing }
   }
-  return { kind: 'ok' }
+  const targets: Record<string, string[]> = {}
+  for (const grant of Array.isArray(data.granular_scopes) ? (data.granular_scopes as { scope?: unknown; target_ids?: unknown }[]) : []) {
+    if (typeof grant.scope !== 'string') continue
+    targets[grant.scope] = Array.isArray(grant.target_ids) ? grant.target_ids.filter((id): id is string => typeof id === 'string') : []
+  }
+  return { kind: 'ok', targets }
 }
 
 type RawPage = {

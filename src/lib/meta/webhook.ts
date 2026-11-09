@@ -597,3 +597,37 @@ export function inboundFacebookComments(payload: unknown): InboundFacebookCommen
   }
   return out
 }
+
+/**
+ * THE WEBHOOK FIELD VERSIONS (Meta's App Dashboard, WhatsApp webhook fields;
+ * recorded 2026-11-09, not changed): `messages` is subscribed at v26.0 while
+ * every other field defaults to v27.0 (`account_update` and
+ * `message_template_status_update` were subscribed at v27.0). Nothing records
+ * why `messages` is on v26.0; it may simply be old. Production answers on it,
+ * so moving it is its own piece of work with its own live test, never a change
+ * made in passing. The parsers here read only the fields they name, so neither
+ * version's extra keys reach anything.
+ */
+
+/**
+ * A WhatsApp business removed our access: an `account_update` change whose
+ * event is PARTNER_REMOVED, on the WABA's entry (entry.id is the WABA id; there
+ * is no phone_number_id). The only way we learn a client disconnected us on
+ * WhatsApp. Every other account_update event is logged (deliveryShape) and
+ * nothing acts on it.
+ */
+export function inboundWhatsAppPartnerRemovals(payload: unknown): { wabaId: string }[] {
+  const body = isObject(payload) ? payload : {}
+  if (text(body.object) !== 'whatsapp_business_account') return []
+  const out: { wabaId: string }[] = []
+  for (const entry of list(body.entry)) {
+    const wabaId = text(entry.id)
+    if (!wabaId) continue
+    for (const change of list(entry.changes)) {
+      if (text(change.field) !== 'account_update') continue
+      const value = isObject(change.value) ? change.value : {}
+      if (text(value.event) === 'PARTNER_REMOVED') out.push({ wabaId })
+    }
+  }
+  return out
+}

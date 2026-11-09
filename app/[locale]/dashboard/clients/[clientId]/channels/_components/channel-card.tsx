@@ -43,8 +43,9 @@ import { embedCode } from './channel-meta'
  * Channels that talk to people on a Meta account. Turning one on asks first:
  * it is the moment a bot starts answering real people (a connected Meta
  * channel is created paused, .scratch/messenger-instagram-design.md §12).
+ * WhatsApp too, now that a clinic connects it itself and it starts paused.
  */
-const META_TYPES: readonly Channel['type'][] = ['facebook', 'instagram']
+const META_TYPES: readonly Channel['type'][] = ['facebook', 'instagram', 'whatsapp']
 
 const SUBSCRIPTION_VIEW = {
   subscribed: { key: 'subscribed', tone: 'positive' },
@@ -166,7 +167,11 @@ export function ChannelCard({
       </CardHeader>
 
       <CardContent className="grid gap-4">
-        {isMeta && !channel.is_active && <p className="text-sm text-muted-foreground">{t('channel.paused.description')}</p>}
+        {isMeta && !channel.is_active && channel.connection_notice !== 'removed_by_business' && (
+          <p className="text-sm text-muted-foreground">{t('channel.paused.description')}</p>
+        )}
+        {channel.connection_notice === 'removed_by_business' && <p className="text-sm text-destructive">{t('whatsapp.card.removedByBusiness')}</p>}
+        {channel.connection_notice === 'name_pending' && <p className="text-sm text-muted-foreground">{t('whatsapp.card.namePending')}</p>}
 
         {subscriptionNow && (
           <div className="flex flex-wrap items-center justify-between gap-3">
