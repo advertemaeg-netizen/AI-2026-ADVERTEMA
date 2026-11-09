@@ -5,7 +5,7 @@ import { COMMENT_PRIVATE_OPENER_AR, COMMENT_PUBLIC_INVITE_AR, COMMENT_PUBLIC_SEN
 import { conversationFor, isLive, type InboundChannel } from '@/lib/meta/inbound'
 import {
   INSTAGRAM_MAX_TEXT_BYTES,
-  fetchFacebookCommentHidden,
+  fetchFacebookComment,
   fetchFacebookPostOwner,
   postFacebookCommentReply,
   postInstagramCommentReply,
@@ -25,8 +25,10 @@ import { WHATSAPP_PLACEHOLDER_AR } from '@/lib/meta/whatsapp-notices-ar'
  * ONE COORDINATOR, ONE PLATFORM OBJECT EACH (decided 2026-11-09). The order
  * and every rule below are the coordinator's, the same on both platforms;
  * what differs is in each platform's object and nowhere else: how a comment
- * is read, whether it is top-level, whether its post is the clinic's own,
- * whether it is hidden, the two sends, and the transport names on rows. No
+ * is read (Instagram's payload carries the text; Facebook's feed webhook does
+ * not, so its text is read with is_hidden in one call), whether it is
+ * top-level, whether its post is the clinic's own, whether it is hidden, the
+ * two sends, and the transport names on rows. No
  * branch on the platform inside the coordinator: a difference that needs one
  * belongs in the platform object.
  *
@@ -93,6 +95,8 @@ const SOURCE = 'webhook/meta'
 const PUBLIC_MAX_CHARS = 300
 const DIGITS = /[0-9٠-٩۰-۹]/
 const OUR_PUBLIC_STRINGS = new Set<string>([...COMMENT_PUBLIC_SENT_AR, COMMENT_PUBLIC_INVITE_AR])
+/** How much of the public comment the DM keeps as context for the bot */
+const COMMENT_CONTEXT_CHARS = 1000
 
 type SkipReason = 'own_reply' | 'own_text' | 'own_account' | 'reply_in_thread' | 'not_own_post' | 'post_unchecked' | 'hidden' | 'hidden_unchecked'
 
@@ -137,18 +141,24 @@ type CommentPlatform = {
   dmTransport: 'instagram' | 'messenger'
   /** Whether the post is the clinic's own: true, false, or null when it cannot be known */
   onOwnPost(supabase: SupabaseClient, channel: InboundChannel, comment: InboundComment): Promise<boolean | null>
-  /** Whether the comment is hidden: true, false, or null when it cannot be known */
-  hidden(supabase: SupabaseClient, channel: InboundChannel, comment: InboundComment): Promise<boolean | null>
+  /**
+   * The comment as the platform reads it, before it is stored: its text (the
+   * payload's, or read from the platform when the payload has none) and
+   * whether it is hidden (true, false, or null when that cannot be known).
+   * A read that fails leaves the text as the payload had it and hidden null:
+   * the comment is still stored, and not answered.
+   */
+  read(supabase: SupabaseClient, channel: InboundChannel, comment: InboundComment): Promise<{ text?: string; hidden: boolean | null }>
   sendPrivateReply(args: Args): Promise<SendResult>
   postPublicReply(args: Args): Promise<PublicReplyResult>
 }
 
-/** Instagram: comments arrive only on the account's own media (mentions are another field), and hiding is not read */
+/** Instagram: comments arrive only on the account's own media (mentions are another field), with their text; hiding is not read */
 const INSTAGRAM: CommentPlatform = {
   commentTransport: 'instagram',
   dmTransport: 'instagram',
   onOwnPost: async () => true,
-  hidden: async () => false,
+  read: async (_supabase, _channel, comment) => ({ ...(comment.text !== undefined ? { text: comment.text } : {}), hidden: false }),
   sendPrivateReply: sendInstagramPrivateReply,
   postPublicReply: postInstagramCommentReply,
 }
@@ -157,7 +167,12 @@ const FACEBOOK: CommentPlatform = {
   commentTransport: 'facebook',
   dmTransport: 'messenger',
   onOwnPost: facebookPostIsOwn,
-  hidden: (supabase, channel, comment) => fetchFacebookCommentHidden({ supabase, channelId: channel.id, commentId: comment.commentId }),
+  // The feed webhook carries no comment text (seen live): it is read here, with is_hidden, in one call
+  read: async (supabase, channel, comment) => {
+    const read = await fetchFacebookComment({ supabase, channelId: channel.id, commentId: comment.commentId })
+    const text = read.message ?? comment.text
+    return { ...(text !== undefined ? { text } : {}), hidden: read.hidden }
+  },
   sendPrivateReply: sendFacebookPrivateReply,
   postPublicReply: postFacebookCommentReply,
 }
@@ -226,14 +241,16 @@ async function handleComment(supabase: SupabaseClient, channel: InboundChannel, 
   const own = await ownReason(supabase, comment)
   if (own) return skip(supabase, channel, comment, own)
 
-  // 3. Into the person's comment thread: public comments and our public replies only
+  // 3. Read as the platform has it (its text, whether it is hidden), then into the person's
+  // comment thread: public comments and our public replies only. A read that failed still stores
+  const read = await platform.read(supabase, channel, comment)
   const threadId = await commentThreadFor(supabase, channel, comment)
   const { data: stored, error: storeError } = await supabase
     .from('messages')
     .insert({
       conversation_id: threadId,
       role: 'user',
-      content: comment.text?.trim() || WHATSAPP_PLACEHOLDER_AR.unsupported,
+      content: read.text?.trim() || WHATSAPP_PLACEHOLDER_AR.unsupported,
       metadata: { transport: platform.commentTransport, comment: comment.context },
     })
     .select('id, metadata')
@@ -244,8 +261,7 @@ async function handleComment(supabase: SupabaseClient, channel: InboundChannel, 
   if (!comment.topLevel) return skip(supabase, channel, comment, 'reply_in_thread')
   const ownPost = await platform.onOwnPost(supabase, channel, comment)
   if (ownPost !== true) return skip(supabase, channel, comment, ownPost === false ? 'not_own_post' : 'post_unchecked')
-  const hidden = await platform.hidden(supabase, channel, comment)
-  if (hidden !== false) return skip(supabase, channel, comment, hidden === true ? 'hidden' : 'hidden_unchecked')
+  if (read.hidden !== false) return skip(supabase, channel, comment, read.hidden === true ? 'hidden' : 'hidden_unchecked')
 
   // 4. THE PRIVATE REPLY FIRST, unless an earlier comment of theirs already opened a DM
   let privateReply: SendResult['kind'] | 'already_opened'
@@ -258,7 +274,7 @@ async function handleComment(supabase: SupabaseClient, channel: InboundChannel, 
     const result = await platform.sendPrivateReply({ supabase, channelId: channel.id, commentId: comment.commentId, body: opener })
     privateReply = result.kind
     if (result.kind === 'sent') {
-      const dmConversationId = await openDm(supabase, channel, result, opener, comment, platform)
+      const dmConversationId = await openDm(supabase, channel, result, opener, comment, platform, read.text)
       await record(supabase, comment.commentId, { private_state: 'sent', private_message_id: result.messageId, dm_conversation_id: dmConversationId })
       console.info(`[${SOURCE}] comment private reply sent`, {
         channelId: channel.id,
@@ -445,10 +461,21 @@ async function alreadyRepliedOnPost(supabase: SupabaseClient, threadId: string, 
  * The DM the private reply opened: keyed by the id Meta answered with (never
  * the comment's author id assumed to be the same), in thread 'dm', named
  * after the commenter, with the opener as its row. It may carry the
- * originating comment's id as context; never the private side's history on
- * the public one. On Facebook it is the person's Messenger conversation.
+ * originating comment's id and text as context (so the bot, once they write
+ * back, knows what they asked in public: decided 2026-11-09); never the
+ * private side's history on the public one. On Facebook it is the person's
+ * Messenger conversation.
  */
-async function openDm(supabase: SupabaseClient, channel: InboundChannel, result: Extract<SendResult, { kind: 'sent' }>, opener: string, comment: InboundComment, platform: CommentPlatform) {
+async function openDm(
+  supabase: SupabaseClient,
+  channel: InboundChannel,
+  result: Extract<SendResult, { kind: 'sent' }>,
+  opener: string,
+  comment: InboundComment,
+  platform: CommentPlatform,
+  /** What they wrote publicly, as read: kept on the opener so the bot knows what was asked (public to private only) */
+  commentText: string | undefined
+) {
   const { commentId } = comment
   if (!result.recipientId) {
     console.error(`[${SOURCE}] a private reply went without a recipient id: its DM is not opened here`, { channelId: channel.id, commentId })
@@ -467,7 +494,11 @@ async function openDm(supabase: SupabaseClient, channel: InboundChannel, result:
     conversation_id: conversationId,
     role: 'assistant',
     content: opener,
-    metadata: { transport: platform.dmTransport, origin: { commentId }, send: { transport: platform.dmTransport, state: 'sent', messageId: result.messageId } },
+    metadata: {
+      transport: platform.dmTransport,
+      origin: { commentId, ...(commentText?.trim() ? { commentText: commentText.trim().slice(0, COMMENT_CONTEXT_CHARS) } : {}) },
+      send: { transport: platform.dmTransport, state: 'sent', messageId: result.messageId },
+    },
   })
   if (error) console.error(`[${SOURCE}] storing the opener failed`, { channelId: channel.id, conversationId, error })
   return conversationId

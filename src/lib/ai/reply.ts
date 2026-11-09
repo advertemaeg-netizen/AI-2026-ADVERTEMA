@@ -76,7 +76,14 @@ export type ReplyOutcome =
   | { kind: 'unavailable'; reason: 'no_settings' | 'limit_check_failed' | 'fallback_write_failed' }
 
 /** A message as the pipeline reads history: the trace a reply left in its metadata is read back from it */
-export type HistoryRow = { role: string; content: string; metadata: { contact?: unknown; booking?: unknown; draft?: unknown } | null }
+/** The public comment a DM began from, when its opener kept it */
+function commentOrigin(origin: unknown): string | null {
+  if (typeof origin !== 'object' || origin === null) return null
+  const text = (origin as { commentText?: unknown }).commentText
+  return typeof text === 'string' && text.trim() ? text.trim() : null
+}
+
+export type HistoryRow = { role: string; content: string; metadata: { contact?: unknown; booking?: unknown; draft?: unknown; origin?: unknown } | null }
 
 /**
  * WHERE THE CONVERSATION'S ROWS ARE. The pipeline decides; these calls are
@@ -248,6 +255,9 @@ export async function replyToMessage({
   // were under way before the row held it.
   const lastReplyTrace = recent.find((m) => m.role === 'assistant' && m.metadata?.booking !== undefined)?.metadata
   const tracedDraft = parseBookingDraft(lastReplyTrace?.draft)
+  // A conversation the comment opener began: what the person asked in public, kept on the
+  // opener's row (src/lib/meta/comments.ts), so the model answers it instead of asking again
+  const startedFromComment = recent.map((m) => commentOrigin(m.metadata?.origin)).find(Boolean) ?? null
   const history: ChatTurn[] = recent
     .reverse()
     .map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }))
@@ -416,6 +426,7 @@ export async function replyToMessage({
       heldRequest: held,
       branches,
       surface,
+      startedFromComment,
     })
     raw = result.raw
 

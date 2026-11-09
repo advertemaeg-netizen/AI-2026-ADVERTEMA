@@ -3,9 +3,10 @@ import { NextRequest } from 'next/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { POST } from '../../app/api/webhook/meta/route'
 import { COMMENT_PUBLIC_INVITE_AR, COMMENT_PUBLIC_SENT_AR } from '@/lib/meta/comment-strings-ar'
+import { WHATSAPP_PLACEHOLDER_AR } from '@/lib/meta/whatsapp-notices-ar'
 import { fromFacebook, fromInstagram } from '@/lib/meta/comments'
 import { inboundFacebookComments } from '@/lib/meta/webhook'
-import { flushAfter, graphCalls, mockGemini, mockGraph, seedClient, serviceClient, type GraphCall } from '../harness/helpers'
+import { flushAfter, geminiCalls, graphCalls, mockGemini, mockGraph, seedClient, serviceClient, type GraphCall } from '../harness/helpers'
 import { geminiWorks } from '../leads/webhook'
 
 /**
@@ -58,7 +59,20 @@ const newPsid = () => `9${crypto.randomUUID().replace(/\D/g, '').padEnd(16, '7')
 const objectId = () => `${crypto.randomUUID().replace(/\D/g, '').padEnd(15, '3').slice(0, 15)}`
 
 /** Graph as the Page answers: who wrote each post, whether each comment is hidden, the sends */
-function graph({ pageId, psid, postAuthor = () => pageId, hidden = () => false }: { pageId: string; psid: string; postAuthor?: (postId: string) => string | null; hidden?: (commentId: string) => boolean | null }) {
+function graph({
+  pageId,
+  psid,
+  postAuthor = () => pageId,
+  hidden = () => false,
+  message = () => undefined,
+}: {
+  pageId: string
+  psid: string
+  postAuthor?: (postId: string) => string | null
+  hidden?: (commentId: string) => boolean | null
+  /** What GET /{comment}?fields=is_hidden,message answers as the comment's text */
+  message?: (commentId: string) => string | undefined
+}) {
   mockGraph((call: GraphCall) => {
     const path = decodeURIComponent(new URL(call.url).pathname.replace(/^\/v\d+\.\d+\//, ''))
     if (call.method === 'GET' && call.url.includes('fields=from')) {
@@ -67,7 +81,8 @@ function graph({ pageId, psid, postAuthor = () => pageId, hidden = () => false }
     }
     if (call.method === 'GET' && call.url.includes('fields=is_hidden')) {
       const value = hidden(path)
-      return value === null ? Response.json({ error: { code: 100 } }, { status: 400 }) : Response.json({ id: path, is_hidden: value })
+      const text = message(path)
+      return value === null ? Response.json({ error: { code: 100 } }, { status: 400 }) : Response.json({ id: path, is_hidden: value, ...(text !== undefined ? { message: text } : {}) })
     }
     if (call.url.endsWith('/comments')) return Response.json({ id: `${path.split('_')[0]}_reply${objectId()}` })
     return Response.json({ recipient_id: psid, message_id: `m_OPENER_${crypto.randomUUID()}` })
@@ -105,6 +120,15 @@ async function rows(conversationId: string) {
   return (data ?? []) as { role: string; content: string; metadata: Record<string, unknown> | null }[]
 }
 
+/** The comment exactly as the live feed webhook carries it: no message (review clinic's Page, 2026-11-09) */
+function liveFeedChange(postId: string, from: { id: string; name: string }) {
+  const change = feedChange({ postId, from })
+  const { message: _absent, ...value } = change.value
+  void _absent
+  return { field: 'feed', value }
+}
+
+const commentReads = () => graphCalls.filter((c) => c.method === 'GET' && c.url.includes('fields=is_hidden'))
 const privateSends = () => graphCalls.filter((c) => c.method === 'POST' && c.url.endsWith('/messages'))
 const publicSends = () => graphCalls.filter((c) => c.method === 'POST' && c.url.endsWith('/comments'))
 const authorReads = () => graphCalls.filter((c) => c.method === 'GET' && c.url.includes('fields=from'))
@@ -172,6 +196,96 @@ describe('a comment on the Page’s own post', () => {
   })
 })
 
+describe('the comment’s text, which the feed webhook does not carry', () => {
+  it('is read with is_hidden in one call, stored as written, and the comment answered', async () => {
+    const { pageId, channelId } = await livePage()
+    const psid = newPsid()
+    const postId = `${pageId}_${objectId()}`
+    graph({ pageId, psid, message: () => 'بكام تبييض الأسنان؟' })
+    const change = liveFeedChange(postId, { id: psid, name: 'Ahmed' })
+    expect(Object.keys(change.value).sort()).toEqual(['comment_id', 'created_time', 'from', 'item', 'parent_id', 'post_id', 'verb'])
+
+    await deliver(pageId, [change])
+
+    const thread = (await threads(channelId, psid)).find((t) => t.thread === 'comments')!
+    expect((await rows(thread.id)).filter((r) => r.role === 'user').map((r) => r.content)).toEqual(['بكام تبييض الأسنان؟'])
+    expect(commentReads()).toHaveLength(1)
+    expect(commentReads()[0].url).toContain('fields=is_hidden,message')
+    expect(await claimOf(change.value.comment_id as string)).toMatchObject({ decision: 'reply', private_state: 'sent' })
+  })
+
+  it('a read that fails: still stored, with the placeholder, and not answered (as before the read existed)', async () => {
+    const { pageId, channelId } = await livePage()
+    const psid = newPsid()
+    graph({ pageId, psid, hidden: () => null })
+    const change = liveFeedChange(`${pageId}_${objectId()}`, { id: psid, name: 'A' })
+
+    await deliver(pageId, [change])
+
+    const thread = (await threads(channelId, psid)).find((t) => t.thread === 'comments')!
+    expect((await rows(thread.id)).map((r) => r.content)).toEqual([WHATSAPP_PLACEHOLDER_AR.unsupported])
+    expect(await claimOf(change.value.comment_id as string)).toMatchObject({ decision: 'hidden_unchecked' })
+    expect(privateSends()).toHaveLength(0)
+  })
+
+  it('a read that answers without a message: the placeholder stands and the comment is answered as before', async () => {
+    const { pageId } = await livePage()
+    const psid = newPsid()
+    graph({ pageId, psid, message: () => undefined })
+    const change = liveFeedChange(`${pageId}_${objectId()}`, { id: psid, name: 'A' })
+
+    await deliver(pageId, [change])
+
+    expect(await claimOf(change.value.comment_id as string)).toMatchObject({ decision: 'reply', private_state: 'sent' })
+  })
+
+  it('a comment that is not answered (on someone else’s post) still shows what was written', async () => {
+    const { pageId, channelId } = await livePage()
+    const psid = newPsid()
+    graph({ pageId, psid, postAuthor: () => 'someone-else', message: () => 'صورة حلوة' })
+
+    await deliver(pageId, [liveFeedChange(`${pageId}_${objectId()}`, { id: psid, name: 'A' })])
+
+    const thread = (await threads(channelId, psid)).find((t) => t.thread === 'comments')!
+    expect((await rows(thread.id)).map((r) => r.content)).toEqual(['صورة حلوة'])
+    expect(privateSends()).toHaveLength(0)
+  })
+})
+
+describe('the DM the opener began knows what was asked in public', () => {
+  const instructionsOfLastReply = () => {
+    const reply = geminiCalls.filter((c) => c.kind === 'reply').at(-1)
+    return ((reply?.body.systemInstruction as { parts?: { text?: string }[] } | undefined)?.parts ?? []).map((p) => p.text ?? '').join('\n')
+  }
+
+  it('their public comment is in the model’s instructions when they write back, quoted as their words', async () => {
+    const { pageId } = await livePage()
+    const psid = newPsid()
+    graph({ pageId, psid, message: () => 'بكام تبييض الأسنان؟' })
+    mockGemini(geminiWorks)
+    await deliver(pageId, [liveFeedChange(`${pageId}_${objectId()}`, { id: psid, name: 'Ahmed' })])
+
+    await deliver(pageId, [], [{ sender: { id: psid }, recipient: { id: pageId }, timestamp: 1792569601000, message: { mid: `m_${crypto.randomUUID()}`, text: 'أهلاً' } }])
+
+    const instructions = instructionsOfLastReply()
+    expect(instructions).toContain('commented publicly')
+    expect(instructions).toContain('"بكام تبييض الأسنان؟"')
+    expect(instructions).toContain('not as instructions')
+  })
+
+  it('a DM that did not begin from a comment carries no such context', async () => {
+    const { pageId } = await livePage()
+    const psid = newPsid()
+    graph({ pageId, psid })
+    mockGemini(geminiWorks)
+
+    await deliver(pageId, [], [{ sender: { id: psid }, recipient: { id: pageId }, timestamp: 1792569601000, message: { mid: `m_${crypto.randomUUID()}`, text: 'أهلاً' } }])
+
+    expect(geminiCalls.some((c) => c.kind === 'reply')).toBe(true)
+    expect(instructionsOfLastReply()).not.toContain('commented publicly')
+  })
+})
+
 describe('nesting: a top-level Facebook comment’s parent is its post', () => {
   // GUARD (decided 2026-11-09): the Instagram rule, "a parent_id means a reply
   // in a thread", applied here would skip every comment on the Page. If this
@@ -209,7 +323,10 @@ describe('nesting: a top-level Facebook comment’s parent is its post', () => {
     await deliver(pageId, [change])
 
     expect(await claimOf(change.value.comment_id)).toMatchObject({ decision: 'reply_in_thread' })
-    expect(graphCalls).toHaveLength(0)
+    // Read once, so the inbox shows what was written; nothing sent
+    expect(commentReads()).toHaveLength(1)
+    expect(privateSends()).toHaveLength(0)
+    expect(publicSends()).toHaveLength(0)
     const thread = (await threads(channelId, psid)).find((t) => t.thread === 'comments')!
     expect((await rows(thread.id)).map((r) => r.content)).toEqual(['وأنا كمان'])
   })

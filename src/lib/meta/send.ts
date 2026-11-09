@@ -374,15 +374,24 @@ export async function fetchFacebookPostOwner({ supabase, channelId, pageId, post
 }
 
 /**
- * Whether a comment is hidden: GET /{comment-id}?fields=is_hidden. A
- * clinic's moderation (its own hiding, or the Page's word and profanity
- * filters, which hide on arrival) is never overridden: a hidden comment gets
- * no private message and no public reply. Null when it cannot be read (then
- * nothing is sent either).
+ * A Facebook comment as the Page reads it: GET /{comment-id}?fields=is_hidden,message,
+ * one call per comment.
+ *   is_hidden  a clinic's moderation (its own hiding, or the Page's word and
+ *              profanity filters, which hide on arrival) is never overridden:
+ *              a hidden comment gets no private message and no public reply.
+ *   message    what the person wrote. The `feed` webhook's comment carries no
+ *              message on the review clinic's Page (2026-11-09: valueKeys
+ *              comment_id, created_time, from, item, parent_id, post, post_id,
+ *              verb), so without this the inbox shows a placeholder.
+ * Either can be missing: `hidden` null when it cannot be read (then nothing is
+ * sent), `message` undefined when Meta does not give it (then the placeholder
+ * stands, as before). Needs pages_read_user_content and pages_read_engagement.
  */
-export async function fetchFacebookCommentHidden({ supabase, channelId, commentId }: { supabase: SupabaseClient; channelId: string; commentId: string }): Promise<boolean | null> {
-  const answer = await graphRead('[facebook/comment-hidden]', supabase, channelId, `${encodeURIComponent(commentId)}?fields=is_hidden`)
-  return answer && typeof answer.is_hidden === 'boolean' ? answer.is_hidden : null
+export async function fetchFacebookComment({ supabase, channelId, commentId }: { supabase: SupabaseClient; channelId: string; commentId: string }): Promise<{ hidden: boolean | null; message?: string }> {
+  const answer = await graphRead('[facebook/comment]', supabase, channelId, `${encodeURIComponent(commentId)}?fields=is_hidden,message`)
+  if (!answer) return { hidden: null }
+  const message = typeof answer.message === 'string' && answer.message.trim() ? answer.message : undefined
+  return { hidden: typeof answer.is_hidden === 'boolean' ? answer.is_hidden : null, ...(message !== undefined ? { message } : {}) }
 }
 
 /**
