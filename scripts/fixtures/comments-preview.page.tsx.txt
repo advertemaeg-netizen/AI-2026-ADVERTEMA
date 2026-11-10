@@ -1,0 +1,52 @@
+// A FIXTURE PAGE FOR SCREENSHOTS, NOT PART OF THE APP (2026-11-10).
+//
+// Renders the real components with fake data: comment rows, conversation
+// rows, the sidebar (with a long client name), the channel colours beside the
+// state tones, the comment marker, an empty-field panel. For walking the
+// narrow places without a database (dev points at production).
+//
+// Kept as .txt so it is never built or type-checked where it sits. To use:
+//   cp scripts/fixtures/comments-preview.page.tsx.txt "app/[locale]/zz-preview/page.tsx"
+//   npx next dev -p 3123            # then open /ar/zz-preview and /en/zz-preview
+//   ~/.cache/ms-playwright/chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell \
+//     --no-sandbox --hide-scrollbars --window-size=390,1900 --virtual-time-budget=8000 \
+//     --screenshot=/tmp/preview-390.png http://localhost:3123/ar/zz-preview
+//   rm -r "app/[locale]/zz-preview"   # NEVER commit it there: it is an unauthenticated route
+// If it no longer compiles there, the components it shows have changed: fix the fixture.
+import { Card, CardContent } from '@/components/ui/card'
+import { DashboardShell } from '../dashboard/_components/dashboard-shell'
+import { CommentRow } from '../dashboard/comments/_components/comment-row'
+import { ConversationRow } from '../dashboard/conversations/_components/conversation-row'
+import { ChannelIcon } from '@/components/channel-icon'
+import { Badge } from '@/components/ui/badge'
+import { CommentMarker } from '@/components/comment-marker'
+import type { CommentItem } from '@/lib/types/comments'
+import type { ConversationListItem } from '@/lib/types/conversations'
+
+const ago = (m: number) => new Date(Date.now() - m * 60000).toISOString()
+const client = { id: 'c1', name: 'عيادة طب الأسنان — حساب تجريبي' }
+const comments: CommentItem[] = [
+  { id: '1', commentId: '17900000000000001', text: 'بكام تقويم الأسنان؟ وهل في تقسيط؟', createdAt: ago(4), contactName: 'mariam.dental.fan', contactIdentifier: 'a', client, channel: { id: 'ig', type: 'instagram', name: 'clinic.smile' }, postUrl: 'https://www.instagram.com/p/x/', publicReplySent: true, privateReplySent: true, dmConversationId: 'd1' },
+  { id: '2', commentId: '123_456', text: 'المواعيد يوم الجمعة متاحة؟ عايزة أحجز لبنتي كشف ضروري جداً لأنها بتشتكي من ضرسها من امبارح بالليل ومش عارفة تنام خالص', createdAt: ago(60), contactName: 'Ahmed Mohamed Abd El Rahman El Sayed', contactIdentifier: 'b', client, channel: { id: 'fb', type: 'facebook', name: 'Smile Clinic Cairo' }, postUrl: 'https://www.facebook.com/1/posts/2', publicReplySent: true, privateReplySent: false, dmConversationId: 'd2' },
+  { id: '3', commentId: '123_789', text: 'تحفة 😍', createdAt: ago(300), contactName: null, contactIdentifier: 'c9f3a1', client, channel: { id: 'fb', type: 'facebook', name: 'Smile Clinic Cairo' }, postUrl: null, publicReplySent: false, privateReplySent: false, dmConversationId: null },
+]
+const conv = (id: string, type: ConversationListItem['channel']['type'], name: string | null, preview: string): ConversationListItem => ({ id, status: 'new', contact_name: name, contact_identifier: 'x' + id, last_message_at: ago(Number(id) * 7), last_message_preview: preview, last_message_role: 'assistant', assigned_to: null, needs_human_since: id === '2' ? ago(5) : null, needs_human_reason: null, client, channel: { id: type, type, name: type === 'website' ? 'الموقع الرئيسي' : 'Smile Clinic Cairo' } })
+const conversations = [conv('1', 'whatsapp', 'منى عبد الحميد', 'أهلاً بيك، تحب تحجز إمتى؟'), conv('2', 'facebook', 'Ahmed Mohamed', 'تمام، هبعتلك العنوان'), conv('3', 'instagram', 'mariam.dental.fan', 'التقويم بيبدأ من…'), conv('4', 'website', null, 'مواعيدنا من ١٠ الصبح')]
+
+const SWATCH = ['whatsapp', 'facebook', 'instagram', 'website'] as const
+export default function Preview() {
+  return (
+    <DashboardShell clients={[client, { id: 'c2', name: 'Clinic two' }]} selectedClient={client} canSeeAll={false} orgType="agency" user={{ email: 'owner@example.com', fullName: 'Owner Name', role: 'org_admin' }}>
+      <div className="page space-y-6">
+        <h1 className="page-title">التعليقات</h1>
+        <Card className="py-0"><CardContent className="px-0"><ul className="divide-y">{comments.map((c) => <li key={c.id}><CommentRow comment={c} /></li>)}</ul></CardContent></Card>
+        <Card className="py-0"><CardContent className="px-0"><ul className="divide-y">{conversations.map((c) => <li key={c.id}><ConversationRow conversation={c} /></li>)}</ul></CardContent></Card>
+        <Card><CardContent className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2"><p className="font-semibold">Channels</p>{SWATCH.map((t) => <div key={t} className="flex items-center gap-2"><span className="h-6 w-16 rounded" style={{ background: `var(--channel-${t})` }} /><ChannelIcon type={t} className="size-5" /><ChannelIcon type={t} surface="comment" className="size-5" /><span>{t}</span></div>)}</div>
+          <div className="space-y-2"><p className="font-semibold">States</p>{(['positive', 'critical', 'quiet', 'info', 'warning'] as const).map((v) => <div key={v} className="flex items-center gap-2"><span className="h-6 w-16 rounded" style={{ background: `var(--${v === 'quiet' ? 'neutral' : v})` }} /><Badge variant={v}>{v}</Badge></div>)}<CommentMarker /></div>
+        </CardContent></Card>
+        <div className="empty-field rounded-xl p-10 text-center">empty-field</div>
+      </div>
+    </DashboardShell>
+  )
+}
