@@ -624,7 +624,8 @@
       "noText": "No text was found in the file (it may be a scanned PDF).",
       "textTooLarge": "The file has more text than one file may hold. Split it into smaller files.",
       "impersonating": "Changes aren’t allowed while viewing a customer’s account"
-    }
+    },
+    "download": "Download the original file"
   },
   "playground": {
     "title": "Try the {client} bot",

@@ -139,6 +139,9 @@
    * whatsapp-critical 65.1/13.1/25.1. The tightest channel pair is
    * whatsapp-instagram under deuteranopia (9.9): their glyphs differ in shape
    * and every legend names them, so colour is never the only carrier.
+   * Instagram against the neutral state tone under protanopia is closer
+   * still (6.9): neutral is only ever a badge with its own glyph and word.
+   * Measure after any change: python3 scripts/palette-check.py
    */
   --channel-whatsapp: #178d48;
   --channel-facebook: #0866ff;

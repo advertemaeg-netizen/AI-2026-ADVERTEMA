@@ -12,6 +12,8 @@ import {
 } from '@/lib/types/knowledge'
 
 const KNOWLEDGE_PATH = '/[locale]/dashboard/clients/[clientId]/knowledge'
+/** How long a download link works: long enough for a slow, interrupted download to resume */
+const DOWNLOAD_LINK_SECONDS = 15 * 60
 
 export async function getKnowledgeDocuments(clientId: string): Promise<KnowledgeDocument[]> {
   if (!UUID_PATTERN.test(clientId)) return []
@@ -75,4 +77,43 @@ export async function deleteKnowledgeDocument(documentId: string): Promise<Knowl
 
   revalidatePath(KNOWLEDGE_PATH, 'page')
   return { ok: true }
+}
+
+/**
+ * A link to download a document's original file, as uploaded (the
+ * knowledge page's download button). The link is created with the user's
+ * own session: the storage policy "Admins read knowledge files of their
+ * clients" (20261003100000) decides, and RLS on the row before it. Valid for
+ * fifteen minutes, not one: the expiry is checked on each request, and a
+ * phone on 3G that drops mid-download resumes with a new request, which a
+ * one-minute link would refuse. The file downloads under its uploaded name.
+ */
+export async function getKnowledgeFileUrl(
+  documentId: string
+): Promise<{ ok: true; url: string } | { ok: false; error: 'unauthorized' | 'forbidden' | 'notFound' | 'unknown' }> {
+  const { supabase, profile } = await getSession()
+  if (!profile) return { ok: false, error: 'unauthorized' }
+  if (!canManage(profile)) return { ok: false, error: 'forbidden' }
+  if (!UUID_PATTERN.test(documentId)) return { ok: false, error: 'notFound' }
+
+  const { data: doc, error } = await supabase
+    .from('knowledge_documents')
+    .select('title, file_url')
+    .eq('id', documentId)
+    .is('source_document_id', null)
+    .maybeSingle<{ title: string; file_url: string | null }>()
+  if (error) {
+    console.error('[knowledge] download lookup', error)
+    return { ok: false, error: 'unknown' }
+  }
+  if (!doc?.file_url) return { ok: false, error: 'notFound' }
+
+  const { data, error: signError } = await supabase.storage
+    .from(KNOWLEDGE_BUCKET)
+    .createSignedUrl(doc.file_url, DOWNLOAD_LINK_SECONDS, { download: doc.title })
+  if (signError || !data?.signedUrl) {
+    console.error('[knowledge] download link', signError)
+    return { ok: false, error: 'unknown' }
+  }
+  return { ok: true, url: data.signedUrl }
 }

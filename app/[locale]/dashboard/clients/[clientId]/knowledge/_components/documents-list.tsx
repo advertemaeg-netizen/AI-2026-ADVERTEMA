@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { useFormatter, useTranslations } from 'next-intl'
 import { toast } from 'sonner'
-import { BookOpen, FileText, Loader2, Trash2 } from 'lucide-react'
+import { BookOpen, Download, FileText, Loader2, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,7 +19,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { RelativeTime } from '@/components/relative-time'
-import { deleteKnowledgeDocument } from '@/lib/actions/knowledge'
+import { deleteKnowledgeDocument, getKnowledgeFileUrl } from '@/lib/actions/knowledge'
 import type { KnowledgeDocument, KnowledgeStatus } from '@/lib/types/knowledge'
 
 const STATUS_STYLES: Record<KnowledgeStatus, string> = {
@@ -45,6 +45,21 @@ export function DocumentsList({
   const router = useRouter()
   const [deleting, setDeleting] = useState<KnowledgeDocument | null>(null)
   const [isDeleting, startDelete] = useTransition()
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
+
+  // The original file, as uploaded: a short-lived link made on the server, then followed
+  async function handleDownload(doc: KnowledgeDocument) {
+    setDownloadingId(doc.id)
+    try {
+      const result = await getKnowledgeFileUrl(doc.id)
+      if (result.ok) window.location.assign(result.url)
+      else toast.error(t(`errors.${result.error}`))
+    } catch {
+      toast.error(t('errors.unknown'))
+    } finally {
+      setDownloadingId(null)
+    }
+  }
 
   const processing = documents.some((doc) => doc.status === 'processing')
   useEffect(() => {
@@ -106,6 +121,16 @@ export function DocumentsList({
                   {doc.status === 'processing' && <Loader2 className="animate-spin" />}
                   {t(`status.${doc.status}`)}
                 </Badge>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`${t('download')}: ${doc.title}`}
+                  title={t('download')}
+                  disabled={downloadingId === doc.id}
+                  onClick={() => handleDownload(doc)}
+                >
+                  {downloadingId === doc.id ? <Loader2 className="animate-spin" /> : <Download />}
+                </Button>
                 {canManage && (
                   <Button
                     variant="ghost"
