@@ -55,6 +55,33 @@ async function uploadedDocument() {
   return { ...seeded, id, path }
 }
 
+describe('opening a PDF in a tab', () => {
+  it('a PDF gets a link with no download disposition, so the browser shows it', async () => {
+    const { organizationId, id, path } = await uploadedDocument()
+    session.user = await createUser('org_admin', organizationId, 'مدير')
+    expect(await getKnowledgeFileUrl(id, 'view')).toEqual({ ok: true, url: `https://storage.test/${path}?token=t` })
+    expect(signed).toEqual([{ bucket: 'knowledge-base', path, seconds: 900, options: undefined }])
+  })
+
+  it('Word and plain text are never offered for a tab: nothing is signed', async () => {
+    const seeded = await seedClient()
+    const service = serviceClient()
+    const ids = await Promise.all(
+      (['docx', 'txt'] as const).map(async (type) => {
+        const id = crypto.randomUUID()
+        const { error } = await service.from('knowledge_documents').insert({ id, client_id: seeded.clientId, title: `f.${type}`, file_url: `${seeded.clientId}/${id}.${type}`, file_type: type, status: 'ready' })
+        if (error) throw error
+        return id
+      })
+    )
+    session.user = await createUser('org_admin', seeded.organizationId, 'مدير')
+    for (const id of ids) expect(await getKnowledgeFileUrl(id, 'view')).toEqual({ ok: false, error: 'notFound' })
+    expect(signed).toEqual([])
+    // Downloading them still works
+    expect((await getKnowledgeFileUrl(ids[0])).ok).toBe(true)
+  })
+})
+
 describe('downloading a knowledge file as uploaded', () => {
   it('an admin of the client gets a fifteen-minute link to the file, under its uploaded name', async () => {
     const { organizationId, id, path } = await uploadedDocument()

@@ -6,6 +6,7 @@ import { UUID_PATTERN } from '@/lib/types/clients'
 import { checkKnowledgeQuota } from '@/lib/subscription-limits'
 import {
   KNOWLEDGE_BUCKET,
+  opensInTab,
   type KnowledgeActionResult,
   type KnowledgeDocument,
   type KnowledgeQuota,
@@ -80,8 +81,11 @@ export async function deleteKnowledgeDocument(documentId: string): Promise<Knowl
 }
 
 /**
- * A link to download a document's original file, as uploaded (the
- * knowledge page's download button). The link is created with the user's
+ * A link to a document's original file, as uploaded: to download it, or to
+ * open it in a browser tab (the knowledge page's two buttons). Only a PDF
+ * opens in a tab: a browser cannot render Word, and a plain-text file is
+ * stored without a charset, so a tab may show its Arabic as gibberish, which
+ * would read as a bad extraction. Both download only. The link is created with the user's
  * own session: the storage policy "Admins read knowledge files of their
  * clients" (20261003100000) decides, and RLS on the row before it. Valid for
  * fifteen minutes, not one: the expiry is checked on each request, and a
@@ -89,7 +93,8 @@ export async function deleteKnowledgeDocument(documentId: string): Promise<Knowl
  * one-minute link would refuse. The file downloads under its uploaded name.
  */
 export async function getKnowledgeFileUrl(
-  documentId: string
+  documentId: string,
+  mode: 'download' | 'view' = 'download'
 ): Promise<{ ok: true; url: string } | { ok: false; error: 'unauthorized' | 'forbidden' | 'notFound' | 'unknown' }> {
   const { supabase, profile } = await getSession()
   if (!profile) return { ok: false, error: 'unauthorized' }
@@ -98,19 +103,21 @@ export async function getKnowledgeFileUrl(
 
   const { data: doc, error } = await supabase
     .from('knowledge_documents')
-    .select('title, file_url')
+    .select('title, file_url, file_type')
     .eq('id', documentId)
     .is('source_document_id', null)
-    .maybeSingle<{ title: string; file_url: string | null }>()
+    .maybeSingle<{ title: string; file_url: string | null; file_type: string | null }>()
   if (error) {
     console.error('[knowledge] download lookup', error)
     return { ok: false, error: 'unknown' }
   }
   if (!doc?.file_url) return { ok: false, error: 'notFound' }
+  if (mode === 'view' && !opensInTab(doc.file_type)) return { ok: false, error: 'notFound' }
 
   const { data, error: signError } = await supabase.storage
     .from(KNOWLEDGE_BUCKET)
-    .createSignedUrl(doc.file_url, DOWNLOAD_LINK_SECONDS, { download: doc.title })
+    // Viewing: no download disposition, so the browser renders the PDF inline
+    .createSignedUrl(doc.file_url, DOWNLOAD_LINK_SECONDS, mode === 'download' ? { download: doc.title } : undefined)
   if (signError || !data?.signedUrl) {
     console.error('[knowledge] download link', signError)
     return { ok: false, error: 'unknown' }

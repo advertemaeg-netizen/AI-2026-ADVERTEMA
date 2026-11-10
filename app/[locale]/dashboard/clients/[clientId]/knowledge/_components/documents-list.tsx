@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { useFormatter, useTranslations } from 'next-intl'
 import { toast } from 'sonner'
-import { BookOpen, Download, FileText, Loader2, Trash2 } from 'lucide-react'
+import { BookOpen, Download, ExternalLink, FileText, Loader2, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { RelativeTime } from '@/components/relative-time'
 import { deleteKnowledgeDocument, getKnowledgeFileUrl } from '@/lib/actions/knowledge'
-import type { KnowledgeDocument, KnowledgeStatus } from '@/lib/types/knowledge'
+import { opensInTab, type KnowledgeDocument, type KnowledgeStatus } from '@/lib/types/knowledge'
 
 const STATUS_STYLES: Record<KnowledgeStatus, string> = {
   processing: 'bg-warning-fill text-warning-fill-foreground',
@@ -55,6 +55,28 @@ export function DocumentsList({
       if (result.ok) window.location.assign(result.url)
       else toast.error(t(`errors.${result.error}`))
     } catch {
+      toast.error(t('errors.unknown'))
+    } finally {
+      setDownloadingId(null)
+    }
+  }
+
+  // A PDF in a new tab. The tab is opened on the click itself (a tab opened
+  // after an await is a popup, and blocked), then sent to the link
+  async function handleView(doc: KnowledgeDocument) {
+    const tab = window.open('about:blank', '_blank')
+    if (tab) tab.opener = null
+    setDownloadingId(doc.id)
+    try {
+      const result = await getKnowledgeFileUrl(doc.id, 'view')
+      if (result.ok && tab) tab.location.href = result.url
+      else if (result.ok) window.location.assign(result.url)
+      else {
+        tab?.close()
+        toast.error(t(`errors.${result.error}`))
+      }
+    } catch {
+      tab?.close()
       toast.error(t('errors.unknown'))
     } finally {
       setDownloadingId(null)
@@ -121,6 +143,32 @@ export function DocumentsList({
                   {doc.status === 'processing' && <Loader2 className="animate-spin" />}
                   {t(`status.${doc.status}`)}
                 </Badge>
+                {opensInTab(doc.file_type) ? (
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`${t('viewInTab')}: ${doc.title}`}
+                    title={t('viewInTab')}
+                    disabled={downloadingId === doc.id}
+                    onClick={() => handleView(doc)}
+                  >
+                    <ExternalLink className="rtl:-scale-x-100" />
+                  </Button>
+                ) : (
+                  // Word and plain text: no tab that shows nothing. aria-disabled, not
+                  // disabled, so the reason still shows on hover and is read out
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-disabled
+                    aria-label={`${t('downloadOnly')}: ${doc.title}`}
+                    title={t('downloadOnly')}
+                    className="cursor-not-allowed opacity-40 hover:bg-transparent"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    <ExternalLink className="rtl:-scale-x-100" />
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon-sm"

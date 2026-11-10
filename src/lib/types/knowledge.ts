@@ -13,6 +13,27 @@ export type KnowledgeFileType = keyof typeof KNOWLEDGE_FILE_TYPES
 
 export const KNOWLEDGE_ACCEPT = '.pdf,.docx,.txt'
 
+/**
+ * Whether a browser tab can show the original file as it is: PDF only. Word
+ * does not render in a browser. Plain text is download-only on purpose:
+ *
+ * BEFORE MAKING PLAIN TEXT VIEWABLE, fix its stored content type. Uploads
+ * store it as bare `text/plain` (KNOWLEDGE_FILE_TYPES, used by
+ * app/api/knowledge/upload), with no charset, so a browser tab may decode
+ * its Arabic wrongly, and that gibberish reads exactly like a bad
+ * extraction. The fix is two parts, both needed:
+ *   1. a migration adding 'text/plain;charset=utf-8' to the knowledge-base
+ *      bucket's allowed_mime_types (20260928100000 allows exactly
+ *      'text/plain'; Supabase storage only ignores the charset parameter
+ *      from #1382, 15 September 2026, and the hosted version is unknown);
+ *   2. then uploading text with contentType 'text/plain; charset=utf-8'.
+ * Files already stored keep the old type: they stay download-only, or are
+ * re-uploaded. Decided 2026-11-10 (download-only, the fix held).
+ */
+export function opensInTab(fileType: string | null | undefined) {
+  return fileType === 'pdf'
+}
+
 export function knowledgeFileType(fileName: string): KnowledgeFileType | null {
   const ext = fileName.split('.').pop()?.toLowerCase()
   return ext && ext in KNOWLEDGE_FILE_TYPES ? (ext as KnowledgeFileType) : null

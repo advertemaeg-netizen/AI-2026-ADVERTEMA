@@ -625,7 +625,9 @@
       "textTooLarge": "The file has more text than one file may hold. Split it into smaller files.",
       "impersonating": "Changes aren’t allowed while viewing a customer’s account"
     },
-    "download": "Download the original file"
+    "download": "Download the original file",
+    "viewInTab": "Open the file in a new tab",
+    "downloadOnly": "This kind of file can only be downloaded"
   },
   "playground": {
     "title": "Try the {client} bot",
