@@ -196,6 +196,21 @@ describe('a comment on the Page’s own post', () => {
   })
 })
 
+describe('set A only when a private message was sent for this comment (2026-11-09)', () => {
+  it('the same person on another post: nothing sent privately, so the public reply is the invite, never a claim that we messaged them', async () => {
+    const { pageId } = await livePage()
+    const psid = newPsid()
+    graph({ pageId, psid })
+    await deliver(pageId, [feedChange({ postId: `${pageId}_${objectId()}`, from: { id: psid, name: 'A' }, message: 'أول' })])
+    await deliver(pageId, [feedChange({ postId: `${pageId}_${objectId()}`, from: { id: psid, name: 'A' }, message: 'تاني' })])
+
+    expect(privateSends()).toHaveLength(1)
+    const [first, second] = publicSends().map((c) => c.body.message)
+    expect([...COMMENT_PUBLIC_SENT_AR]).toContain(first)
+    expect(second).toBe(COMMENT_PUBLIC_INVITE_AR)
+  })
+})
+
 describe('the comment’s text, which the feed webhook does not carry', () => {
   it('is read with is_hidden in one call, stored as written, and the comment answered', async () => {
     const { pageId, channelId } = await livePage()

@@ -150,10 +150,52 @@ export async function harnessFetch(input: RequestInfo | URL, init?: RequestInit)
       interceptor.remaining -= 1
       return interceptor.respond(() => realFetch(url, init))
     }
-    return realFetch(url, init)
+    // The access project's instrument retries above this; here only for the app project
+    return retriedAbove ? realFetch(url, init) : withConnectionRetry(`${method} ${restPath}`, () => realFetch(url, init))
   }
 
   throw new Error(`Unexpected network call in a test: ${url.href}`)
+}
+
+/**
+ * CONNECTION ERRORS RETRIED, IN THE APP PROJECT TOO (2026-11-10).
+ *
+ * In this harness a request can answer 503 PGRST000–003 when PostgREST's one
+ * connection to PGlite has dropped (pglite#958) or is being re-made (an idle
+ * connection closed, its replacement cut off: run 8's one failure). A
+ * connection-type answer means the statement never ran, so retrying it cannot
+ * run anything twice. The access project's instrument (access-fetch.ts) has
+ * always retried these; the app project did not, so there one dropped
+ * connection failed a test that had nothing wrong with it. The two now agree,
+ * with the access instrument's own limits:
+ *   PGRST000 (no connection yet, PostgREST backing off): up to 15 attempts,
+ *     waits of 200 ms rising to 1 s;
+ *   PGRST001–003: up to 3 attempts.
+ * NOTHING ELSE IS EVER RETRIED: a 4xx, a 500, any other 503, a timeout or an
+ * assertion stops the test as before. And every retry is logged, one line
+ * each (`[harness] connection retry`), so the rate is visible: if it climbs,
+ * the harness is rotting, and the log says so.
+ * In the access project the instrument retries and this stands down
+ * (connectionRetriesHandledAbove), so no request is retried twice.
+ */
+let retriedAbove = false
+
+/** The access project's setup calls this: its instrument retries connection errors itself */
+export function connectionRetriesHandledAbove() {
+  retriedAbove = true
+}
+
+export async function withConnectionRetry(what: string, run: () => Promise<Response>): Promise<Response> {
+  for (let attempt = 1; ; attempt += 1) {
+    const response = await run()
+    if (response.status !== 503) return response
+    const code = /"code"\s*:\s*"(PGRST00[0-3])"/.exec(await response.clone().text())?.[1]
+    if (!code) return response
+    const limit = code === 'PGRST000' ? 15 : 3
+    if (attempt >= limit) return response
+    console.warn(`[harness] connection retry ${attempt}/${limit - 1} after ${code}: ${what}`)
+    await new Promise((resolve) => setTimeout(resolve, code === 'PGRST000' ? Math.min(200 * attempt, 1000) : 50 * attempt))
+  }
 }
 
 const afterWork: Promise<unknown>[] = []

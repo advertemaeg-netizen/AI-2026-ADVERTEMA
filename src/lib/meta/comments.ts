@@ -80,8 +80,15 @@ import { WHATSAPP_PLACEHOLDER_AR } from '@/lib/meta/whatsapp-notices-ar'
  *     Four public replies to one person under one post read as a machine,
  *     and the fourth adds nothing. Silence is the better behaviour.
  * A person with a DM already open who comments on ANOTHER post gets that
- * post's one public reply from set A ("we've messaged you" is true: the DM
- * exists) and no opener.
+ * post's one public reply, and no opener: the INVITE, not set A.
+ *
+ * SET A ONLY IF A PRIVATE MESSAGE WAS SENT FOR THIS COMMENT (2026-11-09).
+ * Set A says, in public, that we messaged this person ("كلّمناك في الخاص").
+ * Until this date it was also posted when an earlier comment had opened the
+ * DM and nothing was sent for this one: the person opened their messages,
+ * found nothing new, and the clinic's page had said something untrue under
+ * its name. A reader takes it to be about this comment, so it is posted only
+ * when this comment's private reply went; otherwise the invite.
  *
  * NEVER LOGGED: the comment's text, the commenter's id, username or name,
  * the opener. Logged: the channel, the comment id, the decision, the states,
@@ -293,15 +300,14 @@ async function handleComment(supabase: SupabaseClient, channel: InboundChannel, 
     .update({ metadata: { ...stored.metadata, privateReply } })
     .eq('id', stored.id)
 
-  // 5. THE PUBLIC REPLY, one per person per post, ever: set A if their DM is open (sent now, or
-  // opened by an earlier comment); the invite if the private reply did not go
+  // 5. THE PUBLIC REPLY, one per person per post, ever: set A only if a private message was sent
+  // for THIS comment; the invite otherwise (an earlier comment's opener is not this one's reply)
   if (await alreadyRepliedOnPost(supabase, threadId, comment.postId)) {
     await record(supabase, comment.commentId, { public_state: 'skipped:already_replied_on_post', completed_at: new Date().toISOString() })
     console.info(`[${SOURCE}] comment answered`, { channelId: channel.id, commentId: comment.commentId, privateReply, publicReply: 'already_replied_on_post' })
     return { kind: 'replied', privateReply, publicReply: 'already_replied_on_post', variant: null }
   }
-  const dmOpen = privateReply === 'sent' || privateReply === 'already_opened'
-  const variant = dmOpen ? `sent_${randomInt(COMMENT_PUBLIC_SENT_AR.length) + 1}` : 'invite'
+  const variant = privateReply === 'sent' ? `sent_${randomInt(COMMENT_PUBLIC_SENT_AR.length) + 1}` : 'invite'
   const text = variant === 'invite' ? COMMENT_PUBLIC_INVITE_AR : COMMENT_PUBLIC_SENT_AR[Number(variant.slice(5)) - 1]
   if (!passesPublicChecks(text)) {
     // Cannot happen with the fixed strings; if it does, one of the two is wrong, and nothing is posted

@@ -215,7 +215,7 @@ describe('a comment on the client’s media, switch on', () => {
     expect(await claimOf(service, third)).toMatchObject({ private_state: 'skipped:already_opened', public_state: 'skipped:already_replied_on_post' })
   })
 
-  it('the same person on another post: that post’s one public reply, from set A (their DM is open), and still no second opener', async () => {
+  it('the same person on another post: that post’s one public reply is the INVITE, never set A, since nothing was sent privately for it; no second opener', async () => {
     const { accountId } = await liveAccount()
     consoleOutput()
     meta()
@@ -226,7 +226,10 @@ describe('a comment on the client’s media, switch on', () => {
     expect(graphCalls.filter(isPrivate)).toHaveLength(1)
     const publicCalls = graphCalls.filter(isPublic)
     expect(publicCalls).toHaveLength(2)
-    expect(COMMENT_PUBLIC_SENT_AR).toContain(publicCalls[1].body.message)
+    // The first comment's private reply went: set A is true for it
+    expect(COMMENT_PUBLIC_SENT_AR).toContain(publicCalls[0].body.message)
+    // Nothing was sent privately for the second: claiming so would be untrue in public (2026-11-09)
+    expect(publicCalls[1].body.message).toBe(COMMENT_PUBLIC_INVITE_AR)
   })
 })
 
