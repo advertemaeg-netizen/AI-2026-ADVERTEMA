@@ -50,7 +50,8 @@ export function ListFiltersBar({
   clientLocked?: boolean
 }) {
   const t = useTranslations(namespace)
-  const tChannels = useTranslations('channels')
+  // The owner's channel names, as the inbox says them (channelNames)
+  const tChannelNames = useTranslations('channelNames')
   const router = useRouter()
   const pathname = usePathname()
   const [isPending, startTransition] = useTransition()
@@ -139,7 +140,7 @@ export function ListFiltersBar({
             {CHANNEL_TYPES.map((type) => (
               <SelectItem key={type} value={type}>
                 <ChannelIcon type={type} />
-                {tChannels(`types.${type}`)}
+                {tChannelNames(type)}
               </SelectItem>
             ))}
           </SelectContent>

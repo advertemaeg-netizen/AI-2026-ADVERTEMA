@@ -54,7 +54,7 @@ export function ClientSwitcher({
 
   return (
     <Select value={selectedId ?? ALL} onValueChange={select} disabled={isPending}>
-      <SelectTrigger className="w-full" aria-label={t('label')}>
+      <SelectTrigger className="w-full *:data-[slot=select-value]:min-w-0" aria-label={t('label')}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -70,7 +70,7 @@ export function ClientSwitcher({
         {clients.map((client) => (
           <SelectItem key={client.id} value={client.id}>
             <Building2 />
-            {client.name}
+            <span dir="auto" className="min-w-0 truncate">{client.name}</span>
           </SelectItem>
         ))}
       </SelectContent>

@@ -161,7 +161,7 @@ export function LeadsTable({
                 <Link href={`/dashboard/leads/${lead.id}`} className="grid min-w-0 flex-1 gap-1">
                   <span className="flex min-w-0 items-center gap-1.5 font-medium">
                     {lead.conversation?.channel && (
-                      <ChannelIcon type={lead.conversation.channel.type} className="size-3.5 shrink-0 text-muted-foreground" />
+                      <ChannelIcon type={lead.conversation.channel.type} className="size-3.5" />
                     )}
                     <span className="truncate">{lead.name || t('unnamed')}</span>
                   </span>
@@ -235,7 +235,7 @@ export function LeadsTable({
                       className="inline-flex items-center gap-1.5 font-medium hover:underline"
                     >
                       {lead.conversation?.channel && (
-                        <ChannelIcon type={lead.conversation.channel.type} className="size-3.5 text-muted-foreground" />
+                        <ChannelIcon type={lead.conversation.channel.type} className="size-3.5" />
                       )}
                       {lead.name || t('unnamed')}
                     </Link>

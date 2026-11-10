@@ -32,7 +32,7 @@ import { launchWhatsAppSignup } from '@/lib/meta/whatsapp-signup'
 import { CONNECT_STATUS_MESSAGES } from '@/lib/types/meta-connect'
 import { WHATSAPP_CONNECT_MESSAGES, WHATSAPP_CONNECT_SUCCESS, type WhatsAppConnectResult } from '@/lib/types/whatsapp-connect'
 import { AVAILABLE_CHANNEL_TYPES, CHANNEL_TYPES, type ChannelType } from '@/lib/types/channels'
-import { CHANNEL_ICONS } from '@/components/channel-icon'
+import { ChannelIcon } from '@/components/channel-icon'
 
 /** Facebook and Instagram are one login, one card: what to connect is chosen after the return from Meta */
 const META_TYPES: readonly ChannelType[] = ['facebook', 'instagram']
@@ -162,10 +162,9 @@ export function AddChannelDialog({
               </SelectTrigger>
               <SelectContent>
                 {CHANNEL_TYPES.map((value) => {
-                  const Icon = CHANNEL_ICONS[value]
                   return (
                     <SelectItem key={value} value={value}>
-                      <Icon />
+                      <ChannelIcon type={value} surface="account" />
                       {t(`types.${value}`)}
                       {!offered(value) && (
                         <Badge variant="secondary">{t('comingSoonBadge')}</Badge>

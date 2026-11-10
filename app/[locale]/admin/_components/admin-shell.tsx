@@ -129,7 +129,7 @@ export function AdminShell({
   }
 
   return (
-    <div className="flex h-screen max-md:h-dvh max-md:flex-col">
+    <div data-surface="work" className="flex h-screen max-md:h-dvh max-md:flex-col">
       <header className="glass glass-page flex shrink-0 items-center gap-1 border-b px-1 pt-[env(safe-area-inset-top)] md:hidden">
         <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
           <SheetTrigger asChild>

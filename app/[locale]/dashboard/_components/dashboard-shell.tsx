@@ -6,16 +6,17 @@ import { Link, useRouter } from '@/i18n/navigation'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import {
-  LayoutDashboard,
-  MessagesSquare,
-  Users,
-  Building2,
-  Settings,
-  LogOut,
-  UsersRound,
-  CalendarDays,
   BarChart3,
+  Building2,
+  CalendarDays,
   CreditCard,
+  LayoutDashboard,
+  LogOut,
+  MessageSquareQuote,
+  MessagesSquare,
+  Settings,
+  Users,
+  UsersRound,
   Wallet,
   type LucideIcon,
 } from 'lucide-react'
@@ -93,6 +94,7 @@ export function DashboardShell({
           { name: t('overview'), href: '/dashboard', icon: LayoutDashboard, exact: true },
           { name: t('analytics'), href: '/dashboard/analytics', icon: BarChart3 },
           { name: t('conversations'), href: '/dashboard/conversations', icon: MessagesSquare },
+          { name: t('comments'), href: '/dashboard/comments', icon: MessageSquareQuote },
           { name: t('leads'), href: '/dashboard/leads', icon: Users },
           { name: t('appointments'), href: '/dashboard/appointments', icon: CalendarDays },
           ...(canManage
@@ -114,6 +116,7 @@ export function DashboardShell({
         { name: t('overview'), href: '/dashboard', icon: LayoutDashboard, exact: true },
         { name: t('analytics'), href: '/dashboard/analytics', icon: BarChart3 },
         { name: t('conversations'), href: '/dashboard/conversations', icon: MessagesSquare },
+          { name: t('comments'), href: '/dashboard/comments', icon: MessageSquareQuote },
         { name: t('leads'), href: '/dashboard/leads', icon: Users },
         { name: t('appointments'), href: '/dashboard/appointments', icon: CalendarDays },
         ...(canManage
@@ -131,6 +134,7 @@ export function DashboardShell({
         { name: t('overview'), href: '/dashboard', icon: LayoutDashboard, exact: true },
         { name: t('analytics'), href: '/dashboard/analytics', icon: BarChart3 },
         { name: t('allConversations'), href: '/dashboard/conversations', icon: MessagesSquare },
+        { name: t('comments'), href: '/dashboard/comments', icon: MessageSquareQuote },
         { name: t('allLeads'), href: '/dashboard/leads', icon: Users },
         { name: t('appointments'), href: '/dashboard/appointments', icon: CalendarDays },
         ...(canSeeAll ? [{ name: t('clients'), href: '/dashboard/clients', icon: Building2 }] : []),
@@ -246,7 +250,7 @@ export function DashboardShell({
   }
 
   return (
-    <div className="flex h-screen flex-col print:block print:h-auto max-md:h-dvh">
+    <div data-surface="work" className="flex h-screen flex-col print:block print:h-auto max-md:h-dvh">
       {banner}
       <MobileTopBar title={selectedClient?.name} open={menuOpen} onOpenChange={setMenuOpen}>
         <div className="flex min-h-0 flex-1 flex-col">{sidebar(true)}</div>

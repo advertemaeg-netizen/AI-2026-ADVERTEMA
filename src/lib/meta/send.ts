@@ -51,6 +51,8 @@ export const MESSENGER_OUTSIDE_WINDOW = { code: 10, subcodes: [2018278, 2534022]
  */
 export const MESSENGER_MAX_TEXT_LENGTH = 1999
 const ATTEMPT_TIMEOUT_MS = 15_000
+/** A read a dashboard page waits on: shorter than a send's, and its failure costs only a link */
+const PAGE_READ_TIMEOUT_MS = 3_000
 
 export type SendResult =
   /** Delivered to Meta; `messageId` is the outbound id it answered with (a wamid, or Messenger's mid) */
@@ -423,6 +425,44 @@ export async function fetchInstagramUsername({ supabase, channelId, igsid }: { s
     console.warn(`${log} request failed`, { channelId, cause: cause instanceof Error ? cause.name : String(cause) })
     return null
   }
+}
+
+/**
+ * The permalinks of an Instagram account's posts, for the comments tab's
+ * "which post": GET /?ids={media ids}&fields=permalink with the channel's
+ * token, one call for up to 50 posts (Graph's multi-id read). The webhook's
+ * comment carries the media id only. Whatever cannot be read is left out: the
+ * row then shows its post unlinked. Short timeout: a page render waits on it.
+ * Needs instagram_business_basic, already held for the comments themselves.
+ */
+export async function fetchInstagramPermalinks({ supabase, channelId, mediaIds }: { supabase: SupabaseClient; channelId: string; mediaIds: string[] }): Promise<Map<string, string>> {
+  const log = '[instagram/permalinks]'
+  const links = new Map<string, string>()
+  const ids = [...new Set(mediaIds)].filter((id) => /^[0-9]+$/.test(id)).slice(0, 50)
+  if (ids.length === 0) return links
+  const { token } = await channelCredentials(supabase, channelId)
+  if (!token) {
+    console.warn(`${log} not_configured`, { channelId })
+    return links
+  }
+  try {
+    const response = await fetch(`${INSTAGRAM_GRAPH}/?ids=${ids.join(',')}&fields=permalink`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(PAGE_READ_TIMEOUT_MS),
+    })
+    const answer = (await response.json().catch(() => ({}))) as Record<string, { permalink?: unknown } | undefined> & { error?: GraphError }
+    if (!response.ok) {
+      console.warn(`${log} refused`, { channelId, status: response.status, code: typeof answer.error?.code === 'number' ? answer.error.code : null })
+      return links
+    }
+    for (const id of ids) {
+      const permalink = answer[id]?.permalink
+      if (typeof permalink === 'string' && permalink.startsWith('https://www.instagram.com/')) links.set(id, permalink)
+    }
+  } catch (cause) {
+    console.warn(`${log} request failed`, { channelId, cause: cause instanceof Error ? cause.name : String(cause) })
+  }
+  return links
 }
 
 /** Every outcome that is not a send is written to the log by kind, with nothing of the message in it */

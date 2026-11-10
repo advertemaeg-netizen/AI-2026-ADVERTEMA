@@ -23,6 +23,7 @@ import {
   type TeamMember,
 } from '@/lib/types/conversations'
 import type { LeadVisit } from '@/lib/types/leads'
+import type { ConversationOrigin } from '@/lib/types/comments'
 
 const INBOX_PATH = '/[locale]/dashboard/conversations'
 const LIST_LIMIT = 100
@@ -54,6 +55,8 @@ export async function getConversations(
   let query = supabase
     .from('conversations')
     .select(LIST_COLUMNS)
+    // Private messages only: a comment thread is the comments tab's (src/lib/actions/comments.ts)
+    .neq('thread', 'comments')
     .order('last_message_at', { ascending: false })
     .limit(LIST_LIMIT)
 
@@ -81,6 +84,8 @@ export async function getConversation(id: string): Promise<{
   leads: LeadVisit[]
   /** Whether the reply box is open, and when the 24-hour window closes */
   reply: ReplyAvailability
+  /** The comment it began from, when it began from one (the opener's metadata.origin, src/lib/meta/comments.ts) */
+  origin: ConversationOrigin | null
 } | null> {
   if (!UUID_PATTERN.test(id)) return null
   const { supabase, profile } = await getSession()
@@ -95,7 +100,7 @@ export async function getConversation(id: string): Promise<{
   if (error) throw new Error(`Failed to load conversation: ${error.message}`)
   if (!conversation) return null
 
-  const [messagesResult, teamResult, leads] = await Promise.all([
+  const [messagesResult, teamResult, leads, originResult] = await Promise.all([
     supabase
       .from('messages')
       .select(MESSAGE_COLUMNS)
@@ -104,12 +109,25 @@ export async function getConversation(id: string): Promise<{
       .returns<Message[]>(),
     supabase.rpc('client_team', { check_client_id: conversation.client.id }),
     getConversationLeads(supabase, id),
+    supabase
+      .from('messages')
+      .select('origin:metadata->origin')
+      .eq('conversation_id', id)
+      .not('metadata->origin', 'is', null)
+      .limit(1)
+      .returns<{ origin: { commentId?: unknown } | null }[]>(),
   ])
 
   if (messagesResult.error) {
     throw new Error(`Failed to load messages: ${messagesResult.error.message}`)
   }
   if (teamResult.error) console.error('[conversations] client_team', teamResult.error)
+  // Without it the line at the top is missing, and nothing else: logged, not thrown
+  if (originResult.error) console.error('[conversations] origin', originResult.error)
+  const opener = originResult.data?.[0]?.origin
+  const origin: ConversationOrigin | null = opener
+    ? { commentId: typeof opener.commentId === 'string' ? opener.commentId : null }
+    : null
 
   // The user can see the conversation (read above under RLS); its channel's
   // state and token are read with the service role, which alone may
@@ -123,6 +141,7 @@ export async function getConversation(id: string): Promise<{
     team: (teamResult.data as TeamMember[] | null) ?? [],
     leads,
     reply,
+    origin,
   }
 }
 

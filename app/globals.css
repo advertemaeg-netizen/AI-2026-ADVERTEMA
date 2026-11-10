@@ -122,6 +122,29 @@
   --neutral-fill: #f3f4f6;
   --neutral-fill-foreground: #4b5563; /* 6.87 */
 
+  /*
+   * CHANNELS: who a conversation is with, and nothing else (the comments tab
+   * decisions, 7.3; chosen 2026-11-10, .scratch/comments-tab-choices.md).
+   * One colour per channel, on every glyph, chart, legend and row. They never
+   * signal state: a failure is --critical, never a channel's colour, and a
+   * channel is never drawn in a state tone. The brand's own hex where it
+   * clears 3:1 on a card; WhatsApp's own #25D366 measures 1.98 there, so it is
+   * deepened along its hue. On a card / the ground / the field's darkest:
+   *   whatsapp  4.25 / 3.90 / 3.59   (WhatsApp green #25D366, deepened)
+   *   facebook  4.82 / 4.43 / 4.07   (Meta's #0866FF: the Page, its comments and Messenger)
+   *   instagram 3.85 / 3.53 / 3.25   (Instagram's #FF0069)
+   *   website   18.88               (our black: the one channel that is ours)
+   * Against the state tones, CIEDE2000, normal / deuteranopia / protanopia:
+   * whatsapp-positive 14.0/13.0/14.6, instagram-critical 24.8/23.6/23.6,
+   * whatsapp-critical 65.1/13.1/25.1. The tightest channel pair is
+   * whatsapp-instagram under deuteranopia (9.9): their glyphs differ in shape
+   * and every legend names them, so colour is never the only carrier.
+   */
+  --channel-whatsapp: #178d48;
+  --channel-facebook: #0866ff;
+  --channel-instagram: #ff0069;
+  --channel-website: var(--palette-black);
+
   /* Dialog and sheet backdrops */
   --overlay: rgb(17 17 17 / 0.28);
 
@@ -227,7 +250,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  /* Alexandria and its fallback: set on <body> by app/[locale]/layout.tsx */
+  /* Readex Pro and its fallback: set on <body> by app/[locale]/layout.tsx */
   --font-sans: var(--font-stack), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-stack), system-ui, sans-serif;
@@ -282,6 +305,10 @@
   --color-neutral-fill: var(--neutral-fill);
   --color-neutral-fill-foreground: var(--neutral-fill-foreground);
   --color-overlay: var(--overlay);
+  --color-channel-whatsapp: var(--channel-whatsapp);
+  --color-channel-facebook: var(--channel-facebook);
+  --color-channel-instagram: var(--channel-instagram);
+  --color-channel-website: var(--channel-website);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -579,6 +606,25 @@ body::after {
   background: var(--field-blooms);
   will-change: transform;
   animation: field-drift var(--motion-field-duration) ease-in-out infinite alternate;
+}
+
+/*
+ * THE WORKING SCREENS ARE FLAT (comments tab decisions, 7.1). The field
+ * drifts behind sign-in, the marketing site and empty states, which are
+ * glanced at; the dashboard and the admin panel are lived in, and a moving
+ * ground behind a dense list fights it. Their shells carry
+ * data-surface="work", and there the field is not drawn: the ground is Soft
+ * White. Every contrast measured on the field holds on it (the field is only
+ * ever darker than the ground).
+ */
+body:has([data-surface="work"])::before,
+body:has([data-surface="work"])::after {
+  display: none;
+}
+
+/* An empty state keeps the field's still base: the one warm place on a working screen */
+@utility empty-field {
+  background-image: var(--field-base);
 }
 
 /*

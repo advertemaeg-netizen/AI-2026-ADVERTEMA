@@ -2,17 +2,20 @@ import type { Metadata, Viewport } from 'next'
 import { NextIntlClientProvider, hasLocale } from 'next-intl'
 import { setRequestLocale } from 'next-intl/server'
 import { notFound } from 'next/navigation'
-import { Alexandria } from 'next/font/google'
+import { Readex_Pro } from 'next/font/google'
 import { Providers } from '@/components/providers'
 import { routing } from '@/i18n/routing'
 import '../globals.css'
 
-// Alexandria, Arabic and Latin in one variable family (100–900). Back on
-// 25 October 2026 by the owner's choice, replacing Manrope + IBM Plex Sans
-// Arabic. One face carries both scripts, so its Arial fallback only shows
-// while the font loads: there is no second web font for it to get in front of.
-const alexandria = Alexandria({ subsets: ['arabic', 'latin'] })
-const fontStack = alexandria.style.fontFamily
+// Readex Pro, Arabic first with a Latin companion drawn to match it, in one
+// variable family (10 November 2026, the comments tab decisions 7.2; it
+// replaces Alexandria). One face carries both scripts, so its fallback only
+// shows while the font loads. Only what is used is loaded: the two subsets
+// the product writes in, and the variable weight axis alone (no HEXP axis).
+// The product uses 400, 500, 600 and 700; as statics those are four files per
+// subset, as the variable font one, so the axis is the lighter load.
+const readex = Readex_Pro({ subsets: ['arabic', 'latin'] })
+const fontStack = readex.style.fontFamily
 
 // cover: env(safe-area-inset-*) is only non-zero with it (notch, home indicator).
 // resizes-content: on Android the layout shrinks above the keyboard, so a

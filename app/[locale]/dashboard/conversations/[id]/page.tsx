@@ -20,6 +20,7 @@ export default async function ConversationPage({
       initialConversation={result.conversation}
       initialMessages={result.messages}
       reply={result.reply}
+      origin={result.origin}
       team={result.team}
       leads={result.leads}
       canManage={canManage(profile)}

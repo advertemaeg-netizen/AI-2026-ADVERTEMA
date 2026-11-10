@@ -29,7 +29,7 @@ import {
 import { deleteChannelAction, subscribeWhatsappAction, toggleChannelActive } from '@/lib/actions/channels'
 import type { SubscriptionState } from '@/lib/meta/subscription'
 import type { Channel } from '@/lib/types/channels'
-import { CHANNEL_ICONS } from '@/components/channel-icon'
+import { ChannelIcon } from '@/components/channel-icon'
 import { embedCode } from './channel-meta'
 
 /**
@@ -81,7 +81,6 @@ export function ChannelCard({
   const [switchOnOpen, setSwitchOnOpen] = useState(false)
   const isMeta = META_TYPES.includes(channel.type)
 
-  const Icon = CHANNEL_ICONS[channel.type]
   const snippet =
     channel.type === 'website' ? embedCode(appOrigin, channel.id) : null
 
@@ -149,7 +148,7 @@ export function ChannelCard({
       <CardHeader>
         <div className="flex items-center gap-3">
           <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-            <Icon className="size-4" />
+            <ChannelIcon type={channel.type} surface="account" className="size-4" />
           </div>
           <div className="min-w-0">
             <CardTitle className="truncate">{channel.name}</CardTitle>

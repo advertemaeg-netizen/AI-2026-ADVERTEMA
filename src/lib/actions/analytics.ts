@@ -42,6 +42,8 @@ async function periodKpis(
   const count = async (table: 'conversations' | 'leads') => {
     let query = supabase.from(table).select('id', { count: 'exact', head: true }).gte('created_at', from).lt('created_at', to)
     if (clientId) query = query.eq('client_id', clientId)
+    // A conversation is a private one: comment threads are the comments tab's
+    if (table === 'conversations') query = query.neq('thread', 'comments')
     const { count: n, error } = await query
     if (error) throw new Error(`Failed to count ${table}: ${error.message}`)
     return n ?? 0

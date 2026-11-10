@@ -23,6 +23,7 @@ import {
   type ChartConfig,
 } from '@/components/ui/chart'
 import { CHANNEL_TYPES, type ChannelType } from '@/lib/types/channels'
+import { CHANNEL_COLOR, ChannelIcon } from '@/components/channel-icon'
 import type { AnalyticsData } from '@/lib/types/analytics'
 import { ChartCard } from './chart-card'
 
@@ -68,13 +69,10 @@ function barEndLabel(rtl: boolean, formatValue: (value: number) => string) {
   return BarEndLabel
 }
 
-// Color follows the channel, never its rank
-const CHANNEL_COLORS: Record<ChannelType, string> = {
-  website: 'var(--chart-1)',
-  facebook: 'var(--chart-2)',
-  instagram: 'var(--chart-3)',
-  whatsapp: 'var(--chart-4)',
-}
+// Color follows the channel, never its rank: the channel's own colour, the
+// same one its glyph wears in every row (--channel-*, app/globals.css). Never
+// a state tone, and never a --chart-* series colour
+const CHANNEL_COLORS: Record<ChannelType, string> = CHANNEL_COLOR
 
 export function OverTimeChart({ data }: { data: AnalyticsData }) {
   const t = useTranslations('analytics')
@@ -149,7 +147,8 @@ export function OverTimeChart({ data }: { data: AnalyticsData }) {
 
 export function ChannelsChart({ data }: { data: AnalyticsData }) {
   const t = useTranslations('analytics')
-  const tChannels = useTranslations('channels')
+  // The owner's channel names, as the inbox says them
+  const tChannels = useTranslations('channelNames')
   const format = useFormatter()
 
   const total = data.channels.reduce((sum, c) => sum + c.conversations, 0)
@@ -157,7 +156,7 @@ export function ChannelsChart({ data }: { data: AnalyticsData }) {
   const share = (n: number) => format.number(total ? n / total : 0, { style: 'percent', maximumFractionDigits: 1 })
 
   const config = Object.fromEntries(
-    CHANNEL_TYPES.map((type) => [type, { label: tChannels(`types.${type}`), color: CHANNEL_COLORS[type] }])
+    CHANNEL_TYPES.map((type) => [type, { label: tChannels(type), color: CHANNEL_COLORS[type] }])
   ) satisfies ChartConfig
 
   return (
@@ -167,7 +166,7 @@ export function ChannelsChart({ data }: { data: AnalyticsData }) {
       empty={total === 0}
       table={{
         headers: [t('series.channel'), t('series.conversations'), t('series.share')],
-        rows: data.channels.map((c) => [tChannels(`types.${c.channel}`), c.conversations, share(c.conversations)]),
+        rows: data.channels.map((c) => [tChannels(c.channel), c.conversations, share(c.conversations)]),
       }}
     >
       {slices.length < 2 ? (
@@ -176,7 +175,7 @@ export function ChannelsChart({ data }: { data: AnalyticsData }) {
           <p className="text-4xl font-semibold">{share(slices[0]?.conversations ?? 0)}</p>
           <p className="text-sm text-muted-foreground">
             {t('charts.channels.single', {
-              channel: slices[0] ? tChannels(`types.${slices[0].channel}`) : '—',
+              channel: slices[0] ? tChannels(slices[0].channel) : '—',
               count: slices[0]?.conversations ?? 0,
             })}
           </p>
@@ -208,7 +207,8 @@ export function ChannelsChart({ data }: { data: AnalyticsData }) {
             {slices.map((slice) => (
               <li key={slice.channel} className="flex items-center gap-2">
                 <span className="size-2.5 shrink-0 rounded-sm" style={{ background: CHANNEL_COLORS[slice.channel] }} />
-                <span className="flex-1">{tChannels(`types.${slice.channel}`)}</span>
+                <ChannelIcon type={slice.channel} className="size-3.5" />
+                <span className="flex-1">{tChannels(slice.channel)}</span>
                 <span className="font-medium tabular-nums">{format.number(slice.conversations)}</span>
                 <span className="w-14 text-end text-muted-foreground tabular-nums">{share(slice.conversations)}</span>
               </li>

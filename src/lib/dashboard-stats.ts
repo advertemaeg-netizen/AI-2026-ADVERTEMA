@@ -27,6 +27,8 @@ export async function getDashboardStats(clientId: string | null = null) {
     let query = supabase.from(table).select('id', { count: 'exact', head: true }).gte('created_at', from)
     if (to) query = query.lt('created_at', to)
     if (clientId) query = query.eq('client_id', clientId)
+    // A conversation is a private one: comment threads are the comments tab's
+    if (table === 'conversations') query = query.neq('thread', 'comments')
     const { count: n, error } = await query
     if (error) throw new Error(`Failed to count ${table}: ${error.message}`)
     return n ?? 0
@@ -46,6 +48,7 @@ export async function getDashboardStats(clientId: string | null = null) {
   let recentConversationsQuery = supabase
     .from('conversations')
     .select('id, contact_name, contact_identifier, last_message_at, client:clients!inner(name)')
+    .neq('thread', 'comments')
   if (clientId) {
     activeLeadsQuery = activeLeadsQuery.eq('client_id', clientId)
     recentLeadsQuery = recentLeadsQuery.eq('client_id', clientId)

@@ -94,7 +94,8 @@
     "appointments": "Appointments",
     "analytics": "Analytics",
     "subscription": "Agency subscription",
-    "billing": "Billing"
+    "billing": "Billing",
+    "comments": "Comments"
   },
   "pages": {
     "conversationsDesc": "All conversations across your channels.",
@@ -562,7 +563,8 @@
       "disconnected": "The channel is not connected. Reconnect it from the channels page.",
       "outsideWindow": "More than 24 hours have passed since the visitor’s last message. You can’t reply here until they write again.",
       "commentThread": "This is a public comment. A private reply is sent from the same person’s messages conversation."
-    }
+    },
+    "fromComment": "This conversation began with a comment on a post."
   },
   "knowledge": {
     "title": "{client} knowledge base",
@@ -2354,5 +2356,23 @@
       "impersonating": "You can't make changes while viewing a customer's account",
       "unknown": "Something went wrong, try again"
     }
+  },
+  "comments": {
+    "title": "Comments",
+    "empty": {
+      "heading": "No comments yet",
+      "body": "As soon as someone comments on one of your posts, you will find the comment here, with the reply that went out."
+    },
+    "publicSent": "Public reply sent",
+    "privateSent": "Private reply sent",
+    "noReply": "No reply",
+    "openDm": "Open the private conversation",
+    "badge": "Comment"
+  },
+  "channelNames": {
+    "whatsapp": "WhatsApp",
+    "facebook": "Messenger",
+    "instagram": "Instagram",
+    "website": "Website"
   }
 }

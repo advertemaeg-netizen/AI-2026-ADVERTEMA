@@ -42,7 +42,7 @@ export default async function ConversationsPage({
       <Card className="mt-4 py-0">
         <CardContent className="px-0">
           {conversations.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-16 text-center text-sm text-muted-foreground">
+            <div className="empty-field flex flex-col items-center gap-2 rounded-[inherit] py-16 text-center text-sm text-muted-foreground">
               <MessagesSquare className="size-8" />
               {hasFilters ? t('emptyFiltered') : t('empty')}
             </div>

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { toast } from 'sonner'
-import { ArrowLeft, Bot, PanelRight, SendHorizontal, UserRoundCheck } from 'lucide-react'
+import { ArrowLeft, Bot, MessageSquareQuote, PanelRight, SendHorizontal, UserRoundCheck } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -45,7 +45,8 @@ import {
   type TeamMember,
 } from '@/lib/types/conversations'
 import type { LeadVisit } from '@/lib/types/leads'
-import { ContactAvatar, StatusBadge, useContactLabel } from '../../_components/conversation-bits'
+import { commentAnchor, type ConversationOrigin } from '@/lib/types/comments'
+import { ContactAvatar, StatusBadge, useChannelName, useContactLabel } from '../../_components/conversation-bits'
 import { LeadVisitsList } from '../../../leads/_components/lead-visits-list'
 
 const UNASSIGNED = 'unassigned'
@@ -118,6 +119,7 @@ export function ConversationView({
   initialConversation,
   initialMessages,
   reply,
+  origin,
   team,
   leads,
   canManage,
@@ -127,6 +129,8 @@ export function ConversationView({
   initialMessages: Message[]
   /** Whether the reply box is open, and when the 24-hour window closes (src/lib/agent-reply.ts) */
   reply: ReplyAvailability
+  /** Set when the conversation began from a public comment: the line at the top, and the way back to it */
+  origin: ConversationOrigin | null
   team: TeamMember[]
   /** Every lead this conversation produced, oldest first */
   leads: LeadVisit[]
@@ -138,6 +142,7 @@ export function ConversationView({
   const tClientNav = useTranslations('clientNav')
   const format = useFormatter()
   const contactLabel = useContactLabel()
+  const channelName = useChannelName()
 
   const [conversation, setConversation] = useState(initialConversation)
   const [messages, setMessages] = useState(initialMessages)
@@ -458,11 +463,17 @@ export function ConversationView({
               <ArrowLeft className="rtl:rotate-180" />
             </Link>
           </Button>
-          <ContactAvatar name={conversation.contact_name} channelType={conversation.channel.type} />
+          <ContactAvatar
+            name={conversation.contact_name}
+            channelType={conversation.channel.type}
+            channelLabel={channelName(conversation.channel.type)}
+          />
           <div className="min-w-0">
-            <h1 className="truncate font-semibold">{contact}</h1>
-            <p className="truncate text-xs text-muted-foreground">
-              {conversation.client.name} · {conversation.channel.name}
+            <h1 dir="auto" className="truncate font-semibold">{contact}</h1>
+            <p className="flex min-w-0 gap-1 text-xs text-muted-foreground">
+              <span dir="auto" className="min-w-0 truncate">{conversation.client.name}</span>
+              <span aria-hidden>·</span>
+              <span dir="auto" className="min-w-0 truncate">{conversation.channel.name}</span>
             </p>
           </div>
         </div>
@@ -506,6 +517,16 @@ export function ConversationView({
         <section className="flex min-h-0 flex-col" aria-label={t('messages')}>
           <ScrollArea className="min-h-0 flex-1">
             <div className="flex flex-col gap-3 p-6 max-md:p-3" role="log" aria-live="polite">
+              {origin && (
+                // The link back to the comment it began from (comments tab decisions, 2)
+                <Link
+                  href={origin.commentId ? `/dashboard/comments#${commentAnchor(origin.commentId)}` : '/dashboard/comments'}
+                  className="mx-auto flex max-w-full items-center gap-2 rounded-full border border-foreground/40 px-3 py-1 text-xs font-medium underline-offset-4 hover:underline focus-visible:outline-2"
+                >
+                  <MessageSquareQuote className="size-3.5 shrink-0" aria-hidden />
+                  <span className="min-w-0">{t('fromComment')}</span>
+                </Link>
+              )}
               {messages.length === 0 && (
                 <p className="py-12 text-center text-sm text-muted-foreground">{t('noMessages')}</p>
               )}
