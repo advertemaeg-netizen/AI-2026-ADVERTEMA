@@ -2,8 +2,10 @@
 -- clients.comment_replies_enabled, dropped
 -- ============================================
 --
--- WAITING FOR: the code that reads the switch from the channel
--- (20261119100000) to be DEPLOYED. Applied before that, the deployed
+-- WAITED FOR: the code that reads the switch from the channel
+-- (20261119100000) to be deployed: confirmed by the owner on production,
+-- 2026-11-12 (both channels on, matching the database, the attribution
+-- line showing). Applied before that, the deployed
 -- webhook's channel lookup selects this column, fails, and every Meta
 -- delivery (WhatsApp, Messenger, Instagram) goes unanswered until the
 -- deploy. Moved into migrations/ only after the deploy is confirmed.
