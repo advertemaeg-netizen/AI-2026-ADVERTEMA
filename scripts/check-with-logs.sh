@@ -23,6 +23,13 @@ n=${1:?usage: scripts/check-with-logs.sh <run number> [--access-only]}
 mode=${2:-full}
 stamp=$(date -u +%Y%m%dT%H%M%SZ)
 logs=".scratch/check-failures/harness-run$n-$stamp"
+# pglite-socket's slot count, per project (tests/harness/stack.ts): leaks seen, and the state at stop
+slot_lines() {
+  for f in "$logs"/*-slots.log; do
+    [ -f "$f" ] || continue
+    echo "  $(basename "$f" .log): leaked-slot lines $(grep -c 'slot leaked' "$f"); $(grep 'at stop' "$f" | tail -1 | sed 's/^[^ ]* //')"
+  done
+}
 mkdir -p .scratch/check-failures
 before=$(ls .scratch/check-failures/check-*.log 2>/dev/null | sort | tail -1)
 start=$(date +%s)
@@ -42,6 +49,7 @@ if [ "$code" -eq 0 ]; then
   rm -f "$logs"/*-socket.log
   [ "$mode" = "--access-only" ] && rm -f "$out"
   echo "  CLEAN: socket logs deleted; PostgREST logs kept in $logs"
+  slot_lines
   exit 0
 fi
 if [ "$mode" = "--access-only" ]; then
@@ -68,4 +76,5 @@ for f in "$logs"/*-socket.log; do
   fi
 done
 echo "  logs kept: $logs"
+slot_lines
 exit "$code"

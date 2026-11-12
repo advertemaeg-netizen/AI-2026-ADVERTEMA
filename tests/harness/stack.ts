@@ -18,6 +18,8 @@ const ROOT = path.resolve(__dirname, '../..')
 const MIGRATIONS_DIR = path.join(ROOT, 'supabase/migrations')
 const POSTGREST_VERSION = 'v16.4'
 const CACHE_DIR = path.join(ROOT, 'node_modules/.cache/postgrest', POSTGREST_VERSION)
+/** pglite-socket's connection slots: PostgREST uses one; the rest absorb leaked ones (see startStack) */
+const SOCKET_SLOTS = 8
 
 export type Stack = { url: string; serviceKey: string; stop: () => Promise<void> }
 
@@ -115,7 +117,7 @@ function harnessLog(label: string) {
     const where = path.join(dir, `${label}-${name}.log`)
     return (text: string) => appendFileSync(where, text.split('\n').filter(Boolean).map((line) => `${new Date().toISOString()} ${line}\n`).join(''))
   }
-  return { postgrest: file('postgrest'), socket: file('socket') }
+  return { postgrest: file('postgrest'), socket: file('socket'), slots: file('slots') }
 }
 
 /** pglite-socket's debug lines (console.log, with these prefixes) to the socket log; anything else as before */
@@ -139,7 +141,48 @@ export async function startStack(label = 'harness'): Promise<Stack> {
   const unroute = socketLog ? routeSocketDebug(socketLog) : () => {}
 
   const dbPort = await freePort()
-  const socket = new PGLiteSocketServer({ db, port: dbPort, host: '127.0.0.1', debug: !!process.env.SOCKET_DEBUG || !!socketLog, inspect: !!process.env.SOCKET_DEBUG })
+  /**
+   * MORE THAN ONE SLOT, BECAUSE pglite-socket 0.2.11 LEAKS THEM (2026-11-12).
+   *
+   * The server counts a connection until its handler dispatches 'close'. On a
+   * socket error the handler detaches, and detaching removes the socket's own
+   * 'close' listener first: the 'close' that would free the slot never fires,
+   * and the error path never frees it either (src/index.ts: handleError ->
+   * detach(true); the server's 'error' listener only logs). With the default
+   * maxConnections of 1, one connection dropped on an error refused every
+   * reconnect after it, with "Too many connections": PostgREST read the `T`
+   * and backed off to 32 s for the rest of the run. That was the access
+   * project's "stuck state" (AGENTS.md). Run 20 caught it: the socket's one
+   * rejection in the same second as PostgREST's first `T`.
+   *
+   * PostgREST still holds one pooled connection (PGRST_DB_POOL 1), so in a
+   * healthy run only one is ever live; the extra slots absorb leaked ones. A
+   * leaked handler's open transaction is rolled back when it detaches
+   * (clearTransactionIfNeeded), so the next connection inherits no session.
+   */
+  const socket = new PGLiteSocketServer({
+    db,
+    port: dbPort,
+    host: '127.0.0.1',
+    maxConnections: SOCKET_SLOTS,
+    debug: !!process.env.SOCKET_DEBUG || !!socketLog,
+    inspect: !!process.env.SOCKET_DEBUG,
+  })
+  // THE NUMBER, kept permanently: a connection accepted while others are still
+  // counted. A leaked slot never comes back down, so the count climbing run
+  // over run is the leak; a single 2 can also be a reconnect that beat the
+  // old socket's close by a tick. At SOCKET_SLOTS the old failure returns.
+  // Written to <label>-slots.log too, which a clean run keeps: the number survives the run either way.
+  let highest = 0
+  socket.addEventListener('connection', () => {
+    const { activeConnections } = socket.getStats()
+    highest = Math.max(highest, activeConnections)
+    if (activeConnections > 1) {
+      const line = `[harness] pglite-socket slot leaked: ${activeConnections} connections counted of ${SOCKET_SLOTS} (${label})`
+      console.warn(line)
+      log?.slots(line)
+    }
+  })
   await socket.start()
 
   const apiPort = await freePort()
@@ -172,6 +215,8 @@ export async function startStack(label = 'harness'): Promise<Stack> {
   postgrest.stderr!.on('data', collect)
 
   const stop = async () => {
+    // One line per run even when nothing leaked: zero is a number too
+    log?.slots(`[harness] pglite-socket at stop: ${socket.getStats().activeConnections} counted, highest ${highest}, of ${SOCKET_SLOTS} (${label})`)
     postgrest.kill()
     await socket.stop()
     await db.close()
