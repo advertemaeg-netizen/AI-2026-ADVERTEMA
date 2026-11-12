@@ -34,6 +34,17 @@ export function opensInTab(fileType: string | null | undefined) {
   return fileType === 'pdf'
 }
 
+/**
+ * A file's size as the list shows it: whole KB under 1 MB (never "0": a
+ * 40 KB text file read "0 MB"), MB to one decimal from there. The units stay
+ * Latin in both languages, as they were.
+ */
+export function fileSize(bytes: number): { value: number; unit: 'KB' | 'MB'; fractionDigits: number } {
+  const MB = 1024 * 1024
+  if (bytes < MB) return { value: bytes <= 0 ? 0 : Math.min(1023, Math.max(1, Math.round(bytes / 1024))), unit: 'KB', fractionDigits: 0 }
+  return { value: bytes / MB, unit: 'MB', fractionDigits: 1 }
+}
+
 export function knowledgeFileType(fileName: string): KnowledgeFileType | null {
   const ext = fileName.split('.').pop()?.toLowerCase()
   return ext && ext in KNOWLEDGE_FILE_TYPES ? (ext as KnowledgeFileType) : null

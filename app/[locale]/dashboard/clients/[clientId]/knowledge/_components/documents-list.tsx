@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { RelativeTime } from '@/components/relative-time'
 import { deleteKnowledgeDocument, getKnowledgeFileUrl } from '@/lib/actions/knowledge'
-import { opensInTab, type KnowledgeDocument, type KnowledgeStatus } from '@/lib/types/knowledge'
+import { fileSize, opensInTab, type KnowledgeDocument, type KnowledgeStatus } from '@/lib/types/knowledge'
 
 const STATUS_STYLES: Record<KnowledgeStatus, string> = {
   processing: 'bg-warning-fill text-warning-fill-foreground',
@@ -42,6 +42,10 @@ export function DocumentsList({
   const t = useTranslations('knowledge')
   const tCommon = useTranslations('common')
   const format = useFormatter()
+  const sizeText = (bytes: number) => {
+    const size = fileSize(bytes)
+    return `${format.number(size.value, { maximumFractionDigits: size.fractionDigits })} ${size.unit}`
+  }
   const router = useRouter()
   const [deleting, setDeleting] = useState<KnowledgeDocument | null>(null)
   const [isDeleting, startDelete] = useTransition()
@@ -130,7 +134,7 @@ export function DocumentsList({
                   <p className="text-xs text-muted-foreground">
                     {doc.file_type?.toUpperCase()}
                     {doc.file_size != null && (
-                      <> · {format.number(doc.file_size / 1024 / 1024, { maximumFractionDigits: 1 })} MB</>
+                      <> · {sizeText(doc.file_size)}</>
                     )}
                     {' · '}
                     <RelativeTime date={doc.created_at} />
