@@ -22,6 +22,8 @@ describe('on the site’s hosts', () => {
     ['/en/privacy-policy', '/en/site/privacy-policy'],
     ['/ar/terms-of-service', '/ar/site/terms-of-service'],
     ['/en/terms-of-service/', '/en/site/terms-of-service'],
+    ['/en/data-deletion', '/en/site/data-deletion'],
+    ['/ar/data-deletion', '/ar/site/data-deletion'],
   ])('serves the marketing page %s from the internal segment', (path, to) => {
     expect(hostRoute(APEX, path)).toEqual({ kind: 'rewrite', to })
   })

@@ -347,11 +347,42 @@
     "draftNotice": "Draft — this page is under legal review and has not been approved."
   },
   "dataDeletion": {
-    "title": "Delete your data",
-    "body": "To delete your data from Mudrik, email us at [[email]]. If you are clinic staff, write from the address registered with us. If you contacted a clinic through Mudrik, tell us the clinic's name and the number or account you messaged it from, and we will verify and delete. We delete conversations, contact details and any uploaded files, and confirm within thirty days. Billing records are kept as the law requires.",
-    "status": {
-      "title": "Deletion request status",
-      "body": "Request [[code]]. Status: [[status]]."
+    "title": "Data deletion",
+    "metaDescription": "How to ask Mudrik to delete your data, what we delete, and what we keep.",
+    "who": {
+      "heading": "Who this page is for",
+      "body": "You messaged or commented on the account of a clinic or business that uses Mudrik, or you work on a clinic’s team. This page is for you."
+    },
+    "how": {
+      "heading": "How to ask",
+      "body": "Email privacy@mudrik-ai.com. Tell us the name of the clinic or page you contacted, and the channel you used: WhatsApp, Facebook, Instagram, or the chat on its website."
+    },
+    "verify": {
+      "heading": "How we check it is you",
+      "body": "We will not delete anyone’s data just because an email arrives in their name. We will reply with a word and ask you to send it from the same number or account you used to contact the clinic. Its arrival proves the account is yours.\nIf you no longer have that number or account, tell us and we will find another way — and we will tell the clinic before we delete anything."
+    },
+    "clinicTold": {
+      "body": "We tell the clinic that a record was deleted — without saying who asked or what was removed."
+    },
+    "account": {
+      "heading": "If you have a Mudrik account",
+      "body": "If your clinic or business has an account with us and you want all of it deleted, email us from the account’s own address.\nWe delete the account’s data, its connected channels and their access keys, its conversations, leads and knowledge base, and we stop the subscription.\nA billing record of usage stays, with no text and no personal data in it."
+    },
+    "deleted": {
+      "heading": "What we delete",
+      "body": "The whole conversation and its messages.\nYour name and your account name as they reached us.\nAny contact details we took from what you wrote: your name, your phone number, and the appointments you discussed."
+    },
+    "kept": {
+      "heading": "What we keep, and why",
+      "body": "The clinic’s record of the visit — the service, the branch, the time, and whether you attended — stays, without your name or number. It is the clinic’s record of its own work, not your personal data.\nWe also keep an anonymous mark that a message was handled, with no name, number or text, so that if the platform sends it to us again we do not answer you a second time."
+    },
+    "elsewhere": {
+      "heading": "Copies we do not control",
+      "body": "Meta holds a copy of your messages on WhatsApp, Facebook and Instagram, under Meta’s terms, not ours.\nWe use AI services to write replies, and the text of the conversation passes through them.\nBackups of our database are deleted on their own cycle, and our service logs overwrite themselves automatically."
+    },
+    "timing": {
+      "heading": "How long it takes",
+      "body": "We reply and confirm the deletion within 30 days of confirming the request is yours."
     }
   }
 }

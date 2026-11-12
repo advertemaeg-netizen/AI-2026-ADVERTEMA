@@ -32,8 +32,19 @@ export const SITE_HOSTS = ['mudrik-ai.com', 'www.mudrik-ai.com', 'site.localhost
  */
 export const LEGAL_PAGES = { privacy: '/privacy-policy', terms: '/terms-of-service' } as const
 
+/**
+ * The data deletion instructions (Meta's "Data Deletion Instructions URL"; the
+ * English page is the one registered). Instructions only: requests come by
+ * email to PRIVACY_EMAIL and are carried out by hand within the thirty days
+ * the page promises. No status page, codes or callback (decided 2026-11-12;
+ * they come back after the submission). Static copy, not a legal_versions
+ * document.
+ */
+export const DATA_DELETION_PAGE = '/data-deletion'
+export const PRIVACY_EMAIL = 'privacy@mudrik-ai.com'
+
 /** The site's pages, as paths after the locale ('' is the home page). Anything else on a site host is the app's. */
-export const SITE_PAGES = ['', '/for-businesses', '/for-agencies', '/pricing', '/contact', LEGAL_PAGES.privacy, LEGAL_PAGES.terms] as const
+export const SITE_PAGES = ['', '/for-businesses', '/for-agencies', '/pricing', '/contact', LEGAL_PAGES.privacy, LEGAL_PAGES.terms, DATA_DELETION_PAGE] as const
 export type SitePage = (typeof SITE_PAGES)[number]
 
 /**
