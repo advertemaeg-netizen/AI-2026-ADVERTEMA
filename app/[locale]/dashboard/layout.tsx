@@ -11,6 +11,7 @@ import { NeedsHumanBanner } from './_components/needs-human-banner'
 import { DEFAULT_NEEDS_HUMAN_REASON, type NeedsHumanReason } from '@/lib/types/conversations'
 import { ImpersonationBanner } from './_components/impersonation-banner'
 import { manifestUrl } from '@/lib/install-prompt'
+import { errorForLog } from '@/lib/log'
 
 /**
  * Installable as a home-screen app, from the dashboard only: the marketing
@@ -91,7 +92,7 @@ export default async function DashboardLayout({ children, params }: LayoutProps<
   // database; RLS limits the count to the ones this user handles
   const { data: waiting, error: waitingError } = await supabase.rpc('needs_human_counts')
   // Without the counts the banner is not shown at all, so this must not fail quietly
-  if (waitingError) console.error('[dashboard] needs_human_counts failed', waitingError)
+  if (waitingError) console.error('[dashboard] needs_human_counts failed', errorForLog(waitingError))
   const needsHuman: Partial<Record<NeedsHumanReason, number>> = {}
   for (const { reason, conversations } of (waiting ?? []) as {
     reason: NeedsHumanReason | null

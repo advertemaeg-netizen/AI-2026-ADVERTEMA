@@ -12,6 +12,7 @@ import {
   WHATSAPP_UNSUPPORTED_AR,
 } from '@/lib/meta/whatsapp-notices-ar'
 import { normalizePhone } from '@/lib/phone'
+import { errorForLog } from '@/lib/log'
 
 /**
  * WHATSAPP AND MESSENGER ARE TRANSPORTS FOR THE PIPELINE WE HAVE
@@ -248,7 +249,7 @@ async function nameInstagramConversation(supabase: SupabaseClient, channel: Inbo
   if (dm) {
     if (fromComments) {
       const { error: updateError } = await supabase.from('conversations').update({ contact_name: fromComments.slice(0, 100) }).eq('id', dm.id).is('contact_name', null)
-      if (updateError) console.error(`[${SOURCE}] naming the instagram conversation failed`, { channelId: channel.id, conversationId: dm.id, error: updateError })
+      if (updateError) console.error(`[${SOURCE}] naming the instagram conversation failed`, { channelId: channel.id, conversationId: dm.id, error: errorForLog(updateError) })
     }
     return null
   }

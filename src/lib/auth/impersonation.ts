@@ -3,6 +3,7 @@ import { createHash, createHmac, timingSafeEqual } from 'node:crypto'
 import { cookies } from 'next/headers'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { OrgType } from '@/lib/auth/client-context'
+import { errorForLog } from '@/lib/log'
 
 /**
  * A super admin viewing a customer's account (see the impersonation
@@ -77,7 +78,7 @@ export async function resolveImpersonation(supabase: SupabaseClient, userId: str
         org_type: string
         started_at: string
       }>()
-    if (error) console.error('[impersonation] active session', error)
+    if (error) console.error('[impersonation] active session', errorForLog(error))
     if (data) {
       return {
         id: data.id,
@@ -90,7 +91,7 @@ export async function resolveImpersonation(supabase: SupabaseClient, userId: str
   }
 
   const { error } = await supabase.rpc('end_impersonation')
-  if (error) console.error('[impersonation] end stale sessions', error)
+  if (error) console.error('[impersonation] end stale sessions', errorForLog(error))
   return null
 }
 
@@ -98,5 +99,5 @@ export async function resolveImpersonation(supabase: SupabaseClient, userId: str
 export async function recordImpersonationAction(supabase: SupabaseClient, impersonation: Impersonation | null) {
   if (!impersonation) return
   const { error } = await supabase.rpc('record_impersonation_action', { p_session_id: impersonation.id })
-  if (error) console.error('[impersonation] record action', error)
+  if (error) console.error('[impersonation] record action', errorForLog(error))
 }

@@ -13,6 +13,7 @@ import {
   type ClientStatus,
   UUID_PATTERN,
 } from '@/lib/types/clients'
+import { errorForLog } from '@/lib/log'
 
 const CLIENTS_PATH = '/[locale]/dashboard/clients'
 const SLUG_PATTERN = /^[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*$/u
@@ -111,7 +112,7 @@ function dbError(error: { code?: string; message: string; hint?: string | null }
   }
   // 42501 = insufficient_privilege (RLS rejected the write)
   if (error.code === '42501') return { ok: false, error: 'forbidden' }
-  console.error('[clients]', error)
+  console.error('[clients]', errorForLog(error))
   return { ok: false, error: 'unknown' }
 }
 
@@ -126,7 +127,7 @@ export async function getClients(): Promise<Client[]> {
     .order('created_at', { ascending: false })
     .returns<Client[]>()
 
-  if (error) throw new Error(`Failed to load clients: ${error.message}`)
+  if (error) throw new Error(`Failed to load clients: ${error.code}`)
   return data
 }
 
@@ -141,7 +142,7 @@ export async function getClient(id: string): Promise<Client | null> {
     .eq('id', id)
     .maybeSingle<Client>()
 
-  if (error) throw new Error(`Failed to load client: ${error.message}`)
+  if (error) throw new Error(`Failed to load client: ${error.code}`)
   return data
 }
 

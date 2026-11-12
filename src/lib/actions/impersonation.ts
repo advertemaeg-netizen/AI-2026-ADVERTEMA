@@ -13,6 +13,7 @@ import {
 } from '@/lib/auth/impersonation'
 import { UUID_PATTERN } from '@/lib/types/clients'
 import type { ImpersonationLogEntry, ImpersonationResult } from '@/lib/types/impersonation'
+import { errorForLog } from '@/lib/log'
 
 /**
  * A super admin opening a customer's account to support it: read-only,
@@ -40,7 +41,7 @@ export async function startImpersonation(orgId: string): Promise<ImpersonationRe
 
   const { data: sessionId, error } = await supabase.rpc('start_impersonation', { p_org_id: orgId })
   if (error) {
-    console.error('[impersonation] start', error)
+    console.error('[impersonation] start', errorForLog(error))
     return { ok: false, error: 'unknown' }
   }
   // Null: not a super admin after all, or no such organization
@@ -68,7 +69,7 @@ export async function endImpersonation(): Promise<{ ok: boolean }> {
   // A no-op for anyone without an open session
   const { error } = await supabase.rpc('end_impersonation')
   if (error) {
-    console.error('[impersonation] end', error)
+    console.error('[impersonation] end', errorForLog(error))
     return { ok: false }
   }
   // An ordinary sign-out viewed nothing: there is nothing to refresh
@@ -87,7 +88,7 @@ export async function getImpersonationLog(limit = 20): Promise<ImpersonationLogE
   if (!profile || !isSuperAdmin(profile.role)) return []
 
   const { data, error } = await supabase.rpc('get_impersonation_log', { p_limit: limit })
-  if (error) throw new Error(`Failed to load the impersonation log: ${error.message}`)
+  if (error) throw new Error(`Failed to load the impersonation log: ${error.code}`)
   return ((data as ImpersonationLogEntry[] | null) ?? []).map((row) => ({
     ...row,
     actions_count: Number(row.actions_count ?? 0),

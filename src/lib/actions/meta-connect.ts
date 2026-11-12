@@ -32,6 +32,7 @@ import type {
   PickerView,
   StartConnectResult,
 } from '@/lib/types/meta-connect'
+import { errorForLog } from '@/lib/log'
 
 const CHANNELS_PATH = '/[locale]/dashboard/clients/[clientId]/channels'
 
@@ -218,7 +219,7 @@ export async function completeMetaConnect(pendingId: string, clientId: string, s
     try {
       check = await checkClientLimit(caller.supabase, clientId, 'channels')
     } catch (error) {
-      console.error('[meta/connect] seat check', error)
+      console.error('[meta/connect] seat check', errorForLog(error))
       return done({ ok: false, status: 'unknown' }, { seats: 'check_failed' })
     }
     if (check?.reason === 'inactive') return done({ ok: false, status: 'subscriptionInactive' })

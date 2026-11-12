@@ -19,6 +19,7 @@ import {
   type LeadStatus,
   type LeadUpdateInput,
 } from '@/lib/types/leads'
+import { errorForLog } from '@/lib/log'
 
 const LEADS_PATH = '/[locale]/dashboard/leads'
 const LIST_LIMIT = 200
@@ -77,7 +78,7 @@ export async function getLeads(filters: LeadFilters = {}): Promise<LeadListItem[
   const { data, error } = await leadsQuery(supabase, LIST_COLUMNS, filters)
     .limit(LIST_LIMIT)
     .returns<LeadListItem[]>()
-  if (error) throw new Error(`Failed to load leads: ${error.message}`)
+  if (error) throw new Error(`Failed to load leads: ${error.code}`)
   return data
 }
 
@@ -98,7 +99,7 @@ export async function getLead(id: string): Promise<{
     )
     .eq('id', id)
     .maybeSingle<Omit<LeadDetail, 'visit_number' | 'visits'>>()
-  if (error) throw new Error(`Failed to load lead: ${error.message}`)
+  if (error) throw new Error(`Failed to load lead: ${error.code}`)
   if (!lead) return null
 
   const [eventsResult, teamResult, conversationLeads] = await Promise.all([
@@ -113,7 +114,7 @@ export async function getLead(id: string): Promise<{
     supabase.rpc('client_team', { check_client_id: lead.client.id }),
     lead.conversation ? getConversationLeads(supabase, lead.conversation.id) : [],
   ])
-  if (eventsResult.error) console.error('[leads] events', eventsResult.error)
+  if (eventsResult.error) console.error('[leads] events', errorForLog(eventsResult.error))
 
   // A returning customer's lead is their 2nd, 3rd… on the same conversation
   const position = conversationLeads.findIndex((visit) => visit.id === lead.id)
@@ -149,7 +150,7 @@ export async function updateLead(id: string, data: LeadUpdateInput): Promise<Lea
   // RLS: anyone with access to the lead's client may work on it
   const { data: rows, error } = await supabase.from('leads').update(patch).eq('id', id).select('id')
   if (error) {
-    console.error('[leads] update', error)
+    console.error('[leads] update', errorForLog(error))
     return { ok: false, error: 'unknown' }
   }
   if (!rows || rows.length === 0) return { ok: false, error: 'notFound' }
@@ -178,7 +179,7 @@ export async function bulkUpdateLeadStatus(
 
   const { data, error } = await supabase.from('leads').update({ status }).in('id', ids).select('id')
   if (error) {
-    console.error('[leads] bulk update', error)
+    console.error('[leads] bulk update', errorForLog(error))
     return { ok: false, error: 'unknown' }
   }
 
@@ -196,7 +197,7 @@ export async function deleteLead(id: string): Promise<LeadActionResult> {
 
   const { data, error } = await supabase.from('leads').delete().eq('id', id).select('id')
   if (error) {
-    console.error('[leads] delete', error)
+    console.error('[leads] delete', errorForLog(error))
     return { ok: false, error: 'unknown' }
   }
   if (!data || data.length === 0) return { ok: false, error: 'notFound' }
@@ -229,7 +230,7 @@ export async function exportLeads(filters: LeadFilters = {}): Promise<{ ok: true
     .limit(EXPORT_LIMIT)
     .returns<(LeadDetail & { notes: string | null })[]>()
   if (error) {
-    console.error('[leads] export', error)
+    console.error('[leads] export', errorForLog(error))
     return { ok: false, error: 'unknown' }
   }
 

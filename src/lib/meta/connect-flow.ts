@@ -65,7 +65,7 @@ export async function occupancy(admin: SupabaseClient, clientId: string, type: '
     .eq('type', type)
     .eq('external_id', externalId)
     .returns<{ id: string; client_id: string; is_active: boolean; created_at: string }[]>()
-  if (error) throw new Error(`occupancy: ${error.message}`)
+  if (error) throw new Error(`occupancy: ${error.code}`)
   if (data.some((row) => row.client_id !== clientId)) return { availability: 'otherClient', channelId: null }
   const own = [...data].sort((a, b) => Number(b.is_active) - Number(a.is_active) || b.created_at.localeCompare(a.created_at))[0]
   return own ? { availability: 'connected', channelId: own.id } : { availability: 'available', channelId: null }
@@ -94,7 +94,7 @@ export async function attachToken({
   appId: string
 }): Promise<AttachResult> {
   const { error } = await admin.from('channel_secrets').upsert({ channel_id: channelId, access_token: token }, { onConflict: 'channel_id' })
-  if (error) throw new Error(`channel_secrets: ${error.message}`)
+  if (error) throw new Error(`channel_secrets: ${error.code}`)
   const fields = type === 'facebook' ? PAGE_FIELDS : INSTAGRAM_FIELDS
   const subscription = await subscribe({ objectId: externalId, token, fields, appId })
   const messagesBlocked = type === 'instagram' ? (await instagramMessagesBlocked({ igId: externalId, token })) === true : false

@@ -19,6 +19,7 @@ import {
   type TeamMember,
   type UserRole,
 } from '@/lib/types/team'
+import { errorForLog } from '@/lib/log'
 
 const TEAM_PATH = '/[locale]/dashboard/team'
 
@@ -48,7 +49,7 @@ export async function getTeamMembers(): Promise<TeamMember[]> {
   if (!profile || !canManageClient(profile.role)) return []
 
   const { data, error } = await supabase.rpc('team_members')
-  if (error) throw new Error(`Failed to load team: ${error.message}`)
+  if (error) throw new Error(`Failed to load team: ${error.code}`)
 
   const members = new Map<string, TeamMember>()
   for (const row of (data as TeamRow[] | null) ?? []) {
@@ -80,7 +81,7 @@ export async function getPendingInvites(): Promise<PendingInvite[]> {
     .is('accepted_at', null)
     .order('created_at', { ascending: false })
     .returns<(Omit<PendingInvite, 'expired' | 'link'> & { invite_code: string })[]>()
-  if (error) throw new Error(`Failed to load invites: ${error.message}`)
+  if (error) throw new Error(`Failed to load invites: ${error.code}`)
 
   const now = Date.now()
   return Promise.all(
@@ -136,7 +137,7 @@ export async function createInvite(
       checkClientLimit(supabase, clientId, 'team_members'),
     ])
   } catch (error) {
-    console.error('[team] seat check', error)
+    console.error('[team] seat check', errorForLog(error))
     return { ok: false, error: 'unknown' }
   }
   const blocked = limitError(orgSeats) ?? limitError(clientSeats)
@@ -175,7 +176,7 @@ export async function createInvite(
 
   if (error) {
     if (error.code === '42501') return { ok: false, error: 'forbidden' }
-    console.error('[team] createInvite', error)
+    console.error('[team] createInvite', errorForLog(error))
     return { ok: false, error: 'unknown' }
   }
 
@@ -197,7 +198,7 @@ export async function cancelInvite(inviteId: string): Promise<{ ok: true } | { o
     .is('accepted_at', null)
     .select('id')
   if (error) {
-    console.error('[team] cancelInvite', error)
+    console.error('[team] cancelInvite', errorForLog(error))
     return { ok: false, error: 'unknown' }
   }
   if (!data || data.length === 0) return { ok: false, error: 'notFound' }
@@ -216,7 +217,7 @@ export async function removeTeamMember(userId: string): Promise<{ ok: true } | {
 
   const { data, error } = await supabase.rpc('remove_org_member', { member_id: userId })
   if (error) {
-    console.error('[team] removeTeamMember', error)
+    console.error('[team] removeTeamMember', errorForLog(error))
     return { ok: false, error: 'unknown' }
   }
   const status = data as 'ok' | 'forbidden' | 'not_found' | 'self'
@@ -240,7 +241,7 @@ export async function acceptInvite(code: string): Promise<{ status: AcceptInvite
   if (error) {
     // The seat trigger, when a concurrent accept took the last seat
     if (limitErrorFromDb(error)) return { status: 'limit_reached' }
-    console.error('[team] acceptInvite', error)
+    console.error('[team] acceptInvite', errorForLog(error))
     return { status: 'not_found' }
   }
 

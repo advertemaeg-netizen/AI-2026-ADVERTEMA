@@ -1,6 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { AiUsageOperation } from '@/lib/types/ai-usage'
+import { errorForLog } from '@/lib/log'
 
 /**
  * Logs what each AI call cost (ai_usage). The database fills in the
@@ -61,6 +62,6 @@ export async function recordAiUsage(context: AiUsageContext | undefined, model: 
       console.warn(`[ai-usage] model "${model}" has no price in model_pricing: its calls are logged without a cost`)
     }
   } catch (error) {
-    console.error(`[ai-usage] logging ${context.operation} for client ${context.clientId} failed`, error)
+    console.error(`[ai-usage] logging ${context.operation} for client ${context.clientId} failed`, errorForLog(error))
   }
 }

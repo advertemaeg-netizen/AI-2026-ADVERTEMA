@@ -51,6 +51,7 @@ import en from '../../../messages/en.json'
 import { checkClientLimit } from '@/lib/subscription-limits'
 import type { NeedsHumanReason } from '@/lib/types/conversations'
 import type { LimitCheck } from '@/lib/types/subscription'
+import { errorForLog } from '@/lib/log'
 
 const BOOKING_TEXTS = { ar: ar.botReplies.appointment, en: en.botReplies.appointment }
 
@@ -166,7 +167,7 @@ export function conversationStore({
         .update({ needs_human_since: new Date().toISOString(), needs_human_reason: reason })
         .eq('id', conversationId)
         .is('needs_human_since', null)
-      if (error) console.error(`[${source}] marking the conversation for a person failed`, error)
+      if (error) console.error(`[${source}] marking the conversation for a person failed`, errorForLog(error))
     },
     async countMessage() {
       const { error } = await supabase.rpc('consume_client_message', { p_client_id: clientId })
@@ -281,7 +282,7 @@ export async function replyToMessage({
         events: { name: 'none', phone: 'stored' },
       })
     } catch (error) {
-      console.error(`[${source}] saving the phone number failed`, error)
+      console.error(`[${source}] saving the phone number failed`, errorForLog(error))
     }
   }
 
@@ -289,7 +290,7 @@ export async function replyToMessage({
   try {
     settings ??= await loadBotSettings(supabase, channel.client_id)
   } catch (error) {
-    console.error(`[${source}] loading bot settings failed`, error)
+    console.error(`[${source}] loading bot settings failed`, errorForLog(error))
   }
 
   // The client's active branches: the hours a booking is checked against,
@@ -299,7 +300,7 @@ export async function replyToMessage({
   try {
     branches = await loadBookingBranches(supabase, channel.client_id)
   } catch (error) {
-    console.error(`[${source}] reading the branches failed`, error)
+    console.error(`[${source}] reading the branches failed`, errorForLog(error))
   }
   // More than one: the visitor's branch is a step of its own. One: it is the branch, never asked about
   const severalBranches = branches.length > 1
@@ -343,7 +344,7 @@ export async function replyToMessage({
     quota = await checkClientLimit(supabase, channel.client_id, 'messages')
   } catch (error) {
     // No reply without a known quota, but the message is still analysed
-    console.error(`[${source}] limit check failed`, error)
+    console.error(`[${source}] limit check failed`, errorForLog(error))
     scheduleLeadDetection(history)
     return { kind: 'unavailable', reason: 'limit_check_failed' }
   }
@@ -395,7 +396,7 @@ export async function replyToMessage({
     if (state.hasDraft) previousDraft = state.draft
     leadBranchId = state.branchId
   } catch (error) {
-    console.error(`[${source}] reading the open lead failed`, error)
+    console.error(`[${source}] reading the open lead failed`, errorForLog(error))
   }
   // The branch chosen earlier: the draft's, or the one a held day was recorded for
   if (severalBranches) {
@@ -486,7 +487,7 @@ export async function replyToMessage({
       })
     } catch (error) {
       // Not saved: the reply states the record, so it will say so
-      console.error(`[${source}] saving the lead failed`, error)
+      console.error(`[${source}] saving the lead failed`, errorForLog(error))
     }
 
     // The appointment is recorded before the reply goes out, and the reply
@@ -524,7 +525,7 @@ export async function replyToMessage({
         }
         draft = narrowDraft(startDraft, request, booking)
       } catch (error) {
-        console.error(`[${source}] recording the appointment failed`, error)
+        console.error(`[${source}] recording the appointment failed`, errorForLog(error))
         bookingFailed = true
         // As written above: what the visitor gave stays, for the next message to book
         draft = arriving ?? startDraft
@@ -559,7 +560,7 @@ export async function replyToMessage({
           draft = narrowDraft(startDraft, resumed, booking)
         }
       } catch (error) {
-        console.error(`[${source}] confirming the requested appointment failed`, error)
+        console.error(`[${source}] confirming the requested appointment failed`, errorForLog(error))
         bookingFailed = true
       }
     }
@@ -571,7 +572,7 @@ export async function replyToMessage({
       try {
         await saveContact({ leads: store.leads, sourceMessageId: userMessage.id, contact, events, draft })
       } catch (error) {
-        console.error(`[${source}] saving the partial booking failed`, error)
+        console.error(`[${source}] saving the partial booking failed`, errorForLog(error))
       }
     }
     if (!result.appointment && booking.status === 'none' && !bookingFailed && result.reply.includes(APPOINTMENT_PLACEHOLDER)) {
@@ -582,7 +583,7 @@ export async function replyToMessage({
       try {
         booking = await appointmentOnRecord(store.leads)
       } catch (error) {
-        console.error(`[${source}] reading the appointment on record failed`, error)
+        console.error(`[${source}] reading the appointment on record failed`, errorForLog(error))
         bookingFailed = true
       }
     }
@@ -591,7 +592,7 @@ export async function replyToMessage({
     try {
       record = await savedRecord(store.leads)
     } catch (error) {
-      console.error(`[${source}] reading the lead on record failed`, error)
+      console.error(`[${source}] reading the lead on record failed`, errorForLog(error))
     }
     // Only when the reply talks about the visitor's name and code may have
     // to ask the next question itself: is a day and time on record already?
@@ -600,7 +601,7 @@ export async function replyToMessage({
       try {
         timeOnRecord = (await appointmentOnRecord(store.leads)).status === 'booked'
       } catch (error) {
-        console.error(`[${source}] reading the appointment on record failed`, error)
+        console.error(`[${source}] reading the appointment on record failed`, errorForLog(error))
       }
     }
     trace = {
@@ -661,7 +662,7 @@ export async function replyToMessage({
         try {
           refused = await recheckOnRecord({ leads: store.leads, businessHours: branch?.schedule ?? null })
         } catch (error) {
-          console.error(`[${source}] checking the visit on record again failed`, error)
+          console.error(`[${source}] checking the visit on record again failed`, errorForLog(error))
         }
       }
       if (refused) {
@@ -673,7 +674,7 @@ export async function replyToMessage({
         try {
           await saveContact({ leads: store.leads, sourceMessageId: userMessage.id, contact, events, draft })
         } catch (error) {
-          console.error(`[${source}] saving the partial booking failed`, error)
+          console.error(`[${source}] saving the partial booking failed`, errorForLog(error))
         }
       }
       reply = refused ? appointmentLine(refused, language, rules) : disputeLine(language)
@@ -708,7 +709,7 @@ export async function replyToMessage({
     // empty reply correct, which is what the model is told it may be.
     if (!reply.trim()) throw new NoReplyError()
   } catch (error) {
-    console.error(`[${source}] AI reply failed`, error)
+    console.error(`[${source}] AI reply failed`, errorForLog(error))
     // A failed reply (rate limit, timeout, 503) must not lose the lead: the
     // visitor's message is stored, so it's still analysed
     scheduleLeadDetection(history)
@@ -729,7 +730,7 @@ export async function replyToMessage({
       },
     })
     if (fallbackError) {
-      console.error(`[${source}] storing the fallback failed`, fallbackError)
+      console.error(`[${source}] storing the fallback failed`, errorForLog(fallbackError))
       return { kind: 'unavailable', reason: 'fallback_write_failed' }
     }
     await store.markForPerson('service_down')
@@ -746,7 +747,7 @@ export async function replyToMessage({
   }
 
   const { error: usageError } = await store.countMessage()
-  if (usageError) console.error(`[${source}] counting the message failed`, usageError)
+  if (usageError) console.error(`[${source}] counting the message failed`, errorForLog(usageError))
 
   scheduleLeadDetection([...history, { role: 'assistant', content: reply }], true, contact)
 

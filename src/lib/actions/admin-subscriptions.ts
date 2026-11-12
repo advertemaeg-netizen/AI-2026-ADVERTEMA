@@ -41,6 +41,7 @@ import {
   type SubscriptionStatus,
   type UsageItem,
 } from '@/lib/types/subscription'
+import { errorForLog } from '@/lib/log'
 
 export type { BillingActionError, BillingActionResult } from '@/lib/types/subscription'
 
@@ -60,7 +61,7 @@ function revalidateBilling() {
 
 function fail(error: { code?: string; message: string }, where: string): BillingActionResult {
   if (error.code === '42501') return { ok: false, error: 'forbidden' }
-  console.error(`[admin-subscriptions] ${where}`, error)
+  console.error(`[admin-subscriptions] ${where}`, errorForLog(error))
   return { ok: false, error: 'unknown' }
 }
 
@@ -83,7 +84,7 @@ export async function getAllSubscriptions(filters: {
   if (!session) return []
 
   const { data, error } = await session.supabase.rpc('get_all_subscriptions')
-  if (error) throw new Error(`Failed to load subscriptions: ${error.message}`)
+  if (error) throw new Error(`Failed to load subscriptions: ${error.code}`)
 
   const planType = (PLAN_TYPES as readonly string[]).includes(filters.planType ?? '') ? filters.planType : undefined
   const status = (SUBSCRIPTION_STATUSES as readonly string[]).includes(filters.status ?? '') ? filters.status : undefined
@@ -109,7 +110,7 @@ export async function getAllClientSubscriptions(filters: {
   if (!session) return []
 
   const { data, error } = await session.supabase.rpc('get_all_client_subscriptions')
-  if (error) throw new Error(`Failed to load client subscriptions: ${error.message}`)
+  if (error) throw new Error(`Failed to load client subscriptions: ${error.code}`)
 
   const status = (SUBSCRIPTION_STATUSES as readonly string[]).includes(filters.status ?? '') ? filters.status : undefined
   const organizationId = UUID_PATTERN.test(filters.organizationId ?? '') ? filters.organizationId : undefined
@@ -142,7 +143,7 @@ export async function getOrganizationBilling(
       .order('created_at', { ascending: false })
       .returns<Invoice[]>(),
   ])
-  if (invoices.error) throw new Error(`Failed to load invoices: ${invoices.error.message}`)
+  if (invoices.error) throw new Error(`Failed to load invoices: ${invoices.error.code}`)
   return { details, invoices: (invoices.data ?? []).map(normalizeInvoice) }
 }
 
@@ -337,7 +338,7 @@ export async function getAllInvoices(filters: {
   const { data, error } = await query.returns<
     (Invoice & { organization: { name: string } | null; client: { name: string } | null })[]
   >()
-  if (error) throw new Error(`Failed to load invoices: ${error.message}`)
+  if (error) throw new Error(`Failed to load invoices: ${error.code}`)
   return (data ?? []).map(({ organization, client, ...row }) => ({
     ...normalizeInvoice(row),
     organization_name: organization?.name ?? '',
@@ -354,7 +355,7 @@ export async function getInvoiceOrganizations(): Promise<{ id: string; name: str
     .select('id, name, org_type')
     .order('name')
     .returns<{ id: string; name: string; org_type: OrgType }[]>()
-  if (error) throw new Error(`Failed to load organizations: ${error.message}`)
+  if (error) throw new Error(`Failed to load organizations: ${error.code}`)
   return data ?? []
 }
 

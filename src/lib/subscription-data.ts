@@ -61,7 +61,7 @@ export async function fetchSubscriptionDetails(
   organizationId: string
 ): Promise<SubscriptionDetails | null> {
   const { data, error } = await supabase.rpc('get_subscription_details', { p_org_id: organizationId })
-  if (error) throw new Error(`Failed to load subscription: ${error.message}`)
+  if (error) throw new Error(`Failed to load subscription: ${error.code}`)
   return data ? normalizeDetails(data as SubscriptionDetails, ORG_LIMIT_TYPES) : null
 }
 
@@ -71,7 +71,7 @@ export async function fetchClientSubscriptionDetails(
   clientId: string
 ): Promise<ClientSubscriptionDetails | null> {
   const { data, error } = await supabase.rpc('get_client_subscription_details', { p_client_id: clientId })
-  if (error) throw new Error(`Failed to load client subscription: ${error.message}`)
+  if (error) throw new Error(`Failed to load client subscription: ${error.code}`)
   if (!data) return null
 
   const details = normalizeDetails(data as ClientSubscriptionDetails, CLIENT_LIMIT_TYPES)

@@ -30,7 +30,7 @@ export async function getDashboardStats(clientId: string | null = null) {
     // A conversation is a private one: comment threads are the comments tab's
     if (table === 'conversations') query = query.neq('thread', 'comments')
     const { count: n, error } = await query
-    if (error) throw new Error(`Failed to count ${table}: ${error.message}`)
+    if (error) throw new Error(`Failed to count ${table}: ${error.code}`)
     return n ?? 0
   }
 

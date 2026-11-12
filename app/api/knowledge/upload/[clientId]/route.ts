@@ -14,6 +14,7 @@ import {
   type KnowledgeUploadError,
   type KnowledgeUploadFailure,
 } from '@/lib/types/knowledge'
+import { errorForLog } from '@/lib/log'
 
 // Embedding runs in after(), which shares this route's time budget
 export const maxDuration = 300
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/knowled
   try {
     quota = await checkKnowledgeQuota(supabase, clientId)
   } catch (error) {
-    console.error('[knowledge/upload] quota', error)
+    console.error('[knowledge/upload] quota', errorForLog(error))
     return fail('uploadFailed', 500)
   }
   if (quota && !quota.usable) return fail('subscriptionInactive', 403)
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/knowled
     .is('source_document_id', null)
     .gte('created_at', new Date(Date.now() - 60 * 60 * 1000).toISOString())
   if (countError) {
-    console.error('[knowledge/upload] rate limit count', countError)
+    console.error('[knowledge/upload] rate limit count', errorForLog(countError))
     return fail('uploadFailed', 500)
   }
   if ((count ?? 0) >= KNOWLEDGE_UPLOADS_PER_HOUR) return fail('rateLimited', 429)
@@ -122,7 +123,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/knowled
     .from(KNOWLEDGE_BUCKET)
     .upload(path, buffer, { contentType: KNOWLEDGE_FILE_TYPES[fileType], upsert: false })
   if (storageError) {
-    console.error('[knowledge/upload] storage', storageError)
+    console.error('[knowledge/upload] storage', errorForLog(storageError))
     return fail('uploadFailed', 500)
   }
 
@@ -140,7 +141,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/knowled
     // The subscription limit trigger (a race past the check above)
     const limit = limitErrorFromDb(insertError)
     if (limit) return fail(limit, 403)
-    console.error('[knowledge/upload] insert', insertError)
+    console.error('[knowledge/upload] insert', errorForLog(insertError))
     return fail('uploadFailed', 500)
   }
 

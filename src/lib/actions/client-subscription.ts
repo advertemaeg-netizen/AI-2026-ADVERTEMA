@@ -16,6 +16,7 @@ import {
   type Invoice,
   type UsageItem,
 } from '@/lib/types/subscription'
+import { errorForLog } from '@/lib/log'
 
 /**
  * One client's subscription: the business plan the client pays its agency
@@ -46,7 +47,7 @@ function revalidateClientBilling() {
 
 function fail(error: { code?: string; message: string }, where: string): BillingActionResult {
   if (error.code === '42501') return { ok: false, error: 'forbidden' }
-  console.error(`[client-subscription] ${where}`, error)
+  console.error(`[client-subscription] ${where}`, errorForLog(error))
   return { ok: false, error: 'unknown' }
 }
 
@@ -73,7 +74,7 @@ export async function getClientInvoices(clientId: string): Promise<Invoice[]> {
     .eq('client_id', clientId)
     .order('created_at', { ascending: false })
     .returns<Invoice[]>()
-  if (error) throw new Error(`Failed to load client invoices: ${error.message}`)
+  if (error) throw new Error(`Failed to load client invoices: ${error.code}`)
   return (data ?? []).map(normalizeInvoice)
 }
 
@@ -83,7 +84,7 @@ export async function getClientAvailablePlans(clientId: string): Promise<Availab
   if (!session) return []
 
   const { data, error } = await session.supabase.rpc('get_client_available_plans', { p_client_id: clientId })
-  if (error) throw new Error(`Failed to load plans: ${error.message}`)
+  if (error) throw new Error(`Failed to load plans: ${error.code}`)
   return normalizeAvailablePlans(data as AvailablePlan[] | null)
 }
 

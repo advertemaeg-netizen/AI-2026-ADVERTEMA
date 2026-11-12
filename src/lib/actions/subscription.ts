@@ -13,6 +13,7 @@ import {
   type UsageAlert,
   type UsageItem,
 } from '@/lib/types/subscription'
+import { errorForLog } from '@/lib/log'
 
 /** Org admins (and super admins, for their own organization) see billing. */
 async function billingSession() {
@@ -49,7 +50,7 @@ export async function getInvoices(): Promise<Invoice[]> {
     .eq('billed_to', 'platform')
     .order('created_at', { ascending: false })
     .returns<Invoice[]>()
-  if (error) throw new Error(`Failed to load invoices: ${error.message}`)
+  if (error) throw new Error(`Failed to load invoices: ${error.code}`)
   return (data ?? []).map(normalizeInvoice)
 }
 
@@ -60,7 +61,7 @@ export async function getAvailablePlans(planType: PlanType): Promise<AvailablePl
   if (!session) return []
 
   const { data, error } = await session.supabase.rpc('get_available_plans', { p_plan_type: planType })
-  if (error) throw new Error(`Failed to load plans: ${error.message}`)
+  if (error) throw new Error(`Failed to load plans: ${error.code}`)
   return normalizeAvailablePlans(data as AvailablePlan[] | null)
 }
 
@@ -71,7 +72,7 @@ export async function getUsageAlerts(): Promise<UsageAlert[]> {
 
   const { data, error } = await session.supabase.rpc('get_active_usage_alerts')
   if (error) {
-    console.error('[subscription] usage alerts', error)
+    console.error('[subscription] usage alerts', errorForLog(error))
     return []
   }
   type Row = Omit<UsageAlert, 'limit'> & { limit_value: number }

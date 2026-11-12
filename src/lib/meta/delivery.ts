@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { SendResult } from '@/lib/meta/send'
 import type { InboundWhatsAppStatus } from '@/lib/meta/webhook'
 import type { SendFailure } from '@/lib/types/conversations'
+import { errorForLog } from '@/lib/log'
 
 /**
  * WHAT BECAME OF AN OUTBOUND ROW: the one place a row's send is recorded,
@@ -76,7 +77,7 @@ export async function recordSent(supabase: SupabaseClient, rowId: string, transp
     .update({ metadata: { ...metadata, send: { transport, state: 'sent', messageId, ...attempt(metadata) } } })
     .eq('id', rowId)
   if (error) {
-    console.error(`[${SOURCE}] recording the sent message failed`, { messageId: rowId, error })
+    console.error(`[${SOURCE}] recording the sent message failed`, { messageId: rowId, error: errorForLog(error) })
     return
   }
   if (transport === 'whatsapp' && messageId) await applyHeldStatus(supabase, rowId, messageId)
@@ -109,7 +110,7 @@ export async function recordFailed(
     .from('messages')
     .update({ metadata: { ...metadata, ...delivery, send } })
     .eq('id', rowId)
-  if (error) console.error(`[${SOURCE}] marking the undelivered message failed`, { messageId: rowId, error })
+  if (error) console.error(`[${SOURCE}] marking the undelivered message failed`, { messageId: rowId, error: errorForLog(error) })
 }
 
 /** A send's result, recorded on its row: 'sent' with the id, or 'failed' with the reason */
@@ -198,7 +199,7 @@ async function applyHeldStatus(supabase: SupabaseClient, rowId: string, messageI
     .eq('message_id', messageId)
     .maybeSingle<{ error_codes: number[] }>()
   if (error) {
-    console.error(`[${SOURCE}] reading a held status failed`, { error })
+    console.error(`[${SOURCE}] reading a held status failed`, { error: errorForLog(error) })
     return
   }
   if (!data) return

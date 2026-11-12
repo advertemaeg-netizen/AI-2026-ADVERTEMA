@@ -1,6 +1,7 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { LeadVisit } from '@/lib/types/leads'
+import { errorForLog } from '@/lib/log'
 
 /**
  * Every lead of a conversation, oldest first: one per sales episode, so a
@@ -15,6 +16,6 @@ export async function getConversationLeads(supabase: SupabaseClient, conversatio
     .eq('is_complete', true)
     .order('created_at', { ascending: true })
     .returns<LeadVisit[]>()
-  if (error) console.error('[leads] conversation leads', error)
+  if (error) console.error('[leads] conversation leads', errorForLog(error))
   return data ?? []
 }

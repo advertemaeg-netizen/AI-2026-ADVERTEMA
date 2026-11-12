@@ -13,6 +13,7 @@ import {
   type BranchInput,
   type ClosureInput,
 } from '@/lib/types/branches'
+import { errorForLog } from '@/lib/log'
 
 const BRANCHES_PATH = '/[locale]/dashboard/clients/[clientId]/branches'
 const BRANCH_COLUMNS = 'id, client_id, name, timezone, capacity_per_slot, slot_minutes, business_hours, is_active, created_at'
@@ -26,7 +27,7 @@ function dbError(error: { code?: string; message: string }): BranchActionResult 
   if (error.code === '23503') return { ok: false, error: 'hasLeads' }
   // 42501 = insufficient_privilege (RLS rejected the write)
   if (error.code === '42501') return { ok: false, error: 'forbidden' }
-  console.error('[branches]', error)
+  console.error('[branches]', errorForLog(error))
   return { ok: false, error: 'unknown' }
 }
 
@@ -78,9 +79,9 @@ export async function getBranches(clientId: string): Promise<Branch[]> {
       .not('branch_id', 'is', null)
       .returns<{ branch_id: string; appointment_at: string | null }[]>(),
   ])
-  if (branches.error) throw new Error(`Failed to load branches: ${branches.error.message}`)
-  if (closures.error) throw new Error(`Failed to load closures: ${closures.error.message}`)
-  if (leads.error) throw new Error(`Failed to load branch leads: ${leads.error.message}`)
+  if (branches.error) throw new Error(`Failed to load branches: ${branches.error.code}`)
+  if (closures.error) throw new Error(`Failed to load closures: ${closures.error.code}`)
+  if (leads.error) throw new Error(`Failed to load branch leads: ${leads.error.code}`)
 
   const now = Date.now()
   return branches.data.map((branch) => {
@@ -214,7 +215,7 @@ export async function deleteClosureAction(closureId: string): Promise<BranchActi
 async function linkLeads(supabase: Awaited<ReturnType<typeof getSession>>['supabase'], branchId: string) {
   const { data, error } = await supabase.rpc('link_leads_to_branch', { p_branch_id: branchId })
   if (error) {
-    console.error('[branches] linking leads by name failed', error)
+    console.error('[branches] linking leads by name failed', errorForLog(error))
     return 0
   }
   return (data as number | null) ?? 0

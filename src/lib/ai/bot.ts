@@ -25,6 +25,7 @@ import {
   type BotSettingsInput,
   type BotTone,
 } from '@/lib/types/bot-settings'
+import { errorForLog } from '@/lib/log'
 
 /**
  * The client's AI assistant: RAG over the knowledge base + the chat model.
@@ -166,7 +167,7 @@ async function retrieveKnowledge(
     return { chunks, error: false, embeddingMs, retrievalMs: performance.now() - started - embeddingMs }
   } catch (error) {
     // Failures degrade to "no context" rather than blocking the reply
-    console.error('[bot] knowledge retrieval failed', error)
+    console.error('[bot] knowledge retrieval failed', errorForLog(error))
     return {
       chunks: [] as RetrievedChunk[],
       error: true,
@@ -467,7 +468,7 @@ export async function runBot({
     branches ??
       // Unread, the prompt states no hours: it never blocks a reply
       (await loadBookingBranches(supabase, clientId).catch((error) => {
-        console.error('[bot] reading the branches failed', error)
+        console.error('[bot] reading the branches failed', errorForLog(error))
         return []
       })),
     surface,

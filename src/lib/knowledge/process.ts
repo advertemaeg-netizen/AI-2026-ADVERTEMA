@@ -3,6 +3,7 @@ import { EMBEDDING_DIMENSIONS, embedTexts, embeddingModel } from '@/lib/ai/provi
 import { estimateTokens } from '@/lib/ai/usage'
 import type { createAdminClient } from '@/lib/supabase/admin'
 import type { KnowledgeFileType, KnowledgeProcessingError } from '@/lib/types/knowledge'
+import { errorForLog } from '@/lib/log'
 
 const CHUNK_TOKENS = 500
 const OVERLAP_TOKENS = 50
@@ -164,7 +165,7 @@ export async function prepareKnowledgeChunks(
   try {
     text = normalize(await extractText(type, buffer))
   } catch (error) {
-    console.error('[knowledge] extracting text failed', error)
+    console.error('[knowledge] extracting text failed', errorForLog(error))
     return { ok: false, error: 'extractFailed' }
   }
 
@@ -229,7 +230,7 @@ export async function processKnowledgeDocument(
     if (error) throw error
   } catch (error) {
     const code = error instanceof ProcessingError ? error.code : 'saveFailed'
-    console.error(`[knowledge] processing ${doc.id} failed (${code})`, error)
+    console.error(`[knowledge] processing ${doc.id} failed (${code})`, errorForLog(error))
 
     // Don't leave half a document searchable
     await admin.from('knowledge_documents').delete().eq('source_document_id', doc.id)

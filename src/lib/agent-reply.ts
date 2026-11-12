@@ -4,6 +4,7 @@ import { recordFailed, recordResult } from '@/lib/meta/delivery'
 import { sendInstagramText, sendMessengerText, sendWhatsAppText, type SendResult } from '@/lib/meta/send'
 import type { ChannelType } from '@/lib/types/channels'
 import { REPLY_WINDOW_MS, fitsChannel, type ReplyAvailability, type ReplyBlock } from '@/lib/types/conversations'
+import { errorForLog } from '@/lib/log'
 
 /**
  * A PERSON'S REPLY FROM THE DASHBOARD, SENT (.scratch/agent-reply-decisions.md §2).
@@ -147,7 +148,7 @@ export async function deliverAgentReply(admin: SupabaseClient, conversation: Rep
     result = await transport.send({ supabase: admin, channelId: conversation.channel.id, to: conversation.contact_identifier!, body: text })
   } catch (error) {
     // Reading the token failed: nothing was sent
-    console.error('[agent-reply] the send could not start', { conversationId: conversation.id, messageId: rowId, error })
+    console.error('[agent-reply] the send could not start', { conversationId: conversation.id, messageId: rowId, error: errorForLog(error) })
     result = { kind: 'failed', status: null, code: null, attempts: 0 }
   }
   await recordResult(admin, rowId, transport.name, result)

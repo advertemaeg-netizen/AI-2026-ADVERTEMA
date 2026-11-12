@@ -14,6 +14,7 @@ import {
   type ChannelActionResult,
   type ChannelType,
 } from '@/lib/types/channels'
+import { errorForLog } from '@/lib/log'
 
 const CHANNELS_PATH = '/[locale]/dashboard/clients/[clientId]/channels'
 const CHANNEL_COLUMNS = 'id, client_id, type, name, webhook_url, is_active, created_at, connection_notice'
@@ -24,7 +25,7 @@ function dbError(error: { code?: string; message: string; hint?: string | null }
   if (limit) return { ok: false, error: limit }
   // 42501 = insufficient_privilege (RLS rejected the write)
   if (error.code === '42501') return { ok: false, error: 'forbidden' }
-  console.error('[channels]', error)
+  console.error('[channels]', errorForLog(error))
   return { ok: false, error: 'unknown' }
 }
 
@@ -42,7 +43,7 @@ export async function getChannels(clientId: string): Promise<Channel[]> {
     .order('created_at', { ascending: true })
     .returns<Channel[]>()
 
-  if (error) throw new Error(`Failed to load channels: ${error.message}`)
+  if (error) throw new Error(`Failed to load channels: ${error.code}`)
   return data
 }
 

@@ -19,6 +19,7 @@ import {
   signatureMatches,
   type DeliveryShape,
 } from '@/lib/meta/webhook'
+import { errorForLog } from '@/lib/log'
 
 /**
  * Meta's webhook: WhatsApp, Messenger and Instagram deliveries. The GET is
@@ -138,7 +139,7 @@ async function processDelivery(raw: Buffer) {
       fresh = await claimMessages(supabase, inbound)
       for (const claim of inbound) messages[claim.messageId] = fresh.has(claim.messageId) ? 'new' : 'duplicate'
     } catch (error) {
-      console.error('[webhook/meta] claiming the delivery failed; nothing acted on', error)
+      console.error('[webhook/meta] claiming the delivery failed; nothing acted on', errorForLog(error))
     }
 
     // THE REPLY: each new WhatsApp message, in order: a text through the one
@@ -155,7 +156,7 @@ async function processDelivery(raw: Buffer) {
         messages[message.messageId] = result.kind
       } catch (error) {
         messages[message.messageId] = 'failed'
-        console.error('[webhook/meta] answering a message failed', { channelId: mapped.channelId, messageId: message.messageId, error })
+        console.error('[webhook/meta] answering a message failed', { channelId: mapped.channelId, messageId: message.messageId, error: errorForLog(error) })
       }
     }
 
@@ -175,7 +176,7 @@ async function processDelivery(raw: Buffer) {
         statuses[status.messageId] = await applyWhatsAppStatus(supabase, mapped.channelId, status)
       } catch (error) {
         statuses[status.messageId] = 'failed'
-        console.error('[webhook/meta] applying a status failed', { channelId: mapped.channelId, messageId: status.messageId, error })
+        console.error('[webhook/meta] applying a status failed', { channelId: mapped.channelId, messageId: status.messageId, error: errorForLog(error) })
       }
     }
 
@@ -187,7 +188,7 @@ async function processDelivery(raw: Buffer) {
         removals[wabaId] = await pauseRemovedWaba(supabase, wabaId)
       } catch (error) {
         removals[wabaId] = 'failed'
-        console.error('[webhook/meta] pausing a removed WABA failed', { wabaId, error })
+        console.error('[webhook/meta] pausing a removed WABA failed', { wabaId, error: errorForLog(error) })
       }
     }
 
@@ -205,7 +206,7 @@ async function processDelivery(raw: Buffer) {
         messages[event.claimId] = result.kind
       } catch (error) {
         messages[event.claimId] = 'failed'
-        console.error(`[webhook/meta] handling a ${shape.channel} event failed`, { channelId: mapped.channelId, messageId: event.claimId, error })
+        console.error(`[webhook/meta] handling a ${shape.channel} event failed`, { channelId: mapped.channelId, messageId: event.claimId, error: errorForLog(error) })
       }
     }
 
@@ -229,7 +230,7 @@ async function processDelivery(raw: Buffer) {
         comments[comment.commentId] = result.kind
       } catch (error) {
         comments[comment.commentId] = 'failed'
-        console.error('[webhook/meta] handling a comment failed', { channelId: mapped.channelId, commentId: comment.commentId, error })
+        console.error('[webhook/meta] handling a comment failed', { channelId: mapped.channelId, commentId: comment.commentId, error: errorForLog(error) })
       }
     }
 
@@ -241,10 +242,10 @@ async function processDelivery(raw: Buffer) {
     try {
       await completeMessages(supabase, fresh)
     } catch (error) {
-      console.error('[webhook/meta] closing the processed rows failed; they will count as swallowed', error)
+      console.error('[webhook/meta] closing the processed rows failed; they will count as swallowed', errorForLog(error))
     }
   } catch (error) {
-    console.error('[webhook/meta] processing the delivery failed', error)
+    console.error('[webhook/meta] processing the delivery failed', errorForLog(error))
   }
 }
 
@@ -282,7 +283,7 @@ async function clientsFor(supabase: ReturnType<typeof createAdminClient>, shape:
     .order('is_active', { ascending: false })
     .returns<(InboundChannel & { external_id: string })[]>()
   if (error) {
-    console.error('[webhook/meta] looking up the channel failed', error)
+    console.error('[webhook/meta] looking up the channel failed', errorForLog(error))
     return Object.fromEntries(ids.map((id) => [id, 'lookup failed']))
   }
   return Object.fromEntries(

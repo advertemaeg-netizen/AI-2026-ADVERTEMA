@@ -14,6 +14,7 @@ import {
   type JourneyPeriod,
   type JourneyStats,
 } from '@/lib/types/appointments'
+import { errorForLog } from '@/lib/log'
 
 const APPOINTMENT_COLUMNS = `
   id, name, phone, service_requested, status, appointment_at, appointment_confirmed,
@@ -61,7 +62,7 @@ export async function getUpcomingAppointments(
   if (filters.clientId && UUID_PATTERN.test(filters.clientId)) query = query.eq('client_id', filters.clientId)
 
   const { data, error } = await query.returns<Appointment[]>()
-  if (error) throw new Error(`Failed to load appointments: ${error.message}`)
+  if (error) throw new Error(`Failed to load appointments: ${error.code}`)
   return data
 }
 
@@ -72,7 +73,7 @@ async function updateLeadRow(leadId: string, patch: Record<string, unknown>): Pr
 
   const { data, error } = await supabase.from('leads').update(patch).eq('id', leadId).select('id')
   if (error) {
-    console.error('[appointments] update', error)
+    console.error('[appointments] update', errorForLog(error))
     return { ok: false, error: 'unknown' }
   }
   if (!data || data.length === 0) return { ok: false, error: 'notFound' }
@@ -142,7 +143,7 @@ export async function setAppointment(leadId: string, datetime: string | null): P
     return { ok: true, leadId: created.id }
   }
   if (error.code !== '23505' || !lead.conversation_id) {
-    console.error('[appointments] new visit', error)
+    console.error('[appointments] new visit', errorForLog(error))
     return { ok: false, error: 'unknown' }
   }
 
@@ -233,7 +234,7 @@ export async function getJourneyStats(
     call(now - days * DAY, now),
     call(now - 2 * days * DAY, now - days * DAY),
   ])
-  if (current.error) throw new Error(`Failed to load journey stats: ${current.error.message}`)
+  if (current.error) throw new Error(`Failed to load journey stats: ${current.error.code}`)
 
   return {
     current: sumJourney((current.data as JourneyRow[] | null) ?? []),

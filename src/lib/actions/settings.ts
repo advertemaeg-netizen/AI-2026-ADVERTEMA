@@ -9,6 +9,7 @@ import {
   type OrganizationSettings,
   type SettingsActionResult,
 } from '@/lib/types/settings'
+import { errorForLog } from '@/lib/log'
 
 /**
  * The organization section is for the organization's own admins. Checked
@@ -29,7 +30,7 @@ export async function getAccountSettings(): Promise<AccountSettings | null> {
     .select('full_name, email')
     .eq('id', profile.id)
     .maybeSingle<{ full_name: string | null; email: string }>()
-  if (error) throw new Error(`Failed to load account settings: ${error.message}`)
+  if (error) throw new Error(`Failed to load account settings: ${error.code}`)
   if (!user) return null
 
   let organization: OrganizationSettings | null = null
@@ -62,7 +63,7 @@ export async function updateDisplayName(name: string): Promise<SettingsActionRes
     .eq('id', profile.id)
     .select('id')
   if (error) {
-    console.error('[settings] display name', error)
+    console.error('[settings] display name', errorForLog(error))
     return { ok: false, error: 'unknown' }
   }
   if (!data || data.length === 0) return { ok: false, error: 'unknown' }
@@ -86,7 +87,7 @@ export async function updateOrganizationName(name: string): Promise<SettingsActi
 
   const { data, error } = await supabase.rpc('rename_my_organization', { p_name: parsed.data })
   if (error) {
-    console.error('[settings] organization name', error)
+    console.error('[settings] organization name', errorForLog(error))
     return { ok: false, error: 'unknown' }
   }
   if (data === 'forbidden') return { ok: false, error: 'forbidden' }

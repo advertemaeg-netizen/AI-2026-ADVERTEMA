@@ -24,6 +24,7 @@ import {
 } from '@/lib/types/conversations'
 import type { LeadVisit } from '@/lib/types/leads'
 import type { ConversationOrigin } from '@/lib/types/comments'
+import { errorForLog } from '@/lib/log'
 
 const INBOX_PATH = '/[locale]/dashboard/conversations'
 const LIST_LIMIT = 100
@@ -73,7 +74,7 @@ export async function getConversations(
   }
 
   const { data, error } = await query.returns<ConversationListItem[]>()
-  if (error) throw new Error(`Failed to load conversations: ${error.message}`)
+  if (error) throw new Error(`Failed to load conversations: ${error.code}`)
   return data
 }
 
@@ -97,7 +98,7 @@ export async function getConversation(id: string): Promise<{
     .eq('id', id)
     .maybeSingle<ConversationDetail>()
 
-  if (error) throw new Error(`Failed to load conversation: ${error.message}`)
+  if (error) throw new Error(`Failed to load conversation: ${error.code}`)
   if (!conversation) return null
 
   const [messagesResult, teamResult, leads, originResult] = await Promise.all([
@@ -119,11 +120,11 @@ export async function getConversation(id: string): Promise<{
   ])
 
   if (messagesResult.error) {
-    throw new Error(`Failed to load messages: ${messagesResult.error.message}`)
+    throw new Error(`Failed to load messages: ${messagesResult.error.code}`)
   }
-  if (teamResult.error) console.error('[conversations] client_team', teamResult.error)
+  if (teamResult.error) console.error('[conversations] client_team', errorForLog(teamResult.error))
   // Without it the line at the top is missing, and nothing else: logged, not thrown
-  if (originResult.error) console.error('[conversations] origin', originResult.error)
+  if (originResult.error) console.error('[conversations] origin', errorForLog(originResult.error))
   const opener = originResult.data?.[0]?.origin
   const origin: ConversationOrigin | null = opener
     ? { commentId: typeof opener.commentId === 'string' ? opener.commentId : null }
@@ -196,7 +197,7 @@ export async function sendAgentMessage(
 
   if (error) {
     if (error.code === '42501') return { ok: false, error: 'notFound' }
-    console.error('[conversations] sendAgentMessage', error)
+    console.error('[conversations] sendAgentMessage', errorForLog(error))
     return { ok: false, error: 'unknown' }
   }
 
@@ -218,7 +219,7 @@ async function deliverAndRead(admin: ReturnType<typeof createAdminClient>, conve
     await deliverAgentReply(admin, conversation, message.id, message.content)
   } catch (error) {
     // Left 'sending': the inbox shows it as stuck after a few minutes, with "send again"
-    console.error('[conversations] delivering an agent reply failed', { messageId: message.id, error })
+    console.error('[conversations] delivering an agent reply failed', { messageId: message.id, error: errorForLog(error) })
   }
   const { data } = await admin.from('messages').select(MESSAGE_COLUMNS).eq('id', message.id).maybeSingle<Message>()
   return data ?? message
@@ -288,7 +289,7 @@ export async function updateConversationStatus(
     .select('id')
 
   if (error) {
-    console.error('[conversations] updateConversationStatus', error)
+    console.error('[conversations] updateConversationStatus', errorForLog(error))
     return { ok: false, error: 'unknown' }
   }
   // RLS filters out rows the user can't touch, which shows up as zero rows
@@ -315,7 +316,7 @@ export async function setConversationAutoReply(
     .select('id')
 
   if (error) {
-    console.error('[conversations] setConversationAutoReply', error)
+    console.error('[conversations] setConversationAutoReply', errorForLog(error))
     return { ok: false, error: 'unknown' }
   }
   if (!data || data.length === 0) return { ok: false, error: 'notFound' }
@@ -356,7 +357,7 @@ export async function assignConversation(
     .select('id')
 
   if (error) {
-    console.error('[conversations] assignConversation', error)
+    console.error('[conversations] assignConversation', errorForLog(error))
     return { ok: false, error: 'unknown' }
   }
   if (!data || data.length === 0) return { ok: false, error: 'notFound' }

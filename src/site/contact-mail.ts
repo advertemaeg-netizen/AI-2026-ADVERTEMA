@@ -2,6 +2,7 @@ import 'server-only'
 import nodemailer, { type Transporter } from 'nodemailer'
 import { z } from 'zod'
 import { SITE_EMAIL } from '@/site/config'
+import { errorForLog } from '@/lib/log'
 
 /**
  * The contact form's message, sent by mail to SITE_EMAIL over SMTP: the
@@ -89,7 +90,7 @@ export async function sendContactMail(message: ContactMessage, smtp = smtpTransp
     if (!sent) console.error('[site/contact] the SMTP server did not accept the message', { accepted: info.accepted, rejected: info.rejected })
     return sent
   } catch (error) {
-    console.error('[site/contact] sending failed', error)
+    console.error('[site/contact] sending failed', errorForLog(error))
     return false
   }
 }

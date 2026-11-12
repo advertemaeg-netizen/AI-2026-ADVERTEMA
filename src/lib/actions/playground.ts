@@ -16,6 +16,7 @@ import {
   type PlaygroundMessage,
   type PlaygroundResult,
 } from '@/lib/types/playground'
+import { errorForLog } from '@/lib/log'
 
 // Loose per-user guard against runaway loops, not a billing control.
 // Per server instance, like the webhook limiter.
@@ -188,7 +189,7 @@ export async function testBot(
       }
     }
   } catch (error) {
-    console.error('[playground] bot failed', error)
+    console.error('[playground] bot failed', errorForLog(error))
     return { ok: false, error: 'aiUnavailable' }
   }
 }

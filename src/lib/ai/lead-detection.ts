@@ -14,6 +14,7 @@ import { validateName, type ContactState } from '@/lib/ai/contact'
 import { normalizePhone } from '@/lib/phone'
 import { claimLeadAnalysis } from '@/lib/subscription-limits'
 import { CLOSED_LEAD_STATUSES, type LeadExtractedData, type LeadStatus } from '@/lib/types/leads'
+import { errorForLog } from '@/lib/log'
 
 /** Minimum confidence to *create* a lead (an open lead is always enriched) */
 export const LEAD_CONFIDENCE_THRESHOLD = 0.7
@@ -330,7 +331,7 @@ export async function detectLead({
     await fillContactName(supabase, conversationId, name)
     await bookFromAnalysis()
   } catch (error) {
-    console.error('[lead-detection] failed', error)
+    console.error('[lead-detection] failed', errorForLog(error))
   }
 }
 

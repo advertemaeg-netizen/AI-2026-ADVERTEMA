@@ -6,6 +6,7 @@ import { getSession } from '@/lib/auth/session'
 import { isSuperAdmin } from '@/lib/auth/permissions'
 import { LEGAL_CACHE_TAG, LEGAL_DOCUMENTS, type LegalDocument, type LegalLocale } from '@/lib/legal'
 import { LEGAL_PAGES } from '@/site/config'
+import { errorForLog } from '@/lib/log'
 
 /**
  * The legal documents' editor (app/[locale]/admin/legal). A save is a new
@@ -48,7 +49,7 @@ export async function getLegalVersions(): Promise<AdminLegalVersion[]> {
   const supabase = await superAdminSession()
   if (!supabase) return []
   const { data, error } = await supabase.rpc('admin_legal_versions')
-  if (error) throw new Error(`Failed to load the legal documents: ${error.message}`)
+  if (error) throw new Error(`Failed to load the legal documents: ${error.code}`)
   return (data ?? []) as AdminLegalVersion[]
 }
 
@@ -73,7 +74,7 @@ export async function publishLegalVersion(input: {
   // A version identical to the current one would be a record of nothing changing
   const { data: versions, error: readError } = await supabase.rpc('admin_legal_versions')
   if (readError) {
-    console.error('[legal] reading the current version', readError)
+    console.error('[legal] reading the current version', errorForLog(readError))
     return { ok: false, error: 'unknown' }
   }
   const current = (versions as AdminLegalVersion[]).find((v) => v.document === document && v.locale === locale)
@@ -88,7 +89,7 @@ export async function publishLegalVersion(input: {
   })
   if (error) {
     if (error.code === '42501') return { ok: false, error: 'forbidden' }
-    console.error('[legal] publishing', error)
+    console.error('[legal] publishing', errorForLog(error))
     return { ok: false, error: 'unknown' }
   }
 

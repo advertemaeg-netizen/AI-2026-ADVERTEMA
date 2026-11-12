@@ -70,7 +70,7 @@ export async function currentLegalVersion(document: LegalDocument, locale: Legal
     .order('version', { ascending: false })
     .limit(1)
     .maybeSingle<LegalVersion>()
-  if (error) throw new Error(`reading the current ${locale} ${document}: ${error.message}`)
+  if (error) throw new Error(`reading the current ${locale} ${document}: ${error.code}`)
   if (!data) throw new Error(`no version of the ${locale} ${document} exists`)
   return data
 }

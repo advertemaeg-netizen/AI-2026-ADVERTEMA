@@ -58,7 +58,7 @@ export async function getComments(filters: CommentFilters = {}): Promise<Comment
   if (filters.clientId) query = query.eq('conversation.client_id', filters.clientId)
 
   const { data, error } = await query.returns<CommentRow[]>()
-  if (error) throw new Error(`Failed to load comments: ${error.message}`)
+  if (error) throw new Error(`Failed to load comments: ${error.code}`)
   if (data.length === 0) return []
 
   const threadIds = [...new Set(data.map((row) => row.conversation.id))]
@@ -74,7 +74,7 @@ export async function getComments(filters: CommentFilters = {}): Promise<Comment
     privateConversations(supabase, threadIds),
     instagramPermalinks(data),
   ])
-  if (replies.error) throw new Error(`Failed to load comment replies: ${replies.error.message}`)
+  if (replies.error) throw new Error(`Failed to load comment replies: ${replies.error.code}`)
 
   const answered = new Set(replies.data.map((row) => row.reply?.commentId).filter((id): id is string => !!id))
 
@@ -112,7 +112,7 @@ async function privateConversations(supabase: Supabase, threadIds: string[]): Pr
     .eq('role', 'user')
     .eq('metadata->>privateReply', 'sent')
     .returns<{ conversation_id: string; commentId: string | null }[]>()
-  if (error) throw new Error(`Failed to load comment private replies: ${error.message}`)
+  if (error) throw new Error(`Failed to load comment private replies: ${error.code}`)
   const threadOf = new Map(opened.filter((row) => row.commentId).map((row) => [row.commentId!, row.conversation_id]))
   if (threadOf.size === 0) return new Map()
 
@@ -121,7 +121,7 @@ async function privateConversations(supabase: Supabase, threadIds: string[]): Pr
     .select('conversation_id, commentId:metadata->origin->>commentId')
     .in('metadata->origin->>commentId', [...threadOf.keys()])
     .returns<{ conversation_id: string; commentId: string | null }[]>()
-  if (openersError) throw new Error(`Failed to load comment conversations: ${openersError.message}`)
+  if (openersError) throw new Error(`Failed to load comment conversations: ${openersError.code}`)
   const dms = new Map<string, string>()
   for (const opener of openers) {
     const thread = opener.commentId ? threadOf.get(opener.commentId) : undefined

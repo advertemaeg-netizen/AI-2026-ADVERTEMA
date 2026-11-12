@@ -10,6 +10,7 @@ import {
   type BotSettingsInput,
 } from '@/lib/types/bot-settings'
 import { BOT_PRESET_NAMES, BOT_PRESETS, type BotPresetName } from '@/lib/constants/bot-presets'
+import { errorForLog } from '@/lib/log'
 
 const CLIENT_PAGES = '/[locale]/dashboard/clients/[clientId]'
 
@@ -40,7 +41,7 @@ async function saveSettings(clientId: string, settings: BotSettingsInput): Promi
 
   if (error) {
     if (error.code === '42501') return { ok: false, error: 'forbidden' }
-    console.error('[bot-settings] save', error)
+    console.error('[bot-settings] save', errorForLog(error))
     return { ok: false, error: 'unknown' }
   }
   if (!data || data.length === 0) return { ok: false, error: 'notFound' }

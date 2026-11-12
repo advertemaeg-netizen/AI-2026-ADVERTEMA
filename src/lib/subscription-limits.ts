@@ -2,10 +2,11 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ClientLimitType, LimitCheck, LimitError, OrgLimitType } from '@/lib/types/subscription'
 import type { KnowledgeQuota } from '@/lib/types/knowledge'
+import { errorForLog } from '@/lib/log'
 
 async function rpcLimit(supabase: SupabaseClient, fn: string, args: Record<string, string>): Promise<LimitCheck | null> {
   const { data, error } = await supabase.rpc(fn, args)
-  if (error) throw new Error(`${fn} failed: ${error.message}`)
+  if (error) throw new Error(`${fn} failed: ${error.code}`)
   return (data as LimitCheck | null) ?? null
 }
 
@@ -43,10 +44,10 @@ export async function claimLeadAnalysis(supabase: SupabaseClient, clientId: stri
     if (check === null || check.reason === 'inactive') return false
     if (check.reason !== 'limit_reached' || replied) return true
     const { data, error } = await supabase.rpc('claim_lead_capture', { p_client_id: clientId })
-    if (error) throw new Error(`claim_lead_capture failed: ${error.message}`)
+    if (error) throw new Error(`claim_lead_capture failed: ${error.code}`)
     return data === true
   } catch (error) {
-    console.error('[subscription-limits] lead capture check', error)
+    console.error('[subscription-limits] lead capture check', errorForLog(error))
     return false
   }
 }
@@ -65,7 +66,7 @@ export async function guardLimit(check: Promise<LimitCheck | null>): Promise<Lim
   try {
     return limitError(await check)
   } catch (error) {
-    console.error('[subscription-limits]', error)
+    console.error('[subscription-limits]', errorForLog(error))
     return 'unknown'
   }
 }
@@ -82,7 +83,7 @@ export function limitErrorFromDb(error: { message?: string; hint?: string | null
  */
 export async function checkKnowledgeQuota(supabase: SupabaseClient, clientId: string): Promise<KnowledgeQuota | null> {
   const { data, error } = await supabase.rpc('check_knowledge_quota', { p_client_id: clientId })
-  if (error) throw new Error(`check_knowledge_quota failed: ${error.message}`)
+  if (error) throw new Error(`check_knowledge_quota failed: ${error.code}`)
   if (!data) return null
   const raw = data as KnowledgeQuota
   const numOrNull = (value: unknown) => (value === null || value === undefined ? null : Number(value))

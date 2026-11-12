@@ -6,6 +6,7 @@ import { isSuperAdmin } from '@/lib/auth/permissions'
 import { normalizePlan } from '@/lib/subscription-data'
 import { UUID_PATTERN } from '@/lib/types/clients'
 import { PLAN_TYPES, planSchema, type Plan, type PlanInput, type PlanType } from '@/lib/types/subscription'
+import { errorForLog } from '@/lib/log'
 
 export type PlanActionError = 'forbidden' | 'validation' | 'slugTaken' | 'typeInUse' | 'notFound' | 'unknown'
 export type PlanActionResult = { ok: true; id: string } | { ok: false; error: PlanActionError; field?: string }
@@ -33,7 +34,7 @@ function dbError(error: { code?: string; message: string }): PlanActionResult {
   // Organizations or clients are on this plan: it can't move to the other level
   if (error.message?.includes('plan_type_in_use')) return { ok: false, error: 'typeInUse', field: 'plan_type' }
   if (error.code === '42501') return { ok: false, error: 'forbidden' }
-  console.error('[admin-plans]', error)
+  console.error('[admin-plans]', errorForLog(error))
   return { ok: false, error: 'unknown' }
 }
 
@@ -55,7 +56,7 @@ export async function getPlans(): Promise<Plan[]> {
     .order('sort_order')
     .order('price_monthly')
     .returns<Plan[]>()
-  if (error) throw new Error(`Failed to load plans: ${error.message}`)
+  if (error) throw new Error(`Failed to load plans: ${error.code}`)
   return (data ?? []).map(normalizePlan)
 }
 

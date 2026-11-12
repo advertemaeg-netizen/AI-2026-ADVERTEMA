@@ -30,6 +30,15 @@ services:
     env_file: .env.production
     environment:
       - TZ=Africa/Cairo
+    # Docker's json-file log grows without limit by default and fills the
+    # disk. Rotated at 20 MB, five files kept: about 100 MB of history,
+    # newest last (`docker logs advertema`). Applies when the container is
+    # recreated, which update.sh's `up -d --build` does.
+    logging:
+      driver: json-file
+      options:
+        max-size: 20m
+        max-file: "5"
     labels:
       - traefik.enable=true
       - traefik.http.services.advertema.loadbalancer.server.port=3000

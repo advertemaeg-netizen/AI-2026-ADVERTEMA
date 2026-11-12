@@ -10,6 +10,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { checkClientLimit, limitErrorFromDb } from '@/lib/subscription-limits'
 import { UUID_PATTERN } from '@/lib/types/clients'
 import type { WhatsAppConnectResult, WhatsAppConnectStatus, WhatsAppSignup } from '@/lib/types/whatsapp-connect'
+import { errorForLog } from '@/lib/log'
 
 /**
  * A CLIENT CONNECTS A WHATSAPP NUMBER ITSELF (Embedded Signup, the ordinary
@@ -82,7 +83,7 @@ export async function connectWhatsApp(clientId: string, signup: WhatsAppSignup):
     try {
       seats = await checkClientLimit(caller.supabase, clientId, 'channels')
     } catch (error) {
-      console.error('[whatsapp/connect] seat check', error)
+      console.error('[whatsapp/connect] seat check', errorForLog(error))
       return done('unknown', { seats: 'check_failed' })
     }
     if (seats?.reason === 'inactive') return done('subscriptionInactive')

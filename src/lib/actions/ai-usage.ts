@@ -18,6 +18,7 @@ import {
   type ModelPriceInput,
   type UnpricedModel,
 } from '@/lib/types/ai-usage'
+import { errorForLog } from '@/lib/log'
 
 /**
  * What the AI costs the platform (ai_usage), against what each client's
@@ -101,7 +102,7 @@ export async function getAiUsageOverview(range: { from: string; to: string }): P
     supabase.rpc('get_unpriced_ai_models'),
   ])
   for (const result of [report, operations, settings, models, unpriced]) {
-    if (result.error) throw new Error(`Failed to load AI usage: ${result.error.message}`)
+    if (result.error) throw new Error(`Failed to load AI usage: ${result.error.code}`)
   }
 
   const rate = num(settings.data?.usd_to_egp) || DEFAULT_USD_TO_EGP
@@ -170,7 +171,7 @@ export async function getOrganizationAiUsage(
     p_to: to.toISOString(),
     p_org_id: organizationId,
   })
-  if (error) throw new Error(`Failed to load AI usage: ${error.message}`)
+  if (error) throw new Error(`Failed to load AI usage: ${error.code}`)
   return Object.fromEntries(
     ((data as AiUsageClientRow[] | null) ?? []).map((row) => [
       row.client_id,
@@ -187,7 +188,7 @@ export async function setUsdToEgp(rate: number): Promise<AiUsageActionResult> {
 
   const { error } = await supabase.from('platform_settings').update({ usd_to_egp: parsed.data }).eq('id', true)
   if (error) {
-    console.error('[ai-usage] exchange rate', error)
+    console.error('[ai-usage] exchange rate', errorForLog(error))
     return { ok: false, error: 'unknown' }
   }
   revalidateAiUsage()
@@ -207,7 +208,7 @@ export async function saveModelPrice(input: ModelPriceInput): Promise<AiUsageAct
     p_output: parsed.data.output_price_per_million,
   })
   if (error || data !== 'ok') {
-    if (error) console.error('[ai-usage] model price', error)
+    if (error) console.error('[ai-usage] model price', errorForLog(error))
     return { ok: false, error: data === 'forbidden' ? 'forbidden' : 'unknown' }
   }
   revalidateAiUsage()
@@ -219,7 +220,7 @@ export async function deleteModelPrice(model: string): Promise<AiUsageActionResu
   if (!supabase) return { ok: false, error: 'forbidden' }
   const { error } = await supabase.from('model_pricing').delete().eq('model', model)
   if (error) {
-    console.error('[ai-usage] delete model price', error)
+    console.error('[ai-usage] delete model price', errorForLog(error))
     return { ok: false, error: 'unknown' }
   }
   revalidateAiUsage()

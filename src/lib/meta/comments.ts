@@ -16,6 +16,7 @@ import {
 } from '@/lib/meta/send'
 import type { InboundFacebookComment, InboundInstagramComment } from '@/lib/meta/webhook'
 import { WHATSAPP_PLACEHOLDER_AR } from '@/lib/meta/whatsapp-notices-ar'
+import { errorForLog } from '@/lib/log'
 
 /**
  * COMMENTS ON INSTAGRAM AND ON THE FACEBOOK PAGE (.scratch/messenger-instagram-design.md §2;
@@ -325,7 +326,7 @@ async function handleComment(supabase: SupabaseClient, channel: InboundChannel, 
       content: text,
       metadata: { transport: platform.commentTransport, commentReply: { commentId: comment.commentId, postId: comment.postId, replyId: posted.commentId, variant, privateReply } },
     })
-    if (error) console.error(`[${SOURCE}] storing the public reply failed`, { channelId: channel.id, commentId: comment.commentId, error })
+    if (error) console.error(`[${SOURCE}] storing the public reply failed`, { channelId: channel.id, commentId: comment.commentId, error: errorForLog(error) })
   } else {
     // 6. Logged and left: the private reply, which matters more, already went
     await record(supabase, comment.commentId, { public_state: `failed:${posted.kind}`, completed_at: new Date().toISOString() })
@@ -355,7 +356,7 @@ async function facebookPostIsOwn(supabase: SupabaseClient, channel: InboundChann
   if (owner === null) return null
   const pageOwned = owner === 'page'
   const { error: cacheError } = await supabase.from('meta_post_authors').upsert({ post_id: comment.postId, channel_id: channel.id, page_owned: pageOwned }, { onConflict: 'post_id', ignoreDuplicates: true })
-  if (cacheError) console.error(`[${SOURCE}] caching the post's author failed`, { channelId: channel.id, error: cacheError })
+  if (cacheError) console.error(`[${SOURCE}] caching the post's author failed`, { channelId: channel.id, error: errorForLog(cacheError) })
   return pageOwned
 }
 
@@ -372,7 +373,7 @@ async function claim(supabase: SupabaseClient, commentId: string, channelId: str
 
 async function record(supabase: SupabaseClient, commentId: string, fields: Record<string, unknown>) {
   const { error } = await supabase.from('meta_comment_replies').update(fields).eq('comment_id', commentId)
-  if (error) console.error(`[${SOURCE}] recording the comment's state failed`, { commentId, fields: Object.keys(fields), error })
+  if (error) console.error(`[${SOURCE}] recording the comment's state failed`, { commentId, fields: Object.keys(fields), error: errorForLog(error) })
 }
 
 /**
@@ -494,7 +495,7 @@ async function openDm(
   if (name) {
     // A DM they opened before commenting has no name yet: it takes this one, and never replaces one
     const { error: nameError } = await supabase.from('conversations').update({ contact_name: name }).eq('id', conversationId).is('contact_name', null)
-    if (nameError) console.error(`[${SOURCE}] naming the DM failed`, { channelId: channel.id, conversationId, error: nameError })
+    if (nameError) console.error(`[${SOURCE}] naming the DM failed`, { channelId: channel.id, conversationId, error: errorForLog(nameError) })
   }
   const { error } = await supabase.from('messages').insert({
     conversation_id: conversationId,
@@ -506,6 +507,6 @@ async function openDm(
       send: { transport: platform.dmTransport, state: 'sent', messageId: result.messageId },
     },
   })
-  if (error) console.error(`[${SOURCE}] storing the opener failed`, { channelId: channel.id, conversationId, error })
+  if (error) console.error(`[${SOURCE}] storing the opener failed`, { channelId: channel.id, conversationId, error: errorForLog(error) })
   return conversationId
 }

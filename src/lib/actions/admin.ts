@@ -33,7 +33,7 @@ export async function getPlatformStats(): Promise<PlatformStats | null> {
   if (!supabase) return null
 
   const { data, error } = await supabase.from('platform_stats').select('*').maybeSingle<Record<string, unknown>>()
-  if (error) throw new Error(`Failed to load platform stats: ${error.message}`)
+  if (error) throw new Error(`Failed to load platform stats: ${error.code}`)
   if (!data) return null
 
   const growth = (key: string): Growth => ({
@@ -76,8 +76,8 @@ export async function getOrganizations(
     supabase.rpc('get_organizations_overview'),
     supabase.from('organizations').select('id, org_type').returns<{ id: string; org_type: OrgType }[]>(),
   ])
-  if (error) throw new Error(`Failed to load organizations: ${error.message}`)
-  if (types.error) throw new Error(`Failed to load organization types: ${types.error.message}`)
+  if (error) throw new Error(`Failed to load organizations: ${error.code}`)
+  if (types.error) throw new Error(`Failed to load organization types: ${types.error.code}`)
   const typeOf = new Map((types.data ?? []).map((row) => [row.id, row.org_type]))
 
   const term = search?.trim().toLowerCase()
@@ -122,7 +122,7 @@ export async function getOrganizationDetails(orgId: string): Promise<Organizatio
     supabase.rpc('get_organization_details', { p_org_id: orgId }),
     supabase.rpc('get_org_type', { p_org_id: orgId }),
   ])
-  if (error) throw new Error(`Failed to load organization: ${error.message}`)
+  if (error) throw new Error(`Failed to load organization: ${error.code}`)
   if (!data) return null
 
   const raw = data as OrganizationDetails
@@ -171,6 +171,6 @@ export async function getSuperAdmins(): Promise<SuperAdmin[]> {
     .eq('role', 'super_admin')
     .order('created_at')
     .returns<SuperAdmin[]>()
-  if (error) throw new Error(`Failed to load super admins: ${error.message}`)
+  if (error) throw new Error(`Failed to load super admins: ${error.code}`)
   return data ?? []
 }

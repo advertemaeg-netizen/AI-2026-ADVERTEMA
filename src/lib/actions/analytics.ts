@@ -28,7 +28,7 @@ function validPeriod(from: string, to: string) {
 
 async function rpcRows<T>(supabase: Supabase, fn: string, args: Record<string, unknown>): Promise<T[]> {
   const { data, error } = await supabase.rpc(fn, args)
-  if (error) throw new Error(`${fn} failed: ${error.message}`)
+  if (error) throw new Error(`${fn} failed: ${error.code}`)
   return (data as T[] | null) ?? []
 }
 
@@ -45,7 +45,7 @@ async function periodKpis(
     // A conversation is a private one: comment threads are the comments tab's
     if (table === 'conversations') query = query.neq('thread', 'comments')
     const { count: n, error } = await query
-    if (error) throw new Error(`Failed to count ${table}: ${error.message}`)
+    if (error) throw new Error(`Failed to count ${table}: ${error.code}`)
     return n ?? 0
   }
 

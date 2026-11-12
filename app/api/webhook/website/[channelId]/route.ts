@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { loadBotSettings } from '@/lib/ai/bot'
 import { conversationStore, replyToMessage } from '@/lib/ai/reply'
 import { UUID_PATTERN } from '@/lib/types/clients'
+import { errorForLog } from '@/lib/log'
 
 // The widget is embedded on client websites, so any origin may call this route
 const CORS_HEADERS = {
@@ -92,7 +93,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<'/api/webhook/
   try {
     channel = await loadChannel(supabase, channelId)
   } catch (error) {
-    console.error('[webhook/website] GET', error)
+    console.error('[webhook/website] GET', errorForLog(error))
     return json({ ok: false, error: 'server_error' }, 500)
   }
 
@@ -111,7 +112,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<'/api/webhook/
   try {
     welcomeMessage = (await loadBotSettings(supabase, channel.client_id)).welcome_message
   } catch (error) {
-    console.error('[webhook/website] loading bot settings failed', error)
+    console.error('[webhook/website] loading bot settings failed', errorForLog(error))
   }
 
   return json({
@@ -171,7 +172,7 @@ async function agentReplies(
     if (error) throw error
     return json({ ok: true, messages: data })
   } catch (error) {
-    console.error('[webhook/website] GET replies', error)
+    console.error('[webhook/website] GET replies', errorForLog(error))
     return json({ ok: false, error: 'server_error' }, 500)
   }
 }
@@ -291,7 +292,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
         return json({ ok: true, conversationId, reply: outcome.reply })
     }
   } catch (error) {
-    console.error('[webhook/website] POST', error)
+    console.error('[webhook/website] POST', errorForLog(error))
     return json({ ok: false, error: 'server_error' }, 500)
   }
 }

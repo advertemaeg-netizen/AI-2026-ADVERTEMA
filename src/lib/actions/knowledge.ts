@@ -11,6 +11,7 @@ import {
   type KnowledgeDocument,
   type KnowledgeQuota,
 } from '@/lib/types/knowledge'
+import { errorForLog } from '@/lib/log'
 
 const KNOWLEDGE_PATH = '/[locale]/dashboard/clients/[clientId]/knowledge'
 /** How long a download link works: long enough for a slow, interrupted download to resume */
@@ -31,7 +32,7 @@ export async function getKnowledgeDocuments(clientId: string): Promise<Knowledge
     .order('created_at', { ascending: false })
     .returns<KnowledgeDocument[]>()
 
-  if (error) throw new Error(`Failed to load knowledge documents: ${error.message}`)
+  if (error) throw new Error(`Failed to load knowledge documents: ${error.code}`)
   return data
 }
 
@@ -43,7 +44,7 @@ export async function getKnowledgeQuota(clientId: string): Promise<KnowledgeQuot
   try {
     return await checkKnowledgeQuota(supabase, clientId)
   } catch (error) {
-    console.error('[knowledge] quota', error)
+    console.error('[knowledge] quota', errorForLog(error))
     return null
   }
 }
@@ -64,7 +65,7 @@ export async function deleteKnowledgeDocument(documentId: string): Promise<Knowl
     .select('file_url')
 
   if (error) {
-    console.error('[knowledge] delete', error)
+    console.error('[knowledge] delete', errorForLog(error))
     return { ok: false, error: 'unknown' }
   }
   if (!data || data.length === 0) return { ok: false, error: 'notFound' }
@@ -73,7 +74,7 @@ export async function deleteKnowledgeDocument(documentId: string): Promise<Knowl
   if (path) {
     // Storage RLS allows this for admins of the client in the path
     const { error: storageError } = await supabase.storage.from(KNOWLEDGE_BUCKET).remove([path])
-    if (storageError) console.error('[knowledge] storage remove', storageError)
+    if (storageError) console.error('[knowledge] storage remove', errorForLog(storageError))
   }
 
   revalidatePath(KNOWLEDGE_PATH, 'page')
@@ -108,7 +109,7 @@ export async function getKnowledgeFileUrl(
     .is('source_document_id', null)
     .maybeSingle<{ title: string; file_url: string | null; file_type: string | null }>()
   if (error) {
-    console.error('[knowledge] download lookup', error)
+    console.error('[knowledge] download lookup', errorForLog(error))
     return { ok: false, error: 'unknown' }
   }
   if (!doc?.file_url) return { ok: false, error: 'notFound' }
@@ -119,7 +120,7 @@ export async function getKnowledgeFileUrl(
     // Viewing: no download disposition, so the browser renders the PDF inline
     .createSignedUrl(doc.file_url, DOWNLOAD_LINK_SECONDS, mode === 'download' ? { download: doc.title } : undefined)
   if (signError || !data?.signedUrl) {
-    console.error('[knowledge] download link', signError)
+    console.error('[knowledge] download link', errorForLog(signError))
     return { ok: false, error: 'unknown' }
   }
   return { ok: true, url: data.signedUrl }

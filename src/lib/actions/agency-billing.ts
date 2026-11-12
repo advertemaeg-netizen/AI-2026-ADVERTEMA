@@ -18,6 +18,7 @@ import {
   type MarkPaidInput,
   type UsageItem,
 } from '@/lib/types/subscription'
+import { errorForLog } from '@/lib/log'
 
 /**
  * The agency billing its own clients: each client's plan and effective
@@ -38,7 +39,7 @@ function revalidateAgencyBilling() {
 
 function fail(error: { code?: string; message: string }, where: string): BillingActionResult {
   if (error.code === '42501') return { ok: false, error: 'forbidden' }
-  console.error(`[agency-billing] ${where}`, error)
+  console.error(`[agency-billing] ${where}`, errorForLog(error))
   return { ok: false, error: 'unknown' }
 }
 
@@ -50,7 +51,7 @@ export async function getAgencyClientsBilling(): Promise<ClientBillingRow[]> {
   if (!session) return []
 
   const { data, error } = await session.supabase.rpc('get_agency_clients_billing')
-  if (error) throw new Error(`Failed to load clients billing: ${error.message}`)
+  if (error) throw new Error(`Failed to load clients billing: ${error.code}`)
   return ((data as ClientBillingRowRaw[] | null) ?? []).map((row) => ({
     ...row,
     base_price: num(row.base_price),
@@ -93,7 +94,7 @@ export async function getMonthlyRevenue(rows?: ClientBillingRow[]): Promise<Mont
     .eq('status', 'paid')
     .gte('paid_at', monthStart)
     .returns<{ amount: number }[]>()
-  if (error) throw new Error(`Failed to load payments: ${error.message}`)
+  if (error) throw new Error(`Failed to load payments: ${error.code}`)
 
   const sum = (values: number[]) => Math.round(values.reduce((a, b) => a + b, 0) * 100) / 100
   return {
@@ -119,7 +120,7 @@ export async function getAgencyClientInvoices(): Promise<Invoice[]> {
     .order('created_at', { ascending: false })
     .limit(500)
     .returns<(Invoice & { client: { name: string } | null })[]>()
-  if (error) throw new Error(`Failed to load invoices: ${error.message}`)
+  if (error) throw new Error(`Failed to load invoices: ${error.code}`)
   return (data ?? []).map(({ client, ...row }) => ({ ...normalizeInvoice(row), client_name: client?.name ?? '' }))
 }
 
