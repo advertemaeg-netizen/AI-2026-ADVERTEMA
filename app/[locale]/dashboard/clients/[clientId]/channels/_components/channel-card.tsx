@@ -26,9 +26,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { deleteChannelAction, subscribeWhatsappAction, toggleChannelActive } from '@/lib/actions/channels'
+import { deleteChannelAction, setCommentRepliesAction, subscribeWhatsappAction, toggleChannelActive } from '@/lib/actions/channels'
 import type { SubscriptionState } from '@/lib/meta/subscription'
-import type { Channel } from '@/lib/types/channels'
+import { COMMENT_CHANNEL_TYPES, type Channel } from '@/lib/types/channels'
 import { ChannelIcon } from '@/components/channel-icon'
 import { embedCode } from './channel-meta'
 
@@ -79,7 +79,9 @@ export function ChannelCard({
   const [isLinking, startLink] = useTransition()
   const [subscriptionNow, setSubscriptionNow] = useState(subscription)
   const [switchOnOpen, setSwitchOnOpen] = useState(false)
+  const [isSettingComments, startComments] = useTransition()
   const isMeta = META_TYPES.includes(channel.type)
+  const takesComments = COMMENT_CHANNEL_TYPES.includes(channel.type)
 
   const snippet =
     channel.type === 'website' ? embedCode(appOrigin, channel.id) : null
@@ -113,6 +115,13 @@ export function ChannelCard({
       } else {
         toast.error(t(`errors.${result.error}`))
       }
+    })
+  }
+
+  function handleCommentReplies(checked: boolean) {
+    startComments(async () => {
+      const result = await setCommentRepliesAction(channel.id, checked)
+      if (!result.ok) toast.error(t(`errors.${result.error}`))
     })
   }
 
@@ -151,7 +160,7 @@ export function ChannelCard({
             <ChannelIcon type={channel.type} surface="account" className="size-4" />
           </div>
           <div className="min-w-0">
-            <CardTitle className="truncate">{channel.name}</CardTitle>
+            <CardTitle dir="auto" className="truncate">{channel.name}</CardTitle>
             <CardDescription>
               {t(`types.${channel.type}`)} ·{' '}
               {format.dateTime(new Date(channel.created_at), { dateStyle: 'medium' })}
@@ -184,6 +193,32 @@ export function ChannelCard({
                 {isLinking ? tCommon('loading') : t('whatsapp.link')}
               </Button>
             )}
+          </div>
+        )}
+
+        {takesComments && canManage && (
+          <div className="flex items-start justify-between gap-4 border-t pt-4">
+            <div className="grid min-w-0 gap-1">
+              <label htmlFor={`comments-${channel.id}`} className="text-sm font-medium">
+                {t('comments.label')}
+              </label>
+              <p className="text-sm text-muted-foreground">{t('comments.description')}</p>
+              {/* Who last changed it, stamped by the database; nothing when a script did */}
+              {channel.comment_replies_changed_by_name && channel.comment_replies_changed_at && (
+                <p className="text-xs text-muted-foreground">
+                  {t(channel.comment_replies_enabled ? 'comments.turnedOn' : 'comments.turnedOff', {
+                    name: channel.comment_replies_changed_by_name,
+                    date: format.dateTime(new Date(channel.comment_replies_changed_at), { dateStyle: 'medium' }),
+                  })}
+                </p>
+              )}
+            </div>
+            <Switch
+              id={`comments-${channel.id}`}
+              checked={!!channel.comment_replies_enabled}
+              onCheckedChange={handleCommentReplies}
+              disabled={isSettingComments}
+            />
           </div>
         )}
 

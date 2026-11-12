@@ -15,7 +15,15 @@ export type Channel = {
   created_at: string
   /** WhatsApp: what the card must say beyond on or paused (display name under review; access removed by the business) */
   connection_notice?: 'name_pending' | 'removed_by_business' | null
+  /** Facebook and Instagram: replies to comments, on or off (20261119100000) */
+  comment_replies_enabled?: boolean
+  /** Who last turned it on or off, and when: stamped by the database. Null when a script did, or never */
+  comment_replies_changed_by_name?: string | null
+  comment_replies_changed_at?: string | null
 }
+
+/** The channel types that can reply to comments */
+export const COMMENT_CHANNEL_TYPES: readonly ChannelType[] = ['facebook', 'instagram']
 
 export type ChannelActionError =
   | 'impersonating'

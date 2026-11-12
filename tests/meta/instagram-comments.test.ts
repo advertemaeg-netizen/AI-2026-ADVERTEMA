@@ -46,7 +46,7 @@ async function liveAccount({ switchedOn = true }: { switchedOn?: boolean } = {})
     .single<{ id: string }>()
   if (error) throw error
   await service.from('channel_secrets').insert({ channel_id: channel.id, access_token: TOKEN })
-  if (switchedOn) await service.from('clients').update({ comment_replies_enabled: true }).eq('id', seeded.clientId)
+  if (switchedOn) await service.from('channels').update({ comment_replies_enabled: true }).eq('id', channel.id)
   const { data: client } = await service.from('clients').select('name').eq('id', seeded.clientId).single<{ name: string }>()
   return { ...seeded, service, accountId, channelId: channel.id, clinicName: client!.name }
 }
@@ -295,12 +295,12 @@ describe('what is never answered', () => {
     expect(await conversationsOf(service, channelId)).toEqual([])
   })
 
-  it('the client’s switch off, as every client is by default: nothing stored, nothing claimed, nothing sent', async () => {
+  it('the channel’s switch off, as every channel is by default: nothing stored, nothing claimed, nothing sent', async () => {
     const { service, channelId, accountId, clientId } = await liveAccount({ switchedOn: false })
     consoleOutput()
     meta()
-    const { data: client } = await service.from('clients').select('comment_replies_enabled').eq('id', clientId).single<{ comment_replies_enabled: boolean }>()
-    expect(client!.comment_replies_enabled).toBe(false)
+    const { data: row } = await service.from('channels').select('comment_replies_enabled').eq('id', channelId).single<{ comment_replies_enabled: boolean }>()
+    expect(row!.comment_replies_enabled).toBe(false)
 
     const { id } = await deliverComment(accountId)
 

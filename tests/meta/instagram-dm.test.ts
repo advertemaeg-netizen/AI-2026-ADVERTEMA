@@ -56,7 +56,7 @@ async function liveAccount({ comments = false } = {}) {
   if (error) throw error
   const { error: secretError } = await service.from('channel_secrets').insert({ channel_id: channel.id, access_token: TOKEN })
   if (secretError) throw secretError
-  if (comments) await service.from('clients').update({ comment_replies_enabled: true }).eq('id', seeded.clientId)
+  if (comments) await service.from('channels').update({ comment_replies_enabled: true }).eq('id', channel.id)
   return { ...seeded, accountId, channelId: channel.id }
 }
 

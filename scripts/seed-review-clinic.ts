@@ -10,13 +10,13 @@
  *   npm run seed:review-clinic -- --email=<…> --comments=on|off --write    sets the switch, and nothing else
  *
  * THE COMMENT-REPLIES SWITCH IS ITS OWN ACTION. --comments sets
- * clients.comment_replies_enabled for the clinic and writes nothing else: no
+ * channels.comment_replies_enabled on the clinic's Facebook and Instagram
+ * channels (the switch lives there since 20261119100000; the dashboard has
+ * it too, on each channel's card) and writes nothing else: no
  * settings, branch or documents, so turning it off when the review decision
  * comes back cannot also push whatever the fixture says by then. Without
  * --comments nothing touches it, so an existing value is never overwritten
- * by accident. Every run prints its current value with the plan. (The
- * dashboard has no control for it yet; decided 2026-11-08 that it moves to
- * the channel, with a record of who changed it. Until then, this.)
+ * by accident. Every run prints its current value with the plan.
  *
  * IT CREATES NOTHING BUT CONTENT. The login, the organization and the client
  * are made once, by signing up through the app as the reviewer: a direct
@@ -157,34 +157,41 @@ function args() {
   return { email, write: process.argv.includes('--write'), comments: comments === undefined ? null : comments === 'on' }
 }
 
-/** The clinic's comment-replies switch, as stored */
+/**
+ * The clinic's comment-replies switch, as stored: on each Facebook and
+ * Instagram channel since 20261119100000 (it was the client's). Reads as on
+ * only when every one of them is on; no such channel reads as off.
+ */
 async function commentReplies(admin: Admin, clientId: string) {
-  const row = check(await admin.from('clients').select('comment_replies_enabled').eq('id', clientId).single(), 'reading the comment-replies switch') as { comment_replies_enabled: boolean }
-  return row.comment_replies_enabled
+  const rows = check(
+    await admin.from('channels').select('id, comment_replies_enabled').eq('client_id', clientId).in('type', ['facebook', 'instagram']),
+    'reading the comment-replies switch'
+  ) as { id: string; comment_replies_enabled: boolean }[]
+  return { channels: rows.length, on: rows.length > 0 && rows.every((row) => row.comment_replies_enabled) }
 }
 
 const onOff = (value: boolean) => (value ? 'on' : 'off')
 
-/** --comments: the switch alone. Nothing else is read for writing, nothing else is written */
+/** --comments: the switch alone, on the clinic's Facebook and Instagram channels. Nothing else is written */
 async function setCommentReplies(admin: Admin, clinic: Clinic, wanted: boolean, write: boolean) {
   const was = await commentReplies(admin, clinic.clientId)
+  if (was.channels === 0) throw new Error('the clinic has no Facebook or Instagram channel: connect one through the app first')
   if (!write) {
     console.log(`
-comment replies: ${onOff(was)} → ${onOff(wanted)}${was === wanted ? ' (already)' : ''}`)
+comment replies (${was.channels} channels): ${onOff(was.on)} → ${onOff(wanted)}${was.on === wanted ? ' (already)' : ''}`)
     console.log('dry run: nothing written. Add --write to set it.')
     return
   }
-  if (was !== wanted) {
-    const updated = check(
-      await admin.from('clients').update({ comment_replies_enabled: wanted }).eq('id', clinic.clientId).eq('organization_id', clinic.orgId).select('id'),
-      'setting the comment-replies switch'
-    ) as unknown[]
-    if (updated.length !== 1) throw new Error(`expected to set the switch on one client, set it on ${updated.length}`)
-  }
+  // The client id filter is the clinic's, found and checked by findClinic; the dashboard shows no
+  // "changed by" line for this (a script has no user), only the switch itself
+  check(
+    await admin.from('channels').update({ comment_replies_enabled: wanted }).eq('client_id', clinic.clientId).in('type', ['facebook', 'instagram']).select('id'),
+    'setting the comment-replies switch'
+  )
   const now = await commentReplies(admin, clinic.clientId)
   console.log(`
-comment replies: ${onOff(was)} → ${onOff(now)}${was === now ? ' (unchanged: it already was)' : ''}`)
-  if (now !== wanted) throw new Error(`the switch reads ${onOff(now)} after setting it ${onOff(wanted)}`)
+comment replies (${now.channels} channels): ${onOff(was.on)} → ${onOff(now.on)}${was.on === now.on ? ' (unchanged: it already was)' : ''}`)
+  if (now.on !== wanted) throw new Error(`the switch reads ${onOff(now.on)} after setting it ${onOff(wanted)}`)
 }
 
 type Clinic = { clientId: string; orgId: string; orgName: string; userRole: string }
@@ -297,14 +304,14 @@ async function subscription(admin: Admin, clientId: string): Promise<Subscriptio
 
 const show = (limit: Limit | null) => (!limit ? 'unknown' : `${limit.used ?? '?'} used of ${limit.limit ?? 'unlimited'}`)
 
-function printSubscription(sub: Subscription, comments: boolean) {
+function printSubscription(sub: Subscription, comments: { channels: number; on: boolean }) {
   console.log('\n================ THE PLAN: read this before recording ================')
   console.log(`  plan                     ${sub.plan}`)
   console.log(`  status                   ${sub.status}${sub.trialEndsAt ? `, trial ends ${sub.trialEndsAt}` : ''}${sub.usable === false ? '   NOT USABLE: the bot is not answering' : ''}`)
   console.log(`  MONTHLY MESSAGE LIMIT    ${show(sub.messages)}`)
   console.log(`  documents                ${show(sub.docs)}`)
   console.log(`  chunks                   ${show(sub.chunks)}`)
-  console.log(`  comment replies          ${onOff(comments)}   (set only with --comments=on|off)`)
+  console.log(`  comment replies          ${onOff(comments.on)} on ${comments.channels} Facebook/Instagram channels   (--comments=on|off, or each channel's card)`)
   if (sub.status === 'trialing') {
     console.log('\n  WARNING: still on the trial. A super admin must activate this client’s subscription')
     console.log('  in the admin area before recording, or the bot stops answering when the trial ends.')

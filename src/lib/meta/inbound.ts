@@ -81,13 +81,13 @@ export type InboundChannel = {
   id: string
   client_id: string
   is_active: boolean
+  /** Comment replies in the clinic's name: off unless switched on for this channel (20261119100000) */
+  comment_replies_enabled?: boolean
   clients: {
     name: string
     industry: string | null
     description: string | null
     status: string
-    /** Comment replies in the clinic's name: off unless switched on for this client */
-    comment_replies_enabled?: boolean
     organizations: { is_active: boolean } | null
   } | null
 }

@@ -10,6 +10,7 @@ import { UUID_PATTERN } from '@/lib/types/clients'
 import {
   AVAILABLE_CHANNEL_TYPES,
   CHANNEL_TYPES,
+  COMMENT_CHANNEL_TYPES,
   type Channel,
   type ChannelActionResult,
   type ChannelType,
@@ -17,7 +18,7 @@ import {
 import { errorForLog } from '@/lib/log'
 
 const CHANNELS_PATH = '/[locale]/dashboard/clients/[clientId]/channels'
-const CHANNEL_COLUMNS = 'id, client_id, type, name, webhook_url, is_active, created_at, connection_notice'
+const CHANNEL_COLUMNS = 'id, client_id, type, name, webhook_url, is_active, created_at, connection_notice, comment_replies_enabled, comment_replies_changed_by, comment_replies_changed_at'
 
 function dbError(error: { code?: string; message: string; hint?: string | null }): ChannelActionResult {
   // The subscription limit trigger (a race past the check in createChannelAction)
@@ -41,10 +42,48 @@ export async function getChannels(clientId: string): Promise<Channel[]> {
     .select(CHANNEL_COLUMNS)
     .eq('client_id', clientId)
     .order('created_at', { ascending: true })
-    .returns<Channel[]>()
+    .returns<(Channel & { comment_replies_changed_by: string | null })[]>()
 
   if (error) throw new Error(`Failed to load channels: ${error.code}`)
-  return data
+  // Who last flipped comment replies, by name. The ids are on rows this user may see (RLS above);
+  // the names are read with the service role because a manager may not see every colleague's row
+  const changers = [...new Set(data.map((row) => row.comment_replies_changed_by).filter((id): id is string => !!id))]
+  const names = new Map<string, string>()
+  if (changers.length > 0) {
+    const { data: users, error: usersError } = await createAdminClient().from('users').select('id, full_name, email').in('id', changers)
+    if (usersError) console.error('[channels] comment replies changed by', errorForLog(usersError))
+    for (const user of (users ?? []) as { id: string; full_name: string | null; email: string }[]) names.set(user.id, user.full_name?.trim() || user.email)
+  }
+  return data.map(({ comment_replies_changed_by: by, ...channel }) => ({
+    ...channel,
+    comment_replies_changed_by_name: by ? (names.get(by) ?? null) : null,
+  }))
+}
+
+/**
+ * Comment replies on one Facebook or Instagram channel, on or off. Who and
+ * when are stamped by the database (20261119100000), never sent from here.
+ * Managers only, as every other channel change; never while impersonating.
+ */
+export async function setCommentRepliesAction(channelId: string, enabled: boolean): Promise<ChannelActionResult> {
+  if (await isImpersonating()) return { ok: false, error: 'impersonating' }
+  const { supabase, profile } = await getSession()
+  if (!profile) return { ok: false, error: 'unauthorized' }
+  if (!canManage(profile)) return { ok: false, error: 'forbidden' }
+  if (!UUID_PATTERN.test(channelId) || typeof enabled !== 'boolean') return { ok: false, error: 'validation' }
+
+  const { data, error } = await supabase
+    .from('channels')
+    .update({ comment_replies_enabled: enabled })
+    .eq('id', channelId)
+    .in('type', COMMENT_CHANNEL_TYPES as ChannelType[])
+    .select('id')
+  if (error) return dbError(error)
+  // RLS, or a channel that is not Facebook or Instagram: zero rows
+  if (!data || data.length === 0) return { ok: false, error: 'notFound' }
+  console.info('[channels] comment replies', { channelId, enabled })
+  revalidatePath(CHANNELS_PATH, 'page')
+  return { ok: true }
 }
 
 export async function createChannelAction(

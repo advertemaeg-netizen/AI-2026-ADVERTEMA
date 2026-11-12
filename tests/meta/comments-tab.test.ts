@@ -92,7 +92,7 @@ async function twoComments() {
     .single<{ id: string }>()
   if (error) throw error
   await service.from('channel_secrets').insert({ channel_id: channel.id, access_token: TOKEN })
-  await service.from('clients').update({ comment_replies_enabled: true }).eq('id', seeded.clientId)
+  await service.from('channels').update({ comment_replies_enabled: true }).eq('id', channel.id)
   meta()
   const first = await deliverComment(accountId, 'التقويم بكام؟')
   const second = await deliverComment(accountId, 'وفي تقسيط؟')

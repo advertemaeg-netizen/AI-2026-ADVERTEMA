@@ -433,6 +433,12 @@
           "button": "Turn on"
         }
       }
+    },
+    "comments": {
+      "label": "Reply to comments",
+      "description": "While it is on, each comment gets a short public reply, and we open a private conversation with the person who wrote it.",
+      "turnedOn": "Turned on by {name} on {date}",
+      "turnedOff": "Turned off by {name} on {date}"
     }
   },
   "conversations": {

@@ -277,7 +277,7 @@ async function clientsFor(supabase: ReturnType<typeof createAdminClient>, shape:
 
   const { data, error } = await supabase
     .from('channels')
-    .select('id, client_id, external_id, is_active, clients(name, industry, description, status, comment_replies_enabled, organizations(is_active))')
+    .select('id, client_id, external_id, is_active, comment_replies_enabled, clients(name, industry, description, status, organizations(is_active))')
     .eq('type', type)
     .in('external_id', ids)
     .order('is_active', { ascending: false })

@@ -433,6 +433,12 @@
           "button": "شغّل"
         }
       }
+    },
+    "comments": {
+      "label": "الرد على التعليقات",
+      "description": "لما يكون مفتوح، كل تعليق بياخد رد عام قصير، وبنفتح مع صاحبه محادثة في الخاص.",
+      "turnedOn": "شغّله {name} يوم {date}",
+      "turnedOff": "وقّفه {name} يوم {date}"
     }
   },
   "conversations": {

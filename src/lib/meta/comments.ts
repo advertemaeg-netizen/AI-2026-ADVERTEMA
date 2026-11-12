@@ -111,7 +111,7 @@ type SkipReason = 'own_reply' | 'own_text' | 'own_account' | 'reply_in_thread' |
 export type CommentDisposition =
   /** The channel, client or organization is off: nothing stored */
   | { kind: 'inactive' }
-  /** The client's comment replies are switched off: nothing stored, nothing claimed */
+  /** The channel's comment replies are switched off: nothing stored, nothing claimed */
   | { kind: 'switched_off' }
   /** Already claimed: a retry or a duplicate notification. Nothing done */
   | { kind: 'duplicate' }
@@ -237,7 +237,7 @@ function passesPublicChecks(text: string) {
 
 async function handleComment(supabase: SupabaseClient, channel: InboundChannel, comment: InboundComment, platform: CommentPlatform): Promise<CommentDisposition> {
   if (!isLive(channel)) return { kind: 'inactive' }
-  if (channel.clients?.comment_replies_enabled !== true) return { kind: 'switched_off' }
+  if (channel.comment_replies_enabled !== true) return { kind: 'switched_off' }
 
   // 1. THE CLAIM, before anything acts
   if (!(await claim(supabase, comment.commentId, channel.id))) {

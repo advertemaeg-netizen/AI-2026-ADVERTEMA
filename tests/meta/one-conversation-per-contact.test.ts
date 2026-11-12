@@ -139,7 +139,7 @@ describe('two first messages from one person at once', () => {
 
   it('on an Instagram comment: the second comment joins the comment thread the first opened', async () => {
     const { clientId, externalId, metaChannelId } = await metaChannel('instagram')
-    await service.from('clients').update({ comment_replies_enabled: true }).eq('id', clientId)
+    await service.from('channels').update({ comment_replies_enabled: true }).eq('id', metaChannelId)
     const commenter = `IGSID-${crypto.randomUUID()}`
     mockGraph((call) => (call.url.endsWith('/replies') ? Response.json({ id: `reply-${crypto.randomUUID()}` }) : Response.json({ recipient_id: commenter, message_id: `m_${crypto.randomUUID()}` })))
     const won = raceTheNextConversationInsert({ client_id: clientId, channel_id: metaChannelId, contact_identifier: commenter, thread: 'comments', status: 'new', auto_reply_enabled: false })
