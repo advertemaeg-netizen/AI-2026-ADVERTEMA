@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { canManage, getSession, isImpersonating } from '@/lib/auth/session'
 import { appOrigin } from '@/lib/app-url'
 import { subscribeApp, subscribedApps, type SubscriptionState } from '@/lib/meta/subscription'
+import { unsubscribeChannel } from '@/lib/meta/unsubscribe'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checkClientLimit, guardLimit, limitErrorFromDb } from '@/lib/subscription-limits'
 import { UUID_PATTERN } from '@/lib/types/clients'
@@ -181,6 +182,13 @@ export async function deleteChannelAction(id: string): Promise<ChannelActionResu
   if (!profile) return { ok: false, error: 'unauthorized' }
   if (!canManage(profile)) return { ok: false, error: 'forbidden' }
   if (!UUID_PATTERN.test(id)) return { ok: false, error: 'notFound' }
+
+  // Visible to this user (RLS) before anything is asked of Meta
+  const { data: channel } = await supabase.from('channels').select('id, type, external_id').eq('id', id).maybeSingle<{ id: string; type: ChannelType; external_id: string | null }>()
+  if (!channel) return { ok: false, error: 'notFound' }
+  // Our app off the Page, Instagram account or WABA, while the token is still ours. Never
+  // blocks the delete: whatever Meta answers is logged under [meta/unsubscribe] (src/lib/meta/unsubscribe.ts)
+  await unsubscribeChannel(createAdminClient(), channel)
 
   const { data, error } = await supabase.from('channels').delete().eq('id', id).select('id')
 
