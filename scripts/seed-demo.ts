@@ -216,20 +216,18 @@ export async function seedChannels(admin: Admin, demo: DemoContext) {
         type,
         name: CHANNEL_NAMES[type],
         is_active: true,
-        ...(type === 'website'
-          ? { webhook_url: origin ? `${origin}/api/webhook/website/${id}` : null }
-          : // Not connected to anything: shown so leads from it display correctly
-            { credentials: { demo: true } }),
+        // The other channels are connected to nothing: shown so leads from them display correctly
+        ...(type === 'website' ? { webhook_url: origin ? `${origin}/api/webhook/website/${id}` : null } : {}),
       }),
       `creating the ${type} channel`
     )
   }
 
   const channels = check(
-    await admin.from('channels').select('id, type, name, is_active, credentials').eq('client_id', demo.clientId),
+    await admin.from('channels').select('id, type, name, is_active').eq('client_id', demo.clientId),
     'loading channels'
-  ) as { id: string; type: ChannelType; name: string; is_active: boolean; credentials: unknown }[]
-  for (const c of channels) console.log(`  ${c.type.padEnd(9)} ${c.id}  ${c.name}${c.credentials ? '  (demo, no token)' : ''}`)
+  ) as { id: string; type: ChannelType; name: string; is_active: boolean }[]
+  for (const c of channels) console.log(`  ${c.type.padEnd(9)} ${c.id}  ${c.name}${c.type !== 'website' ? '  (demo, no token)' : ''}`)
   return channels
 }
 

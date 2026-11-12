@@ -4,7 +4,7 @@ export type ChannelType = (typeof CHANNEL_TYPES)[number]
 // Channel types that can be created today; the rest show as "coming soon"
 export const AVAILABLE_CHANNEL_TYPES: readonly ChannelType[] = ['website']
 
-// `credentials` is intentionally left out so secrets never reach the browser
+// A channel's token is never here: it lives in channel_secrets, read by the service role alone
 export type Channel = {
   id: string
   client_id: string
