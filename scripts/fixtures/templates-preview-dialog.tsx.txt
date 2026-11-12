@@ -1,0 +1,8 @@
+'use client'
+// The templates fixture's open dialog (copy beside the page as dialog.tsx): a
+// server page cannot hand the dialog its callbacks.
+import { CreateTemplateDialog } from '../dashboard/clients/[clientId]/templates/_components/templates-board'
+
+export function OpenDialog({ clientId }: { clientId: string }) {
+  return <CreateTemplateDialog clientId={clientId} channelId="wa1" open onOpenChange={() => {}} onSubmitted={() => {}} />
+}

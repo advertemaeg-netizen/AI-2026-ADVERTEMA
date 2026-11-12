@@ -1,0 +1,51 @@
+// A FIXTURE PAGE FOR SCREENSHOTS, NOT PART OF THE APP (2026-11-12).
+//
+// The templates screen with fake templates in every status, and the create
+// dialog open beside it (?dialog=1), inside the real dashboard shell. The
+// screencast for whatsapp_business_management records this screen.
+//
+// Kept as .txt so it is never built or type-checked where it sits. To use:
+//   cp scripts/fixtures/templates-preview.page.tsx.txt "app/[locale]/zz-preview/page.tsx"
+//   cp scripts/fixtures/templates-preview-dialog.tsx.txt "app/[locale]/zz-preview/dialog.tsx"
+//   npx next dev -p 3123            # then open /ar/zz-preview and /en/zz-preview (?dialog=1)
+//   (screenshot with chrome-headless-shell as in comments-preview.page.tsx.txt)
+//   rm -r "app/[locale]/zz-preview"   # NEVER commit it there: it is an unauthenticated route
+import { getTranslations } from 'next-intl/server'
+import { DashboardShell } from '../dashboard/_components/dashboard-shell'
+import { ClientSubnav } from '../dashboard/clients/[clientId]/_components/client-subnav'
+import { TemplatesBoard } from '../dashboard/clients/[clientId]/templates/_components/templates-board'
+import { OpenDialog } from './dialog'
+import type { ChannelTemplates } from '@/lib/types/templates'
+
+const client = { id: '00000000-0000-4000-8000-000000000001', name: 'عيادة طب الأسنان — حساب تجريبي' }
+const lists: ChannelTemplates[] = [
+  {
+    channelId: 'wa1',
+    channelName: 'WhatsApp',
+    templates: [
+      { id: '1', name: 'appointment_reminder', language: 'ar', status: 'approved', body: 'أهلاً، بنفكّرك بميعادك في العيادة بكرة الساعة ٥ العصر. لو محتاج تغيّر الميعاد ابعتلنا هنا.' },
+      { id: '2', name: 'visit_followup', language: 'ar', status: 'pending', body: 'أهلاً، اتمنى تكون بخير بعد زيارتك. لو عندك أي سؤال عن العلاج ابعتلنا.' },
+      { id: '3', name: 'appointment_reminder', language: 'en', status: 'approved', body: 'Hello, a reminder of your appointment at the clinic tomorrow at 5 pm. Reply here to change it.' },
+      { id: '4', name: 'big_discount_this_week_only_for_new_patients_book_now', language: 'ar', status: 'rejected', body: 'خصم ٥٠٪ على كل الخدمات الأسبوع ده بس! احجز دلوقتي قبل ما العرض يخلص!!' },
+      { id: '5', name: 'old_reminder', language: 'en_US', status: 'unavailable', body: 'Your appointment is tomorrow.' },
+    ],
+  },
+]
+
+export default async function Preview({ searchParams }: { searchParams: Promise<{ dialog?: string; empty?: string }> }) {
+  const { dialog, empty } = await searchParams
+  const t = await getTranslations('templates')
+  return (
+    <DashboardShell clients={[client, { id: 'c2', name: 'Clinic two' }]} selectedClient={client} canSeeAll={false} orgType="agency" user={{ email: 'owner@example.com', fullName: 'Owner Name', role: 'org_admin' }}>
+      <div className="page">
+        <div className="mb-6">
+          <h1 className="page-title">{t('title')}</h1>
+          <p className="text-muted-foreground mt-1 max-w-3xl">{t('intro')}</p>
+        </div>
+        <ClientSubnav clientId={client.id} />
+        <TemplatesBoard clientId={client.id} lists={empty ? [{ ...lists[0], templates: [] }] : lists} canManage />
+        {dialog && <OpenDialog clientId={client.id} />}
+      </div>
+    </DashboardShell>
+  )
+}

@@ -659,7 +659,8 @@
     "knowledge": "Knowledge base",
     "playground": "Try the bot",
     "botSettings": "Bot settings",
-    "subscription": "Subscription"
+    "subscription": "Subscription",
+    "templates": "Message templates"
   },
   "branches": {
     "title": "{client} branches",
@@ -2377,5 +2378,35 @@
     "facebook": "Messenger",
     "instagram": "Instagram",
     "website": "Website"
+  },
+  "templates": {
+    "title": "Message templates",
+    "intro": "Templates let you message a customer more than 24 hours after their last message — for example an appointment reminder. WhatsApp reviews each template first, then you can use it.",
+    "create": "New template",
+    "field": {
+      "name": "Template name",
+      "nameHint": "Lowercase English letters, numbers and _ only. Example: appointment_reminder",
+      "language": "Language",
+      "body": "Message text"
+    },
+    "empty": "No templates yet. Create your first one so you can message customers after the 24 hours.",
+    "pendingNote": "The template was sent to WhatsApp for review. It can take from a few minutes to 24 hours.",
+    "status": {
+      "pending": "In review",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "unavailable": "Unavailable"
+    },
+    "rejectedNote": "WhatsApp rejected the template. Usually the text sounds promotional or is unclear — try simpler wording that sticks to the information.",
+    "error": {
+      "nameTaken": "A template with this name already exists. Change the name and try again.",
+      "createFailed": "Creating the template failed. Try again, and contact us if it keeps happening."
+    },
+    "submit": "Send for review",
+    "unavailableNote": "WhatsApp stopped this template, usually because of complaints from people who received it, or repeated rejections. Create a new template with clearer wording.",
+    "language": {
+      "ar": "Arabic",
+      "en": "English"
+    }
   }
 }
