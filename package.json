@@ -13,6 +13,7 @@
     "seed:demo": "JITI_ALIAS=\"{\\\"@\\\":\\\"$PWD/src\\\",\\\"server-only\\\":\\\"$PWD/tests/harness/server-only.ts\\\"}\" jiti scripts/seed-demo.ts",
     "seed:review-clinic": "JITI_ALIAS=\"{\\\"@\\\":\\\"$PWD/src\\\",\\\"server-only\\\":\\\"$PWD/tests/harness/server-only.ts\\\"}\" jiti scripts/seed-review-clinic.ts",
     "reset:demo": "JITI_ALIAS=\"{\\\"@\\\":\\\"$PWD/src\\\",\\\"server-only\\\":\\\"$PWD/tests/harness/server-only.ts\\\"}\" jiti scripts/reset-demo.ts",
+    "reset:review-clinic": "JITI_ALIAS=\"{\\\"@\\\":\\\"$PWD/src\\\",\\\"server-only\\\":\\\"$PWD/tests/harness/server-only.ts\\\"}\" jiti scripts/reset-review-clinic.ts",
     "audit:leads": "JITI_ALIAS=\"{\\\"@\\\":\\\"$PWD/src\\\",\\\"server-only\\\":\\\"$PWD/tests/harness/server-only.ts\\\"}\" jiti scripts/audit-leads.ts",
     "eval": "JITI_ALIAS=\"{\\\"@\\\":\\\"$PWD/src\\\",\\\"server-only\\\":\\\"$PWD/tests/harness/server-only.ts\\\"}\" jiti scripts/eval.ts",
     "whatsapp:subscription": "JITI_ALIAS=\"{\\\"@\\\":\\\"$PWD/src\\\",\\\"server-only\\\":\\\"$PWD/tests/harness/server-only.ts\\\"}\" jiti scripts/whatsapp-subscription.ts",
