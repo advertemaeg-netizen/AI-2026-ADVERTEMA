@@ -123,7 +123,10 @@ export async function launchWhatsAppSignup({ appId, configId, coexistence = fals
         if (data.type === 'WA_EMBEDDED_SIGNUP') {
           if (data.event === 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING') {
             // A number kept on the WhatsApp Business app. Meta's example carries
-            // the WABA only: the server finds the number in it. Taken only when asked for
+            // the WABA only: the server finds the number in it. Taken only when asked for.
+            // SPARE-SIM LIST (open, 2026-11-15): whether a v4 coexistence finish carries
+            // phone_number_id is unverified. Both are handled: the number when sent,
+            // the WABA's one number on the app (coexistenceNumber) when not
             const wabaId = data.data?.waba_id
             const phoneNumberId = data.data?.phone_number_id
             if (coexistence && typeof wabaId === 'string') {

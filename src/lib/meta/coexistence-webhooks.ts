@@ -342,6 +342,12 @@ export function parseHistory(payload: unknown): HistoryChunk[] {
 export type HistoryDisposition = { declined: number; chunks: number; imported: number; media: number; skipped: number }
 
 /**
+ * SPARE-SIM LIST (open, 2026-11-15): what history's `phase` means. Meta's
+ * history reference says 2 "indicates that the current phase is complete";
+ * its coexistence page says phase "does not tell you that a phase is
+ * complete". Nothing here reads it beyond storing it with the chunk:
+ * progress 100 is the only completion signal. Settle it on the spare number.
+ *
  * The one-shot import. Each chunk is stored raw before it is read (one can
  * hold thousands of messages), then imported: each thread's conversation,
  * each message an `imported` row with Meta's time, once (a resent chunk adds

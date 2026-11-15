@@ -29,5 +29,16 @@ export function coexistenceEnabled(env: Record<string, string | undefined> = pro
 /** The 24 hours Meta gives for the one-shot history and contacts requests, from onboarding */
 export const SYNC_WINDOW_MS = 24 * 60 * 60 * 1000
 
+/**
+ * PRICING (Meta's coexistence page, "Pricing", fetched 2026-11-15:
+ * developers.facebook.com/documentation/business-messaging/whatsapp/
+ * embedded-signup/onboarding-business-app-users/): "messages sent by the
+ * business via the WhatsApp Business app will continue to be free, but
+ * messages sent via Cloud API will be subject to Cloud API pricing." So a
+ * reply from the business's phone does not use the number's 1,000 free
+ * service messages a month; only what Mudrik sends does. A budget counter
+ * counts our sends' statuses (their `pricing`), never smb_message_echoes.
+ */
+
 /** Meta's error when the business chose not to share its chat history ("cannot be changed later") */
 export const HISTORY_DECLINED_CODE = 2593109
