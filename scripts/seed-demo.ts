@@ -322,7 +322,7 @@ export async function seedBotSettings(admin: Admin, demo: DemoContext) {
       'المعلومة دي مش عندي دلوقتي — هوصّلها للفريق وهيردّوا عليك في أقرب وقت. ولو الموضوع مستعجل، اتصل على 02-25201184.',
     // A dental clinic: when the assistant is down the patient still needs a number
     service_unavailable_message: [
-      'فيه ضغط على النظام دلوقتي ومش قادر أرد. الفريق هيشوف رسالتك ويرد عليك قريب.',
+      'مش قادر أرد دلوقتي. الفريق هيشوف رسالتك ويرد عليك قريب.',
       'للحجز والاستفسار: 02-25201184',
       'ولو عندك ألم شديد أو طوارئ: 01002847562',
     ].join('\n'),

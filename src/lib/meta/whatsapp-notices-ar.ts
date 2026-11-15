@@ -21,7 +21,7 @@
 
 export const WHATSAPP_HANDOFF_AR = "رسالتك وصلت لحد من الفريق، وهيرد عليك هنا."
 
-export const WHATSAPP_UNAVAILABLE_AR = "معلش، في مشكلة مؤقتة عندنا دلوقتي. الفريق هيتواصل معاك قريب."
+export const WHATSAPP_UNAVAILABLE_AR = "مش قادر أرد دلوقتي. الفريق هيتواصل معاك قريب."
 
 /** A message that is not text, as the conversation shows it arrived (dashboard-facing, standard Arabic) */
 export const WHATSAPP_PLACEHOLDER_AR = {

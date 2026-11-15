@@ -39,7 +39,7 @@ export const MESSAGE_MAX = 500
  * down. Same text as the column's default.
  */
 export const DEFAULT_SERVICE_UNAVAILABLE_MESSAGE =
-  'فيه ضغط على النظام دلوقتي ومش قادر أرد. الفريق هيشوف رسالتك ويرد عليك قريب — ولو مستعجل اتصل بينا.'
+  'مش قادر أرد دلوقتي. الفريق هيشوف رسالتك ويرد عليك قريب.'
 
 const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'invalidTime')
 
