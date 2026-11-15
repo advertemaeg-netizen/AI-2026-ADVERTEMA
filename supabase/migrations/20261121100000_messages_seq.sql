@@ -1,9 +1,11 @@
 -- ============================================
 -- MESSAGES IN THE ORDER THEY WERE WRITTEN (2026-11-15)
 --
--- WAITING FOR: nothing in production. Deployed code ignores the new column,
--- so this applies before the code that reads it (branch ordering-seq), and
--- must: that code calls insert_bot_reply() and orders by seq.
+-- APPLY BEFORE DEPLOYING THE CODE THAT READS IT (moved into migrations/
+-- 2026-11-15, on branch ordering-seq, so the tree checked is the tree
+-- deployed). Deployed code (c91606b) ignores the new column, so this applies
+-- first, safely; the code after it calls insert_bot_reply() and orders by
+-- seq, and fails without it. update.sh refuses to build until it is applied.
 --
 -- THE DEFECT (.scratch/coexistence-design.md, Task 2; AGENTS.md): the bot
 -- answered whichever row sorted last by created_at, not the message it was
