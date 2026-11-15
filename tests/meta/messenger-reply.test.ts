@@ -305,7 +305,8 @@ describe('what is not text', () => {
       ['assistant', WHATSAPP_UNSUPPORTED_AR],
       ['user', WHATSAPP_PLACEHOLDER_AR.image],
     ])
-    expect(rows.find((m) => m.role === 'user')!.metadata).toEqual({ messenger_type: 'image' })
+    // placeholder: nothing to read, so it never withholds the bot's reply to an earlier message (insert_bot_reply)
+    expect(rows.find((m) => m.role === 'user')!.metadata).toEqual({ messenger_type: 'image', placeholder: true })
     expect(graphCalls).toHaveLength(1)
     expect(graphCalls[0].body).toMatchObject({ recipient: { id: PSID }, message: { text: WHATSAPP_UNSUPPORTED_AR } })
   })

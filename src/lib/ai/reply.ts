@@ -75,6 +75,37 @@ export type ReplyOutcome =
   | { kind: 'fallback'; reply: string; fallback: 'ai_unavailable' }
   /** Nothing was written and there is nothing to send */
   | { kind: 'unavailable'; reason: 'no_settings' | 'limit_check_failed' | 'fallback_write_failed' }
+  /**
+   * Nothing was written or sent: something newer arrived while this message
+   * was being answered. A visitor's newer message gets its own answer, which
+   * reads this one too; a person's reply means the conversation is theirs.
+   */
+  | { kind: 'withheld'; by: Withheld }
+
+/** Why a reply was not written: something newer arrived after the message it answered */
+export type Withheld = 'visitor' | 'person'
+
+/**
+ * THE BOT'S REPLY, ONLY WHILE IT IS STILL THE ANSWER. insert_bot_reply checks
+ * and writes under the conversation's lock: nothing can land between the two.
+ * `withheld` says why nothing was written. Service role only.
+ */
+export async function insertBotReply(
+  supabase: SupabaseClient,
+  conversationId: string,
+  answers: string,
+  row: { content: string; metadata: Record<string, unknown> }
+): Promise<{ id: string | null; withheld: Withheld | null; error: { message: string; code?: string } | null }> {
+  const { data, error } = await supabase
+    .rpc('insert_bot_reply', { p_conversation_id: conversationId, p_answers: answers, p_content: row.content, p_metadata: row.metadata })
+    .returns<{ id: string | null; withheld: string | null }[]>()
+  if (error) return { id: null, withheld: null, error }
+  const result = Array.isArray(data) ? data[0] : null
+  if (!result) return { id: null, withheld: null, error: { message: 'insert_bot_reply answered no row' } }
+  if (result.withheld === 'visitor' || result.withheld === 'person') return { id: null, withheld: result.withheld, error: null }
+  if (result.withheld) return { id: null, withheld: null, error: { message: `insert_bot_reply: ${result.withheld}` } }
+  return { id: result.id, withheld: null, error: null }
+}
 
 /** A message as the pipeline reads history: the trace a reply left in its metadata is read back from it */
 /** The public comment a DM began from, when its opener kept it */
@@ -95,10 +126,24 @@ export type HistoryRow = { role: string; content: string; metadata: { contact?: 
  */
 export type ReplyStore = {
   leads: LeadsSink
-  /** The newest `limit` messages, newest first, as a fresh array: the pipeline reverses it in place */
-  history(limit: number): Promise<HistoryRow[]>
-  /** The bot's reply, or its fallback, as a message row; answers as the database does */
-  insertReply(row: { content: string; metadata: Record<string, unknown> }): Promise<{ error: { message: string } | null }>
+  /**
+   * The newest `limit` messages, newest first, as a fresh array: the pipeline
+   * reverses it in place. With `upTo`, the message being answered: no
+   * visitor's message newer than it (each of those gets its own answer), the
+   * replies after it kept (they say what was already answered).
+   */
+  history(limit: number, upTo?: string | null): Promise<HistoryRow[]>
+  /**
+   * The bot's reply, or its fallback, as a message row; answers as the
+   * database does. With `answers`, the message it answers: WITHHELD, not
+   * written, when something newer has arrived since (insert_bot_reply,
+   * 20261121100000): a visitor's message that gets its own answer, or a
+   * person's reply. The bot never answers over either.
+   */
+  insertReply(
+    row: { content: string; metadata: Record<string, unknown> },
+    answers?: string | null
+  ): Promise<{ error: { message: string } | null; withheld?: Withheld | null }>
   /**
    * The visitor got no real answer: the conversation waits for a person, with
    * the cause, from the first message that happened to. Never fails the
@@ -144,20 +189,36 @@ export function conversationStore({
 }): ReplyStore {
   return {
     leads: leadsOf(supabase, clientId, conversationId),
-    async history(limit) {
-      const { data, error } = await supabase
+    async history(limit, upTo) {
+      // In the order rows were written (messages.seq), never by created_at: the
+      // time a transaction began, which is not the order rows land in
+      let query = supabase
         .from('messages')
         .select('role, content, metadata')
         .eq('conversation_id', conversationId)
         .in('role', ['user', 'assistant', 'agent'])
-        .order('created_at', { ascending: false })
+        .order('seq', { ascending: false })
         .limit(limit)
-        .returns<HistoryRow[]>()
+      if (upTo) {
+        const { data: answered, error: seqError } = await supabase
+          .from('messages')
+          .select('seq')
+          .eq('id', upTo)
+          .eq('conversation_id', conversationId)
+          .maybeSingle<{ seq: number }>()
+        if (seqError) throw seqError
+        if (answered) query = query.or(`role.neq.user,seq.lte.${answered.seq}`)
+      }
+      const { data, error } = await query.returns<HistoryRow[]>()
       if (error) throw error
       return data
     },
-    async insertReply(row) {
+    async insertReply(row, answers) {
       // conversations.last_message_* is kept current by a trigger on messages
+      if (answers) {
+        const { withheld, error } = await insertBotReply(supabase, conversationId, answers, row)
+        return { error, withheld }
+      }
       const { error } = await supabase.from('messages').insert({ conversation_id: conversationId, role: 'assistant', ...row })
       return { error }
     },
@@ -241,7 +302,7 @@ export async function replyToMessage({
   /** Where the conversation is: the website (and the playground, which shows the widget), or a Meta transport */
   surface?: Surface
 }): Promise<ReplyOutcome> {
-  const recent = await store.history(BOT_HISTORY_LIMIT)
+  const recent = await store.history(BOT_HISTORY_LIMIT, userMessage.id)
 
   // Newest first here: the name and number as the latest reply left them
   const established =
@@ -321,6 +382,13 @@ export async function replyToMessage({
     })
   }
 
+  // Something newer arrived while this message was answered: nothing written,
+  // nothing sent. The log says which; never the text
+  const withheld = (by: Withheld): ReplyOutcome => {
+    console.info(`[${source}] reply withheld: something newer arrived`, { conversationId, messageId: userMessage.id, by })
+    return { kind: 'withheld', by }
+  }
+
   // A human agent has taken over: store the message, skip the AI. The
   // agent's reply reaches the widget over Realtime broadcast, or goes out
   // through the Meta transport (src/lib/agent-reply.ts). Visitors often
@@ -349,11 +417,18 @@ export async function replyToMessage({
     return { kind: 'unavailable', reason: 'limit_check_failed' }
   }
   if (quota && !quota.allowed) {
-    const { error: fallbackError } = await store.insertReply({
-            content: settings.service_unavailable_message,
-      metadata: { fallback: 'subscription_limit', reason: quota.reason },
-    })
+    const { error: fallbackError, withheld: limitWithheld } = await store.insertReply(
+      {
+        content: settings.service_unavailable_message,
+        metadata: { fallback: 'subscription_limit', reason: quota.reason },
+      },
+      userMessage.id
+    )
     if (fallbackError) throw fallbackError
+    if (limitWithheld) {
+      scheduleLeadDetection(history)
+      return withheld(limitWithheld)
+    }
     await store.markForPerson(quota.reason === 'inactive' ? 'inactive' : 'limit_reached')
     // Past the limit, leads are still captured up to the ceiling
     scheduleLeadDetection([...history, { role: 'assistant', content: settings.service_unavailable_message }])
@@ -717,33 +792,47 @@ export async function replyToMessage({
     // Nor leave the visitor with an error: they're told the service is
     // down (not the fallback message, which says the information is
     // missing), and the conversation is marked for a person to answer
-    const { error: fallbackError } = await store.insertReply({
-            content: settings.service_unavailable_message,
-      metadata: {
-        fallback: 'ai_unavailable',
-        reason: aiFailureReason(error),
-        // What failed, and what the model had answered if it had: the two
-        // service-down replies of 21–22 October took three days to explain
-        // because neither was kept
-        error: error instanceof Error ? error.message.slice(0, 500) : String(error).slice(0, 500),
-        ...(raw !== null ? { raw } : {}),
+    const { error: fallbackError, withheld: fallbackWithheld } = await store.insertReply(
+      {
+        content: settings.service_unavailable_message,
+        metadata: {
+          fallback: 'ai_unavailable',
+          reason: aiFailureReason(error),
+          // What failed, and what the model had answered if it had: the two
+          // service-down replies of 21–22 October took three days to explain
+          // because neither was kept
+          error: error instanceof Error ? error.message.slice(0, 500) : String(error).slice(0, 500),
+          ...(raw !== null ? { raw } : {}),
+        },
       },
-    })
+      userMessage.id
+    )
     if (fallbackError) {
       console.error(`[${source}] storing the fallback failed`, errorForLog(fallbackError))
       return { kind: 'unavailable', reason: 'fallback_write_failed' }
     }
+    // Lead detection is already scheduled above; the newer message's run answers
+    if (fallbackWithheld) return withheld(fallbackWithheld)
     await store.markForPerson('service_down')
     return { kind: 'fallback', reply: settings.service_unavailable_message, fallback: 'ai_unavailable' }
   }
 
-  const { error: replyError } = await store.insertReply({
-        content: reply,
-    metadata: { model: replyModel(), ...trace },
-  })
+  const { error: replyError, withheld: replyWithheld } = await store.insertReply(
+    {
+      content: reply,
+      metadata: { model: replyModel(), ...trace },
+    },
+    userMessage.id
+  )
   if (replyError) {
     scheduleLeadDetection(history)
     throw replyError
+  }
+  // Not counted against the plan: nothing reached the visitor. The model's
+  // tokens are in ai_usage already; the cost was real
+  if (replyWithheld) {
+    scheduleLeadDetection(history)
+    return withheld(replyWithheld)
   }
 
   const { error: usageError } = await store.countMessage()

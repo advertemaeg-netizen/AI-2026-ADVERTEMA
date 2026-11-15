@@ -32,11 +32,11 @@ let watched = new Set<string>()
 
 /**
  * When a webhook test fails, its conversations' rows are printed as the
- * webhook and lead detection read them: ordered by created_at alone, with
- * every created_at as stored, and a row that shares its created_at with
- * another marked TIE. Evidence for the ordering defect (AGENTS.md: rows read
- * in the wrong order) — whether the rows that came back out of order share a
- * timestamp. It prints on any failure, since the ordering ones can't be told
+ * webhook and lead detection read them: messages by seq (since
+ * 20261121100000; before it, by created_at alone, which was the ordering
+ * defect), with every created_at as stored, a shared one marked TIE. A
+ * created_at out of step with seq is this harness's clock, and now harmless.
+ * It prints on any failure, since the ordering ones can't be told
  * apart in advance; npm run check keeps the output of a failed run.
  */
 function dumpOnFailure(conversationId: string) {
@@ -50,7 +50,7 @@ function dumpOnFailure(conversationId: string) {
       const supabase = serviceClient()
       for (const id of ids) {
         const [messages, leads] = await Promise.all([
-          supabase.from('messages').select('id, role, created_at, content').eq('conversation_id', id).order('created_at', { ascending: true }),
+          supabase.from('messages').select('id, role, seq, created_at, content').eq('conversation_id', id).order('seq', { ascending: true }),
           supabase.from('leads').select('id, status, created_at, updated_at').eq('conversation_id', id).order('created_at', { ascending: true }),
         ])
         const tie = (rows: { created_at: string }[] | null) =>
@@ -59,8 +59,8 @@ function dumpOnFailure(conversationId: string) {
         const markLead = tie(leads.data)
         console.error(
           [
-            `[ordering dump] ${test} — conversation ${id}, rows ordered by created_at as the app orders them`,
-            ...(messages.error ? [`  messages: error ${messages.error.message}`] : (messages.data ?? []).map((m) => `  message ${m.created_at}${markMessage(m)} ${m.role} ${m.id} ${JSON.stringify(String(m.content).slice(0, 60))}`)),
+            `[ordering dump] ${test} — conversation ${id}, messages ordered by seq as the app orders them, with created_at as stored`,
+            ...(messages.error ? [`  messages: error ${messages.error.message}`] : (messages.data ?? []).map((m) => `  message #${m.seq} ${m.created_at}${markMessage(m)} ${m.role} ${m.id} ${JSON.stringify(String(m.content).slice(0, 60))}`)),
             ...(leads.error ? [`  leads: error ${leads.error.message}`] : (leads.data ?? []).map((l) => `  lead ${l.created_at}${markLead(l)} ${l.status} ${l.id} updated ${l.updated_at}`)),
           ].join('\n')
         )

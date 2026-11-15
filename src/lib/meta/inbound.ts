@@ -1,7 +1,7 @@
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ContactState } from '@/lib/ai/contact'
-import { conversationStore, replyToMessage, type ReplyOutcome, type ReplyStore } from '@/lib/ai/reply'
+import { conversationStore, insertBotReply, replyToMessage, type ReplyOutcome, type ReplyStore } from '@/lib/ai/reply'
 import { recordResult, type RowMetadata } from '@/lib/meta/delivery'
 import { fetchInstagramUsername, sendInstagramText, sendMessengerText, sendWhatsAppText, type SendResult } from '@/lib/meta/send'
 import type { InboundMessengerEvent, InboundWhatsAppMessage } from '@/lib/meta/webhook'
@@ -310,7 +310,7 @@ async function handleInbound(supabase: SupabaseClient, channel: InboundChannel, 
     // Stored as what it is, so the conversation shows it arrived
     const { error } = await supabase
       .from('messages')
-      .insert({ conversation_id: conversationId, role: 'user', content: WHATSAPP_PLACEHOLDER_AR[placeholderFor(message.type)], metadata: { [typeKey]: message.type } })
+      .insert({ conversation_id: conversationId, role: 'user', content: WHATSAPP_PLACEHOLDER_AR[placeholderFor(message.type)], metadata: { [typeKey]: message.type, placeholder: true } })
     if (error) throw error
     // A person has the conversation: they can listen. Otherwise the bot says text only, once per run
     const send = autoReply ? await notice(supabase, transport, channel.id, conversationId, message.from, 'unsupported', WHATSAPP_UNSUPPORTED_AR) : 'none'
@@ -363,6 +363,9 @@ async function handleInbound(supabase: SupabaseClient, channel: InboundChannel, 
       break
     case 'unavailable':
       send = await notice(supabase, transport, channel.id, conversationId, message.from, 'unavailable', WHATSAPP_UNAVAILABLE_AR)
+      break
+    case 'withheld':
+      // Something newer arrived while this was answered: its own run speaks, or a person has
       break
   }
   console.info(`[${SOURCE}] answered`, { channelId: channel.id, conversationId, messageId: message.messageId, outcome: outcome.kind, send })
@@ -426,11 +429,18 @@ const sending = (transport: Transport): SendRecord => ({ transport: transport.na
 function trackedStore(base: ReplyStore, supabase: SupabaseClient, conversationId: string, transport: Transport, onRow: (id: string) => void): ReplyStore {
   return {
     ...base,
-    async insertReply(row) {
+    async insertReply(row, answers) {
       // conversations.last_message_* is kept current by a trigger on messages
+      const written = { content: row.content, metadata: { ...row.metadata, send: sending(transport) } }
+      if (answers) {
+        // Only while it is still the answer: nothing newer from the person, no reply from a person since
+        const { id, withheld, error } = await insertBotReply(supabase, conversationId, answers, written)
+        if (id) onRow(id)
+        return { error, withheld }
+      }
       const { data, error } = await supabase
         .from('messages')
-        .insert({ conversation_id: conversationId, role: 'assistant', content: row.content, metadata: { ...row.metadata, send: sending(transport) } })
+        .insert({ conversation_id: conversationId, role: 'assistant', ...written })
         .select('id')
         .single<{ id: string }>()
       if (data) onRow(data.id)
@@ -486,7 +496,7 @@ async function notice(supabase: SupabaseClient, transport: Transport, channelId:
     .select('role, content, metadata')
     .eq('conversation_id', conversationId)
     .in('role', ['assistant', 'agent'])
-    .order('created_at', { ascending: false })
+    .order('seq', { ascending: false })
     .limit(50)
     .returns<Outbound[]>()
   if (error) throw error
@@ -542,7 +552,7 @@ async function handleEcho(
     .eq('conversation_id', conversationId)
     // A person's reply from the dashboard is sent by us too, and echoed like the bot's
     .in('role', ['assistant', 'agent'])
-    .order('created_at', { ascending: false })
+    .order('seq', { ascending: false })
     .limit(50)
     .returns<OutboundRow[]>()
   if (error) throw error

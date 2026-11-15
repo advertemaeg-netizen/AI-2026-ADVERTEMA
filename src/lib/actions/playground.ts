@@ -176,6 +176,9 @@ export async function testBot(
       case 'handoff':
         // autoReply is true above: nothing hands a test chat to a person
         return { ok: false, error: 'unknown' }
+      case 'withheld':
+        // A test chat has no rows to be newer than: never withheld
+        return { ok: false, error: 'unknown' }
       case 'reply': {
         const afterwards = openLead(leads.rows)?.appointment_at ?? null
         return {

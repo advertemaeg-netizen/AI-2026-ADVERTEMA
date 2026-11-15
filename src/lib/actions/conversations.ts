@@ -106,7 +106,8 @@ export async function getConversation(id: string): Promise<{
       .from('messages')
       .select(MESSAGE_COLUMNS)
       .eq('conversation_id', id)
-      .order('created_at', { ascending: true })
+      // As the bot reads them: in the order they were written
+      .order('seq', { ascending: true })
       .returns<Message[]>(),
     supabase.rpc('client_team', { check_client_id: conversation.client.id }),
     getConversationLeads(supabase, id),

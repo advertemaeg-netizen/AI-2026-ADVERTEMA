@@ -95,7 +95,8 @@ async function lastPersonMessageAt(admin: SupabaseClient, conversationId: string
     .select('created_at, metadata')
     .eq('conversation_id', conversationId)
     .eq('role', 'user')
-    .order('created_at', { ascending: false })
+    // The newest as written (messages.seq); the window is still measured from its created_at
+    .order('seq', { ascending: false })
     .limit(20)
     .returns<{ created_at: string; metadata: Record<string, unknown> | null }[]>()
   if (error) throw error

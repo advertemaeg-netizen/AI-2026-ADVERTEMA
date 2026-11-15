@@ -155,7 +155,8 @@ async function historySinceClosed(supabase: SupabaseClient, conversationId: stri
     .select('role, content')
     .eq('conversation_id', conversationId)
     .in('role', ['user', 'assistant', 'agent'])
-    .order('created_at', { ascending: false })
+    // In the order rows were written; the cut at the closing event stays a time, it is another table's
+    .order('seq', { ascending: false })
     .limit(HISTORY_LIMIT)
   if (closing) query = query.gt('created_at', closing.created_at)
 

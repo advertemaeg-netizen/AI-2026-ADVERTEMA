@@ -284,6 +284,9 @@ export async function POST(request: NextRequest, ctx: RouteContext<'/api/webhook
     switch (outcome.kind) {
       case 'handoff':
         return json({ ok: true, conversationId, reply: null, handoff: true })
+      case 'withheld':
+        // A newer message from this visitor is being answered, and its answer reads this one too
+        return json({ ok: true, conversationId, reply: null, withheld: true })
       case 'unavailable':
         return json({ ok: false, error: 'ai_unavailable', conversationId }, 502)
       case 'fallback':
