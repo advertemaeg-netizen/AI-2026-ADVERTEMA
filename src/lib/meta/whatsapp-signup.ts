@@ -10,6 +10,9 @@
  *     a System User token rather than a user token: NEVER CHANGE THEM;
  *   - extras {"version":"v4"} and nothing else: no featureType. With
  *     "whatsapp_business_app_onboarding" it is coexistence, which we do not do.
+ *     And never "v5" in passing: v5 turns coexistence on by default. The
+ *     options are pinned by tests/meta/whatsapp-signup-version.test.ts, which
+ *     fails on any change to them: a version change is the owner's decision.
  * The popup reports two things on two channels, in either order: the code
  * (FB.login's callback) and the WABA and number ids (the message event). Both
  * are awaited, then handed to the server, which trusts none of it until it

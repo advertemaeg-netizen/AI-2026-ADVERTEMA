@@ -274,12 +274,20 @@ export type InboundWhatsAppMessage = {
   timestamp?: string
 }
 
+/** The one WhatsApp webhook field whose messages and statuses are live ones */
+export const WHATSAPP_MESSAGES_FIELD = 'messages'
+
 export function inboundWhatsAppMessages(payload: unknown): InboundWhatsAppMessage[] {
   const body = isObject(payload) ? payload : {}
   if (text(body.object) !== 'whatsapp_business_account') return []
   const out: InboundWhatsAppMessage[] = []
   for (const entry of list(body.entry)) {
     for (const change of list(entry.changes)) {
+      // ONLY THE `messages` FIELD IS A PERSON WRITING TO US. Coexistence's
+      // `history` field carries past media in the same value.messages shape
+      // (Meta's history webhook reference): read from any field, a fortnight
+      // of old photos would arrive as new messages and be answered
+      if (change.field !== WHATSAPP_MESSAGES_FIELD) continue
       const value = isObject(change.value) ? change.value : {}
       const metadata = isObject(value.metadata) ? value.metadata : {}
       const businessId = text(metadata.phone_number_id)
@@ -332,6 +340,8 @@ export function inboundWhatsAppStatuses(payload: unknown): InboundWhatsAppStatus
   const out: InboundWhatsAppStatus[] = []
   for (const entry of list(body.entry)) {
     for (const change of list(entry.changes)) {
+      // Statuses of what we sent arrive on `messages` too, and nowhere else
+      if (change.field !== WHATSAPP_MESSAGES_FIELD) continue
       const value = isObject(change.value) ? change.value : {}
       const metadata = isObject(value.metadata) ? value.metadata : {}
       const businessId = text(metadata.phone_number_id)
