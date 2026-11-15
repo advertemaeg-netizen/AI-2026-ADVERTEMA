@@ -6,7 +6,7 @@ The timestamps in `migrations/` are not real dates. They were numbered by hand, 
 day per migration, and passed the calendar long ago: on 13 October 2026 the newest
 file was `20261026100000_…`, with `20261027100000_…` waiting in `pending/`.
 
-`npx supabase migration new <name>` stamps the file with the current UTC time. Until
+`npx --no-install supabase migration new <name>` stamps the file with the current UTC time. Until
 the calendar catches up, that name sorts **before** migrations that are already
 applied on the remote database. `supabase db push` then refuses it ("Found local
 migration files to be inserted before the last migration on remote database"), and
@@ -18,7 +18,7 @@ So, for every new migration:
 1. Take the highest timestamp in `migrations/` **and** `pending/`, and name the new
    file after it (next day, `100000`), the way the existing ones are numbered.
 2. If a tool created the file with a real timestamp, rename it before anything else.
-3. `npx supabase db push --dry-run` must list only the new file, last. Never pass
+3. `npx --no-install supabase db push --dry-run` must list only the new file, last. Never pass
    `--include-all` to get past the refusal.
 
 This stops mattering once the real date is past the newest file here; delete this

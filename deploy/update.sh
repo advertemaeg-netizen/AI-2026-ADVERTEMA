@@ -62,7 +62,7 @@ for file in ../supabase/migrations/*.sql; do
   esac
 done
 if [ -n "$MISSING" ]; then
-  printf "REFUSING TO DEPLOY: the database has not applied:%b\nApply them first (npx supabase db push), then run this again.\n" "$MISSING" >&2
+  printf "REFUSING TO DEPLOY: the database has not applied:%b\nApply them first (npx --no-install supabase db push), then run this again.\n" "$MISSING" >&2
   exit 1
 fi
 echo "Migrations: every file in supabase/migrations is applied."

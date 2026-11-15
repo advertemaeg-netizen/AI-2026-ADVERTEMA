@@ -43,7 +43,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 Uploaded knowledge-base files live in a private Supabase Storage bucket named
 `knowledge-base`. The migration `supabase/migrations/20260928100000_knowledge_base_rag.sql`
-sets everything up, so normally `npx supabase db push` is all you need:
+sets everything up, so normally `npx --no-install supabase db push` is all you need:
 
 - enables `pgvector` (in the `extensions` schema) and adds the chunk/embedding columns
 - creates the private `knowledge-base` bucket (10 MB limit; PDF, DOCX and TXT only)

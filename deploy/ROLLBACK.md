@@ -313,7 +313,7 @@ docker logs --since 5m advertema 2>&1 | grep "knowledge retrieval failed"
 ## Going forward again
 
 The migration history still lists the function's migrations as applied, so
-`npx supabase db push` will not put the function back. Run the `drop
+`npx --no-install supabase db push` will not put the function back. Run the `drop
 function`, `create function` and grant statements from
 `supabase/migrations/20261026100000_knowledge_embedding_model.sql` in the SQL
 editor, set `OPENAI_EMBEDDING_MODEL=text-embedding-3-large` again, then

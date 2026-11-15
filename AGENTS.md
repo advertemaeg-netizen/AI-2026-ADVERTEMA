@@ -47,11 +47,25 @@ Until the stuck state is cured, a failed `npm run check` may be rerun **only** u
 5. **The rate is watched.** If more than half of the last ten recorded runs are stuck, the rule is suspended: something changed, and that is a finding, not a reason to rerun.
 6. **Nothing else.** It applies to no other failure: not the webhook ordering defect above, not a timeout without the script's `STUCK`.
 
-Collect the evidence while it lasts: run the check with `HARNESS_LOG_DIR=<dir>` and the harness writes each project's PostgREST log (its connection pool's events among it), timestamped, to that directory (`tests/harness/stack.ts`); cheap enough for a full check. pglite-socket's log is `HARNESS_SOCKET_LOG=1` on top, and only for the access project run on its own (`npx vitest run --project access`): in a full check both projects' socket lines land in one file, and its volume (240 MB, 2026-11-09) slows the run enough to change the measurement. A stuck run with both logs answers which side stops reconnecting. The cure, option 2, is asserting refusals inside the database (as `test_sqlstate` does), where the connection never sees one; it is scheduled for after the Meta App Review submission, at about a day and a half. When it lands, delete this section.
+Collect the evidence while it lasts: run the check with `HARNESS_LOG_DIR=<dir>` and the harness writes each project's PostgREST log (its connection pool's events among it), timestamped, to that directory (`tests/harness/stack.ts`); cheap enough for a full check. pglite-socket's log is `HARNESS_SOCKET_LOG=1` on top, and only for the access project run on its own (`npx --no-install vitest run --project access`): in a full check both projects' socket lines land in one file, and its volume (240 MB, 2026-11-09) slows the run enough to change the measurement. A stuck run with both logs answers which side stops reconnecting. The cure, option 2, is asserting refusals inside the database (as `test_sqlstate` does), where the connection never sees one; it is scheduled for after the Meta App Review submission, at about a day and a half. When it lands, delete this section.
 
 # New dependencies: an exact release at least two weeks old
 
 Pin anything new to an exact version (`npm install --save-exact pkg@x.y.z`): the newest release published at least two weeks ago, found with `npm view <pkg> time --json`, then `npm audit`. Say in the commit which version and why. On 2026-10-19 nodemailer had shipped five releases in one day; 10.0.13 was pinned instead.
+
+# No formatter, settled: never run prettier, or any formatting pass
+
+**SETTLED by the owner, 2026-11-15: this repo does not adopt a formatter.** Not now, and not after launch without a reason. Don't propose one, don't reopen the question, and don't run one "just on this file". Prettier is not a dependency, there is no config, and eslint does not run one. The style is the code as it stands: single quotes, no semicolons, long lines. Edit in that style. `npm run check` (eslint) is the only style gate.
+
+**Why: 2026-11-15.** `npx prettier --write` on one test file found no local prettier. So npx downloaded the newest release, 3.10.1, published three days earlier, and ran it with the developer's permissions, on a machine holding `.env.local` and server credentials. It reflowed the whole file, about 120 lines around four lines of logic. The formatting was the symptom. The hole was code nobody had pinned or vetted running there.
+
+# npx: always `npx --no-install`
+
+**Every npx is `npx --no-install <tool>`.** It runs a tool from the project's `node_modules` (vitest, supabase, shadcn, next, tsc, eslint: all dependencies) and fails instead of fetching one that isn't there: "npx canceled due to missing packages". A rule the command enforces beats a rule someone has to remember. Without it, and without a terminal (how an agent runs commands), npx installs whatever is newest with only a warning (npm 11, libnpmexec).
+
+**Its gap: npx's own cache.** `--no-install` refuses only packages missing from `~/.npm/_npx`. A copy already there runs: on 2026-11-15 `npx --no-install prettier` still ran the 3.10.1 fetched that afternoon. So the cache must not hold tools the repo doesn't declare. It held prettier 3.10.1 and 3.3.3, and older supabase and shadcn copies the repo now installs itself; clearing it is the owner's call.
+
+**Before using a tool the repo doesn't have:** ask. If it's needed, it becomes a dependency under the pinning rule below.
 
 # Running the production build locally: bind 0.0.0.0, as the container does
 

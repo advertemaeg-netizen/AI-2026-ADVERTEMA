@@ -20,7 +20,7 @@ log="$dir/check-$(date -u +%Y%m%dT%H%M%SZ)-$(git rev-parse --short HEAD 2>/dev/n
 status=0
 for step in "tsc --noEmit" "eslint" "vitest run"; do
   echo "## $step" >> "$log"
-  npx $step 2>&1 | tee -a "$log"
+  npx --no-install $step 2>&1 | tee -a "$log"
   code=${PIPESTATUS[0]}
   if [ "$code" -ne 0 ]; then
     status=$code

@@ -3,7 +3,7 @@
 # session scratchpad on 2026-11-10, after a session restart wiped it twice).
 #
 #   scripts/check-with-logs.sh <run number>                full `npm run check`
-#   scripts/check-with-logs.sh <run number> --access-only  `npx vitest run --project access`
+#   scripts/check-with-logs.sh <run number> --access-only  `npx --no-install vitest run --project access`
 #
 # Both write PostgREST's log and pglite-socket's log (HARNESS_LOG_DIR,
 # HARNESS_SOCKET_LOG=1; tests/harness/stack.ts) to
@@ -35,7 +35,7 @@ before=$(ls .scratch/check-failures/check-*.log 2>/dev/null | sort | tail -1)
 start=$(date +%s)
 if [ "$mode" = "--access-only" ]; then
   out=".scratch/check-failures/access-run$n-$stamp.log"
-  HARNESS_LOG_DIR="$logs" HARNESS_SOCKET_LOG=1 npx vitest run --project access > "$out" 2>&1
+  HARNESS_LOG_DIR="$logs" HARNESS_SOCKET_LOG=1 npx --no-install vitest run --project access > "$out" 2>&1
   code=$?
   label="vitest --project access"
 else

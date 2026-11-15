@@ -78,6 +78,15 @@ export type EventShape = {
   fromIdLength?: number
   /** The names of the keys the change's value carries, never their values: the delivery's shape */
   valueKeys?: string[]
+  /**
+   * WhatsApp account_update: the event, and the ids that say which account it
+   * is about. All business ids (the WABA, the portfolios, our app), never a
+   * person's. Logged so one delivery settles which id Meta puts in entry.id
+   * (.scratch/coexistence-design.md, "WhatsApp disconnect detection").
+   */
+  event?: string
+  wabaInfo?: { wabaId?: string; ownerBusinessId?: string; partnerAppId?: string; solutionPartnerBusinessIds?: string[] }
+  disconnection?: { reason?: string; initiatedBy?: string }
 }
 
 /** 'business' for the entry's own id (the Page or the Instagram account), otherwise a 12-hex keyed hash of the id */
@@ -194,6 +203,27 @@ function changeEvent(change: Json, party: (id: unknown) => Party | undefined): E
   return Object.fromEntries(Object.entries(shape).filter(([, v]) => v !== undefined)) as EventShape
 }
 
+/** An account_update's event and business ids, by name: nothing else of the value */
+function accountUpdateShape(value: Json): Pick<EventShape, 'event' | 'wabaInfo' | 'disconnection' | 'valueKeys'> {
+  const info = isObject(value.waba_info) ? value.waba_info : null
+  const partners = info ? list(info.solution_partner_business_ids as unknown).flatMap((id) => (typeof id === 'string' || typeof id === 'number' ? [String(id)] : [])) : []
+  const wabaInfo = info
+    ? {
+        ...(idOf(info.waba_id) ? { wabaId: idOf(info.waba_id) } : {}),
+        ...(idOf(info.owner_business_id) ? { ownerBusinessId: idOf(info.owner_business_id) } : {}),
+        ...(idOf(info.partner_app_id) ? { partnerAppId: idOf(info.partner_app_id) } : {}),
+        ...(partners.length ? { solutionPartnerBusinessIds: partners } : {}),
+      }
+    : null
+  const cut = isObject(value.disconnection_info) ? value.disconnection_info : null
+  return {
+    ...(text(value.event) ? { event: text(value.event) } : {}),
+    ...(wabaInfo ? { wabaInfo } : {}),
+    ...(cut ? { disconnection: { ...(text(cut.reason) ? { reason: text(cut.reason) } : {}), ...(text(cut.initiated_by) ? { initiatedBy: text(cut.initiated_by) } : {}) } } : {}),
+    valueKeys: Object.keys(value).sort(),
+  }
+}
+
 function whatsappEntry(entry: Json): { businessId?: string; events: EventShape[] } {
   let businessId: string | undefined
   const events: EventShape[] = []
@@ -219,8 +249,9 @@ function whatsappEntry(entry: Json): { businessId?: string; events: EventShape[]
         ...(errorCodes.length ? { errorCodes } : {}),
       })
     }
-    // A change that is neither (account_update, templates…): its field is enough
-    if (messages.length === 0 && statuses.length === 0) events.push({ kind: 'change', field })
+    // A change that is neither (account_update, templates…): its field is enough,
+    // and for account_update its event and the account it names
+    if (messages.length === 0 && statuses.length === 0) events.push({ kind: 'change', field, ...(field === 'account_update' ? accountUpdateShape(value) : {}) })
   }
   return { businessId, events }
 }

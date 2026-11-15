@@ -74,7 +74,7 @@ docker inspect <n8n-container> --format '{{json .Config.Labels}}' | tr ',' '\n' 
    Without this, sign-up confirmation and invite emails send people to
    `localhost`.
 2. **Migrations:** make sure every file in `supabase/migrations` is applied
-   (`npx supabase migration list`, then `npx supabase db push` from a dev
+   (`npx --no-install supabase migration list`, then `npx --no-install supabase db push` from a dev
    machine linked to the project). The app expects the latest schema.
 
 ### Server resources

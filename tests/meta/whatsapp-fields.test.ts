@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { inboundWhatsAppMessages, inboundWhatsAppStatuses } from '@/lib/meta/webhook'
+import { deliveryShape, inboundWhatsAppMessages, inboundWhatsAppStatuses } from '@/lib/meta/webhook'
 
 /**
  * ONLY THE `messages` FIELD IS LIVE (2026-11-15). Coexistence's webhook
@@ -51,5 +51,57 @@ describe('the WhatsApp parsers read the messages field alone', () => {
     delete (payload.entry[0].changes[0] as { field?: string }).field
     expect(inboundWhatsAppMessages(payload)).toEqual([])
     expect(inboundWhatsAppStatuses(payload)).toEqual([])
+  })
+})
+
+/**
+ * WHAT AN account_update DELIVERY LOGS (2026-11-15). Which id Meta puts in
+ * entry.id is open: the reference's syntax says the WABA, its PARTNER_REMOVED
+ * example shows another id beside waba_info.waba_id. The spare number's
+ * connect (a PARTNER_ADDED) settles it from the log, so the log carries the
+ * event and every business id that names the account. Meta's own example,
+ * verbatim.
+ */
+describe('an account_update delivery is logged with its event and the ids it names', () => {
+  it('keeps entry.id, the event, waba_info and disconnection_info, by name', () => {
+    const shape = deliveryShape({
+      object: 'whatsapp_business_account',
+      entry: [
+        {
+          id: '2949482758682047',
+          time: 1748477359,
+          changes: [
+            {
+              value: {
+                event: 'PARTNER_REMOVED',
+                waba_info: { waba_id: '980198427658004', owner_business_id: '2329417887457253' },
+                disconnection_info: { reason: 'PRIMARY_INACTIVITY', initiated_by: 'SYSTEM' },
+              },
+              field: 'account_update',
+            },
+          ],
+        },
+      ],
+    })
+    expect(shape.entries).toHaveLength(1)
+    expect(shape.entries[0]).toMatchObject({ entryId: '2949482758682047', time: 1748477359 })
+    expect(shape.entries[0].events).toEqual([
+      {
+        kind: 'change',
+        field: 'account_update',
+        event: 'PARTNER_REMOVED',
+        wabaInfo: { wabaId: '980198427658004', ownerBusinessId: '2329417887457253' },
+        disconnection: { reason: 'PRIMARY_INACTIVITY', initiatedBy: 'SYSTEM' },
+        valueKeys: ['disconnection_info', 'event', 'waba_info'],
+      },
+    ])
+  })
+
+  it('logs nothing more than the field for any other change', () => {
+    const shape = deliveryShape({
+      object: 'whatsapp_business_account',
+      entry: [{ id: 'WABA-1', changes: [{ field: 'message_template_status_update', value: { event: 'APPROVED', message_template_name: 'x' } }] }],
+    })
+    expect(shape.entries[0].events).toEqual([{ kind: 'change', field: 'message_template_status_update' }])
   })
 })
