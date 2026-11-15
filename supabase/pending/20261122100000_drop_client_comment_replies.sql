@@ -2,6 +2,20 @@
 -- clients.comment_replies_enabled, dropped
 -- ============================================
 --
+-- WAITING FOR (2026-11-15): back in pending/, renamed from 20261120100000.
+-- It sat in migrations/ unapplied from 2026-11-12, and update.sh refuses to
+-- build while one does, so production stayed on c91606b. Out of the way,
+-- the ordering fix (20261121100000_messages_seq) and everything since
+-- c91606b deploy together. Renamed past 20261121100000: once that is
+-- applied, a file sorting before it is refused by db push (and never
+-- --include-all: supabase/README.md). Nothing the deployed code or main
+-- reads names this column (checked 2026-11-15 at c91606b, main and
+-- ordering-seq); an unused column costs nothing. It moves into migrations/
+-- only after (1) 20261121100000 is applied, (2) that deploy is confirmed,
+-- (3) the owner says so, and it is applied on its own, as its own change.
+--
+-- The original header, from 2026-11-12:
+--
 -- WAITED FOR: the code that reads the switch from the channel
 -- (20261119100000) to be deployed: confirmed by the owner on production,
 -- 2026-11-12 (both channels on, matching the database, the attribution
