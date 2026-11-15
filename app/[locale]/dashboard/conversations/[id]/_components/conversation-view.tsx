@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { ArrowLeft, Bot, MessageSquareQuote, PanelRight, SendHorizontal, UserRoundCheck } from 'lucide-react'
@@ -60,16 +60,23 @@ const UNASSIGNED = 'unassigned'
  */
 function upsertMessage(list: Message[], message: Message) {
   const current = list.find((m) => m.id === message.id)
-  if (!current) return [...list, message].sort((a, b) => a.created_at.localeCompare(b.created_at))
+  if (!current) return [...list, message].sort(threadOrder)
   const stale =
     message.send?.state === 'sending' && current.send && current.send.state !== 'sending' && (current.send.at ?? null) === (message.send.at ?? null)
   if (stale) return list
   return list.map((m) => (m.id === message.id ? { ...m, ...message } : m))
 }
 
+/** The thread's order: imported WhatsApp history first, by when it was sent; then the live messages as they came */
+function threadOrder(a: Message, b: Message) {
+  if (!!a.imported !== !!b.imported) return a.imported ? -1 : 1
+  if (a.imported && b.imported) return (a.sent_at ?? '').localeCompare(b.sent_at ?? '')
+  return a.created_at.localeCompare(b.created_at)
+}
+
 /** A Realtime row: the send state and a bot reply's failure, out of its metadata */
 function fromRow(row: Record<string, unknown>): Message {
-  const metadata = (row.metadata ?? null) as { send?: Message['send']; delivery?: Message['delivery'] } | null
+  const metadata = (row.metadata ?? null) as { send?: Message['send']; delivery?: Message['delivery']; revoked_at?: string; edited_at?: string } | null
   return {
     id: row.id as string,
     conversation_id: row.conversation_id as string,
@@ -79,6 +86,11 @@ function fromRow(row: Record<string, unknown>): Message {
     created_at: row.created_at as string,
     send: metadata?.send ?? null,
     delivery: metadata?.delivery ?? null,
+    sent_from: (row.sent_from ?? null) as Message['sent_from'],
+    imported: row.imported === true,
+    sent_at: (row.sent_at ?? null) as string | null,
+    revoked_at: metadata?.revoked_at ?? null,
+    edited_at: metadata?.edited_at ?? null,
   }
 }
 
@@ -145,6 +157,8 @@ export function ConversationView({
   const channelName = useChannelName()
 
   const [conversation, setConversation] = useState(initialConversation)
+  // The business may also answer this chat from its own WhatsApp Business app
+  const coexistence = conversation.channel.whatsapp_mode === 'coexistence'
   const [messages, setMessages] = useState(initialMessages)
   const [draft, setDraft] = useState('')
   const [isSending, startSending] = useTransition()
@@ -530,24 +544,34 @@ export function ConversationView({
               {messages.length === 0 && (
                 <p className="py-12 text-center text-sm text-muted-foreground">{t('noMessages')}</p>
               )}
-              {messages.map((message) => (
-                <MessageBubble
-                  key={message.id}
-                  message={message}
-                  senderLabel={
-                    message.role === 'agent'
-                      ? memberName(message.sender_id) ?? t('agent')
-                      : message.role === 'assistant'
-                        ? t('assistant')
-                        : contact
-                  }
-                  time={format.dateTime(new Date(message.created_at), {
-                    dateStyle: 'short',
-                    timeStyle: 'short',
-                  })}
-                  failure={failureOf(message, now)}
-                  onRetry={message.role === 'agent' && !isRetrying ? () => retry(message.id) : undefined}
-                />
+              {coexistence && (
+                // A chat the business may also answer from its own phone: said once, at the top
+                <p className="mx-auto max-w-full rounded-full border px-3 py-1 text-center text-xs text-muted-foreground">{t('coexistence.note')}</p>
+              )}
+              {messages.map((message, i) => (
+                <Fragment key={message.id}>
+                  {message.imported && i === 0 && <ThreadDivider label={t('coexistence.importedDivider')} />}
+                  {!message.imported && i > 0 && messages[i - 1].imported && <ThreadDivider label={t('coexistence.liveDivider')} />}
+                  <MessageBubble
+                    message={message}
+                    senderLabel={
+                      message.sent_from === 'phone'
+                        ? t('coexistence.fromPhone')
+                        : message.role === 'agent'
+                          ? memberName(message.sender_id) ?? t('agent')
+                          : message.role === 'assistant'
+                            ? t('assistant')
+                            : contact
+                    }
+                    time={format.dateTime(new Date(message.imported && message.sent_at ? message.sent_at : message.created_at), {
+                      dateStyle: 'short',
+                      timeStyle: 'short',
+                    })}
+                    failure={failureOf(message, now)}
+                    // Only our inbox's own sends can be sent again: never the phone's, never history
+                    onRetry={message.role === 'agent' && message.sent_from !== 'phone' && !message.imported && !isRetrying ? () => retry(message.id) : undefined}
+                  />
+                </Fragment>
               ))}
               <div ref={endRef} />
             </div>
@@ -624,6 +648,16 @@ function Detail({ label, children }: { label: string; children: React.ReactNode 
   )
 }
 
+function ThreadDivider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 text-xs text-muted-foreground" role="separator">
+      <span className="h-px flex-1 bg-border" />
+      <span>{label}</span>
+      <span className="h-px flex-1 bg-border" />
+    </div>
+  )
+}
+
 function MessageBubble({
   message,
   senderLabel,
@@ -671,8 +705,9 @@ function MessageBubble({
           message.role === 'agent' && 'rounded-se-sm bg-primary text-primary-foreground'
         )}
       >
-        {message.content}
+        {message.revoked_at ? <span className="italic opacity-80">{t('coexistence.revoked')}</span> : message.content}
       </div>
+      {message.edited_at && !message.revoked_at && <span className="text-xs text-muted-foreground">{t('coexistence.edited')}</span>}
       {failure ? (
         // On the row, so it is still there tomorrow: never only a toast
         <div className="grid max-w-full justify-items-end gap-1 text-end text-xs text-destructive">

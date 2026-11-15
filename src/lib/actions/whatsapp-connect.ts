@@ -5,6 +5,8 @@ import { checkToken, exchangeCode } from '@/lib/meta/connect'
 import { logConnect, occupancy } from '@/lib/meta/connect-flow'
 import { manager } from '@/lib/meta/connect-manager'
 import { subscribeApp } from '@/lib/meta/subscription'
+import { coexistenceEnabled } from '@/lib/meta/coexistence'
+import { coexistenceNumber, requestSync } from '@/lib/meta/coexistence-sync'
 import { WHATSAPP_REQUIRED_SCOPES, newPin, registerNumber, wabaNumbers, whatsappConfig } from '@/lib/meta/whatsapp-connect'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checkClientLimit, limitErrorFromDb } from '@/lib/subscription-limits'
@@ -34,13 +36,23 @@ import { errorForLog } from '@/lib/log'
  *
  * One line per decision in the log (logConnect), with Meta's ids and our own;
  * never the code, the token or the PIN.
+ *
+ * COEXISTENCE (2026-11-15, behind META_WHATSAPP_COEXISTENCE: refused while it
+ * is off). A number kept on the WhatsApp Business app: the popup finishes as
+ * FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING, maybe with the WABA alone. Then:
+ * the number is the WABA's one on both the app and the Cloud API (Meta's
+ * is_on_biz_app check), it is NOT registered and gets NO PIN (Meta: skip
+ * registration, the number is already registered), the WABA is subscribed as
+ * usual, and the two one-shot imports are requested at once, contacts then
+ * history (src/lib/meta/coexistence-sync.ts): Meta allows each once, within
+ * 24 hours.
  */
 
 const CHANNELS_PATH = '/[locale]/dashboard/clients/[clientId]/channels'
 const META_ID = /^\d{5,25}$/
 
 export async function connectWhatsApp(clientId: string, signup: WhatsAppSignup): Promise<WhatsAppConnectResult> {
-  const trace: Record<string, unknown> = { flow: 'whatsapp', step: 'connect', clientId, waba: signup?.wabaId, number: signup?.phoneNumberId }
+  const trace: Record<string, unknown> = { flow: 'whatsapp', step: 'connect', clientId, waba: signup?.wabaId, number: signup?.phoneNumberId, coexistence: signup?.coexistence === true }
   const done = (status: WhatsAppConnectStatus, why: Record<string, unknown> = {}, channelId?: string): WhatsAppConnectResult => {
     logConnect({ ...trace, ...why, outcome: status })
     return { ok: status === 'connectedPaused' || status === 'reconnected', status, ...(channelId ? { channelId } : {}) }
@@ -50,10 +62,19 @@ export async function connectWhatsApp(clientId: string, signup: WhatsAppSignup):
   if (!caller.ok) return done(caller.error)
   const config = whatsappConfig()
   if (!config) return done('notConfigured')
-  if (typeof signup?.code !== 'string' || !signup.code || signup.code.length > 4096 || !META_ID.test(String(signup.wabaId)) || !META_ID.test(String(signup.phoneNumberId))) {
+  const coexistence = signup?.coexistence === true
+  // Never trusted from the browser alone: only while the switch is on
+  if (coexistence && !coexistenceEnabled()) return done('forbidden', { refused: 'coexistence_off' })
+  if (
+    typeof signup?.code !== 'string' ||
+    !signup.code ||
+    signup.code.length > 4096 ||
+    !META_ID.test(String(signup.wabaId)) ||
+    (signup.phoneNumberId === null ? !coexistence : !META_ID.test(String(signup.phoneNumberId)))
+  ) {
     return done('forbidden', { refused: 'malformed_signup' })
   }
-  const { code, wabaId, phoneNumberId } = signup
+  const { code, wabaId } = signup
 
   // 1. The popup's code: exchanged without a redirect_uri (Meta's Tech Provider guide)
   const token = await exchangeCode({ code, redirectUri: null, appId: config.appId, appSecret: config.appSecret })
@@ -71,8 +92,16 @@ export async function connectWhatsApp(clientId: string, signup: WhatsAppSignup):
   }
   const numbers = await wabaNumbers(wabaId, token)
   if (!numbers) return done('metaError', { refused: 'waba_unreadable' })
+  let phoneNumberId = signup.phoneNumberId
+  if (coexistence) {
+    // The number on both the app and the Cloud API: the one named, or the WABA's only one
+    const found = await coexistenceNumber(phoneNumberId ? [phoneNumberId] : numbers.map((n) => n.id), token)
+    if (found.kind !== 'found') return done('metaError', { refused: `coexistence_number_${found.kind}`, numbers: numbers.length })
+    phoneNumberId = found.phoneNumberId
+    trace.number = phoneNumberId
+  }
   const number = numbers.find((n) => n.id === phoneNumberId)
-  if (!number) return done('metaError', { refused: 'number_not_in_waba', numbers: numbers.length })
+  if (!number || !phoneNumberId) return done('metaError', { refused: 'number_not_in_waba', numbers: numbers.length })
 
   // 4. Nobody else's; a new channel takes a seat
   const admin = createAdminClient()
@@ -114,10 +143,11 @@ export async function connectWhatsApp(clientId: string, signup: WhatsAppSignup):
   trace.channelId = channelId
   trace.created = created
 
-  // The PIN a number was registered with stays: a reconnect registers it again with the same one
+  // The PIN a number was registered with stays: a reconnect registers it again with the same one.
+  // A coexistence number is never registered by us, so it has none
   const { data: secret, error: secretReadError } = await admin.from('channel_secrets').select('registration_pin').eq('channel_id', channelId).maybeSingle<{ registration_pin: string | null }>()
   if (secretReadError) return done('unknown', { secrets: 'read_failed' }, channelId)
-  const pin = secret?.registration_pin ?? newPin()
+  const pin = coexistence ? null : (secret?.registration_pin ?? newPin())
   const { error: secretError } = await admin
     .from('channel_secrets')
     .upsert({ channel_id: channelId, access_token: token, waba_id: wabaId, registration_pin: pin }, { onConflict: 'channel_id' })
@@ -129,8 +159,15 @@ export async function connectWhatsApp(clientId: string, signup: WhatsAppSignup):
   // What the card says: the name's review, and no longer "removed" once connected again
   await setNotice(admin, channelId, number.nameStatus === 'APPROVED' ? null : 'name_pending')
 
+  if (coexistence) {
+    const finished = await onboardCoexistence(admin, channelId, phoneNumberId, token)
+    revalidatePath(CHANNELS_PATH, 'page')
+    if (finished !== 'ok') return done(finished, {}, channelId)
+    return done(created ? 'connectedPaused' : 'reconnected', { nameStatus: number.nameStatus }, channelId)
+  }
+
   // 6. Register, then subscribe
-  const finished = await registerAndSubscribe(admin, channelId, phoneNumberId, token, pin)
+  const finished = await registerAndSubscribe(admin, channelId, phoneNumberId, token, pin!)
   revalidatePath(CHANNELS_PATH, 'page')
   if (finished !== 'ok') return done(finished, {}, channelId)
   return done(created ? 'connectedPaused' : 'reconnected', { nameStatus: number.nameStatus }, channelId)
@@ -153,15 +190,23 @@ export async function retryWhatsAppConnect(clientId: string, channelId: string):
   // The user can see the channel, and it is this client's WhatsApp channel
   const { data: channel } = await caller.supabase
     .from('channels')
-    .select('id, external_id, is_active')
+    .select('id, external_id, is_active, whatsapp_mode')
     .eq('id', channelId)
     .eq('client_id', clientId)
     .eq('type', 'whatsapp')
-    .maybeSingle<{ id: string; external_id: string | null; is_active: boolean }>()
+    .maybeSingle<{ id: string; external_id: string | null; is_active: boolean; whatsapp_mode: string }>()
   if (!channel?.external_id) return done('forbidden')
   const admin = createAdminClient()
   const { data: secret } = await admin.from('channel_secrets').select('access_token, registration_pin').eq('channel_id', channelId).maybeSingle<{ access_token: string; registration_pin: string | null }>()
-  if (!secret?.access_token || !secret.registration_pin) return done('metaError', { refused: 'no_secrets' })
+  if (!secret?.access_token) return done('metaError', { refused: 'no_secrets' })
+  // A coexistence number is never registered: "try again" subscribes, and asks for whatever import is still due
+  if (channel.whatsapp_mode === 'coexistence') {
+    if (!coexistenceEnabled()) return done('forbidden', { refused: 'coexistence_off' })
+    const finished = await onboardCoexistence(admin, channelId, channel.external_id, secret.access_token)
+    revalidatePath(CHANNELS_PATH, 'page')
+    return done(finished === 'ok' ? (channel.is_active ? 'reconnected' : 'connectedPaused') : finished)
+  }
+  if (!secret.registration_pin) return done('metaError', { refused: 'no_secrets' })
   const finished = await registerAndSubscribe(admin, channelId, channel.external_id, secret.access_token, secret.registration_pin)
   revalidatePath(CHANNELS_PATH, 'page')
   // Finished: a paused channel says so (it is not answering yet), a live one that it was refreshed
@@ -179,6 +224,32 @@ async function registerAndSubscribe(
   if (!registered.ok) return 'registerFailed'
   const subscription = await subscribeApp({ supabase: admin, channelId })
   if (subscription.kind !== 'subscribed') return 'subscribeFailed'
+  return 'ok'
+}
+
+/**
+ * A coexistence number's last steps: marked as one (with the moment the 24
+ * hours began, kept from a first onboarding), subscribed, then the two
+ * one-shot imports asked for, contacts first (Meta's order). An import Meta
+ * refused or never heard is the card's to show and its "try again" to retry
+ * within the window; it does not fail the connect.
+ */
+async function onboardCoexistence(admin: ReturnType<typeof createAdminClient>, channelId: string, phoneNumberId: string, token: string): Promise<'ok' | 'subscribeFailed'> {
+  const { data: row, error } = await admin.from('channels').select('coexistence_onboarded_at').eq('id', channelId).single<{ coexistence_onboarded_at: string | null }>()
+  if (error) throw error
+  const onboardedAt = row.coexistence_onboarded_at ?? new Date().toISOString()
+  if (!row.coexistence_onboarded_at) {
+    const { error: markError } = await admin
+      .from('channels')
+      .update({ whatsapp_mode: 'coexistence', coexistence_onboarded_at: onboardedAt, history_sync: 'not_requested', contacts_sync: 'not_requested' })
+      .eq('id', channelId)
+    if (markError) throw markError
+  }
+  const subscription = await subscribeApp({ supabase: admin, channelId })
+  if (subscription.kind !== 'subscribed') return 'subscribeFailed'
+  const channel = { id: channelId, phoneNumberId, onboardedAt }
+  await requestSync(admin, channel, 'contacts', token)
+  await requestSync(admin, channel, 'history', token)
   return 'ok'
 }
 

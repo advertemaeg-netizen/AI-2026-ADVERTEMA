@@ -24,23 +24,53 @@ const PINNED_LOGIN_OPTIONS = {
   extras: { version: 'v4' },
 }
 
+/** The same options, serialised before coexistence existed (9ac18ae): the flag-off path must produce these bytes */
+const PINNED_LOGIN_OPTIONS_JSON = '{"config_id":"CONFIG-1","response_type":"code","override_default_response_type":true,"extras":{"version":"v4"}}'
+
+/**
+ * COEXISTENCE, OPT-IN ON v4 (2026-11-15). Only when the business chose its
+ * WhatsApp Business app number, and only while META_WHATSAPP_COEXISTENCE is
+ * on (the channels page decides): Meta's coexistence extras, still v4. Never
+ * v5, which would make coexistence the default for everyone.
+ */
+const PINNED_COEXISTENCE_OPTIONS = {
+  config_id: 'CONFIG-1',
+  response_type: 'code',
+  override_default_response_type: true,
+  extras: { version: 'v4', featureType: 'whatsapp_business_app_onboarding', sessionInfoVersion: '3' },
+}
+
 afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-async function loginOptions() {
-  const login = vi.fn((callback: (response: { authResponse?: { code?: string } | null }) => void, options: Record<string, unknown>) => {
-    void options // read back from mock.calls below
-    callback({ authResponse: null })
+type Popup = { event?: Record<string, unknown>; code?: string }
+
+/** Meta's popup, stood in for: optionally a WA_EMBEDDED_SIGNUP message event, then the login callback */
+async function signup(options: { coexistence?: boolean } = {}, popup: Popup = {}) {
+  let listener: ((event: { origin: string; data: string }) => void) | null = null
+  const login = vi.fn((callback: (response: { authResponse?: { code?: string } | null }) => void, loginOptions: Record<string, unknown>) => {
+    void loginOptions // read back from mock.calls below
+    if (popup.event) listener?.({ origin: 'https://www.facebook.com', data: JSON.stringify({ type: 'WA_EMBEDDED_SIGNUP', ...popup.event }) })
+    callback({ authResponse: popup.code ? { code: popup.code } : null })
   })
-  vi.stubGlobal('window', { FB: { init: vi.fn(), login }, addEventListener: vi.fn(), removeEventListener: vi.fn() })
+  vi.stubGlobal('window', {
+    FB: { init: vi.fn(), login },
+    addEventListener: vi.fn((_: string, fn: typeof listener) => (listener = fn)),
+    removeEventListener: vi.fn(),
+  })
   // Fresh each time: the module keeps the SDK it loaded first
   vi.resetModules()
   const { launchWhatsAppSignup } = await import('@/lib/meta/whatsapp-signup')
-  const outcome = await launchWhatsAppSignup({ appId: 'APP-1', configId: 'CONFIG-1' })
-  expect(outcome).toEqual({ kind: 'cancelled' })
+  const outcome = await launchWhatsAppSignup({ appId: 'APP-1', configId: 'CONFIG-1', ...options })
   expect(login).toHaveBeenCalledTimes(1)
-  return login.mock.calls[0][1]
+  return { outcome, options: login.mock.calls[0][1] }
+}
+
+async function loginOptions(options: { coexistence?: boolean } = {}) {
+  const { outcome, options: sent } = await signup(options)
+  expect(outcome).toEqual({ kind: 'cancelled' })
+  return sent
 }
 
 describe('the WhatsApp Embedded Signup popup', () => {
@@ -55,5 +85,31 @@ describe('the WhatsApp Embedded Signup popup', () => {
     expect(extras).not.toHaveProperty('featureType')
     expect(extras).not.toHaveProperty('features')
     expect(JSON.stringify(options)).not.toContain('whatsapp_business_app_onboarding')
+  })
+
+  it('without coexistence, passes FB.login byte for byte what it passed before coexistence existed', async () => {
+    expect(JSON.stringify(await loginOptions())).toBe(PINNED_LOGIN_OPTIONS_JSON)
+    expect(JSON.stringify(await loginOptions({ coexistence: false }))).toBe(PINNED_LOGIN_OPTIONS_JSON)
+  })
+
+  it('with coexistence chosen, asks for it on v4, never v5, never features', async () => {
+    const options = await loginOptions({ coexistence: true })
+    expect(options).toStrictEqual(PINNED_COEXISTENCE_OPTIONS)
+    expect(JSON.stringify(options)).not.toContain('v5')
+  })
+
+  it('takes a coexistence finish, the WABA alone, when it asked for one', async () => {
+    const { outcome } = await signup({ coexistence: true }, { event: { event: 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING', data: { waba_id: '980198427658004' } }, code: 'CODE-1' })
+    expect(outcome).toEqual({ kind: 'done', signup: { code: 'CODE-1', wabaId: '980198427658004', phoneNumberId: null, coexistence: true } })
+  })
+
+  it('refuses a coexistence finish it did not ask for', async () => {
+    const { outcome } = await signup({}, { event: { event: 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING', data: { waba_id: '980198427658004' } }, code: 'CODE-1' })
+    expect(outcome).toEqual({ kind: 'failed', why: 'unexpected_coexistence' })
+  })
+
+  it('still finishes the ordinary signup with both ids', async () => {
+    const { outcome } = await signup({}, { event: { event: 'FINISH', data: { waba_id: '111111', phone_number_id: '222222' } }, code: 'CODE-1' })
+    expect(outcome).toEqual({ kind: 'done', signup: { code: 'CODE-1', wabaId: '111111', phoneNumberId: '222222' } })
   })
 })

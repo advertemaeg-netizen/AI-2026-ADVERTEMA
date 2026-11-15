@@ -67,6 +67,15 @@ if [ -n "$MISSING" ]; then
 fi
 echo "Migrations: every file in supabase/migrations is applied."
 
+# NO ENGLISH IN THE ARABIC DASHBOARD. A key whose Arabic the owner has not
+# written yet holds the English in messages/ar.json and is listed in
+# messages/pending-arabic.json; nothing deploys while the list has one.
+PENDING_AR=../messages/pending-arabic.json
+if [ -f "$PENDING_AR" ] && ! tr -d ' \n\r\t' < "$PENDING_AR" | grep -q '"keys":\[\]'; then
+  echo "REFUSING TO DEPLOY: messages/pending-arabic.json lists keys still waiting for their Arabic." >&2
+  exit 1
+fi
+
 $COMPOSE build
 $COMPOSE up -d
 docker image prune -f >/dev/null

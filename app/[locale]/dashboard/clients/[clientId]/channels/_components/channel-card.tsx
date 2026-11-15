@@ -27,6 +27,9 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { deleteChannelAction, setCommentRepliesAction, subscribeWhatsappAction, toggleChannelActive } from '@/lib/actions/channels'
+import { retryWhatsAppConnect } from '@/lib/actions/whatsapp-connect'
+import { SYNC_WINDOW_MS } from '@/lib/meta/coexistence'
+import { WHATSAPP_CONNECT_MESSAGES } from '@/lib/types/whatsapp-connect'
 import type { SubscriptionState } from '@/lib/meta/subscription'
 import { COMMENT_CHANNEL_TYPES, type Channel } from '@/lib/types/channels'
 import { ChannelIcon } from '@/components/channel-icon'
@@ -101,6 +104,25 @@ export function ChannelCard({
       if (result.ok) toast.success(checked ? t('toast.activated') : t('toast.deactivated'))
       else toast.error(t(`errors.${result.error}`))
       setSwitchOnOpen(false)
+    })
+  }
+
+  // COEXISTENCE: the number is on the WhatsApp Business app too. Its two
+  // one-shot imports are due within 24 hours of onboarding; past that, a state
+  // still waiting is shown as missed (nothing else will ever change it)
+  const coexistence = channel.whatsapp_mode === 'coexistence'
+  const windowOpen = !!channel.coexistence_onboarded_at && Date.now() - new Date(channel.coexistence_onboarded_at).getTime() < SYNC_WINDOW_MS
+  const shownSync = (state: Channel['history_sync']) => (!windowOpen && (state === 'not_requested' || state === 'request_failed') ? 'window_missed' : state)
+  const historyState = coexistence ? shownSync(channel.history_sync) : null
+  const contactsState = coexistence ? shownSync(channel.contacts_sync) : null
+  const canRetrySync = canManage && windowOpen && (channel.history_sync === 'request_failed' || channel.contacts_sync === 'request_failed')
+  const [isRetryingSync, startRetrySync] = useTransition()
+
+  function handleRetrySync() {
+    startRetrySync(async () => {
+      const result = await retryWhatsAppConnect(channel.client_id, channel.id)
+      if (result.ok) toast.success(t(WHATSAPP_CONNECT_MESSAGES[result.status]))
+      else toast.error(t(WHATSAPP_CONNECT_MESSAGES[result.status]))
     })
   }
 
@@ -180,6 +202,33 @@ export function ChannelCard({
         )}
         {channel.connection_notice === 'removed_by_business' && <p className="text-sm text-destructive">{t('whatsapp.card.removedByBusiness')}</p>}
         {channel.connection_notice === 'name_pending' && <p className="text-sm text-muted-foreground">{t('whatsapp.card.namePending')}</p>}
+
+        {coexistence && (
+          <div className="grid gap-1.5 rounded-lg border p-3 text-sm">
+            <div>
+              <Badge variant="outline">{t('whatsapp.coexistence.card.badge')}</Badge>
+            </div>
+            <p className="text-muted-foreground">{t('whatsapp.coexistence.card.mode')}</p>
+            {/* Not a fault: Meta opens no reply window for chats from before onboarding */}
+            <p className="text-muted-foreground">{t('whatsapp.coexistence.card.firstMessage')}</p>
+            {channel.coexistence_offboarded_at && <p className="text-destructive">{t('whatsapp.coexistence.card.offboarded')}</p>}
+            {historyState && (
+              <p className={historyState === 'request_failed' || historyState === 'window_missed' ? 'text-destructive' : 'text-muted-foreground'}>
+                {t(`whatsapp.coexistence.card.history.${historyState}`, { progress: channel.history_sync_progress ?? 0, count: channel.history_imported ?? 0 })}
+              </p>
+            )}
+            {(contactsState === 'request_failed' || contactsState === 'window_missed') && (
+              <p className="text-destructive">{t(`whatsapp.coexistence.card.contacts.${contactsState}`)}</p>
+            )}
+            {canRetrySync && (
+              <div>
+                <Button variant="outline" size="sm" onClick={handleRetrySync} disabled={isRetryingSync}>
+                  {isRetryingSync ? tCommon('loading') : t('whatsapp.coexistence.card.retry')}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
 
         {subscriptionNow && (
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -288,6 +337,7 @@ export function ChannelCard({
                   <AlertDialogTitle>{t('deleteTitle')}</AlertDialogTitle>
                   <AlertDialogDescription>
                     {t('deleteDescription', { name: channel.name })}
+                    {coexistence && <span className="mt-2 block font-medium text-destructive">{t('whatsapp.coexistence.card.deleteWarning')}</span>}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

@@ -17,8 +17,11 @@ import {
   inboundWhatsAppStatuses,
   signatureDigest,
   signatureMatches,
+  WHATSAPP_MESSAGES_FIELD,
   type DeliveryShape,
 } from '@/lib/meta/webhook'
+import { coexistenceEnabled } from '@/lib/meta/coexistence'
+import { handleContactChanges, handleHistory, handleOffboarding, handlePhoneEchoes, type CoexistenceChannel } from '@/lib/meta/coexistence-webhooks'
 import { errorForLog } from '@/lib/log'
 
 /**
@@ -125,7 +128,8 @@ async function processDelivery(raw: Buffer) {
     for (const entry of shape.channel === 'whatsapp' ? shape.entries : []) {
       const mapped = entry.businessId ? clients[entry.businessId] : undefined
       for (const event of entry.events) {
-        if (event.kind !== 'message' || !event.messageId || event.echo) continue
+        // A person writing to us arrives on `messages` alone: history's past media are not claimed here
+        if (event.kind !== 'message' || !event.messageId || event.echo || event.field !== WHATSAPP_MESSAGES_FIELD) continue
         if (typeof mapped !== 'object') {
           messages[event.messageId] = 'unmapped'
           continue
@@ -192,6 +196,33 @@ async function processDelivery(raw: Buffer) {
       }
     }
 
+    // WHATSAPP COEXISTENCE (src/lib/meta/coexistence-webhooks.ts): the
+    // business's phone, its contacts, its one-shot history, a device change.
+    // ONLY WHILE META_WHATSAPP_COEXISTENCE IS ON: off, these fields are read
+    // by nothing and write nothing (tests/meta/coexistence-off.test.ts). Each
+    // handler acts only on a channel connected as coexistence.
+    const coexistence: Record<string, unknown> = {}
+    if (shape.channel === 'whatsapp' && coexistenceEnabled()) {
+      const channels: Record<string, CoexistenceChannel> = Object.fromEntries(
+        Object.entries(clients).flatMap(([id, mapped]) => (typeof mapped === 'object' ? [[id, { channelId: mapped.channelId, channel: mapped.channel }]] : []))
+      )
+      const steps = {
+        echoes: () => handlePhoneEchoes(supabase, payload, channels),
+        contacts: () => handleContactChanges(supabase, payload, channels),
+        history: () => handleHistory(supabase, payload, channels),
+        offboarding: () => handleOffboarding(supabase, payload),
+      }
+      for (const [name, step] of Object.entries(steps)) {
+        try {
+          const result = await step()
+          if (result && Object.keys(result).length > 0) coexistence[name] = result
+        } catch (error) {
+          coexistence[name] = 'failed'
+          console.error(`[webhook/meta] coexistence ${name} failed`, errorForLog(error))
+        }
+      }
+    }
+
     // MESSENGER AND INSTAGRAM: each new message answered, each echo told
     // apart (ours or a person's, by the ids we recorded), each reaction
     // stored, in order. A failure on one is logged and the next is still
@@ -236,7 +267,7 @@ async function processDelivery(raw: Buffer) {
 
     console.info(
       '[webhook/meta]',
-      JSON.stringify({ ...shape, clients: loggable(clients), messages, ...(Object.keys(statuses).length ? { statuses } : {}), ...(Object.keys(removals).length ? { removals } : {}), ...(Object.keys(comments).length ? { comments } : {}) })
+      JSON.stringify({ ...shape, clients: loggable(clients), messages, ...(Object.keys(statuses).length ? { statuses } : {}), ...(Object.keys(removals).length ? { removals } : {}), ...(Object.keys(comments).length ? { comments } : {}), ...(Object.keys(coexistence).length ? { coexistence } : {}) })
     )
 
     try {
@@ -277,7 +308,7 @@ async function clientsFor(supabase: ReturnType<typeof createAdminClient>, shape:
 
   const { data, error } = await supabase
     .from('channels')
-    .select('id, client_id, external_id, is_active, comment_replies_enabled, clients(name, industry, description, status, organizations(is_active))')
+    .select('id, client_id, external_id, is_active, comment_replies_enabled, whatsapp_mode, coexistence_offboarded_at, clients(name, industry, description, status, organizations(is_active))')
     .eq('type', type)
     .in('external_id', ids)
     .order('is_active', { ascending: false })

@@ -197,6 +197,8 @@ export function conversationStore({
         .select('role, content, metadata')
         .eq('conversation_id', conversationId)
         .in('role', ['user', 'assistant', 'agent'])
+        // Imported WhatsApp history is a record of before onboarding, never a turn the bot reads
+        .eq('imported', false)
         .order('seq', { ascending: false })
         .limit(limit)
       if (upTo) {

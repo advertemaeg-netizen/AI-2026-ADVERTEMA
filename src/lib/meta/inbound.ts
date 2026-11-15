@@ -83,6 +83,10 @@ export type InboundChannel = {
   is_active: boolean
   /** Comment replies in the clinic's name: off unless switched on for this channel (20261119100000) */
   comment_replies_enabled?: boolean
+  /** WhatsApp: 'coexistence' when the number is on the WhatsApp Business app too (20261123100000) */
+  whatsapp_mode?: string
+  /** Meta offboarded a coexistence number (a device change): nothing is sent until it reconnects */
+  coexistence_offboarded_at?: string | null
   clients: {
     name: string
     industry: string | null
@@ -94,7 +98,7 @@ export type InboundChannel = {
 
 /** A disabled channel, client or organization: the message is not stored and nothing is answered, as on the website (403) */
 export function isLive(channel: InboundChannel) {
-  return channel.is_active && channel.clients?.status === 'active' && channel.clients.organizations?.is_active === true
+  return channel.is_active && !channel.coexistence_offboarded_at && channel.clients?.status === 'active' && channel.clients.organizations?.is_active === true
 }
 
 /** What went out: a send's result, nothing (no text to send, or the notice had been told), or the notice already said */
@@ -137,7 +141,7 @@ type Inbound = {
 }
 
 /** Both transports' words for what arrived, as the placeholder names them */
-function placeholderFor(type: string): keyof typeof WHATSAPP_PLACEHOLDER_AR {
+export function placeholderFor(type: string): keyof typeof WHATSAPP_PLACEHOLDER_AR {
   if (type === 'audio') return 'voice'
   if (type === 'image' || type === 'sticker') return 'image'
   // A clip is something to watch, not a file to open
@@ -496,6 +500,7 @@ async function notice(supabase: SupabaseClient, transport: Transport, channelId:
     .select('role, content, metadata')
     .eq('conversation_id', conversationId)
     .in('role', ['assistant', 'agent'])
+    .eq('imported', false)
     .order('seq', { ascending: false })
     .limit(50)
     .returns<Outbound[]>()
@@ -552,6 +557,7 @@ async function handleEcho(
     .eq('conversation_id', conversationId)
     // A person's reply from the dashboard is sent by us too, and echoed like the bot's
     .in('role', ['assistant', 'agent'])
+    .eq('imported', false)
     .order('seq', { ascending: false })
     .limit(50)
     .returns<OutboundRow[]>()

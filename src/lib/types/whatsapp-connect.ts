@@ -28,7 +28,14 @@ export type WhatsAppConnectStatus = keyof typeof WHATSAPP_CONNECT_MESSAGES
 export const WHATSAPP_CONNECT_SUCCESS: readonly WhatsAppConnectStatus[] = ['connectedPaused', 'reconnected']
 
 /** What the popup handed the browser: the code, and the ids Meta's message event reported. Never trusted on the ids */
-export type WhatsAppSignup = { code: string; wabaId: string; phoneNumberId: string }
+export type WhatsAppSignup = {
+  code: string
+  wabaId: string
+  /** Null only from a coexistence finish, whose event may carry the WABA alone */
+  phoneNumberId: string | null
+  /** The popup finished as WhatsApp Business app onboarding (FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING) */
+  coexistence?: true
+}
 
 export type WhatsAppConnectResult = { ok: boolean; status: WhatsAppConnectStatus; channelId?: string }
 

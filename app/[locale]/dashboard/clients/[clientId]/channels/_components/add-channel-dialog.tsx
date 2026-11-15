@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { Clock, Plus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -37,6 +38,9 @@ import { ChannelIcon } from '@/components/channel-icon'
 /** Facebook and Instagram are one login, one card: what to connect is chosen after the return from Meta */
 const META_TYPES: readonly ChannelType[] = ['facebook', 'instagram']
 
+/** What a business connecting its WhatsApp Business app number is told it loses, in this order, before it agrees */
+const COEXISTENCE_DISCLOSURE = ['calls', 'groups', 'broadcast', 'disappearing', 'viewOnce', 'tools', 'linkedDevices', 'history', 'firstMessage', 'keepOpen'] as const
+
 /** What a stopped WhatsApp connect can resume from without signing up again */
 const WHATSAPP_RESUMABLE = ['registerFailed', 'subscribeFailed'] as const
 
@@ -48,7 +52,7 @@ export function AddChannelDialog({
   clientId: string
   metaConnect?: boolean
   /** Embedded Signup's app and configuration ids (not secrets), when it is configured */
-  whatsappConnect?: { appId: string; configId: string } | null
+  whatsappConnect?: { appId: string; configId: string; coexistence?: boolean } | null
 }) {
   const t = useTranslations('channels')
   const tError = useTranslations('errorPage')
@@ -56,6 +60,10 @@ export function AddChannelDialog({
   const tCommon = useTranslations('common')
   const [open, setOpen] = useState(false)
   const [type, setType] = useState<ChannelType>('website')
+  // WhatsApp: a new number (the ordinary signup) or the business's own app number (coexistence, only when offered)
+  const [businessApp, setBusinessApp] = useState(false)
+  // The business has read what it loses: required before the popup opens, never after
+  const [accepted, setAccepted] = useState(false)
   const [nameError, setNameError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -86,7 +94,9 @@ export function AddChannelDialog({
   function handleWhatsAppConnect() {
     if (!whatsappConnect) return
     startTransition(async () => {
-      const outcome = await launchWhatsAppSignup(whatsappConnect)
+      const coexistence = whatsappConnect.coexistence === true && businessApp
+      if (coexistence && !accepted) return
+      const outcome = await launchWhatsAppSignup({ appId: whatsappConnect.appId, configId: whatsappConnect.configId, coexistence })
       if (outcome.kind === 'cancelled') {
         toast(t(WHATSAPP_CONNECT_MESSAGES.cancelled))
         return
@@ -116,6 +126,8 @@ export function AddChannelDialog({
     if (!next) {
       setType('website')
       setNameError(null)
+      setBusinessApp(false)
+      setAccepted(false)
     }
   }
 
@@ -177,9 +189,48 @@ export function AddChannelDialog({
           </div>
 
           {whatsapp ? (
-            // Before the click, never after: a number connected here leaves the WhatsApp Business app
-            <div className="grid gap-1 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
-              <p className="font-medium">{t('whatsapp.connect.notice')}</p>
+            <div className="grid gap-3">
+              {whatsappConnect?.coexistence && (
+                <fieldset className="grid gap-2">
+                  <legend className="mb-1 text-sm font-medium">{t('whatsapp.coexistence.choice.label')}</legend>
+                  {([false, true] as const).map((value) => (
+                    <label key={String(value)} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="radio"
+                        name="whatsapp-number"
+                        className="size-4 accent-primary"
+                        checked={businessApp === value}
+                        onChange={() => {
+                          setBusinessApp(value)
+                          setAccepted(false)
+                        }}
+                      />
+                      {t(value ? 'whatsapp.coexistence.choice.businessApp' : 'whatsapp.coexistence.choice.newNumber')}
+                    </label>
+                  ))}
+                </fieldset>
+              )}
+              {whatsappConnect?.coexistence && businessApp ? (
+                // Everything it loses, before it agrees: the popup does not open until it has
+                <div className="grid gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
+                  <p className="font-medium">{t('whatsapp.coexistence.disclosure.title')}</p>
+                  <p>{t('whatsapp.coexistence.disclosure.intro')}</p>
+                  <ul className="grid list-disc gap-1 ps-5">
+                    {COEXISTENCE_DISCLOSURE.map((key) => (
+                      <li key={key}>{t(`whatsapp.coexistence.disclosure.${key}`)}</li>
+                    ))}
+                  </ul>
+                  <label className="mt-1 flex items-start gap-2 font-medium">
+                    <Checkbox checked={accepted} onCheckedChange={(value) => setAccepted(value === true)} className="mt-0.5" />
+                    <span>{t('whatsapp.coexistence.disclosure.accept')}</span>
+                  </label>
+                </div>
+              ) : (
+                // Before the click, never after: a number connected here leaves the WhatsApp Business app
+                <div className="grid gap-1 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
+                  <p className="font-medium">{t('whatsapp.connect.notice')}</p>
+                </div>
+              )}
             </div>
           ) : meta ? (
             <div className="grid gap-1 rounded-lg border p-4 text-sm">
@@ -226,7 +277,7 @@ export function AddChannelDialog({
               </Button>
             </DialogClose>
             {whatsapp ? (
-              <Button type="button" onClick={handleWhatsAppConnect} disabled={isPending}>
+              <Button type="button" onClick={handleWhatsAppConnect} disabled={isPending || (whatsappConnect?.coexistence === true && businessApp && !accepted)}>
                 {isPending ? tCommon('loading') : t('whatsapp.connect.button')}
               </Button>
             ) : meta ? (

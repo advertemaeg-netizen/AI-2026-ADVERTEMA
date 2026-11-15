@@ -19,7 +19,9 @@ import {
 import { errorForLog } from '@/lib/log'
 
 const CHANNELS_PATH = '/[locale]/dashboard/clients/[clientId]/channels'
-const CHANNEL_COLUMNS = 'id, client_id, type, name, webhook_url, is_active, created_at, connection_notice, comment_replies_enabled, comment_replies_changed_by, comment_replies_changed_at'
+const CHANNEL_COLUMNS =
+  'id, client_id, type, name, webhook_url, is_active, created_at, connection_notice, comment_replies_enabled, comment_replies_changed_by, comment_replies_changed_at, ' +
+  'whatsapp_mode, coexistence_onboarded_at, history_sync, history_sync_progress, history_imported, contacts_sync, coexistence_offboarded_at'
 
 function dbError(error: { code?: string; message: string; hint?: string | null }): ChannelActionResult {
   // The subscription limit trigger (a race past the check in createChannelAction)

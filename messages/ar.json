@@ -293,6 +293,49 @@
       "card": {
         "namePending": "اسم الظهور لسه تحت المراجعة من واتساب. الرد شغال عادي.",
         "removedByBusiness": "اتشالت صلاحية مدرك من واتساب. القناة متوقفة لحد ما تترجع."
+      },
+      "coexistence": {
+        "choice": {
+          "label": "Which number?",
+          "newNumber": "A new number for Mudrik",
+          "businessApp": "My WhatsApp Business app number"
+        },
+        "disclosure": {
+          "title": "Before you connect your WhatsApp Business app number",
+          "intro": "You keep the WhatsApp Business app on your phone, and Mudrik answers on the same number. Read what changes before you connect:",
+          "calls": "WhatsApp voice and video calls on this number are not handled by Mudrik.",
+          "groups": "Group chats are not part of Mudrik: they are not copied in and Mudrik does not answer them.",
+          "broadcast": "Broadcast lists stop working. Existing ones become read-only.",
+          "disappearing": "Disappearing messages are turned off.",
+          "viewOnce": "View-once messages and live location are turned off.",
+          "tools": "The app's own tools, its catalog, quick replies, greeting message, away message and labels, do not work with Mudrik.",
+          "linkedDevices": "Every linked device (WhatsApp Web, desktop, a second phone) is unlinked when you connect. You can link them again afterwards.",
+          "history": "Your chats from the last 6 months can be copied into Mudrik once, right after you connect. Group chats are not included, and photos and files only from the last 14 days.",
+          "firstMessage": "Mudrik can answer a customer only after they send a new message. Chats from before you connected cannot be replied to until then.",
+          "keepOpen": "Keep the app open on your phone while your history comes in, and open it at least every two weeks: WhatsApp disconnects a number whose phone has been inactive for about 14 days.",
+          "accept": "I have read this and want to connect my WhatsApp Business app number."
+        },
+        "card": {
+          "badge": "WhatsApp Business app",
+          "mode": "Connected together with the WhatsApp Business app: replies can also come from your phone.",
+          "firstMessage": "Mudrik answers a customer once they send a new message. Chats from before you connected cannot be replied to until then.",
+          "offboarded": "WhatsApp paused this number after a phone change or a new registration. Mudrik sends nothing until it reconnects.",
+          "retry": "Try again",
+          "deleteWarning": "This number is connected together with the WhatsApp Business app. If you remove it and connect it again later, WhatsApp does not copy your chat history a second time.",
+          "history": {
+            "not_requested": "Asking WhatsApp for your chat history…",
+            "requested": "Asking WhatsApp for your chat history…",
+            "receiving": "Bringing in your chat history: {progress}%. Keep the WhatsApp Business app open on your phone.",
+            "complete": "Chat history brought in: {count} messages. Group chats are not included, and older photos and files are not available.",
+            "declined": "You chose in WhatsApp not to share your chat history. New messages appear here from now on.",
+            "request_failed": "Your chat history could not be requested. Try again within 24 hours of connecting.",
+            "window_missed": "Your chat history was not brought in within the 24 hours WhatsApp allows. New messages are not affected. To try again, the number has to be disconnected in the WhatsApp Business app and connected again."
+          },
+          "contacts": {
+            "request_failed": "Your contacts could not be requested. Try again within 24 hours of connecting.",
+            "window_missed": "Your contacts were not brought in within the 24 hours WhatsApp allows. Contacts you add from now on still arrive."
+          }
+        }
       }
     },
     "connection": {
@@ -570,7 +613,15 @@
       "outsideWindow": "عدّى أكتر من ٢٤ ساعة على آخر رسالة من الزائر. مش هينفع ترد هنا لحد ما يبعت تاني.",
       "commentThread": "ده تعليق عام. الرد الخاص بيتبعت من محادثة الرسايل بتاعة نفس الشخص."
     },
-    "fromComment": "المحادثة دي بدأت من تعليق على بوست."
+    "fromComment": "المحادثة دي بدأت من تعليق على بوست.",
+    "coexistence": {
+      "fromPhone": "Your WhatsApp phone",
+      "importedDivider": "Earlier messages, from your WhatsApp Business app",
+      "liveDivider": "Since connecting to Mudrik",
+      "revoked": "Deleted on your phone",
+      "edited": "Edited on your phone",
+      "note": "This chat can also be answered from your WhatsApp Business app. A reply from the phone hands the chat to your team."
+    }
   },
   "knowledge": {
     "title": "قاعدة معرفة {client}",

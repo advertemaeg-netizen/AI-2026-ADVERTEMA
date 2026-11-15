@@ -41,11 +41,12 @@ const DETAIL_COLUMNS = `
   id, status, contact_name, contact_identifier, last_message_at,
   last_message_preview, last_message_role, assigned_to, needs_human_since, needs_human_reason, created_at, auto_reply_enabled, thread,
   client:clients!inner(id, name, industry, status),
-  channel:channels!inner(id, type, name)
+  channel:channels!inner(id, type, name, whatsapp_mode)
 `
 
 // The send state and a bot reply's failure only: the rest of metadata stays on the server
-const MESSAGE_COLUMNS = 'id, conversation_id, role, content, sender_id, created_at, send:metadata->send, delivery:metadata->delivery'
+const MESSAGE_COLUMNS =
+  'id, conversation_id, role, content, sender_id, created_at, sent_from, imported, sent_at, send:metadata->send, delivery:metadata->delivery, revoked_at:metadata->>revoked_at, edited_at:metadata->>edited_at'
 
 export async function getConversations(
   filters: ConversationFilters = {}
@@ -106,7 +107,10 @@ export async function getConversation(id: string): Promise<{
       .from('messages')
       .select(MESSAGE_COLUMNS)
       .eq('conversation_id', id)
-      // As the bot reads them: in the order they were written
+      // Imported WhatsApp history first, by when it was sent; then the live
+      // thread as the bot reads it, in the order it was written
+      .order('imported', { ascending: false })
+      .order('sent_at', { ascending: true, nullsFirst: false })
       .order('seq', { ascending: true })
       .returns<Message[]>(),
     supabase.rpc('client_team', { check_client_id: conversation.client.id }),

@@ -13,11 +13,13 @@ import { ConnectStatusToast } from './_components/connect-status'
 import { whatsappConfig } from '@/lib/meta/whatsapp-connect'
 import { isConnectStatus } from '@/lib/types/meta-connect'
 import { metaConfig } from '@/lib/meta/connect-flow'
+import { coexistenceEnabled } from '@/lib/meta/coexistence'
 
 /** Embedded Signup's two public ids for the popup, when it is configured: never the app secret */
 function whatsappSignup() {
   const config = whatsappConfig()
-  return config ? { appId: config.appId, configId: config.configId } : null
+  // coexistence: whether to offer the WhatsApp Business app number at all (META_WHATSAPP_COEXISTENCE)
+  return config ? { appId: config.appId, configId: config.configId, coexistence: coexistenceEnabled() } : null
 }
 
 export default async function ChannelsPage({

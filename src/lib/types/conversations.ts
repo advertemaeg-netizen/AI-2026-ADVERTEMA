@@ -40,7 +40,8 @@ export type ConversationListItem = {
   needs_human_since: string | null
   needs_human_reason: NeedsHumanReason | null
   client: { id: string; name: string }
-  channel: { id: string; type: ChannelType; name: string }
+  /** whatsapp_mode on the detail only: 'coexistence' when the business may also answer from its phone */
+  channel: { id: string; type: ChannelType; name: string; whatsapp_mode?: string }
 }
 
 /**
@@ -84,6 +85,15 @@ export type Message = {
   content: string
   sender_id: string | null
   created_at: string
+  /** Who sent an outbound row: the bot, our inbox, Meta's Page inbox, or the business's own WhatsApp phone (20261123100000) */
+  sent_from?: 'bot' | 'inbox' | 'meta_inbox' | 'phone' | null
+  /** Brought in by the one-shot WhatsApp history import: before onboarding, shown above the live thread */
+  imported?: boolean
+  /** When an imported message was sent (Meta's time) */
+  sent_at?: string | null
+  /** Deleted, or edited, on the business's phone */
+  revoked_at?: string | null
+  edited_at?: string | null
   /** metadata.send: set on every outbound row of a Meta conversation, absent on the website's */
   send?: MessageSend | null
   /** metadata.delivery: a bot reply the person never received (its failure kind) */

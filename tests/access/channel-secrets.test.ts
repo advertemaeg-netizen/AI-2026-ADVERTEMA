@@ -11,7 +11,9 @@ import { signJwt } from '../harness/jwt'
  * the claim on each comment and what was done with it; meta_connect_pending
  * the system-user token between Meta's return and the clinic's pick;
  * meta_pending_statuses a WhatsApp status held until its send records the
- * id; meta_post_authors whether a Facebook post is the Page's own. All six
+ * id; meta_post_authors whether a Facebook post is the Page's own;
+ * whatsapp_history_chunks a coexistence business's raw chat history and
+ * whatsapp_contacts its contacts (20261123100000). All eight
  * are service-role only: row level security on with no policy, and every
  * table privilege revoked from anon and authenticated (20261102100000,
  * 20261103100000, 20261109100000, 20261111100000, 20261113100000,
@@ -37,7 +39,17 @@ import { signJwt } from '../harness/jwt'
 
 type Who = 'super' | 'superImpersonating' | 'orgAdmin' | 'clientAdmin' | 'teamMember' | 'anon'
 const EVERYONE: Who[] = ['super', 'superImpersonating', 'orgAdmin', 'clientAdmin', 'teamMember', 'anon']
-const TABLES = ['channel_secrets', 'processed_meta_messages', 'meta_comment_replies', 'meta_connect_pending', 'meta_pending_statuses', 'meta_post_authors'] as const
+const TABLES = [
+  'channel_secrets',
+  'processed_meta_messages',
+  'meta_comment_replies',
+  'meta_connect_pending',
+  'meta_pending_statuses',
+  'meta_post_authors',
+  // WhatsApp coexistence (20261123100000): the raw history chunks and the business's contacts
+  'whatsapp_history_chunks',
+  'whatsapp_contacts',
+] as const
 
 // Serialised, retried and watched by the access project's global fetch (tests/harness/access-fetch.ts)
 const clientWith = (key: string) =>
@@ -52,6 +64,8 @@ let secondChannelId: string
 let clientId: string
 let pendingUserId: string
 const pendingId = crypto.randomUUID()
+const chunkId = crypto.randomUUID()
+const contactId = crypto.randomUUID()
 const inTenMinutes = () => new Date(Date.now() + 600_000).toISOString()
 
 beforeAll(async () => {
@@ -78,6 +92,10 @@ beforeAll(async () => {
   if (statusError) throw statusError
   const { error: authorError } = await service.from('meta_post_authors').insert({ post_id: `post.fixture.${channelId}`, channel_id: channelId, page_owned: true })
   if (authorError) throw authorError
+  const { error: chunkError } = await service.from('whatsapp_history_chunks').insert({ id: chunkId, channel_id: channelId, progress: 10, payload: { threads: [] } })
+  if (chunkError) throw chunkError
+  const { error: contactError } = await service.from('whatsapp_contacts').insert({ id: contactId, channel_id: channelId, phone_number: '201000000000', full_name: 'fixture' })
+  if (contactError) throw contactError
   pendingUserId = (await createUser('org_admin', seeded.organizationId, 'connecting')).id
   const { error: pendingError } = await service.from('meta_connect_pending').insert({
     id: pendingId,
@@ -150,6 +168,18 @@ async function statementsFor(who: Who, table: (typeof TABLES)[number]) {
       fixture: `post.fixture.${channelId}`,
       probe: { post_id: `post.probe.${who}.${channelId}`, channel_id: secondChannelId, page_owned: 'true' },
       change: { page_owned: 'false' },
+    },
+    whatsapp_history_chunks: {
+      key: 'id',
+      fixture: chunkId,
+      probe: { id: crypto.randomUUID(), channel_id: secondChannelId, payload: '{}' },
+      change: { progress: '50' },
+    },
+    whatsapp_contacts: {
+      key: 'id',
+      fixture: contactId,
+      probe: { id: crypto.randomUUID(), channel_id: secondChannelId, phone_number: '201000000001' },
+      change: { full_name: 'changed' },
     },
     meta_connect_pending: {
       key: 'id',
@@ -258,6 +288,10 @@ describe('channel_secrets and processed_meta_messages are the server\'s alone', 
     expect(pending).toEqual([{ id: pendingId, access_token: 'SYS-not-a-real-token' }])
     const { data: author } = await service.from('meta_post_authors').select('page_owned').eq('post_id', `post.fixture.${channelId}`).single()
     expect(author).toEqual({ page_owned: true })
+    const { data: chunk } = await service.from('whatsapp_history_chunks').select('progress').eq('id', chunkId).single()
+    expect(chunk).toEqual({ progress: 10 })
+    const { data: contact } = await service.from('whatsapp_contacts').select('full_name').eq('id', contactId).single()
+    expect(contact).toEqual({ full_name: 'fixture' })
   }, 120_000)
 
   it('a repeated delivery id is refused by the key, which is the whole idempotency mechanism', async () => {

@@ -43,6 +43,10 @@ type ReplyChannel = {
   type: ChannelType
   is_active: boolean
   external_id: string | null
+  /** 'coexistence': the number is on the WhatsApp Business app too (20261123100000) */
+  whatsapp_mode?: string
+  /** Meta paused it after a device change: nothing goes out until it reconnects */
+  coexistence_offboarded_at?: string | null
   clients: { status: string; organizations: { is_active: boolean } | null } | null
 }
 
@@ -57,7 +61,7 @@ export type ReplyConversation = {
 export async function loadForReply(admin: SupabaseClient, conversationId: string): Promise<ReplyConversation | null> {
   const { data, error } = await admin
     .from('conversations')
-    .select('id, thread, contact_identifier, channel:channels!inner(id, type, is_active, external_id, clients(status, organizations(is_active)))')
+    .select('id, thread, contact_identifier, channel:channels!inner(id, type, is_active, external_id, whatsapp_mode, coexistence_offboarded_at, clients(status, organizations(is_active)))')
     .eq('id', conversationId)
     .maybeSingle<ReplyConversation>()
   if (error) throw error
@@ -71,7 +75,7 @@ export async function replyAvailability(admin: SupabaseClient, conversation: Rep
   if (!isMeta(channel.type)) return { blocked: null, windowEndsAt: null }
   if (conversation.thread === 'comments') return { blocked: 'comment_thread', windowEndsAt: null }
 
-  const live = channel.is_active && channel.clients?.status === 'active' && channel.clients.organizations?.is_active === true
+  const live = channel.is_active && !channel.coexistence_offboarded_at && channel.clients?.status === 'active' && channel.clients.organizations?.is_active === true
   if (!live) return { blocked: 'paused', windowEndsAt: null }
 
   const { data: secret, error: secretError } = await admin
@@ -83,7 +87,11 @@ export async function replyAvailability(admin: SupabaseClient, conversation: Rep
   if (!secret?.access_token || !channel.external_id || !conversation.contact_identifier) return { blocked: 'disconnected', windowEndsAt: null }
 
   const lastWrote = await lastPersonMessageAt(admin, conversation.id)
-  if (!lastWrote) return { blocked: null, windowEndsAt: null }
+  // A coexistence chat known only from imported history: the person has not
+  // written since onboarding, so Meta opens no window (its messages from
+  // before onboarding open none). Said as the closed window it is, not left
+  // for Meta to refuse
+  if (!lastWrote) return { blocked: channel.whatsapp_mode === 'coexistence' ? 'outside_window' : null, windowEndsAt: null }
   const windowEndsAt = new Date(new Date(lastWrote).getTime() + REPLY_WINDOW_MS)
   return { blocked: windowEndsAt.getTime() <= now ? 'outside_window' : null, windowEndsAt: windowEndsAt.toISOString() }
 }
@@ -95,6 +103,8 @@ async function lastPersonMessageAt(admin: SupabaseClient, conversationId: string
     .select('created_at, metadata')
     .eq('conversation_id', conversationId)
     .eq('role', 'user')
+    // Imported history opens no window (Meta: messages from before onboarding open none)
+    .eq('imported', false)
     // The newest as written (messages.seq); the window is still measured from its created_at
     .order('seq', { ascending: false })
     .limit(20)
